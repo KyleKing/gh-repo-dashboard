@@ -1,4 +1,14 @@
-**/__pycache__/**
-.coverage
-gh-repo-dashboard/gh-repo-dashboard
-snapshot_report.html
+# Binary
+gh-repo-dashboard
+
+# Test coverage
+coverage.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store

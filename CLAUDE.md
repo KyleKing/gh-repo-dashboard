@@ -11,7 +11,6 @@ K9s-inspired Bubble Tea TUI for managing multiple git and jj repositories with p
 ### Architecture
 
 ```
-gh-repo-dashboard/
 ├── main.go                    # CLI entry point
 ├── go.mod / go.sum           # Dependencies
 ├── internal/
@@ -50,7 +49,7 @@ gh-repo-dashboard/
 │   │   └── ttl.go           # Generic TTL cache
 │   └── ui/styles/            # Styling
 │       └── styles.go        # Lipgloss styles
-└── test-improvements.md      # Testing patterns documentation
+└── wip-test-improvements.md  # Testing patterns documentation
 ```
 
 ## Development Environment
@@ -65,8 +64,6 @@ gh-repo-dashboard/
 ### Setup
 
 ```bash
-cd gh-repo-dashboard
-
 # Build and run
 go build -o gh-repo-dashboard .
 ./gh-repo-dashboard ~/Developer --depth 2
@@ -81,8 +78,6 @@ gh repo-dashboard ~/Developer
 ### Unit Tests
 
 ```bash
-cd gh-repo-dashboard
-
 # Run all tests
 go test ./...
 

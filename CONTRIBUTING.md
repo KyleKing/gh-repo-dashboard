@@ -4,19 +4,21 @@
 
 ### Prerequisites
 
-- Python >=3.11
-- uv (Python package manager)
+- Go 1.23+
 - git (required for core functionality)
+- jj (optional, for Jujutsu repository support)
 - gh (GitHub CLI, optional for PR features)
 
 ### Installation
 
 ```bash
-# Install dependencies
-uv sync
+# Build and run
+go build -o gh-repo-dashboard .
+./gh-repo-dashboard ~/Developer
 
-# Run the app
-uv run reda
+# Or install as gh extension
+gh extension install .
+gh repo-dashboard ~/Developer
 ```
 
 ## Testing
@@ -25,55 +27,50 @@ uv run reda
 
 Run all tests:
 ```bash
-uv run pytest
+go test ./...
 ```
 
 Run with verbose output:
 ```bash
-uv run pytest -v
+go test -v ./...
 ```
 
-Run specific test file:
+Run specific package:
 ```bash
-uv run pytest tests/test_filters.py
+go test -v ./internal/filters/...
+```
+
+Run specific test:
+```bash
+go test -v -run TestFilterRepos ./internal/filters/
 ```
 
 Run with coverage:
 ```bash
-uv run pytest --cov=repo_dashboard --cov-report=html
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
 ```
 
-Stop on first failure:
+Run with race detector:
 ```bash
-uv run pytest -x
+go test -race ./...
 ```
 
-### Visual Snapshot Tests
+### Visual Testing
 
-Uses pytest-textual-snapshot for visual regression testing.
+See `test-improvements.md` for comprehensive testing patterns:
+
+1. **teatest (Golden File Testing)** - Visual regression with snapshot comparison
+2. **catwalk (Data-Driven Testing)** - Complex interaction sequence testing
+3. **Direct Testing** - State transition and business logic testing
 
 ```bash
-# Run snapshot tests
-uv run pytest tests/test_snapshots.py
+# Run golden file tests (if using build tag)
+go test -tags=golden ./...
 
-# Update snapshots after UI changes
-uv run pytest tests/test_snapshots.py --snapshot-update
-
-# View snapshots
-ls tests/__snapshots__/
+# Update golden files
+go test -tags=golden -update ./...
 ```
-
-**When to update snapshots:**
-- After intentional UI changes (new widgets, layout changes, styling)
-- After updating Textual version
-- When snapshot tests fail due to expected changes
-
-**Workflow:**
-1. Make UI changes
-2. Run `uv run pytest tests/test_snapshots.py` - tests will fail
-3. Review the diff in `snapshot_report.html`
-4. If changes are correct: `uv run pytest tests/test_snapshots.py --snapshot-update`
-5. Commit updated snapshots: `git add tests/__snapshots__/`
 
 ## Recording Demo
 
@@ -109,57 +106,58 @@ The demo will be saved as `.github/assets/demo.gif`.
 See [CLAUDE.md](./CLAUDE.md) for detailed code style guidelines.
 
 **Key principles:**
-- Functional style with small, composable functions
-- Modern Python: pathlib, dataclasses, pattern matching, walrus operator
-- Prefix private functions with underscore
-- Let exceptions propagate unless you can handle meaningfully
+- Use interfaces for abstraction
+- Write small, composable functions with single responsibility
+- Return errors explicitly with context
+- Use `context.Context` for cancellation and timeouts
 - No inline comments explaining what code does
-- Only add docstrings to public functions
+- Add doc comments for exported functions/types
 
 ## Architecture
 
 See [CLAUDE.md](./CLAUDE.md) for detailed architecture documentation.
 
-**Key components:**
-- `app.py` - Main Textual app, UI orchestration
-- `models.py` - Data models (RepoSummary, BranchInfo, PRInfo)
-- `filters.py` - Filter and sort logic with fuzzy search
-- `git_ops.py` - Git command execution
-- `github_ops.py` - GitHub CLI integration
-- `discovery.py` - Repository discovery
-- `cache.py` - TTL-based caching
-- `modals.py` - Modal screens and detail panels
+**Key packages:**
+- `internal/app/` - Bubble Tea app (Model, Update, View)
+- `internal/models/` - Data structures (RepoSummary, BranchInfo, PRInfo)
+- `internal/filters/` - Filter and sort logic with fuzzy search
+- `internal/vcs/` - VCS abstraction (git and jj implementations)
+- `internal/github/` - GitHub CLI integration
+- `internal/discovery/` - Repository discovery
+- `internal/cache/` - Generic TTL-based caching
+- `internal/batch/` - Batch task runner
 
 ## Common Tasks
 
 ### Adding a new filter mode
 
-1. Add enum value to `FilterMode` in `models.py`
-2. Add filter function in `filters.py` (e.g., `_filter_xyz()`)
-3. Add case to `filter_repos()` in `filters.py`
-4. Add tests in `tests/test_filters.py`
+1. Add const to `FilterMode` in `internal/models/enums.go`
+2. Add filter function in `internal/filters/filter.go`
+3. Add case to `FilterRepos()` in `internal/filters/filter.go`
+4. Add tests in `internal/filters/filter_test.go`
 
 ### Adding a new keybinding
 
-1. Add `Binding` to `BINDINGS` list in `app.py`
-2. Implement `action_<name>()` method
-3. Update help text in `modals.py`
-4. Add test in `tests/test_app.py`
+1. Add key binding to `internal/app/keymap.go`
+2. Add case to key handling in `internal/app/update.go`
+3. Update help text in `internal/app/view.go`
+4. Add test in `internal/app/app_test.go`
 
-### Adding a new modal/screen
+### Adding a new view mode
 
-1. Create modal class inheriting `ModalScreen` in `modals.py`
-2. Define `compose()` method with widgets
-3. Add CSS styling to `app.tcss`
-4. Use `self.push_screen(YourModal())` to show
+1. Add const to `ViewMode` in `internal/app/app.go`
+2. Add view rendering in `internal/app/view.go`
+3. Add update handling in `internal/app/update.go`
+4. Add navigation logic (enter/exit)
 
-### Modifying UI layout
+### Adding a new batch task
 
-1. Make changes to `compose()`, CSS, or widget code
-2. Run `uv run pytest tests/test_snapshots.py` - will fail
-3. Review visual diff in `snapshot_report.html`
-4. If correct: `uv run pytest tests/test_snapshots.py --snapshot-update`
-5. Commit updated snapshots
+1. Add method to `VCSOperations` interface in `internal/vcs/operations.go`
+2. Implement in both `GitOperations` and `JJOperations`
+3. Create task function in `internal/batch/tasks.go`
+4. Add handler in `internal/app/update.go`
+5. Add keybinding to `internal/app/keymap.go`
+6. Add tests to `internal/batch/batch_test.go`
 
 ## External Dependencies
 
@@ -169,33 +167,40 @@ See [CLAUDE.md](./CLAUDE.md) for detailed architecture documentation.
 
 ### Optional
 
+- **jj** (Jujutsu) - For jj repository support
+  - Install: See https://github.com/martinvonz/jj
+
 - **gh** (GitHub CLI) - PR features require this
   - Install: `brew install gh` (macOS) or see https://cli.github.com/
 
 ## Debugging
 
-### Textual DevTools
-
-```bash
-# Run with devtools console
-uv run textual console
-
-# In another terminal, run the app
-uv run reda
-```
-
 ### Logging
 
-Textual provides built-in logging:
-```python
-self.log("Debug message")  # Shows in devtools console
-self.notify("User message")  # Shows as notification in app
+```bash
+# Run with debug output to stderr
+./gh-repo-dashboard ~/Developer 2>debug.log
 ```
+
+### Common Issues
+
+**Terminal size issues:**
+- Model receives `tea.WindowSizeMsg` on startup and resize
+- Ensure width/height are updated in Update()
+
+**Message ordering:**
+- Commands execute asynchronously
+- Don't assume message arrival order
+- Use state flags to track loading/completion
+
+**Goroutine leaks:**
+- Use `context.Context` for cancellation
+- Cancel contexts when leaving views or quitting
 
 ## Performance Considerations
 
-- Fuzzy search runs on every keystroke (acceptable for <1000 repos)
+- Fuzzy search uses sahilm/fuzzy for efficient matching
 - Progressive loading prevents blocking on initial scan
-- TTL caching reduces redundant git/GitHub operations
-- Workers run concurrently for parallel data loading
-- Table virtualization (Textual handles this) for large lists
+- TTL caching with mutex protection for thread safety
+- Goroutines with Tea commands for parallel data loading
+- Lipgloss style caching (reuse style objects)
