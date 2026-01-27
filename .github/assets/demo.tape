@@ -56,12 +56,14 @@ Set Width 1600
 Set Height 1000
 
 Hide
+Type `cd ~/Developer/kyleking/repo-dashboard`  Enter  Sleep 500ms
+Type `go build -o gh-repo-dashboard .`  Enter  Sleep 2s
 Type `cd ~/Developer/kyleking`  Enter  Sleep 500ms
 Type `clear`  Enter
 Show
 
 # Start the TUI
-Type `uv run reda --depth 2`  Sleep 500ms  Enter
+Type `./repo-dashboard/gh-repo-dashboard . --depth 2`  Sleep 500ms  Enter
 Sleep 2s
 
 # Navigate repos
