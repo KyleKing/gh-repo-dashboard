@@ -4,6 +4,7 @@ import (
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -50,6 +51,10 @@ type Model struct {
 	registry             Registry
 	completionCandidates []string
 	completionIndex      int
+
+	predicateText string
+	predicate     filters.Predicate
+	selectedPaths map[string]bool
 
 	viewMode     ViewMode
 	selectedRepo string
@@ -267,6 +272,17 @@ func (m *Model) ResetFilters() {
 		m.activeFilters[i].Enabled = m.activeFilters[i].Mode == models.FilterModeAll
 		m.activeFilters[i].Inverted = false
 	}
+	m.predicate = nil
+	m.predicateText = ""
+}
+
+func (m *Model) SetPredicate(text string, pred filters.Predicate) {
+	m.predicate = pred
+	m.predicateText = text
+}
+
+func (m Model) SelectedCount() int {
+	return len(m.selectedPaths)
 }
 
 func (m *Model) ResetSorts() {

@@ -833,6 +833,16 @@ func (m *Model) updateFilteredPaths() {
 		m.searchText,
 	)
 
+	if m.predicate != nil {
+		var matched []string
+		for _, path := range m.filteredPaths {
+			if summary, ok := m.summaries[path]; ok && m.predicate(summary) {
+				matched = append(matched, path)
+			}
+		}
+		m.filteredPaths = matched
+	}
+
 	if m.cursor >= len(m.filteredPaths) {
 		if len(m.filteredPaths) > 0 {
 			m.cursor = len(m.filteredPaths) - 1

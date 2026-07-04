@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -98,28 +99,37 @@ func DefaultRegistry() Registry {
 		},
 		Command{
 			Name:        "filter",
-			Description: "Filter repos: :filter <mode> or :filter to open the modal",
+			Description: "Filter repos: :filter <mode|predicate> or :filter to open the modal",
 			Complete: func(m Model, args []string) []string {
 				prefix := ""
 				if len(args) > 0 {
 					prefix = args[len(args)-1]
 				}
-				return namesMatching(filterModeNames(), prefix)
+				return predicateCandidates(prefix)
 			},
 			Run: func(m Model, args []string) (Model, tea.Cmd) {
 				if len(args) == 0 {
 					m.viewMode = ViewModeFilter
 					return m, nil
 				}
-				mode, ok := filterModeNames()[args[0]]
-				if !ok {
-					return m, statusCmd(fmt.Sprintf("Unknown filter: %s", args[0]))
+				if len(args) == 1 {
+					if mode, ok := filterModeNames()[args[0]]; ok {
+						if mode == models.FilterModeAll {
+							m.ResetFilters()
+						} else {
+							m.SetFilter(mode)
+						}
+						m.updateFilteredPaths()
+						m.cursor = 0
+						return m, nil
+					}
 				}
-				if mode == models.FilterModeAll {
-					m.ResetFilters()
-				} else {
-					m.SetFilter(mode)
+				expr := strings.Join(args, " ")
+				pred, err := filters.ParsePredicate(expr)
+				if err != nil {
+					return m, statusCmd(err.Error())
 				}
+				m.SetPredicate(expr, pred)
 				m.updateFilteredPaths()
 				m.cursor = 0
 				return m, nil
@@ -149,6 +159,51 @@ func DefaultRegistry() Registry {
 			},
 		},
 		Command{
+			Name:        "select",
+			Description: "Mark repos: :select where <predicate>, :select all, :select none",
+			Complete: func(m Model, args []string) []string {
+				if len(args) <= 1 {
+					prefix := ""
+					if len(args) == 1 {
+						prefix = args[0]
+					}
+					return namesMatching(map[string]struct{}{"all": {}, "none": {}, "where": {}}, prefix)
+				}
+				return predicateCandidates(args[len(args)-1])
+			},
+			Run: func(m Model, args []string) (Model, tea.Cmd) {
+				if len(args) == 0 {
+					return m, statusCmd("Usage: :select where <predicate> | :select all | :select none")
+				}
+				switch args[0] {
+				case "none":
+					m.selectedPaths = nil
+					return m, nil
+				case "all":
+					m.selectedPaths = make(map[string]bool, len(m.repoPaths))
+					for _, path := range m.repoPaths {
+						m.selectedPaths[path] = true
+					}
+					return m, statusCmd(fmt.Sprintf("Selected %d repos", len(m.selectedPaths)))
+				case "where":
+					expr := strings.Join(args[1:], " ")
+					pred, err := filters.ParsePredicate(expr)
+					if err != nil {
+						return m, statusCmd(err.Error())
+					}
+					m.selectedPaths = make(map[string]bool)
+					for _, path := range m.repoPaths {
+						if summary, ok := m.summaries[path]; ok && pred(summary) {
+							m.selectedPaths[path] = true
+						}
+					}
+					return m, statusCmd(fmt.Sprintf("Selected %d repos", len(m.selectedPaths)))
+				default:
+					return m, statusCmd(fmt.Sprintf("Unknown select action: %s", args[0]))
+				}
+			},
+		},
+		Command{
 			Name:        "sort",
 			Description: "Cycle sort for a mode: :sort <mode> or :sort to open the modal",
 			Complete: func(m Model, args []string) []string {
@@ -174,6 +229,22 @@ func DefaultRegistry() Registry {
 			},
 		},
 	)
+}
+
+func predicateCandidates(prefix string) []string {
+	var names []string
+	for _, name := range filters.AtomNames() {
+		if strings.HasPrefix(name, prefix) {
+			names = append(names, name)
+		}
+	}
+	for _, word := range []string{"and", "all", "not", "or"} {
+		if strings.HasPrefix(word, prefix) && prefix != "" {
+			names = append(names, word)
+		}
+	}
+	slices.Sort(names)
+	return names
 }
 
 func statusCmd(message string) tea.Cmd {

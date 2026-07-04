@@ -203,8 +203,16 @@ func (m Model) renderStatusBar() string {
 		}
 	}
 
+	if m.predicateText != "" {
+		parts = append(parts, styles.Badge(m.predicateText, styles.FilterBadgeStyle))
+	}
+
 	if m.searchText != "" {
 		parts = append(parts, styles.Badge("\""+m.searchText+"\"", styles.SearchBadgeStyle))
+	}
+
+	if count := m.SelectedCount(); count > 0 {
+		parts = append(parts, styles.Badge(fmt.Sprintf("%d selected", count), styles.SortBadgeStyle))
 	}
 
 	return strings.Join(parts, " ")
@@ -289,10 +297,15 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 	prs      int
 	modified int
 }) string {
-	cursor := "  "
+	cursorChar := " "
 	if selected {
-		cursor = "> "
+		cursorChar = ">"
 	}
+	markChar := " "
+	if m.selectedPaths[s.Path] {
+		markChar = "•"
+	}
+	cursor := cursorChar + markChar
 
 	name := truncate(s.Name(), colWidths.name)
 	branch := truncate(s.Branch, colWidths.branch)
