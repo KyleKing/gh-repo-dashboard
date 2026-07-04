@@ -45,6 +45,12 @@ type Model struct {
 	searching     bool
 	searchInput   textinput.Model
 
+	commandMode          bool
+	commandInput         textinput.Model
+	registry             Registry
+	completionCandidates []string
+	completionIndex      int
+
 	viewMode     ViewMode
 	selectedRepo string
 	width        int
@@ -87,6 +93,10 @@ func New(scanPaths []string, maxDepth int) Model {
 	ti.Placeholder = "Search repos..."
 	ti.CharLimit = 100
 
+	ci := textinput.New()
+	ci.Prompt = ":"
+	ci.CharLimit = 200
+
 	filters := make([]models.ActiveFilter, 0, len(models.AllFilterModes()))
 	for _, mode := range models.AllFilterModes() {
 		filters = append(filters, models.NewActiveFilter(mode))
@@ -109,6 +119,8 @@ func New(scanPaths []string, maxDepth int) Model {
 		activeFilters: filters,
 		activeSorts:   sorts,
 		searchInput:   ti,
+		commandInput:  ci,
+		registry:      DefaultRegistry(),
 		viewMode:      ViewModeRepoList,
 		loading:       true,
 		keys:          DefaultKeyMap(),

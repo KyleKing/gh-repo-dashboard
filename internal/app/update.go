@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/key"
@@ -29,6 +30,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		if m.searching {
 			return m.handleSearchKey(msg)
+		}
+		if m.commandMode {
+			return m.handleCommandKey(msg)
+		}
+		if key.Matches(msg, m.keys.Command) {
+			m.commandMode = true
+			m.commandInput.Reset()
+			m.completionCandidates = nil
+			m.commandInput.Focus()
+			return m, nil
 		}
 		switch m.viewMode {
 		case ViewModeFilter:
@@ -731,6 +742,86 @@ func (m Model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.updateFilteredPaths()
 	m.cursor = 0
 	return m, cmd
+}
+
+func (m Model) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.commandMode = false
+		m.commandInput.Blur()
+		return m, nil
+
+	case "enter":
+		line := m.commandInput.Value()
+		m.commandMode = false
+		m.commandInput.Blur()
+		return m.ExecuteCommand(line)
+
+	case "ctrl+c":
+		return m, tea.Quit
+
+	case "tab":
+		m.completeCommand()
+		return m, nil
+	}
+
+	m.completionCandidates = nil
+	var cmd tea.Cmd
+	m.commandInput, cmd = m.commandInput.Update(msg)
+	return m, cmd
+}
+
+// completeCommand cycles through completion candidates for the token
+// under the cursor; the candidate set is pinned on first tab press.
+func (m *Model) completeCommand() {
+	if m.completionCandidates == nil {
+		line := m.commandInput.Value()
+		fields := strings.Fields(line)
+		endsWithSpace := strings.HasSuffix(line, " ")
+
+		if len(fields) == 0 || (len(fields) == 1 && !endsWithSpace) {
+			prefix := ""
+			if len(fields) == 1 {
+				prefix = fields[0]
+			}
+			m.completionCandidates = m.registry.Candidates(prefix)
+		} else {
+			cmd, ok := m.registry.Lookup(fields[0])
+			if !ok || cmd.Complete == nil {
+				return
+			}
+			args := fields[1:]
+			if endsWithSpace {
+				args = append(args, "")
+			}
+			m.completionCandidates = cmd.Complete(*m, args)
+		}
+		m.completionIndex = 0
+	} else {
+		m.completionIndex = (m.completionIndex + 1) % len(m.completionCandidates)
+	}
+
+	if len(m.completionCandidates) == 0 {
+		m.completionCandidates = nil
+		return
+	}
+
+	line := m.commandInput.Value()
+	fields := strings.Fields(line)
+	candidate := m.completionCandidates[m.completionIndex]
+
+	var newLine string
+	switch {
+	case len(fields) == 0:
+		newLine = candidate
+	case strings.HasSuffix(line, " "):
+		newLine = strings.Join(fields, " ") + " " + candidate
+	default:
+		newLine = strings.Join(append(fields[:len(fields)-1], candidate), " ")
+	}
+
+	m.commandInput.SetValue(newLine)
+	m.commandInput.CursorEnd()
 }
 
 func (m *Model) updateFilteredPaths() {

@@ -22,6 +22,32 @@ func (m Model) view() string {
 		return "Loading..."
 	}
 
+	content := m.renderView()
+	if m.commandMode {
+		return overlayBottomLine(content, m.commandInput.View(), m.height)
+	}
+	return content
+}
+
+// overlayBottomLine pins line onto the last row of content, padding or
+// truncating content to keep the overall height stable.
+func overlayBottomLine(content string, line string, height int) string {
+	lines := strings.Split(content, "\n")
+	if height < 1 {
+		return content
+	}
+	switch {
+	case len(lines) >= height:
+		lines = lines[:height-1]
+	default:
+		for len(lines) < height-1 {
+			lines = append(lines, "")
+		}
+	}
+	return strings.Join(lines, "\n") + "\n" + line
+}
+
+func (m Model) renderView() string {
 	switch m.viewMode {
 	case ViewModeHelp:
 		return m.renderHelp()

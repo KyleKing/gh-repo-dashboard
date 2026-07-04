@@ -15,6 +15,7 @@ type KeyMap struct {
 	Back   key.Binding
 	Tab    key.Binding
 
+	Command key.Binding
 	Refresh key.Binding
 	Filter  key.Binding
 	Sort    key.Binding
@@ -78,6 +79,10 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("tab"),
 			key.WithHelp("tab", "next tab"),
 		),
+		Command: key.NewBinding(
+			key.WithKeys(":"),
+			key.WithHelp(":", "command"),
+		),
 		Refresh: key.NewBinding(
 			key.WithKeys("r", "ctrl+r"),
 			key.WithHelp("r/ctrl+r", "refresh"),
@@ -134,14 +139,14 @@ func DefaultKeyMap() KeyMap {
 }
 
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.Enter, k.Filter, k.Sort, k.Search, k.Refresh, k.Quit}
+	return []key.Binding{k.Up, k.Down, k.Enter, k.Filter, k.Sort, k.Search, k.Command, k.Refresh, k.Quit}
 }
 
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Top, k.Bottom},
 		{k.Enter, k.Back},
-		{k.Filter, k.Sort, k.Search},
+		{k.Filter, k.Sort, k.Search, k.Command},
 		{k.Refresh, k.FetchAll, k.PruneRemote, k.CleanupMerged},
 		{k.Help, k.Quit},
 	}
