@@ -1,3 +1,9 @@
+## v1.0.1 (2026-07-04)
+
+### Fix
+
+- center modals and re-record demo
+
 ## v1.0.0 (2026-07-04)
 
 ### Feat
