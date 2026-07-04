@@ -1,6 +1,6 @@
 package app
 
-import "github.com/charmbracelet/bubbles/key"
+import "charm.land/bubbles/v2/key"
 
 type KeyMap struct {
 	Quit   key.Binding
@@ -67,7 +67,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("G", "bottom"),
 		),
 		Enter: key.NewBinding(
-			key.WithKeys("enter", " "),
+			key.WithKeys("enter", "space"),
 			key.WithHelp("enter", "select"),
 		),
 		Back: key.NewBinding(

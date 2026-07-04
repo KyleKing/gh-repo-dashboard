@@ -3,8 +3,8 @@ package app
 import (
 	"testing"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -14,7 +14,7 @@ func TestRefreshFromRepoList(t *testing.T) {
 	m.summaries["/repo1"] = models.RepoSummary{Path: "/repo1"}
 	m.prCount["/repo1"] = 5
 
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")}
+	msg := tea.KeyPressMsg{Code: 'r', Text: "r"}
 	if !key.Matches(msg, m.keys.Refresh) {
 		t.Error("'r' should match refresh key")
 	}
@@ -50,7 +50,7 @@ func TestRefreshFromRepoDetail(t *testing.T) {
 		{Name: "feature"},
 	}
 
-	msg := tea.KeyMsg{Type: tea.KeyCtrlR}
+	msg := tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl}
 	if !key.Matches(msg, m.keys.Refresh) {
 		t.Error("ctrl+r should match refresh key")
 	}
@@ -72,7 +72,7 @@ func TestRefreshFromBranchDetail(t *testing.T) {
 		Branch: models.BranchInfo{Name: "feature"},
 	}
 
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")}
+	msg := tea.KeyPressMsg{Code: 'r', Text: "r"}
 	updatedModel, cmd := m.Update(msg)
 	m = updatedModel.(Model)
 
@@ -90,7 +90,7 @@ func TestRefreshFromPRDetail(t *testing.T) {
 		PRInfo: models.PRInfo{Number: 123},
 	}
 
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")}
+	msg := tea.KeyPressMsg{Code: 'r', Text: "r"}
 	updatedModel, cmd := m.Update(msg)
 	m = updatedModel.(Model)
 
@@ -119,12 +119,12 @@ func TestRefreshCompleteMessage(t *testing.T) {
 func TestRefreshKeybindings(t *testing.T) {
 	m := New(nil, 1)
 
-	rKey := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")}
+	rKey := tea.KeyPressMsg{Code: 'r', Text: "r"}
 	if !key.Matches(rKey, m.keys.Refresh) {
 		t.Error("'r' key should match Refresh binding")
 	}
 
-	ctrlR := tea.KeyMsg{Type: tea.KeyCtrlR}
+	ctrlR := tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl}
 	if !key.Matches(ctrlR, m.keys.Refresh) {
 		t.Error("ctrl+r should match Refresh binding")
 	}

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -450,7 +450,7 @@ func TestPRDetailViewRender(t *testing.T) {
 		Body:      "This is the PR description",
 	}
 
-	output := m.View()
+	output := m.view()
 
 	if !strings.Contains(output, "PR #456") {
 		t.Error("output should contain PR number")
@@ -566,7 +566,7 @@ func TestPRDetailViewWithStatusMessage(t *testing.T) {
 	}
 	m.statusMessage = "Copied to clipboard: #123"
 
-	output := m.View()
+	output := m.view()
 
 	if !strings.Contains(output, "Copied to clipboard: #123") {
 		t.Error("output should contain status message")
@@ -674,7 +674,7 @@ func TestEmptyPRDetailFields(t *testing.T) {
 		Body:      "",
 	}
 
-	output := m.View()
+	output := m.view()
 
 	if !strings.Contains(output, "Minimal PR") {
 		t.Error("should contain PR title")
@@ -705,7 +705,7 @@ func TestPRDetailLoadingState(t *testing.T) {
 	// prDetail.Number is 0 (not loaded yet)
 	m.prDetail = models.PRDetail{}
 
-	output := m.View()
+	output := m.view()
 
 	if !strings.Contains(output, "Loading PR details") {
 		t.Error("should show loading message when PR detail not loaded")
@@ -726,7 +726,7 @@ func TestPRDetailClearedOnNavigation(t *testing.T) {
 	}
 
 	// Simulate Enter key on PR list
-	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	msg := tea.KeyPressMsg{Code: tea.KeyEnter}
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
 
@@ -810,7 +810,7 @@ func TestPRDetailProgressiveLoading(t *testing.T) {
 	m.detailCursor = 0
 
 	// Navigate to PR detail
-	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	msg := tea.KeyPressMsg{Code: tea.KeyEnter}
 	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
 
@@ -867,7 +867,7 @@ func TestPRDetailProgressiveView(t *testing.T) {
 		// Author and other fields empty (not loaded yet)
 	}
 
-	output := m.View()
+	output := m.view()
 
 	// Basic info should be visible
 	if !strings.Contains(output, "PR #100") {
@@ -893,7 +893,7 @@ func TestPRDetailProgressiveView(t *testing.T) {
 	m.prDetail.Additions = 100
 	m.prDetail.Deletions = 50
 
-	output = m.View()
+	output = m.view()
 
 	// Should no longer show loading indicator
 	if strings.Contains(output, "loading details") {

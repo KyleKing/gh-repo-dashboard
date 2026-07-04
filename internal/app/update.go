@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
@@ -23,7 +23,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.help.Width = msg.Width
+		m.help.SetWidth(msg.Width)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -708,13 +708,13 @@ func (m Model) handleBatchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.Type {
-	case tea.KeyEsc:
+	switch msg.String() {
+	case "esc":
 		m.searching = false
 		m.searchInput.Blur()
 		return m, nil
 
-	case tea.KeyEnter:
+	case "enter":
 		m.searching = false
 		m.searchText = m.searchInput.Value()
 		m.searchInput.Blur()
@@ -722,7 +722,7 @@ func (m Model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.cursor = 0
 		return m, nil
 
-	case tea.KeyCtrlC:
+	case "ctrl+c":
 		return m, tea.Quit
 	}
 

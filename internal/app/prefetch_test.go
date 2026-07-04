@@ -3,7 +3,7 @@ package app
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -20,7 +20,7 @@ func TestPrefetchOnCursorMovement(t *testing.T) {
 	m.detailCursor = 0
 
 	// Move down - should trigger prefetch
-	msg := tea.KeyMsg{Type: tea.KeyDown}
+	msg := tea.KeyPressMsg{Code: tea.KeyDown}
 	updatedModel, cmd := m.Update(msg)
 	m = updatedModel.(Model)
 
@@ -33,7 +33,7 @@ func TestPrefetchOnCursorMovement(t *testing.T) {
 	}
 
 	// Move up - should trigger prefetch
-	msg = tea.KeyMsg{Type: tea.KeyUp}
+	msg = tea.KeyPressMsg{Code: tea.KeyUp}
 	updatedModel, cmd = m.Update(msg)
 	m = updatedModel.(Model)
 
@@ -57,7 +57,7 @@ func TestPrefetchOnTabSwitch(t *testing.T) {
 	}
 
 	// Switch to PR tab
-	msg := tea.KeyMsg{Type: tea.KeyTab}
+	msg := tea.KeyPressMsg{Code: tea.KeyTab}
 	updatedModel, cmd := m.Update(msg)
 	m = updatedModel.(Model)
 
@@ -128,7 +128,7 @@ func TestNavigateBetweenPRsInDetailView(t *testing.T) {
 	}
 
 	// Press down to go to next PR
-	msg := tea.KeyMsg{Type: tea.KeyDown}
+	msg := tea.KeyPressMsg{Code: tea.KeyDown}
 	updatedModel, cmd := m.Update(msg)
 	m = updatedModel.(Model)
 
@@ -145,7 +145,7 @@ func TestNavigateBetweenPRsInDetailView(t *testing.T) {
 	}
 
 	// Press up to go back
-	msg = tea.KeyMsg{Type: tea.KeyUp}
+	msg = tea.KeyPressMsg{Code: tea.KeyUp}
 	updatedModel, cmd = m.Update(msg)
 	m = updatedModel.(Model)
 
@@ -170,7 +170,7 @@ func TestNavigatePRDetailAtBoundaries(t *testing.T) {
 	m.prDetail = models.PRDetail{PRInfo: m.prs[0]}
 
 	// Try to go down (should do nothing)
-	msg := tea.KeyMsg{Type: tea.KeyDown}
+	msg := tea.KeyPressMsg{Code: tea.KeyDown}
 	updatedModel, cmd := m.Update(msg)
 	m = updatedModel.(Model)
 
@@ -183,7 +183,7 @@ func TestNavigatePRDetailAtBoundaries(t *testing.T) {
 	}
 
 	// Try to go up (should do nothing)
-	msg = tea.KeyMsg{Type: tea.KeyUp}
+	msg = tea.KeyPressMsg{Code: tea.KeyUp}
 	updatedModel, cmd = m.Update(msg)
 	m = updatedModel.(Model)
 
@@ -208,7 +208,7 @@ func TestPrefetchNotTriggeredOnNonPRTabs(t *testing.T) {
 	m.detailCursor = 0
 
 	// Move down on branch tab
-	msg := tea.KeyMsg{Type: tea.KeyDown}
+	msg := tea.KeyPressMsg{Code: tea.KeyDown}
 	updatedModel, cmd := m.Update(msg)
 	m = updatedModel.(Model)
 

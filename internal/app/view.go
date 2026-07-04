@@ -5,12 +5,19 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
-func (m Model) View() string {
+func (m Model) View() tea.View {
+	v := tea.NewView(m.view())
+	v.AltScreen = true
+	return v
+}
+
+func (m Model) view() string {
 	if m.width == 0 {
 		return "Loading..."
 	}
