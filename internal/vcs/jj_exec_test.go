@@ -35,7 +35,7 @@ func TestJJRunJJWrapsExitError(t *testing.T) {
 }
 
 func TestJJGetCurrentBranch(t *testing.T) {
-	key := jjKey("log -r @ -T bookmarks --no-graph")
+	key := jjKey("log -r @ -T " + jjCurrentBookmarkFormat + " --no-graph")
 
 	tests := []struct {
 		name     string
@@ -82,7 +82,7 @@ func TestJJGetCurrentBranch(t *testing.T) {
 }
 
 func TestJJGetUpstream(t *testing.T) {
-	key := jjKey("bookmark list")
+	key := jjKey("bookmark list --all-remotes -T " + jjBookmarkListFormat)
 
 	tests := []struct {
 		name     string
@@ -95,13 +95,13 @@ func TestJJGetUpstream(t *testing.T) {
 		{
 			name:     "tracked bookmark",
 			branch:   "main",
-			canned:   map[string]string{key: "main: abc123 msg\nmain@origin: abc123 msg"},
+			canned:   map[string]string{key: "main\tlocal\nmain\torigin\t0\t1\n"},
 			expected: "main@origin",
 		},
 		{
 			name:     "untracked bookmark",
 			branch:   "feature",
-			canned:   map[string]string{key: "feature: def456 msg"},
+			canned:   map[string]string{key: "feature\tlocal\n"},
 			expected: "",
 		},
 		{
@@ -134,50 +134,45 @@ func TestJJGetUpstream(t *testing.T) {
 }
 
 func TestJJGetAheadBehind(t *testing.T) {
-	aheadKey := jjKey("log -r main@origin.. -T change_id --no-graph")
-	behindKey := jjKey("log -r ..main@origin -T change_id --no-graph")
+	key := jjKey("bookmark list --all-remotes -T " + jjBookmarkListFormat)
 
 	tests := []struct {
 		name     string
 		branch   string
+		upstream string
 		canned   map[string]string
 		failures map[string]error
 		ahead    int
 		behind   int
 	}{
 		{
-			name:   "ahead and behind",
-			branch: "main",
-			canned: map[string]string{
-				aheadKey:  "changeid1\nchangeid2",
-				behindKey: "changeid3",
-			},
-			ahead:  2,
-			behind: 1,
+			name:     "ahead and behind",
+			branch:   "main",
+			upstream: "main@origin",
+			canned:   map[string]string{key: "main\tlocal\nmain\torigin\t2\t1\n"},
+			ahead:    2,
+			behind:   1,
 		},
 		{
-			name:   "in sync",
-			branch: "main",
-			canned: map[string]string{
-				aheadKey:  "",
-				behindKey: "",
-			},
+			name:     "in sync",
+			branch:   "main",
+			upstream: "main@origin",
+			canned:   map[string]string{key: "main\tlocal\nmain\torigin\t0\t0\n"},
 		},
 		{
 			name:   "anonymous working copy",
 			branch: "@",
 		},
 		{
-			name:     "ahead query failure returns zeros",
+			name:     "no upstream",
 			branch:   "main",
-			failures: map[string]error{aheadKey: errors.New("boom")},
+			upstream: "",
 		},
 		{
-			name:     "behind query failure keeps ahead",
+			name:     "listing failure returns zeros",
 			branch:   "main",
-			canned:   map[string]string{aheadKey: "changeid1"},
-			failures: map[string]error{behindKey: errors.New("boom")},
-			ahead:    1,
+			upstream: "main@origin",
+			failures: map[string]error{key: errors.New("boom")},
 		},
 	}
 
@@ -186,7 +181,7 @@ func TestJJGetAheadBehind(t *testing.T) {
 			stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
-			ahead, behind, err := j.GetAheadBehind(context.Background(), testRepoPath, tt.branch, tt.branch+"@origin")
+			ahead, behind, err := j.GetAheadBehind(context.Background(), testRepoPath, tt.branch, tt.upstream)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -239,10 +234,8 @@ func TestJJGetRepoSummary(t *testing.T) {
 		{
 			name: "tracked bookmark with changes",
 			canned: map[string]string{
-				jjKey("log -r @ -T bookmarks --no-graph"):             "main",
-				jjKey("bookmark list"):                                "main: abc123 msg\nmain@origin: abc123 msg",
-				jjKey("log -r main@origin.. -T change_id --no-graph"): "changeid1",
-				jjKey("log -r ..main@origin -T change_id --no-graph"): "changeid2\nchangeid3",
+				jjKey("log -r @ -T " + jjCurrentBookmarkFormat + " --no-graph"): "main",
+				jjKey("bookmark list --all-remotes -T " + jjBookmarkListFormat): "main\tlocal\nmain\torigin\t1\t2\n",
 				jjKey("status"): "Working copy changes:\nM file.txt",
 				jjKey("log -r @ -T " + jjTimestampFormat + " --no-graph"): "1700000000",
 			},
@@ -260,7 +253,7 @@ func TestJJGetRepoSummary(t *testing.T) {
 		{
 			name: "anonymous working copy",
 			canned: map[string]string{
-				jjKey("log -r @ -T bookmarks --no-graph"): "",
+				jjKey("log -r @ -T " + jjCurrentBookmarkFormat + " --no-graph"): "",
 				jjKey("status"): "The working copy is clean",
 				jjKey("log -r @ -T " + jjTimestampFormat + " --no-graph"): "1700000000",
 			},
@@ -290,8 +283,8 @@ func TestJJGetRepoSummary(t *testing.T) {
 }
 
 func TestJJGetBranchList(t *testing.T) {
-	listKey := jjKey("bookmark list")
-	currentKey := jjKey("log -r @ -T bookmarks --no-graph")
+	listKey := jjKey("bookmark list --all-remotes -T " + jjBookmarkListFormat)
+	currentKey := jjKey("log -r @ -T " + jjCurrentBookmarkFormat + " --no-graph")
 
 	tests := []struct {
 		name     string
@@ -303,7 +296,7 @@ func TestJJGetBranchList(t *testing.T) {
 		{
 			name: "local bookmarks",
 			canned: map[string]string{
-				listKey:    "feature: def456 msg\nmain: abc123 msg",
+				listKey:    "feature\tlocal\nmain\tlocal\n",
 				currentKey: "main",
 			},
 			expected: []models.BranchInfo{
@@ -314,13 +307,11 @@ func TestJJGetBranchList(t *testing.T) {
 		{
 			name: "tracked bookmark",
 			canned: map[string]string{
-				listKey:    "main@origin: abc123 msg",
+				listKey:    "main\tlocal\nmain\torigin\t1\t0\n",
 				currentKey: "",
-				jjKey("log -r main@origin@origin.. -T change_id --no-graph"): "changeid1",
-				jjKey("log -r ..main@origin@origin -T change_id --no-graph"): "",
 			},
 			expected: []models.BranchInfo{
-				{Name: "main@origin", Upstream: "main@origin@origin", Ahead: 1},
+				{Name: "main", Upstream: "main@origin", Ahead: 1},
 			},
 		},
 		{
@@ -363,7 +354,7 @@ func TestJJGetStashList(t *testing.T) {
 }
 
 func TestJJGetWorktreeList(t *testing.T) {
-	key := jjKey("workspace list")
+	key := jjKey("workspace list -T " + jjWorkspaceListFormat)
 
 	tests := []struct {
 		name     string
@@ -375,7 +366,7 @@ func TestJJGetWorktreeList(t *testing.T) {
 		{
 			name: "two workspaces",
 			canned: map[string]string{
-				key: "default@abc123: /repo\nfeature@def456: /repo-feature",
+				key: "default\t/repo\nfeature\t/repo-feature\n",
 			},
 			expected: []models.WorktreeInfo{
 				{Path: "/repo", Branch: "default"},
@@ -608,7 +599,7 @@ func TestJJFetchAllAndPruneRemote(t *testing.T) {
 }
 
 func TestJJCleanupMergedBranches(t *testing.T) {
-	listKey := jjKey("bookmark list")
+	listKey := jjKey("bookmark list --all-remotes -T " + jjBookmarkListFormat)
 
 	tests := []struct {
 		name       string
@@ -620,7 +611,7 @@ func TestJJCleanupMergedBranches(t *testing.T) {
 		{
 			name: "deletes merged bookmark",
 			canned: map[string]string{
-				listKey: "feature: def456 msg\nmain: abc123 msg",
+				listKey: "feature\tlocal\nmain\tlocal\n",
 				jjKey("log -r feature@origin..main@origin -T change_id --no-graph"): "",
 				jjKey("bookmark delete feature"):                                    "",
 			},
@@ -630,7 +621,7 @@ func TestJJCleanupMergedBranches(t *testing.T) {
 		{
 			name: "unmerged bookmark kept",
 			canned: map[string]string{
-				listKey: "feature: def456 msg\nmain: abc123 msg",
+				listKey: "feature\tlocal\nmain\tlocal\n",
 				jjKey("log -r feature@origin..main@origin -T change_id --no-graph"): "changeid1",
 			},
 			expectedOK: true,

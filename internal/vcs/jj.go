@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +16,63 @@ type JJOperations struct{}
 
 func NewJJOperations() *JJOperations {
 	return &JJOperations{}
+}
+
+// jjCurrentBookmarkFormat renders only local bookmarks, avoiding the "*" sync
+// marker that the built-in "bookmarks" keyword appends for unsynced remotes.
+const jjCurrentBookmarkFormat = `self.local_bookmarks().map(|b| b.name()).join(" ")`
+
+// jjBookmarkListFormat emits one line per local bookmark and, when tracked,
+// one additional line with its origin ahead/behind counts. Real `jj bookmark
+// list` output puts remote-tracking info on an indented "@origin: ..."
+// continuation line rather than inline with the bookmark name, so this
+// template sidesteps that text format entirely.
+const jjBookmarkListFormat = `if(self.remote() == "origin", ` +
+	`self.name() ++ "\torigin\t" ++ self.tracking_ahead_count().lower() ++ "\t" ++ self.tracking_behind_count().lower() ++ "\n", ` +
+	`if(self.remote(), "", self.name() ++ "\tlocal\n"))`
+
+// jjWorkspaceListFormat emits "name\tabsolute-path" per workspace. The default
+// `jj workspace list` output has no path at all, so a template is required.
+const jjWorkspaceListFormat = `self.name() ++ "\t" ++ self.root() ++ "\n"`
+
+type jjBookmark struct {
+	name     string
+	upstream string
+	ahead    int
+	behind   int
+}
+
+func parseJJBookmarkList(out string) []jjBookmark {
+	byName := make(map[string]*jjBookmark)
+	var order []string
+
+	for _, line := range strings.Split(out, "\n") {
+		if line == "" {
+			continue
+		}
+
+		fields := strings.Split(line, "\t")
+		name := fields[0]
+
+		bookmark, ok := byName[name]
+		if !ok {
+			bookmark = &jjBookmark{name: name}
+			byName[name] = bookmark
+			order = append(order, name)
+		}
+
+		if len(fields) == 4 && fields[1] == "origin" {
+			bookmark.upstream = name + "@origin"
+			bookmark.ahead, _ = strconv.Atoi(fields[2])
+			bookmark.behind, _ = strconv.Atoi(fields[3])
+		}
+	}
+
+	bookmarks := make([]jjBookmark, 0, len(order))
+	for _, name := range order {
+		bookmarks = append(bookmarks, *byName[name])
+	}
+	return bookmarks
 }
 
 func (j *JJOperations) VCSType() models.VCSType {
@@ -71,7 +127,7 @@ func (j *JJOperations) GetRepoSummary(ctx context.Context, repoPath string) (mod
 }
 
 func (j *JJOperations) GetCurrentBranch(ctx context.Context, repoPath string) (string, error) {
-	out, err := j.runJJ(ctx, repoPath, "log", "-r", "@", "-T", "bookmarks", "--no-graph")
+	out, err := j.runJJ(ctx, repoPath, "log", "-r", "@", "-T", jjCurrentBookmarkFormat, "--no-graph")
 	if err != nil {
 		return "@", nil
 	}
@@ -90,49 +146,35 @@ func (j *JJOperations) GetUpstream(ctx context.Context, repoPath string, branch 
 		return "", nil
 	}
 
-	out, err := j.runJJ(ctx, repoPath, "bookmark", "list")
+	out, err := j.runJJ(ctx, repoPath, "bookmark", "list", "--all-remotes", "-T", jjBookmarkListFormat)
 	if err != nil {
 		return "", err
 	}
 
-	for _, line := range strings.Split(out, "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), branch) {
-			if strings.Contains(line, "@origin") {
-				return fmt.Sprintf("%s@origin", branch), nil
-			}
+	for _, bookmark := range parseJJBookmarkList(out) {
+		if bookmark.name == branch {
+			return bookmark.upstream, nil
 		}
 	}
 	return "", nil
 }
 
 func (j *JJOperations) GetAheadBehind(ctx context.Context, repoPath string, branch string, upstream string) (int, int, error) {
-	if branch == "@" || branch == "" {
+	if branch == "@" || branch == "" || upstream == "" {
 		return 0, 0, nil
 	}
 
-	aheadOut, err := j.runJJ(ctx, repoPath, "log", "-r", fmt.Sprintf("%s@origin..", branch), "-T", "change_id", "--no-graph")
+	out, err := j.runJJ(ctx, repoPath, "bookmark", "list", "--all-remotes", "-T", jjBookmarkListFormat)
 	if err != nil {
 		return 0, 0, nil
 	}
-	ahead := countNonEmptyLines(aheadOut)
 
-	behindOut, err := j.runJJ(ctx, repoPath, "log", "-r", fmt.Sprintf("..%s@origin", branch), "-T", "change_id", "--no-graph")
-	if err != nil {
-		return ahead, 0, nil
-	}
-	behind := countNonEmptyLines(behindOut)
-
-	return ahead, behind, nil
-}
-
-func countNonEmptyLines(s string) int {
-	count := 0
-	for _, line := range strings.Split(s, "\n") {
-		if strings.TrimSpace(line) != "" {
-			count++
+	for _, bookmark := range parseJJBookmarkList(out) {
+		if bookmark.name == branch && bookmark.upstream == upstream {
+			return bookmark.ahead, bookmark.behind, nil
 		}
 	}
-	return count
+	return 0, 0, nil
 }
 
 func (j *JJOperations) getStatusCounts(ctx context.Context, repoPath string) (staged, unstaged, untracked, conflicted int) {
@@ -169,7 +211,7 @@ func (j *JJOperations) GetConflictedCount(ctx context.Context, repoPath string) 
 }
 
 func (j *JJOperations) GetBranchList(ctx context.Context, repoPath string) ([]models.BranchInfo, error) {
-	out, err := j.runJJ(ctx, repoPath, "bookmark", "list")
+	out, err := j.runJJ(ctx, repoPath, "bookmark", "list", "--all-remotes", "-T", jjBookmarkListFormat)
 	if err != nil {
 		return nil, err
 	}
@@ -177,33 +219,13 @@ func (j *JJOperations) GetBranchList(ctx context.Context, repoPath string) ([]mo
 	currentBookmark, _ := j.GetCurrentBranch(ctx, repoPath)
 
 	var branches []models.BranchInfo
-	for _, line := range strings.Split(out, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) < 1 {
-			continue
-		}
-
-		name := strings.TrimSpace(parts[0])
-		hasTracking := strings.Contains(line, "@origin")
-
-		var upstream string
-		var ahead, behind int
-		if hasTracking {
-			upstream = fmt.Sprintf("%s@origin", name)
-			ahead, behind, _ = j.GetAheadBehind(ctx, repoPath, name, upstream)
-		}
-
+	for _, bookmark := range parseJJBookmarkList(out) {
 		branches = append(branches, models.BranchInfo{
-			Name:      name,
-			Upstream:  upstream,
-			Ahead:     ahead,
-			Behind:    behind,
-			IsCurrent: name == currentBookmark,
+			Name:      bookmark.name,
+			Upstream:  bookmark.upstream,
+			Ahead:     bookmark.ahead,
+			Behind:    bookmark.behind,
+			IsCurrent: bookmark.name == currentBookmark,
 		})
 	}
 
@@ -215,28 +237,27 @@ func (j *JJOperations) GetStashList(ctx context.Context, repoPath string) ([]mod
 }
 
 func (j *JJOperations) GetWorktreeList(ctx context.Context, repoPath string) ([]models.WorktreeInfo, error) {
-	out, err := j.runJJ(ctx, repoPath, "workspace", "list")
+	out, err := j.runJJ(ctx, repoPath, "workspace", "list", "-T", jjWorkspaceListFormat)
 	if err != nil {
 		return nil, err
 	}
-
-	workspaceRe := regexp.MustCompile(`^(\S+)@(\S+):\s+(\S+)`)
 
 	var worktrees []models.WorktreeInfo
 	scanner := bufio.NewScanner(strings.NewReader(out))
 	for scanner.Scan() {
 		line := scanner.Text()
-		matches := workspaceRe.FindStringSubmatch(line)
-		if matches == nil {
+		if line == "" {
 			continue
 		}
 
-		workspaceName := matches[1]
-		path := matches[3]
+		name, path, ok := strings.Cut(line, "\t")
+		if !ok {
+			continue
+		}
 
 		worktrees = append(worktrees, models.WorktreeInfo{
 			Path:   path,
-			Branch: workspaceName,
+			Branch: name,
 		})
 	}
 
@@ -312,37 +333,26 @@ func (j *JJOperations) PruneRemote(ctx context.Context, repoPath string) (bool, 
 }
 
 func (j *JJOperations) CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error) {
-	out, err := j.runJJ(ctx, repoPath, "bookmark", "list")
+	out, err := j.runJJ(ctx, repoPath, "bookmark", "list", "--all-remotes", "-T", jjBookmarkListFormat)
 	if err != nil {
 		return false, err.Error(), nil
 	}
 
 	var deleted []string
-	for _, line := range strings.Split(out, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) < 1 {
-			continue
-		}
-
-		bookmark := strings.TrimSpace(parts[0])
-		if bookmark == "main" || bookmark == "master" || bookmark == "trunk" {
+	for _, bookmark := range parseJJBookmarkList(out) {
+		if bookmark.name == "main" || bookmark.name == "master" || bookmark.name == "trunk" {
 			continue
 		}
 
 		isMerged, err := j.runJJ(ctx, repoPath, "log", "-r",
-			fmt.Sprintf("%s@origin..main@origin", bookmark), "-T", "change_id", "--no-graph")
+			fmt.Sprintf("%s@origin..main@origin", bookmark.name), "-T", "change_id", "--no-graph")
 		if err != nil {
 			continue
 		}
 
 		if strings.TrimSpace(isMerged) == "" {
-			if _, err := j.runJJ(ctx, repoPath, "bookmark", "delete", bookmark); err == nil {
-				deleted = append(deleted, bookmark)
+			if _, err := j.runJJ(ctx, repoPath, "bookmark", "delete", bookmark.name); err == nil {
+				deleted = append(deleted, bookmark.name)
 			}
 		}
 	}
