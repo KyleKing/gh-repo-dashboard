@@ -255,6 +255,12 @@ checks = ["all", "-ST1000"]
 case.rules.json = "snake"
 case.rules.yaml = "kebab"
 
+[[linters.exclusions.rules]]
+# These structs decode `gh`/GitHub API JSON, which is camelCase on the wire;
+# the tags must match the API's field names, not our naming convention.
+path = "internal/github/(pr|workflow)\\.go"
+linters = ["tagliatelle"]
+
 [linters.settings.testifylint]
 enable-all = true
 

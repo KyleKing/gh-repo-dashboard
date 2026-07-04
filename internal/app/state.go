@@ -11,10 +11,10 @@ type Snapshot struct {
 	Selected      []string `json:"selected"`
 	Predicate     string   `json:"predicate,omitempty"`
 	Search        string   `json:"search,omitempty"`
-	CommandInput  string   `json:"commandInput,omitempty"`
-	BatchTask     string   `json:"batchTask,omitempty"`
-	BatchTotal    int      `json:"batchTotal,omitempty"`
-	StatusMessage string   `json:"statusMessage,omitempty"`
+	CommandInput  string   `json:"command_input,omitempty"`
+	BatchTask     string   `json:"batch_task,omitempty"`
+	BatchTotal    int      `json:"batch_total,omitempty"`
+	StatusMessage string   `json:"status_message,omitempty"`
 }
 
 func (v ViewMode) String() string {
