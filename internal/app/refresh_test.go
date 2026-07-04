@@ -136,8 +136,7 @@ func TestRefreshClearsCache(t *testing.T) {
 	m.viewMode = ViewModeRepoList
 	m.summaries["/repo1"] = models.RepoSummary{Path: "/repo1"}
 
-	updatedModel, _ := m.handleRefresh()
-	m = updatedModel.(Model)
+	m, _ = m.handleRefresh()
 
 	if len(m.summaries) != 0 {
 		t.Error("handleRefresh should clear summaries map")
@@ -151,8 +150,7 @@ func TestRefreshFromEmptyState(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
 
-	updatedModel, cmd := m.handleRefresh()
-	m = updatedModel.(Model)
+	m, cmd := m.handleRefresh()
 
 	if cmd == nil {
 		t.Error("refresh should always return a command")
@@ -178,8 +176,7 @@ func TestRefreshPreservesViewMode(t *testing.T) {
 			m.selectedBranch = models.BranchInfo{Name: "main"}
 			m.selectedPR = models.PRInfo{Number: 1}
 
-			updatedModel, _ := m.handleRefresh()
-			m = updatedModel.(Model)
+			m, _ = m.handleRefresh()
 
 			if m.viewMode != tc.viewMode {
 				t.Errorf("refresh should preserve view mode, expected %v, got %v", tc.viewMode, m.viewMode)
@@ -202,8 +199,7 @@ func TestRefreshClearsDownstreamFromRepoList(t *testing.T) {
 		PRInfo: models.PRInfo{Number: 123},
 	}
 
-	updatedModel, _ := m.handleRefresh()
-	m = updatedModel.(Model)
+	m, _ = m.handleRefresh()
 
 	if m.branches != nil {
 		t.Error("refresh from repo list should clear branches")
@@ -239,8 +235,7 @@ func TestRefreshClearsDownstreamFromRepoDetail(t *testing.T) {
 		PRInfo: models.PRInfo{Number: 123},
 	}
 
-	updatedModel, _ := m.handleRefresh()
-	m = updatedModel.(Model)
+	m, _ = m.handleRefresh()
 
 	if m.branches != nil {
 		t.Error("refresh from repo detail should clear branches")
@@ -268,8 +263,7 @@ func TestRefreshClearsBranchDetail(t *testing.T) {
 		},
 	}
 
-	updatedModel, _ := m.handleRefresh()
-	m = updatedModel.(Model)
+	m, _ = m.handleRefresh()
 
 	if m.branchDetail.Branch.Name != "" {
 		t.Error("refresh should clear branch detail")
@@ -292,8 +286,7 @@ func TestRefreshClearsPRDetail(t *testing.T) {
 		Author: "testuser",
 	}
 
-	updatedModel, _ := m.handleRefresh()
-	m = updatedModel.(Model)
+	m, _ = m.handleRefresh()
 
 	if m.prDetail.Number != 0 {
 		t.Error("refresh should clear PR detail number")

@@ -33,7 +33,7 @@ type fixture struct {
 }
 
 func parseFixture(path string) (fixture, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // path comes from a glob over our own testdata dir
 	if err != nil {
 		return fixture{}, err
 	}

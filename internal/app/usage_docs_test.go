@@ -81,10 +81,10 @@ func TestUsageDocsCurrent(t *testing.T) {
 	generated := generateUsageDocs(loadFixtures(t))
 
 	if *updateDocs {
-		if err := os.MkdirAll(filepath.Dir(usageDocsPath), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(usageDocsPath), 0o750); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(usageDocsPath, []byte(generated), 0o644); err != nil {
+		if err := os.WriteFile(usageDocsPath, []byte(generated), 0o600); err != nil {
 			t.Fatal(err)
 		}
 

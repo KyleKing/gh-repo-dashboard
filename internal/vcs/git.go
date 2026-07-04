@@ -85,6 +85,7 @@ func (g *GitOperations) GetCurrentBranch(ctx context.Context, repoPath string) (
 	if out == "HEAD" {
 		hash, err := g.runGit(ctx, repoPath, "rev-parse", "--short", "HEAD")
 		if err != nil {
+			//nolint:nilerr // degrade to plain "HEAD" label rather than failing the whole summary
 			return "HEAD", nil
 		}
 
@@ -360,6 +361,7 @@ func (g *GitOperations) GetRemoteURL(ctx context.Context, repoPath string) (stri
 func (g *GitOperations) FetchAll(ctx context.Context, repoPath string) (bool, string, error) {
 	_, err := g.runGit(ctx, repoPath, "fetch", "--all", "--prune")
 	if err != nil {
+		//nolint:nilerr // failure is reported through the message, not the error field
 		return false, err.Error(), nil
 	}
 
@@ -369,6 +371,7 @@ func (g *GitOperations) FetchAll(ctx context.Context, repoPath string) (bool, st
 func (g *GitOperations) PruneRemote(ctx context.Context, repoPath string) (bool, string, error) {
 	_, err := g.runGit(ctx, repoPath, "remote", "prune", "origin")
 	if err != nil {
+		//nolint:nilerr // failure is reported through the message, not the error field
 		return false, err.Error(), nil
 	}
 
@@ -387,6 +390,7 @@ func (g *GitOperations) CleanupMergedBranches(ctx context.Context, repoPath stri
 
 	out, err := g.runGit(ctx, repoPath, "branch", "--merged", mainBranch)
 	if err != nil {
+		//nolint:nilerr // failure is reported through the message, not the error field
 		return false, err.Error(), nil
 	}
 

@@ -133,6 +133,7 @@ func (j *JJOperations) GetRepoSummary(ctx context.Context, repoPath string) (mod
 func (j *JJOperations) GetCurrentBranch(ctx context.Context, repoPath string) (string, error) {
 	out, err := j.runJJ(ctx, repoPath, "log", "-r", "@", "-T", jjCurrentBookmarkFormat, "--no-graph")
 	if err != nil {
+		//nolint:nilerr // "@" is the anonymous-working-copy label, a valid degraded state
 		return "@", nil
 	}
 	bookmarks := strings.TrimSpace(out)
@@ -172,6 +173,7 @@ func (j *JJOperations) GetAheadBehind(ctx context.Context, repoPath, branch, ups
 
 	out, err := j.runJJ(ctx, repoPath, "bookmark", "list", "--all-remotes", "-T", jjBookmarkListFormat)
 	if err != nil {
+		//nolint:nilerr // fall back to "unknown" ahead/behind rather than failing the summary
 		return 0, 0, nil
 	}
 
@@ -335,6 +337,7 @@ func (j *JJOperations) GetRemoteURL(ctx context.Context, repoPath string) (strin
 func (j *JJOperations) FetchAll(ctx context.Context, repoPath string) (bool, string, error) {
 	_, err := j.runJJ(ctx, repoPath, "git", "fetch", "--all-remotes")
 	if err != nil {
+		//nolint:nilerr // failure is reported through the message, not the error field
 		return false, err.Error(), nil
 	}
 
@@ -348,6 +351,7 @@ func (j *JJOperations) PruneRemote(ctx context.Context, repoPath string) (bool, 
 func (j *JJOperations) CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error) {
 	out, err := j.runJJ(ctx, repoPath, "bookmark", "list", "--all-remotes", "-T", jjBookmarkListFormat)
 	if err != nil {
+		//nolint:nilerr // failure is reported through the message, not the error field
 		return false, err.Error(), nil
 	}
 

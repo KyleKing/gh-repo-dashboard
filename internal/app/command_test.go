@@ -172,7 +172,11 @@ func TestCommandModeKeyFlow(t *testing.T) {
 	m := commandModel()
 
 	newModel, _ := m.Update(keyPress(':'))
-	m = newModel.(Model)
+	var ok bool
+	m, ok = newModel.(Model)
+	if !ok {
+		t.Fatal("Update did not return a Model")
+	}
 	if !m.commandMode {
 		t.Fatal("expected command mode after ':'")
 	}

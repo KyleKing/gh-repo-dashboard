@@ -12,7 +12,6 @@ import (
 
 func TestPRTabNavigation(t *testing.T) {
 	m := New(nil, 1)
-	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabBranches
 
 	m.detailTab = DetailTab((int(m.detailTab) + 1) % 4)
@@ -38,7 +37,6 @@ func TestPRTabNavigation(t *testing.T) {
 
 func TestPRTabBackwardNavigation(t *testing.T) {
 	m := New(nil, 1)
-	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabBranches
 
 	newTab := int(m.detailTab) - 1
@@ -108,8 +106,6 @@ func TestPRCountInModel(t *testing.T) {
 
 func TestPRListSelection(t *testing.T) {
 	m := New(nil, 1)
-	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabPRs
 	m.prs = []models.PRInfo{
 		{Number: 123, Title: "First PR", HeadRef: "feature-1"},
 		{Number: 456, Title: "Second PR", HeadRef: "feature-2"},
@@ -600,9 +596,6 @@ func TestPRDetailErrorHandling(t *testing.T) {
 
 func TestPRNavigationFlow(t *testing.T) {
 	m := New(nil, 1)
-	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabPRs
-	m.selectedRepo = "/test/repo"
 	m.prs = []models.PRInfo{
 		{Number: 1, Title: "First PR"},
 		{Number: 2, Title: "Second PR"},

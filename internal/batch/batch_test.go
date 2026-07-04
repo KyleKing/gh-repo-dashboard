@@ -228,10 +228,7 @@ func TestCleanupMerged(t *testing.T) {
 
 func TestTaskResultTracksRepoName(t *testing.T) {
 	result := TaskResult{
-		Path:     "/home/user/projects/my-app",
 		RepoName: repoName("/home/user/projects/my-app"),
-		Success:  true,
-		Message:  "done",
 	}
 
 	if result.RepoName != "my-app" {

@@ -156,8 +156,7 @@ func DefaultRegistry() Registry {
 			Name:        "refresh",
 			Description: "Clear caches and reload the current view",
 			Run: func(m Model, args []string) (Model, tea.Cmd) {
-				newModel, cmd := m.handleRefresh()
-				return newModel.(Model), cmd
+				return m.handleRefresh()
 			},
 		},
 		Command{
@@ -274,9 +273,7 @@ func batchCommand(name, description, taskName string, taskCmd func([]string) tea
 			if len(paths) == 0 {
 				return m, statusCmd("No repos match")
 			}
-			newModel, cmd := m.startBatchTaskOn(label, paths, taskCmd)
-
-			return newModel.(Model), cmd
+			return m.startBatchTaskOn(label, paths, taskCmd)
 		},
 	}
 }

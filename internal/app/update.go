@@ -550,7 +550,7 @@ func (m Model) detailListLen() int {
 	return 0
 }
 
-func (m Model) handleRefresh() (tea.Model, tea.Cmd) {
+func (m Model) handleRefresh() (Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	cmds = append(cmds, func() tea.Msg {
@@ -977,7 +977,7 @@ func (m *Model) updateFilteredPaths() {
 	}
 }
 
-func (m Model) startBatchTaskOn(taskName string, paths []string, taskCmd func([]string) tea.Cmd) (tea.Model, tea.Cmd) {
+func (m Model) startBatchTaskOn(taskName string, paths []string, taskCmd func([]string) tea.Cmd) (Model, tea.Cmd) {
 	if len(paths) == 0 {
 		return m, nil
 	}
@@ -1144,14 +1144,16 @@ func openOrCreatePRCmd(repoPath, branchName string) tea.Cmd {
 
 func copyToClipboardCmd(text string) tea.Cmd {
 	return func() tea.Msg {
+		ctx := context.Background()
+
 		var cmd *exec.Cmd
 		switch runtime.GOOS {
 		case "darwin":
-			cmd = exec.Command("pbcopy")
+			cmd = exec.CommandContext(ctx, "pbcopy")
 		case "linux":
-			cmd = exec.Command("sh", "-c", "type xclip >/dev/null 2>&1 && xclip -selection clipboard || type xsel >/dev/null 2>&1 && xsel --clipboard --input || type wl-copy >/dev/null 2>&1 && wl-copy")
+			cmd = exec.CommandContext(ctx, "sh", "-c", "type xclip >/dev/null 2>&1 && xclip -selection clipboard || type xsel >/dev/null 2>&1 && xsel --clipboard --input || type wl-copy >/dev/null 2>&1 && wl-copy")
 		case "windows":
-			cmd = exec.Command("clip")
+			cmd = exec.CommandContext(ctx, "clip")
 		default:
 			return StatusMsg{Message: "Clipboard not supported on this platform"}
 		}
@@ -1185,14 +1187,16 @@ func copyToClipboardCmd(text string) tea.Cmd {
 
 func openURLCmd(url string) tea.Cmd {
 	return func() tea.Msg {
+		ctx := context.Background()
+
 		var cmd *exec.Cmd
 		switch runtime.GOOS {
 		case "darwin":
-			cmd = exec.Command("open", url)
+			cmd = exec.CommandContext(ctx, "open", url)
 		case "linux":
-			cmd = exec.Command("xdg-open", url)
+			cmd = exec.CommandContext(ctx, "xdg-open", url)
 		case "windows":
-			cmd = exec.Command("cmd", "/c", "start", url)
+			cmd = exec.CommandContext(ctx, "cmd", "/c", "start", url)
 		default:
 			return StatusMsg{Message: "URL opening not supported on this platform"}
 		}
