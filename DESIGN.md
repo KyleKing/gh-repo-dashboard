@@ -149,10 +149,11 @@ Adding a keybinding: register it in `keymap.go`, handle it in `handleKey()`
 
 ## Testing
 
-See `wip-test-improvements.md` for patterns: teatest golden-file visual regression,
-catwalk data-driven interaction sequences, and direct state-transition testing.
-Golden-file tests run under a build tag (`go test -tags=golden ./...`, add `-update`
-to refresh snapshots).
+The strategy is a layered pyramid: direct state-transition tests as the base, a thin
+teatest golden-file layer for visual regression on stable screens, and fixture-based
+(catwalk-style) sequences once command mode lands. Golden-file tests run under a build
+tag (`go test -tags=golden ./...`, add `-update` to refresh snapshots). See
+[ROADMAP.md](ROADMAP.md) for how these phase in.
 
 ## External Dependencies
 
