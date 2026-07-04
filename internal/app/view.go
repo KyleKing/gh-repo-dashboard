@@ -421,7 +421,16 @@ func (m Model) renderFooter() string {
 				styles.FooterDescStyle.Render(" "+b.desc))
 	}
 
-	return strings.Join(parts, "  ")
+	footer := strings.Join(parts, "  ")
+
+	if m.pendingOperator != "" {
+		hint := m.pendingOperator + m.pendingObject
+		pending := styles.FooterKeyStyle.Render(hint) +
+			styles.FooterDescStyle.Render(" pending (ar/br/dr/pr/sr, "+m.pendingOperator+m.pendingOperator+"=all, esc cancels)")
+		footer = pending + "  " + footer
+	}
+
+	return footer
 }
 
 func (m Model) renderHelp() string {

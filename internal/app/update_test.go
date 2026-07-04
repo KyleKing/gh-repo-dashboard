@@ -430,6 +430,8 @@ func TestStartBatchTaskEmptyIsNoop(t *testing.T) {
 	m := New(nil, 1)
 	m.filteredPaths = nil
 
+	intermediate, _ := m.Update(tea.KeyPressMsg{Code: 'F', Text: "F"})
+	m = intermediate.(Model)
 	updatedModel, cmd := m.Update(tea.KeyPressMsg{Code: 'F', Text: "F"})
 	m = updatedModel.(Model)
 
@@ -448,6 +450,8 @@ func TestStartBatchTaskWithRepos(t *testing.T) {
 	m := New(nil, 1)
 	m.filteredPaths = []string{"/repo1", "/repo2"}
 
+	intermediate, _ := m.Update(tea.KeyPressMsg{Code: 'F', Text: "F"})
+	m = intermediate.(Model)
 	updatedModel, cmd := m.Update(tea.KeyPressMsg{Code: 'F', Text: "F"})
 	m = updatedModel.(Model)
 

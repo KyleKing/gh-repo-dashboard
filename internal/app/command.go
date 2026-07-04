@@ -89,14 +89,8 @@ func namesMatching[T any](modes map[string]T, prefix string) []string {
 
 func DefaultRegistry() Registry {
 	return NewRegistry(
-		Command{
-			Name:        "fetch",
-			Description: "Fetch all visible repos",
-			Run: func(m Model, args []string) (Model, tea.Cmd) {
-				newModel, cmd := m.startBatchTask("Fetch All", batchFetchAllCmd)
-				return newModel.(Model), cmd
-			},
-		},
+		batchCommand("cleanup", "Delete merged branches in visible repos, optionally scoped: :cleanup [predicate]", "Cleanup Merged", batchCleanupMergedCmd),
+		batchCommand("fetch", "Fetch visible repos, optionally scoped: :fetch [predicate]", "Fetch All", batchFetchAllCmd),
 		Command{
 			Name:        "filter",
 			Description: "Filter repos: :filter <mode|predicate> or :filter to open the modal",
@@ -143,6 +137,7 @@ func DefaultRegistry() Registry {
 				return m, nil
 			},
 		},
+		batchCommand("prune", "Prune remote refs in visible repos, optionally scoped: :prune [predicate]", "Prune Remote", batchPruneRemoteCmd),
 		Command{
 			Name:        "quit",
 			Description: "Quit",
@@ -229,6 +224,45 @@ func DefaultRegistry() Registry {
 			},
 		},
 	)
+}
+
+// batchCommand builds a batch operator command that runs over the visible
+// repos, narrowed by an optional predicate expression argument.
+func batchCommand(name string, description string, taskName string, taskCmd func([]string) tea.Cmd) Command {
+	return Command{
+		Name:        name,
+		Description: description,
+		Complete: func(m Model, args []string) []string {
+			prefix := ""
+			if len(args) > 0 {
+				prefix = args[len(args)-1]
+			}
+			return predicateCandidates(prefix)
+		},
+		Run: func(m Model, args []string) (Model, tea.Cmd) {
+			paths := m.filteredPaths
+			label := taskName
+			if len(args) > 0 {
+				expr := strings.Join(args, " ")
+				pred, err := filters.ParsePredicate(expr)
+				if err != nil {
+					return m, statusCmd(err.Error())
+				}
+				paths = nil
+				for _, path := range m.filteredPaths {
+					if summary, ok := m.summaries[path]; ok && pred(summary) {
+						paths = append(paths, path)
+					}
+				}
+				label = fmt.Sprintf("%s (%s)", taskName, expr)
+			}
+			if len(paths) == 0 {
+				return m, statusCmd("No repos match")
+			}
+			newModel, cmd := m.startBatchTaskOn(label, paths, taskCmd)
+			return newModel.(Model), cmd
+		},
+	}
 }
 
 func predicateCandidates(prefix string) []string {

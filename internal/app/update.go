@@ -221,6 +221,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.pendingOperator != "" {
+		return m.handleOperatorPendingKey(msg)
+	}
+
 	switch {
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit
@@ -297,17 +301,70 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.searchInput.Focus()
 		return m, nil
 
-	case key.Matches(msg, m.keys.FetchAll):
-		return m.startBatchTask("Fetch All", batchFetchAllCmd)
-
-	case key.Matches(msg, m.keys.PruneRemote):
-		return m.startBatchTask("Prune Remote", batchPruneRemoteCmd)
-
-	case key.Matches(msg, m.keys.CleanupMerged):
-		return m.startBatchTask("Cleanup Merged", batchCleanupMergedCmd)
+	case key.Matches(msg, m.keys.FetchAll),
+		key.Matches(msg, m.keys.PruneRemote),
+		key.Matches(msg, m.keys.CleanupMerged):
+		m.pendingOperator = msg.String()
+		m.pendingObject = ""
+		return m, nil
 	}
 
 	return m, nil
+}
+
+func (m Model) handleOperatorPendingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	op, ok := lookupOperator(m.pendingOperator)
+	if !ok {
+		m.pendingOperator = ""
+		m.pendingObject = ""
+		return m, nil
+	}
+
+	keyStr := msg.String()
+	switch {
+	case keyStr == "esc":
+		m.pendingOperator = ""
+		m.pendingObject = ""
+		return m, nil
+
+	case keyStr == m.pendingOperator && m.pendingObject == "":
+		m.pendingOperator = ""
+		return m.startBatchTaskOn(op.TaskName, m.filteredPaths, op.Cmd)
+	}
+
+	m.pendingObject += keyStr
+	if len(m.pendingObject) < 2 {
+		if hasTextObjectPrefix(m.pendingObject) {
+			return m, nil
+		}
+		m.pendingOperator = ""
+		m.pendingObject = ""
+		return m, statusCmd(fmt.Sprintf("Unknown text object: %s", keyStr))
+	}
+
+	objKey := m.pendingObject
+	m.pendingOperator = ""
+	m.pendingObject = ""
+
+	obj, found := lookupTextObject(objKey)
+	if !found {
+		return m, statusCmd(fmt.Sprintf("Unknown text object: %s", objKey))
+	}
+
+	paths := m.resolveTextObject(obj)
+	if len(paths) == 0 {
+		return m, statusCmd(fmt.Sprintf("No repos match %s", obj.Name))
+	}
+	return m.startBatchTaskOn(fmt.Sprintf("%s (%s)", op.TaskName, obj.Name), paths, op.Cmd)
+}
+
+func hasTextObjectPrefix(prefix string) bool {
+	for _, obj := range textObjects() {
+		if strings.HasPrefix(obj.Key, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -853,7 +910,11 @@ func (m *Model) updateFilteredPaths() {
 }
 
 func (m Model) startBatchTask(taskName string, taskCmd func([]string) tea.Cmd) (tea.Model, tea.Cmd) {
-	if len(m.filteredPaths) == 0 {
+	return m.startBatchTaskOn(taskName, m.filteredPaths, taskCmd)
+}
+
+func (m Model) startBatchTaskOn(taskName string, paths []string, taskCmd func([]string) tea.Cmd) (tea.Model, tea.Cmd) {
+	if len(paths) == 0 {
 		return m, nil
 	}
 
@@ -862,9 +923,9 @@ func (m Model) startBatchTask(taskName string, taskCmd func([]string) tea.Cmd) (
 	m.batchTask = taskName
 	m.batchResults = nil
 	m.batchProgress = 0
-	m.batchTotal = len(m.filteredPaths)
+	m.batchTotal = len(paths)
 
-	return m, taskCmd(m.filteredPaths)
+	return m, taskCmd(paths)
 }
 
 func discoverReposCmd(scanPaths []string, maxDepth int) tea.Cmd {

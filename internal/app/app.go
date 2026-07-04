@@ -56,6 +56,9 @@ type Model struct {
 	predicate     filters.Predicate
 	selectedPaths map[string]bool
 
+	pendingOperator string
+	pendingObject   string
+
 	viewMode     ViewMode
 	selectedRepo string
 	width        int

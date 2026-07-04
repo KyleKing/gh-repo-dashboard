@@ -105,15 +105,15 @@ func DefaultKeyMap() KeyMap {
 		),
 		FetchAll: key.NewBinding(
 			key.WithKeys("F"),
-			key.WithHelp("F", "fetch all"),
+			key.WithHelp("F+obj", "fetch"),
 		),
 		PruneRemote: key.NewBinding(
 			key.WithKeys("P"),
-			key.WithHelp("P", "prune"),
+			key.WithHelp("P+obj", "prune"),
 		),
 		CleanupMerged: key.NewBinding(
 			key.WithKeys("C"),
-			key.WithHelp("C", "cleanup"),
+			key.WithHelp("C+obj", "cleanup"),
 		),
 		OpenPR: key.NewBinding(
 			key.WithKeys("p"),
