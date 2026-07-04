@@ -8,6 +8,7 @@ import (
 )
 
 func TestSortPathsByName(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/charlie", "/alice", "/bob"}
 	summaries := map[string]models.RepoSummary{
 		"/alice":   {Path: "/alice"},
@@ -26,6 +27,7 @@ func TestSortPathsByName(t *testing.T) {
 }
 
 func TestSortPathsByNameReverse(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/charlie", "/alice", "/bob"}
 	summaries := map[string]models.RepoSummary{
 		"/alice":   {Path: "/alice"},
@@ -44,6 +46,7 @@ func TestSortPathsByNameReverse(t *testing.T) {
 }
 
 func TestSortPathsByModified(t *testing.T) {
+	t.Parallel()
 	now := time.Now()
 	paths := []string{"/old", "/new", "/middle"}
 	summaries := map[string]models.RepoSummary{
@@ -63,6 +66,7 @@ func TestSortPathsByModified(t *testing.T) {
 }
 
 func TestSortPathsByStatus(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/clean", "/dirty1", "/dirty2"}
 	summaries := map[string]models.RepoSummary{
 		"/clean":  {Path: "/clean"},
@@ -84,6 +88,7 @@ func TestSortPathsByStatus(t *testing.T) {
 }
 
 func TestSortPathsByBranch(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/repo1", "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
 		"/repo1": {Path: "/repo1", Branch: "main"},
@@ -102,6 +107,7 @@ func TestSortPathsByBranch(t *testing.T) {
 }
 
 func TestSortPathsEmpty(t *testing.T) {
+	t.Parallel()
 	var paths []string
 	summaries := map[string]models.RepoSummary{}
 

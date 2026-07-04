@@ -6,6 +6,7 @@ import (
 )
 
 func TestRelativeTimeJustNow(t *testing.T) {
+	t.Parallel()
 	result := RelativeTime(time.Now())
 	if result != "just now" {
 		t.Errorf("expected 'just now', got '%s'", result)
@@ -13,6 +14,7 @@ func TestRelativeTimeJustNow(t *testing.T) {
 }
 
 func TestRelativeTimeMinutes(t *testing.T) {
+	t.Parallel()
 	result := RelativeTime(time.Now().Add(-5 * time.Minute))
 	if result != "5 mins ago" {
 		t.Errorf("expected '5 mins ago', got '%s'", result)
@@ -25,6 +27,7 @@ func TestRelativeTimeMinutes(t *testing.T) {
 }
 
 func TestRelativeTimeHours(t *testing.T) {
+	t.Parallel()
 	result := RelativeTime(time.Now().Add(-3 * time.Hour))
 	if result != "3 hours ago" {
 		t.Errorf("expected '3 hours ago', got '%s'", result)
@@ -37,6 +40,7 @@ func TestRelativeTimeHours(t *testing.T) {
 }
 
 func TestRelativeTimeDays(t *testing.T) {
+	t.Parallel()
 	result := RelativeTime(time.Now().Add(-2 * 24 * time.Hour))
 	if result != "2 days ago" {
 		t.Errorf("expected '2 days ago', got '%s'", result)
@@ -49,6 +53,7 @@ func TestRelativeTimeDays(t *testing.T) {
 }
 
 func TestRelativeTimeWeeks(t *testing.T) {
+	t.Parallel()
 	result := RelativeTime(time.Now().Add(-14 * 24 * time.Hour))
 	if result != "2 weeks ago" {
 		t.Errorf("expected '2 weeks ago', got '%s'", result)
@@ -61,6 +66,7 @@ func TestRelativeTimeWeeks(t *testing.T) {
 }
 
 func TestRelativeTimeMonths(t *testing.T) {
+	t.Parallel()
 	result := RelativeTime(time.Now().Add(-60 * 24 * time.Hour))
 	if result != "2 months ago" {
 		t.Errorf("expected '2 months ago', got '%s'", result)
@@ -68,6 +74,7 @@ func TestRelativeTimeMonths(t *testing.T) {
 }
 
 func TestRelativeTimeYears(t *testing.T) {
+	t.Parallel()
 	result := RelativeTime(time.Now().Add(-730 * 24 * time.Hour))
 	if result != "2 years ago" {
 		t.Errorf("expected '2 years ago', got '%s'", result)
@@ -75,6 +82,7 @@ func TestRelativeTimeYears(t *testing.T) {
 }
 
 func TestRelativeTimeZero(t *testing.T) {
+	t.Parallel()
 	result := RelativeTime(time.Time{})
 	if result != "—" {
 		t.Errorf("expected '—', got '%s'", result)
@@ -82,6 +90,7 @@ func TestRelativeTimeZero(t *testing.T) {
 }
 
 func TestBranchInfoRelativeLastCommit(t *testing.T) {
+	t.Parallel()
 	b := BranchInfo{}
 	if b.RelativeLastCommit() != "—" {
 		t.Errorf("expected '—' for zero time, got '%s'", b.RelativeLastCommit())
@@ -94,6 +103,7 @@ func TestBranchInfoRelativeLastCommit(t *testing.T) {
 }
 
 func TestCommitInfoRelativeDate(t *testing.T) {
+	t.Parallel()
 	c := CommitInfo{Date: time.Now()}
 	if c.RelativeDate() == "—" {
 		t.Error("expected non-empty relative date")
@@ -101,6 +111,7 @@ func TestCommitInfoRelativeDate(t *testing.T) {
 }
 
 func TestStashDetailRelativeDate(t *testing.T) {
+	t.Parallel()
 	s := StashDetail{Date: time.Now()}
 	if s.RelativeDate() == "—" {
 		t.Error("expected non-empty relative date")

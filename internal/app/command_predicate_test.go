@@ -22,6 +22,7 @@ func predicateModel() Model {
 }
 
 func TestFilterCommandPredicate(t *testing.T) {
+	t.Parallel()
 	m := predicateModel()
 
 	m2, _ := m.ExecuteCommand("filter dirty and has_pr")
@@ -42,6 +43,7 @@ func TestFilterCommandPredicate(t *testing.T) {
 }
 
 func TestFilterCommandPredicateOr(t *testing.T) {
+	t.Parallel()
 	m := predicateModel()
 	m2, _ := m.ExecuteCommand("filter clean or has_pr")
 	if len(m2.filteredPaths) != 2 {
@@ -50,6 +52,7 @@ func TestFilterCommandPredicateOr(t *testing.T) {
 }
 
 func TestFilterCommandPredicateParseError(t *testing.T) {
+	t.Parallel()
 	m := predicateModel()
 	m2, cmd := m.ExecuteCommand("filter dirty and")
 	if cmd == nil {
@@ -68,6 +71,7 @@ func TestFilterCommandPredicateParseError(t *testing.T) {
 }
 
 func TestFilterCommandLegacyModeStillWorks(t *testing.T) {
+	t.Parallel()
 	m := predicateModel()
 	m2, _ := m.ExecuteCommand("filter dirty")
 	if m2.CurrentFilter() != models.FilterModeDirty {
@@ -82,6 +86,7 @@ func TestFilterCommandLegacyModeStillWorks(t *testing.T) {
 }
 
 func TestSelectWhere(t *testing.T) {
+	t.Parallel()
 	m := predicateModel()
 
 	m2, cmd := m.ExecuteCommand("select where dirty and has_pr")
@@ -101,6 +106,7 @@ func TestSelectWhere(t *testing.T) {
 }
 
 func TestSelectAllAndNone(t *testing.T) {
+	t.Parallel()
 	m := predicateModel()
 
 	m2, _ := m.ExecuteCommand("select all")
@@ -115,6 +121,7 @@ func TestSelectAllAndNone(t *testing.T) {
 }
 
 func TestSelectUsage(t *testing.T) {
+	t.Parallel()
 	m := predicateModel()
 	_, cmd := m.ExecuteCommand("select")
 	if cmd == nil {
@@ -126,6 +133,7 @@ func TestSelectUsage(t *testing.T) {
 }
 
 func TestSelectionMarkerRendered(t *testing.T) {
+	t.Parallel()
 	m := predicateModel()
 	m.width = 100
 	m.height = 30
@@ -141,6 +149,7 @@ func TestSelectionMarkerRendered(t *testing.T) {
 }
 
 func TestPredicateBadgeRendered(t *testing.T) {
+	t.Parallel()
 	m := predicateModel()
 	m.width = 100
 	m.height = 30

@@ -14,6 +14,7 @@ func mustMkdirAll(path string) {
 }
 
 func TestDiscoverRepos(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		setup    func(base string) []string
@@ -90,6 +91,7 @@ func TestDiscoverRepos(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			base := t.TempDir()
 			tt.setup(base)
 
@@ -102,6 +104,7 @@ func TestDiscoverRepos(t *testing.T) {
 }
 
 func TestDiscoverReposDeduplicates(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	repoPath := filepath.Join(base, "repo")
 	mustMkdirAll(filepath.Join(repoPath, ".git"))
@@ -113,6 +116,7 @@ func TestDiscoverReposDeduplicates(t *testing.T) {
 }
 
 func TestDiscoverReposMultiplePaths(t *testing.T) {
+	t.Parallel()
 	base1 := t.TempDir()
 	base2 := t.TempDir()
 
@@ -126,6 +130,7 @@ func TestDiscoverReposMultiplePaths(t *testing.T) {
 }
 
 func TestDiscoverReposStopsAtRepo(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 
 	parentRepo := filepath.Join(base, "parent")
@@ -145,6 +150,7 @@ func TestDiscoverReposStopsAtRepo(t *testing.T) {
 }
 
 func TestDiscoverReposOrder(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 
 	for _, name := range []string{"charlie", "alpha", "bravo"} {
@@ -164,6 +170,7 @@ func TestDiscoverReposOrder(t *testing.T) {
 }
 
 func TestDiscoverReposNonexistentPath(t *testing.T) {
+	t.Parallel()
 	repos := DiscoverRepos([]string{"/nonexistent/path/that/does/not/exist"}, 1)
 	if len(repos) != 0 {
 		t.Errorf("expected 0 repos for nonexistent path, got %d", len(repos))
@@ -171,6 +178,7 @@ func TestDiscoverReposNonexistentPath(t *testing.T) {
 }
 
 func TestDiscoverReposZeroDepth(t *testing.T) {
+	t.Parallel()
 	base := t.TempDir()
 	mustMkdirAll(filepath.Join(base, "repo", ".git"))
 

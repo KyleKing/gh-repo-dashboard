@@ -2,6 +2,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 )
 
@@ -27,5 +28,10 @@ func runGH(ctx context.Context, dir string, env []string, args ...string) ([]byt
 		cmd.Env = append(cmd.Environ(), env...)
 	}
 
-	return cmd.Output()
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("running gh: %w", err)
+	}
+
+	return out, nil
 }

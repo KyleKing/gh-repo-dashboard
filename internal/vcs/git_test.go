@@ -9,6 +9,7 @@ import (
 )
 
 func TestExtractRepoPath(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -58,6 +59,7 @@ func TestExtractRepoPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := ExtractRepoPath(tt.input)
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
@@ -67,6 +69,7 @@ func TestExtractRepoPath(t *testing.T) {
 }
 
 func TestParseStatusCounts(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		input      string
@@ -154,6 +157,7 @@ func TestParseStatusCounts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			staged, unstaged, untracked, conflicted := parseStatusOutput(tt.input)
 			if staged != tt.staged {
 				t.Errorf("staged: expected %d, got %d", tt.staged, staged)
@@ -203,6 +207,7 @@ func parseStatusOutput(out string) (staged, unstaged, untracked, conflicted int)
 }
 
 func TestParseBranchTrackingInfo(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		input  string
@@ -243,6 +248,7 @@ func TestParseBranchTrackingInfo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ahead, behind := parseBranchTracking(tt.input)
 			if ahead != tt.ahead {
 				t.Errorf("ahead: expected %d, got %d", tt.ahead, ahead)
@@ -280,6 +286,7 @@ func parseBranchTracking(s string) (int, int) {
 }
 
 func TestParseWorktreePorcelain(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -335,6 +342,7 @@ branch refs/heads/feature
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := parseWorktreePorcelain(tt.input)
 			if len(result) != len(tt.expected) {
 				t.Errorf("expected %d worktrees, got %d", len(tt.expected), len(result))
@@ -391,6 +399,7 @@ func parseWorktreePorcelain(out string) []worktreeResult {
 }
 
 func TestParseStashList(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -415,6 +424,7 @@ func TestParseStashList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := countStashEntries(tt.input)
 			if result != tt.expected {
 				t.Errorf("expected %d, got %d", tt.expected, result)
@@ -432,6 +442,7 @@ func countStashEntries(out string) int {
 }
 
 func TestParseRevListOutput(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		input  string
@@ -466,6 +477,7 @@ func TestParseRevListOutput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ahead, behind := parseRevListOutput(tt.input)
 			if ahead != tt.ahead {
 				t.Errorf("ahead: expected %d, got %d", tt.ahead, ahead)

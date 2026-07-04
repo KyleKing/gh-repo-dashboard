@@ -6,6 +6,7 @@ import (
 )
 
 func TestParseJJBookmarkList(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -48,6 +49,7 @@ func TestParseJJBookmarkList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			bookmarks := parseJJBookmarkList(tt.input)
 			if len(bookmarks) != len(tt.expected) {
 				t.Fatalf("expected %d bookmarks, got %d", len(tt.expected), len(bookmarks))
@@ -62,6 +64,7 @@ func TestParseJJBookmarkList(t *testing.T) {
 }
 
 func TestParseJJStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -106,6 +109,7 @@ func TestParseJJStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := parseJJStatusCounts(tt.input)
 			if result != tt.expected {
 				t.Errorf("expected %d, got %d", tt.expected, result)
@@ -128,6 +132,7 @@ func parseJJStatusCounts(out string) int {
 }
 
 func TestJJOperationsVCSType(t *testing.T) {
+	t.Parallel()
 	ops := NewJJOperations()
 	if ops.VCSType().String() != "jj" {
 		t.Errorf("expected jj, got %s", ops.VCSType().String())
@@ -135,6 +140,7 @@ func TestJJOperationsVCSType(t *testing.T) {
 }
 
 func TestGitOperationsVCSType(t *testing.T) {
+	t.Parallel()
 	ops := NewGitOperations()
 	if ops.VCSType().String() != "git" {
 		t.Errorf("expected git, got %s", ops.VCSType().String())

@@ -85,6 +85,13 @@ func (s StashDetail) RelativeDate() string {
 	return RelativeTime(s.Date)
 }
 
+const (
+	hoursPerDay  = 24
+	daysPerWeek  = 7
+	daysPerMonth = 30
+	daysPerYear  = 365
+)
+
 func RelativeTime(t time.Time) string {
 	if t.IsZero() {
 		return "—"
@@ -103,36 +110,36 @@ func RelativeTime(t time.Time) string {
 		}
 
 		return fmt.Sprintf("%d mins ago", mins)
-	case diff < 24*time.Hour:
+	case diff < hoursPerDay*time.Hour:
 		hours := int(diff.Hours())
 		if hours == 1 {
 			return "1 hour ago"
 		}
 
 		return fmt.Sprintf("%d hours ago", hours)
-	case diff < 7*24*time.Hour:
-		days := int(diff.Hours() / 24)
+	case diff < daysPerWeek*hoursPerDay*time.Hour:
+		days := int(diff.Hours() / hoursPerDay)
 		if days == 1 {
 			return "1 day ago"
 		}
 
 		return fmt.Sprintf("%d days ago", days)
-	case diff < 30*24*time.Hour:
-		weeks := int(diff.Hours() / 24 / 7)
+	case diff < daysPerMonth*hoursPerDay*time.Hour:
+		weeks := int(diff.Hours() / hoursPerDay / daysPerWeek)
 		if weeks == 1 {
 			return "1 week ago"
 		}
 
 		return fmt.Sprintf("%d weeks ago", weeks)
-	case diff < 365*24*time.Hour:
-		months := int(diff.Hours() / 24 / 30)
+	case diff < daysPerYear*hoursPerDay*time.Hour:
+		months := int(diff.Hours() / hoursPerDay / daysPerMonth)
 		if months == 1 {
 			return "1 month ago"
 		}
 
 		return fmt.Sprintf("%d months ago", months)
 	default:
-		years := int(diff.Hours() / 24 / 365)
+		years := int(diff.Hours() / hoursPerDay / daysPerYear)
 		if years == 1 {
 			return "1 year ago"
 		}

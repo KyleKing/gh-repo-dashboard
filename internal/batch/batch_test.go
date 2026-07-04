@@ -12,6 +12,7 @@ import (
 var errNetwork = errors.New("network error")
 
 func TestRepoName(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		path     string
 		expected string
@@ -25,6 +26,7 @@ func TestRepoName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
+			t.Parallel()
 			result := repoName(tt.path)
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
@@ -126,6 +128,7 @@ func (m *mockVCS) CleanupMergedBranches(ctx context.Context, repoPath string) (b
 var _ vcs.Operations = (*mockVCS)(nil)
 
 func TestFetchAll(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		result      func() (bool, string, error)
@@ -154,6 +157,7 @@ func TestFetchAll(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			mock := &mockVCS{fetchResult: tt.result}
 			ctx := context.Background()
 			success, _, err := FetchAll(ctx, mock, "/repo")
@@ -169,6 +173,7 @@ func TestFetchAll(t *testing.T) {
 }
 
 func TestPruneRemote(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		result      func() (bool, string, error)
@@ -188,6 +193,7 @@ func TestPruneRemote(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			mock := &mockVCS{pruneResult: tt.result}
 			ctx := context.Background()
 			success, _, err := PruneRemote(ctx, mock, "/repo")
@@ -202,6 +208,7 @@ func TestPruneRemote(t *testing.T) {
 }
 
 func TestCleanupMerged(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		result  func() (bool, string, error)
@@ -221,6 +228,7 @@ func TestCleanupMerged(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			mock := &mockVCS{cleanupResult: tt.result}
 			ctx := context.Background()
 			_, msg, err := CleanupMerged(ctx, mock, "/repo")
@@ -235,6 +243,7 @@ func TestCleanupMerged(t *testing.T) {
 }
 
 func TestTaskResultTracksRepoName(t *testing.T) {
+	t.Parallel()
 	result := TaskResult{
 		RepoName: repoName("/home/user/projects/my-app"),
 	}

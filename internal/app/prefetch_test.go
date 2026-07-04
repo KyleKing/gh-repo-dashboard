@@ -9,6 +9,7 @@ import (
 )
 
 func TestPrefetchOnCursorMovement(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabPRs
@@ -48,6 +49,7 @@ func TestPrefetchOnCursorMovement(t *testing.T) {
 }
 
 func TestPrefetchOnTabSwitch(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabBranches
@@ -84,6 +86,7 @@ func TestPrefetchOnTabSwitch(t *testing.T) {
 }
 
 func TestPrefetchOnDetailLoad(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.selectedRepo = "/test/repo"
 
@@ -113,6 +116,7 @@ func TestPrefetchOnDetailLoad(t *testing.T) {
 }
 
 func TestNavigateBetweenPRsInDetailView(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
 	m.selectedRepo = "/test/repo"
@@ -160,6 +164,7 @@ func TestNavigateBetweenPRsInDetailView(t *testing.T) {
 }
 
 func TestNavigatePRDetailAtBoundaries(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
 	m.selectedRepo = "/test/repo"
@@ -198,6 +203,7 @@ func TestNavigatePRDetailAtBoundaries(t *testing.T) {
 }
 
 func TestPrefetchNotTriggeredOnNonPRTabs(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabBranches
@@ -223,6 +229,7 @@ func TestPrefetchNotTriggeredOnNonPRTabs(t *testing.T) {
 }
 
 func TestPrefetchCacheHit(t *testing.T) {
+	t.Parallel()
 	// This is more of an integration test concept
 	// The actual caching happens in github.GetPRDetail
 	// We're testing that prefetchPRDetailCmd doesn't send a message

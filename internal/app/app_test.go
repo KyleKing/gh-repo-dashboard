@@ -7,6 +7,7 @@ import (
 )
 
 func TestNewModel(t *testing.T) {
+	t.Parallel()
 	m := New([]string{"/path"}, 2)
 
 	if len(m.scanPaths) != 1 || m.scanPaths[0] != "/path" {
@@ -27,6 +28,7 @@ func TestNewModel(t *testing.T) {
 }
 
 func TestModelFilterInitialization(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	if len(m.activeFilters) != len(models.AllFilterModes()) {
@@ -48,6 +50,7 @@ func TestModelFilterInitialization(t *testing.T) {
 }
 
 func TestModelSortInitialization(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	if len(m.activeSorts) != len(models.AllSortModes()) {
@@ -62,6 +65,7 @@ func TestModelSortInitialization(t *testing.T) {
 }
 
 func TestModelCurrentFilter(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	if m.CurrentFilter() != models.FilterModeAll {
@@ -82,6 +86,7 @@ func TestModelCurrentFilter(t *testing.T) {
 }
 
 func TestModelSetFilter(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	m.SetFilter(models.FilterModeDirty)
@@ -97,6 +102,7 @@ func TestModelSetFilter(t *testing.T) {
 }
 
 func TestModelCycleFilterState(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	var aheadIdx int
@@ -128,6 +134,7 @@ func TestModelCycleFilterState(t *testing.T) {
 }
 
 func TestModelCycleFilterStateIgnoresAll(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	m.CycleFilterState(models.FilterModeAll)
@@ -140,6 +147,7 @@ func TestModelCycleFilterStateIgnoresAll(t *testing.T) {
 }
 
 func TestModelCycleFilter(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	modes := models.AllFilterModes()
 
@@ -154,6 +162,7 @@ func TestModelCycleFilter(t *testing.T) {
 }
 
 func TestModelCycleSortState(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	var modifiedIdx int
@@ -185,6 +194,7 @@ func TestModelCycleSortState(t *testing.T) {
 }
 
 func TestModelResetFilters(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	m.SetFilter(models.FilterModeDirty)
@@ -206,6 +216,7 @@ func TestModelResetFilters(t *testing.T) {
 }
 
 func TestModelResetSorts(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	m.CycleSortState(models.SortModeModified)
@@ -227,6 +238,7 @@ func TestModelResetSorts(t *testing.T) {
 }
 
 func TestModelDirtyCount(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.summaries = map[string]models.RepoSummary{
 		"/repo1": {Staged: 1},
@@ -240,6 +252,7 @@ func TestModelDirtyCount(t *testing.T) {
 }
 
 func TestModelPRCount(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.summaries = map[string]models.RepoSummary{
 		"/repo1": {PRInfo: &models.PRInfo{Number: 1}},
@@ -253,6 +266,7 @@ func TestModelPRCount(t *testing.T) {
 }
 
 func TestModelSelectedSummary(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.filteredPaths = []string{"/repo1", "/repo2"}
 	m.summaries = map[string]models.RepoSummary{
@@ -271,6 +285,7 @@ func TestModelSelectedSummary(t *testing.T) {
 }
 
 func TestModelSelectedSummaryOutOfBounds(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.cursor = 5
 
@@ -281,6 +296,7 @@ func TestModelSelectedSummaryOutOfBounds(t *testing.T) {
 }
 
 func TestModelActiveFilterModes(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	modes := m.ActiveFilterModes()
@@ -298,6 +314,7 @@ func TestModelActiveFilterModes(t *testing.T) {
 }
 
 func TestViewModeConstants(t *testing.T) {
+	t.Parallel()
 	modes := []ViewMode{
 		ViewModeRepoList,
 		ViewModeRepoDetail,
@@ -317,6 +334,7 @@ func TestViewModeConstants(t *testing.T) {
 }
 
 func TestDetailTabConstants(t *testing.T) {
+	t.Parallel()
 	tabs := []DetailTab{
 		DetailTabBranches,
 		DetailTabStashes,

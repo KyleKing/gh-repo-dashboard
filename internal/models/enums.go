@@ -1,5 +1,7 @@
 package models
 
+const unknownEnumString = "unknown"
+
 type VCSType int
 
 const (
@@ -14,7 +16,7 @@ func (v VCSType) String() string {
 	case VCSTypeJJ:
 		return "jj"
 	default:
-		return "unknown"
+		return unknownEnumString
 	}
 }
 
@@ -163,7 +165,7 @@ func (r RepoStatus) String() string {
 	case RepoStatusDiverged:
 		return "diverged"
 	default:
-		return "unknown"
+		return unknownEnumString
 	}
 }
 
@@ -184,6 +186,6 @@ func (i ItemKind) String() string {
 	case ItemKindWorktree:
 		return "worktree"
 	default:
-		return "unknown"
+		return unknownEnumString
 	}
 }

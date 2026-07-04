@@ -40,6 +40,7 @@ func commandModel() Model {
 }
 
 func TestRegistryLookup(t *testing.T) {
+	t.Parallel()
 	registry := DefaultRegistry()
 
 	tests := []struct {
@@ -56,6 +57,7 @@ func TestRegistryLookup(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			cmd, ok := registry.Lookup(tt.query)
 			if ok != tt.found {
 				t.Fatalf("Lookup(%q) found = %v; want %v", tt.query, ok, tt.found)
@@ -68,6 +70,7 @@ func TestRegistryLookup(t *testing.T) {
 }
 
 func TestRegistryCandidates(t *testing.T) {
+	t.Parallel()
 	registry := DefaultRegistry()
 
 	candidates := registry.Candidates("f")
@@ -87,6 +90,7 @@ func TestRegistryCandidates(t *testing.T) {
 }
 
 func TestExecuteCommandFilter(t *testing.T) {
+	t.Parallel()
 	m := commandModel()
 
 	m2, _ := m.ExecuteCommand("filter dirty")
@@ -107,6 +111,7 @@ func TestExecuteCommandFilter(t *testing.T) {
 }
 
 func TestExecuteCommandFilterNoArgsOpensModal(t *testing.T) {
+	t.Parallel()
 	m := commandModel()
 	m2, _ := m.ExecuteCommand("filter")
 	if m2.viewMode != ViewModeFilter {
@@ -115,6 +120,7 @@ func TestExecuteCommandFilterNoArgsOpensModal(t *testing.T) {
 }
 
 func TestExecuteCommandSort(t *testing.T) {
+	t.Parallel()
 	m := commandModel()
 	m2, _ := m.ExecuteCommand("sort modified")
 
@@ -126,6 +132,7 @@ func TestExecuteCommandSort(t *testing.T) {
 }
 
 func TestExecuteCommandUnknown(t *testing.T) {
+	t.Parallel()
 	m := commandModel()
 	_, cmd := m.ExecuteCommand("bogus")
 	if cmd == nil {
@@ -142,6 +149,7 @@ func TestExecuteCommandUnknown(t *testing.T) {
 }
 
 func TestExecuteCommandUnknownFilterArg(t *testing.T) {
+	t.Parallel()
 	m := commandModel()
 	_, cmd := m.ExecuteCommand("filter bogus")
 	if cmd == nil {
@@ -153,6 +161,7 @@ func TestExecuteCommandUnknownFilterArg(t *testing.T) {
 }
 
 func TestExecuteCommandQuit(t *testing.T) {
+	t.Parallel()
 	m := commandModel()
 	_, cmd := m.ExecuteCommand("quit")
 	if cmd == nil {
@@ -161,6 +170,7 @@ func TestExecuteCommandQuit(t *testing.T) {
 }
 
 func TestExecuteCommandEmptyLine(t *testing.T) {
+	t.Parallel()
 	m := commandModel()
 	m2, cmd := m.ExecuteCommand("   ")
 	if cmd != nil {
@@ -172,6 +182,7 @@ func TestExecuteCommandEmptyLine(t *testing.T) {
 }
 
 func TestExecuteCommandFetch(t *testing.T) {
+	t.Parallel()
 	m := commandModel()
 	m2, cmd := m.ExecuteCommand("fetch")
 	if m2.viewMode != ViewModeBatchProgress {
@@ -186,6 +197,7 @@ func TestExecuteCommandFetch(t *testing.T) {
 }
 
 func TestCommandModeKeyFlow(t *testing.T) {
+	t.Parallel()
 	m := commandModel()
 
 	newModel, _ := m.Update(keyPress(':'))
@@ -213,6 +225,7 @@ func TestCommandModeKeyFlow(t *testing.T) {
 }
 
 func TestCommandModeEscCancels(t *testing.T) {
+	t.Parallel()
 	m := commandModel()
 
 	newModel, _ := m.Update(keyPress(':'))
@@ -231,6 +244,7 @@ func TestCommandModeEscCancels(t *testing.T) {
 }
 
 func TestCommandCompletionCyclesCommands(t *testing.T) {
+	t.Parallel()
 	m := commandModel()
 
 	newModel, _ := m.Update(keyPress(':'))
@@ -258,6 +272,7 @@ func TestCommandCompletionCyclesCommands(t *testing.T) {
 }
 
 func TestCommandCompletionArgs(t *testing.T) {
+	t.Parallel()
 	m := commandModel()
 
 	newModel, _ := m.Update(keyPress(':'))
@@ -275,6 +290,7 @@ func TestCommandCompletionArgs(t *testing.T) {
 }
 
 func TestCommandBarRendered(t *testing.T) {
+	t.Parallel()
 	m := commandModel()
 	m.width = 80
 	m.height = 24

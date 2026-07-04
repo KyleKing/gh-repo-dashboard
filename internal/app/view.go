@@ -325,21 +325,21 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 		// Add review status indicator
 		reviewStatus := s.PRInfo.ReviewStatus()
 		switch reviewStatus {
-		case "approved":
+		case models.ReviewApproved:
 			prNum += " ✓"
-		case "changes requested":
+		case models.ReviewChangesRequested:
 			prNum += " ✗"
 		}
 
 		// Add CI status indicator
 		if s.PRInfo.Checks.Total > 0 {
 			checkStatus := s.PRInfo.Checks.Summary()
-			if checkStatus == "failing" {
+			if checkStatus == models.StatusFailing {
 				prNum += " ⚠"
 			}
 		} else if s.WorkflowInfo != nil {
 			wfStatus := s.WorkflowInfo.StatusDisplay()
-			if wfStatus == "failing" {
+			if wfStatus == models.StatusFailing {
 				prNum += " ⚠"
 			}
 		}
@@ -838,9 +838,9 @@ func (m Model) renderPRList() string {
 		stateStyle := styles.PROpenStyle
 		if pr.IsDraft {
 			stateStyle = styles.PRDraftStyle
-		} else if state == "MERGED" {
+		} else if state == models.PRStatusMerged {
 			stateStyle = styles.PRMergedStyle
-		} else if state == "CLOSED" {
+		} else if state == models.PRStatusClosed {
 			stateStyle = styles.ErrorStyle
 		}
 		if i == m.detailCursor {
@@ -849,9 +849,9 @@ func (m Model) renderPRList() string {
 
 		reviewStyle := styles.SubtitleStyle
 		switch review {
-		case "approved":
+		case models.ReviewApproved:
 			reviewStyle = styles.CleanStyle
-		case "changes requested":
+		case models.ReviewChangesRequested:
 			reviewStyle = styles.ErrorStyle
 		}
 		if i == m.detailCursor {
@@ -1283,9 +1283,9 @@ func (m Model) renderBranchDetail() string {
 			prStatus := pr.StatusDisplay()
 			prStyle := styles.PROpenStyle
 			switch prStatus {
-			case "MERGED":
+			case models.PRStatusMerged:
 				prStyle = styles.CleanStyle
-			case "CLOSED":
+			case models.PRStatusClosed:
 				prStyle = styles.SubtitleStyle
 			}
 
@@ -1302,9 +1302,9 @@ func (m Model) renderBranchDetail() string {
 			reviewStatus := pr.ReviewStatus()
 			reviewStyle := styles.SubtitleStyle
 			switch reviewStatus {
-			case "approved":
+			case models.ReviewApproved:
 				reviewStyle = styles.CleanStyle
-			case "changes requested":
+			case models.ReviewChangesRequested:
 				reviewStyle = styles.ErrorStyle
 			}
 			b.WriteString(infoStyle.Render(
@@ -1327,7 +1327,7 @@ func (m Model) renderBranchDetail() string {
 				switch checkStatus {
 				case "passing":
 					checkStyle = styles.CleanStyle
-				case "failing":
+				case models.StatusFailing:
 					checkStyle = styles.ErrorStyle
 				}
 				checkDetail := fmt.Sprintf("%s (%d/%d passing)", checkStatus, pr.Checks.Passing, pr.Checks.Total)
@@ -1346,7 +1346,7 @@ func (m Model) renderBranchDetail() string {
 			switch wfStatus {
 			case "passing":
 				wfStyle = styles.CleanStyle
-			case "failing":
+			case models.StatusFailing:
 				wfStyle = styles.ErrorStyle
 			}
 			wfDetail := fmt.Sprintf("%s (%d/%d passing)", wfStatus, wf.Passing, wf.Total)
@@ -1520,9 +1520,9 @@ func (m Model) renderPRDetail() string {
 	stateStyle := styles.PROpenStyle
 	if m.prDetail.IsDraft {
 		stateStyle = styles.PRDraftStyle
-	} else if m.prDetail.State == "MERGED" {
+	} else if m.prDetail.State == models.PRStatusMerged {
 		stateStyle = styles.PRMergedStyle
-	} else if m.prDetail.State == "CLOSED" {
+	} else if m.prDetail.State == models.PRStatusClosed {
 		stateStyle = styles.ErrorStyle
 	}
 
@@ -1534,9 +1534,9 @@ func (m Model) renderPRDetail() string {
 	reviewStyle := styles.SubtitleStyle
 	reviewStatus := m.prDetail.ReviewStatus()
 	switch reviewStatus {
-	case "approved":
+	case models.ReviewApproved:
 		reviewStyle = styles.CleanStyle
-	case "changes requested":
+	case models.ReviewChangesRequested:
 		reviewStyle = styles.ErrorStyle
 	}
 

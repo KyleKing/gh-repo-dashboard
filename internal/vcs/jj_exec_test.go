@@ -19,6 +19,7 @@ const jjCommitFormat = `change_id.short() ++ "\t" ++ description.first_line() ++
 const jjTimestampFormat = `committer.timestamp().utc().format("%s")`
 
 func TestJJRunJJWrapsExitError(t *testing.T) {
+	t.Parallel()
 	ctx := stubCommands(t, nil, map[string]error{
 		jjKey("status"): &exec.ExitError{Stderr: []byte("Error: no jj repo")},
 	})
@@ -38,6 +39,7 @@ func TestJJRunJJWrapsExitError(t *testing.T) {
 }
 
 func TestJJGetCurrentBranch(t *testing.T) {
+	t.Parallel()
 	key := jjKey("log -r @ -T " + jjCurrentBookmarkFormat + " --no-graph")
 
 	tests := []struct {
@@ -70,6 +72,7 @@ func TestJJGetCurrentBranch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
@@ -85,6 +88,7 @@ func TestJJGetCurrentBranch(t *testing.T) {
 }
 
 func TestJJGetUpstream(t *testing.T) {
+	t.Parallel()
 	key := jjKey("bookmark list --all-remotes -T " + jjBookmarkListFormat)
 
 	tests := []struct {
@@ -122,6 +126,7 @@ func TestJJGetUpstream(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
@@ -137,6 +142,7 @@ func TestJJGetUpstream(t *testing.T) {
 }
 
 func TestJJGetAheadBehind(t *testing.T) {
+	t.Parallel()
 	key := jjKey("bookmark list --all-remotes -T " + jjBookmarkListFormat)
 
 	tests := []struct {
@@ -181,6 +187,7 @@ func TestJJGetAheadBehind(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
@@ -196,6 +203,7 @@ func TestJJGetAheadBehind(t *testing.T) {
 }
 
 func TestJJCountMethods(t *testing.T) {
+	t.Parallel()
 	ctx := stubCommands(t, map[string]string{
 		jjKey("status"): "Working copy changes:\nM changed.txt\nA new.txt\nWorking copy : abc123",
 	}, nil)
@@ -215,6 +223,7 @@ func TestJJCountMethods(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			count, err := tt.fn(ctx, testRepoPath)
 			if err != nil {
 				t.Fatal(err)
@@ -227,6 +236,7 @@ func TestJJCountMethods(t *testing.T) {
 }
 
 func TestJJGetRepoSummary(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		canned   map[string]string
@@ -270,6 +280,7 @@ func TestJJGetRepoSummary(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
@@ -285,6 +296,7 @@ func TestJJGetRepoSummary(t *testing.T) {
 }
 
 func TestJJGetBranchList(t *testing.T) {
+	t.Parallel()
 	listKey := jjKey("bookmark list --all-remotes -T " + jjBookmarkListFormat)
 	currentKey := jjKey("log -r @ -T " + jjCurrentBookmarkFormat + " --no-graph")
 
@@ -325,6 +337,7 @@ func TestJJGetBranchList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
@@ -345,6 +358,7 @@ func TestJJGetBranchList(t *testing.T) {
 }
 
 func TestJJGetStashList(t *testing.T) {
+	t.Parallel()
 	j := NewJJOperations()
 	stashes, err := j.GetStashList(context.Background(), testRepoPath)
 	if err != nil {
@@ -356,6 +370,7 @@ func TestJJGetStashList(t *testing.T) {
 }
 
 func TestJJGetWorktreeList(t *testing.T) {
+	t.Parallel()
 	key := jjKey("workspace list -T " + jjWorkspaceListFormat)
 
 	tests := []struct {
@@ -389,6 +404,7 @@ func TestJJGetWorktreeList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
@@ -409,6 +425,7 @@ func TestJJGetWorktreeList(t *testing.T) {
 }
 
 func TestJJGetCommitLog(t *testing.T) {
+	t.Parallel()
 	key := jjKey("log -r @~2.. -T " + jjCommitFormat + " --no-graph")
 
 	tests := []struct {
@@ -443,6 +460,7 @@ func TestJJGetCommitLog(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
@@ -463,6 +481,7 @@ func TestJJGetCommitLog(t *testing.T) {
 }
 
 func TestJJGetLastModified(t *testing.T) {
+	t.Parallel()
 	key := jjKey("log -r @ -T " + jjTimestampFormat + " --no-graph")
 
 	tests := []struct {
@@ -486,6 +505,7 @@ func TestJJGetLastModified(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
@@ -501,6 +521,7 @@ func TestJJGetLastModified(t *testing.T) {
 }
 
 func TestJJGetRemoteURL(t *testing.T) {
+	t.Parallel()
 	key := jjKey("git remote list")
 
 	tests := []struct {
@@ -529,6 +550,7 @@ func TestJJGetRemoteURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
@@ -544,6 +566,7 @@ func TestJJGetRemoteURL(t *testing.T) {
 }
 
 func TestJJFetchAllAndPruneRemote(t *testing.T) {
+	t.Parallel()
 	fetchKey := jjKey("git fetch --all-remotes")
 
 	tests := []struct {
@@ -584,6 +607,7 @@ func TestJJFetchAllAndPruneRemote(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			ok, msg, err := tt.run(ctx, NewJJOperations())
@@ -601,6 +625,7 @@ func TestJJFetchAllAndPruneRemote(t *testing.T) {
 }
 
 func TestJJCleanupMergedBranches(t *testing.T) {
+	t.Parallel()
 	listKey := jjKey("bookmark list --all-remotes -T " + jjBookmarkListFormat)
 
 	tests := []struct {
@@ -639,6 +664,7 @@ func TestJJCleanupMergedBranches(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()

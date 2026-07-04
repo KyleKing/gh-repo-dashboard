@@ -238,8 +238,10 @@ func loadFixtures(t *testing.T) []fixture {
 }
 
 func TestFixtures(t *testing.T) {
+	t.Parallel()
 	for _, f := range loadFixtures(t) {
 		t.Run(strings.TrimSuffix(filepath.Base(f.Path), ".fix"), func(t *testing.T) {
+			t.Parallel()
 			m := fixtureDataset(t, f.Given)
 			for _, step := range f.Steps {
 				m = runFixtureStep(t, m, step)

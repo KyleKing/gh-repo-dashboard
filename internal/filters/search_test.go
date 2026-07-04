@@ -7,6 +7,7 @@ import (
 )
 
 func TestSearchReposEmpty(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/repo1", "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{}
 
@@ -17,6 +18,7 @@ func TestSearchReposEmpty(t *testing.T) {
 }
 
 func TestSearchReposSubstring(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/api-service", "/web-app", "/api-client"}
 	summaries := map[string]models.RepoSummary{}
 
@@ -41,6 +43,7 @@ func TestSearchReposSubstring(t *testing.T) {
 }
 
 func TestSearchReposCaseInsensitive(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/MyRepo", "/myrepo", "/MYREPO"}
 	summaries := map[string]models.RepoSummary{}
 
@@ -51,6 +54,7 @@ func TestSearchReposCaseInsensitive(t *testing.T) {
 }
 
 func TestSearchReposFuzzy(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/authentication-service", "/other-app"}
 	summaries := map[string]models.RepoSummary{}
 
@@ -61,24 +65,28 @@ func TestSearchReposFuzzy(t *testing.T) {
 }
 
 func TestFuzzyMatchExact(t *testing.T) {
+	t.Parallel()
 	if !FuzzyMatch("test", "test") {
 		t.Error("expected exact match to return true")
 	}
 }
 
 func TestFuzzyMatchSubstring(t *testing.T) {
+	t.Parallel()
 	if !FuzzyMatch("api", "api-service") {
 		t.Error("expected substring match to return true")
 	}
 }
 
 func TestFuzzyMatchEmpty(t *testing.T) {
+	t.Parallel()
 	if !FuzzyMatch("", "anything") {
 		t.Error("expected empty pattern to match anything")
 	}
 }
 
 func TestFuzzyMatchNoMatch(t *testing.T) {
+	t.Parallel()
 	if FuzzyMatch("xyz123", "abcdef") {
 		t.Error("expected no match for unrelated strings")
 	}

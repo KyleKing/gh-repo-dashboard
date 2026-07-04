@@ -278,6 +278,10 @@ func (j *JJOperations) GetWorktreeList(ctx context.Context, repoPath string) ([]
 	return worktrees, nil
 }
 
+// jjCommitLogFieldCount is the number of tab-separated fields in the log
+// template below (change id, subject, author, date).
+const jjCommitLogFieldCount = 4
+
 func (j *JJOperations) GetCommitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error) {
 	format := `change_id.short() ++ "\t" ++ description.first_line() ++ "\t" ++ author.name() ++ "\t" ++ committer.timestamp().utc().format("%s")`
 	out, err := j.runJJ(ctx, repoPath, "log", "-r", fmt.Sprintf("@~%d..", count), "-T", format, "--no-graph")
@@ -290,7 +294,7 @@ func (j *JJOperations) GetCommitLog(ctx context.Context, repoPath string, count 
 
 	for scanner.Scan() {
 		parts := strings.Split(scanner.Text(), "\t")
-		if len(parts) < 4 {
+		if len(parts) < jjCommitLogFieldCount {
 			continue
 		}
 
@@ -364,12 +368,12 @@ func (j *JJOperations) CleanupMergedBranches(ctx context.Context, repoPath strin
 
 	var deleted []string
 	for _, bookmark := range parseJJBookmarkList(out) {
-		if bookmark.name == "main" || bookmark.name == "master" || bookmark.name == "trunk" {
+		if bookmark.name == defaultMainBranch || bookmark.name == "master" || bookmark.name == "trunk" {
 			continue
 		}
 
 		isMerged, err := j.runJJ(ctx, repoPath, "log", "-r",
-			bookmark.name+"@origin..main@origin", "-T", "change_id", "--no-graph")
+			bookmark.name+"@origin.."+defaultMainBranch+"@origin", "-T", "change_id", "--no-graph")
 		if err != nil {
 			continue
 		}

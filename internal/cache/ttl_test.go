@@ -6,6 +6,7 @@ import (
 )
 
 func TestTTLCacheSetGet(t *testing.T) {
+	t.Parallel()
 	cache := NewTTLCache[string](5 * time.Minute)
 
 	cache.Set("key1", "value1")
@@ -20,6 +21,7 @@ func TestTTLCacheSetGet(t *testing.T) {
 }
 
 func TestTTLCacheGetMissing(t *testing.T) {
+	t.Parallel()
 	cache := NewTTLCache[string](5 * time.Minute)
 
 	_, ok := cache.Get("nonexistent")
@@ -29,6 +31,7 @@ func TestTTLCacheGetMissing(t *testing.T) {
 }
 
 func TestTTLCacheExpiration(t *testing.T) {
+	t.Parallel()
 	cache := NewTTLCache[string](10 * time.Millisecond)
 
 	cache.Set("key1", "value1")
@@ -42,6 +45,7 @@ func TestTTLCacheExpiration(t *testing.T) {
 }
 
 func TestTTLCacheClear(t *testing.T) {
+	t.Parallel()
 	cache := NewTTLCache[string](5 * time.Minute)
 
 	cache.Set("key1", "value1")
@@ -58,6 +62,7 @@ func TestTTLCacheClear(t *testing.T) {
 }
 
 func TestTTLCacheDelete(t *testing.T) {
+	t.Parallel()
 	cache := NewTTLCache[string](5 * time.Minute)
 
 	cache.Set("key1", "value1")
@@ -77,6 +82,7 @@ func TestTTLCacheDelete(t *testing.T) {
 }
 
 func TestTTLCacheOverwrite(t *testing.T) {
+	t.Parallel()
 	cache := NewTTLCache[string](5 * time.Minute)
 
 	cache.Set("key1", "value1")
@@ -92,6 +98,7 @@ func TestTTLCacheOverwrite(t *testing.T) {
 }
 
 func TestTTLCacheWithInt(t *testing.T) {
+	t.Parallel()
 	cache := NewTTLCache[int](5 * time.Minute)
 
 	cache.Set("count", 42)
@@ -106,6 +113,7 @@ func TestTTLCacheWithInt(t *testing.T) {
 }
 
 func TestTTLCacheWithStruct(t *testing.T) {
+	t.Parallel()
 	type TestData struct {
 		Name  string
 		Count int
@@ -126,6 +134,7 @@ func TestTTLCacheWithStruct(t *testing.T) {
 }
 
 func TestClearAllCaches(t *testing.T) {
+	t.Parallel()
 	PRCache.Set("test", nil)
 	BranchCache.Set("test", nil)
 	CommitCache.Set("test", nil)

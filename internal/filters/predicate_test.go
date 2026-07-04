@@ -8,6 +8,7 @@ import (
 )
 
 func TestParsePredicate(t *testing.T) {
+	t.Parallel()
 	dirty := models.RepoSummary{Unstaged: 2}
 	dirtyWithPR := models.RepoSummary{Unstaged: 2, PRInfo: &models.PRInfo{Number: 1}}
 	behind := models.RepoSummary{Behind: 3}
@@ -41,6 +42,7 @@ func TestParsePredicate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			pred, err := ParsePredicate(tt.expr)
 			if err != nil {
 				t.Fatalf("ParsePredicate(%q) error: %v", tt.expr, err)
@@ -53,6 +55,7 @@ func TestParsePredicate(t *testing.T) {
 }
 
 func TestParsePredicateErrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		expr string
@@ -68,6 +71,7 @@ func TestParsePredicateErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			_, err := ParsePredicate(tt.expr)
 			if err == nil {
 				t.Fatalf("ParsePredicate(%q) expected error", tt.expr)
@@ -81,6 +85,7 @@ func TestParsePredicateErrors(t *testing.T) {
 }
 
 func TestAtomNamesSorted(t *testing.T) {
+	t.Parallel()
 	names := AtomNames()
 	if len(names) == 0 {
 		t.Fatal("expected atoms")

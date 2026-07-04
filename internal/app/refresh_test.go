@@ -10,6 +10,7 @@ import (
 )
 
 func TestRefreshFromRepoList(t *testing.T) {
+	t.Parallel()
 	m := New([]string{"/test"}, 1)
 	m.viewMode = ViewModeRepoList
 	m.summaries["/repo1"] = models.RepoSummary{Path: "/repo1"}
@@ -39,6 +40,7 @@ func TestRefreshFromRepoList(t *testing.T) {
 }
 
 func TestRefreshFromRepoDetail(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.selectedRepo = "/test/repo"
@@ -65,6 +67,7 @@ func TestRefreshFromRepoDetail(t *testing.T) {
 }
 
 func TestRefreshFromBranchDetail(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeBranchDetail
 	m.selectedRepo = "/test/repo"
@@ -83,6 +86,7 @@ func TestRefreshFromBranchDetail(t *testing.T) {
 }
 
 func TestRefreshFromPRDetail(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
 	m.selectedRepo = "/test/repo"
@@ -101,6 +105,7 @@ func TestRefreshFromPRDetail(t *testing.T) {
 }
 
 func TestRefreshCompleteMessage(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoList
 
@@ -118,6 +123,7 @@ func TestRefreshCompleteMessage(t *testing.T) {
 }
 
 func TestRefreshKeybindings(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	rKey := tea.KeyPressMsg{Code: 'r', Text: "r"}
@@ -132,6 +138,7 @@ func TestRefreshKeybindings(t *testing.T) {
 }
 
 func TestRefreshClearsCache(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoList
 	m.summaries["/repo1"] = models.RepoSummary{Path: "/repo1"}
@@ -147,6 +154,7 @@ func TestRefreshClearsCache(t *testing.T) {
 }
 
 func TestRefreshFromEmptyState(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
 
@@ -158,6 +166,7 @@ func TestRefreshFromEmptyState(t *testing.T) {
 }
 
 func TestRefreshPreservesViewMode(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name     string
 		viewMode ViewMode
@@ -170,6 +179,7 @@ func TestRefreshPreservesViewMode(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			m := New(nil, 1)
 			m.viewMode = tc.viewMode
 			m.selectedRepo = "/test/repo"
@@ -186,6 +196,7 @@ func TestRefreshPreservesViewMode(t *testing.T) {
 }
 
 func TestRefreshClearsDownstreamFromRepoList(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoList
 	m.branches = []models.BranchInfo{{Name: "main"}}
@@ -222,6 +233,7 @@ func TestRefreshClearsDownstreamFromRepoList(t *testing.T) {
 }
 
 func TestRefreshClearsDownstreamFromRepoDetail(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.selectedRepo = "/test/repo"
@@ -252,6 +264,7 @@ func TestRefreshClearsDownstreamFromRepoDetail(t *testing.T) {
 }
 
 func TestRefreshClearsBranchDetail(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeBranchDetail
 	m.selectedRepo = "/test/repo"
@@ -274,6 +287,7 @@ func TestRefreshClearsBranchDetail(t *testing.T) {
 }
 
 func TestRefreshClearsPRDetail(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
 	m.selectedRepo = "/test/repo"

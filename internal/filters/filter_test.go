@@ -7,6 +7,7 @@ import (
 )
 
 func TestFilterReposAll(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/repo1", "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
 		"/repo1": {Path: "/repo1", Ahead: 1},
@@ -21,6 +22,7 @@ func TestFilterReposAll(t *testing.T) {
 }
 
 func TestFilterReposAhead(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/repo1", "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
 		"/repo1": {Path: "/repo1", Ahead: 1},
@@ -38,6 +40,7 @@ func TestFilterReposAhead(t *testing.T) {
 }
 
 func TestFilterReposBehind(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/repo1", "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
 		"/repo1": {Path: "/repo1", Ahead: 1},
@@ -55,6 +58,7 @@ func TestFilterReposBehind(t *testing.T) {
 }
 
 func TestFilterReposDirty(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/repo1", "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
 		"/repo1": {Path: "/repo1", Staged: 2},
@@ -69,6 +73,7 @@ func TestFilterReposDirty(t *testing.T) {
 }
 
 func TestFilterReposHasPR(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/repo1", "/repo2"}
 	summaries := map[string]models.RepoSummary{
 		"/repo1": {Path: "/repo1", PRInfo: &models.PRInfo{Number: 123}},
@@ -85,6 +90,7 @@ func TestFilterReposHasPR(t *testing.T) {
 }
 
 func TestFilterReposHasStash(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/repo1", "/repo2"}
 	summaries := map[string]models.RepoSummary{
 		"/repo1": {Path: "/repo1", StashCount: 3},
@@ -101,6 +107,7 @@ func TestFilterReposHasStash(t *testing.T) {
 }
 
 func TestFilterReposMultiNoFilters(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/repo1", "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
 		"/repo1": {Path: "/repo1", Ahead: 1},
@@ -119,6 +126,7 @@ func TestFilterReposMultiNoFilters(t *testing.T) {
 }
 
 func TestFilterReposMultiSingleFilter(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/repo1", "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
 		"/repo1": {Path: "/repo1", Ahead: 1},
@@ -141,6 +149,7 @@ func TestFilterReposMultiSingleFilter(t *testing.T) {
 }
 
 func TestFilterReposMultipleFilters(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/repo1", "/repo2", "/repo3", "/repo4"}
 	summaries := map[string]models.RepoSummary{
 		"/repo1": {Path: "/repo1", Ahead: 1, Staged: 2},
@@ -162,6 +171,7 @@ func TestFilterReposMultipleFilters(t *testing.T) {
 }
 
 func TestFilterReposMultiWithPRAndDirty(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/repo1", "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
 		"/repo1": {Path: "/repo1", Staged: 2, PRInfo: &models.PRInfo{Number: 123}},
@@ -185,6 +195,7 @@ func TestFilterReposMultiWithPRAndDirty(t *testing.T) {
 }
 
 func TestFilterReposMultiWithInverted(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/repo1", "/repo2", "/repo3", "/repo4"}
 	summaries := map[string]models.RepoSummary{
 		"/repo1": {Path: "/repo1", Staged: 2},
@@ -205,6 +216,7 @@ func TestFilterReposMultiWithInverted(t *testing.T) {
 }
 
 func TestFilterReposMultiMixedInverted(t *testing.T) {
+	t.Parallel()
 	paths := []string{"/repo1", "/repo2", "/repo3", "/repo4"}
 	summaries := map[string]models.RepoSummary{
 		"/repo1": {Path: "/repo1", Ahead: 1, PRInfo: &models.PRInfo{Number: 123}},

@@ -44,11 +44,13 @@ func stubCommands(t *testing.T, canned map[string]string, failures map[string]er
 }
 
 func TestRunCommandReal(t *testing.T) {
+	t.Parallel()
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not installed")
 	}
 
 	t.Run("success trims output", func(t *testing.T) {
+		t.Parallel()
 		out, err := runCommand(context.Background(), t.TempDir(), "git", "--version")
 		if err != nil {
 			t.Fatal(err)
@@ -62,12 +64,14 @@ func TestRunCommandReal(t *testing.T) {
 	})
 
 	t.Run("missing binary returns error", func(t *testing.T) {
+		t.Parallel()
 		if _, err := runCommand(context.Background(), t.TempDir(), "definitely-missing-binary-xyz"); err == nil {
 			t.Error("expected error")
 		}
 	})
 
 	t.Run("exit error is wrapped by runGit", func(t *testing.T) {
+		t.Parallel()
 		g := NewGitOperations()
 		_, err := g.runGit(context.Background(), t.TempDir(), "rev-parse", "--verify", "HEAD")
 		if err == nil {
@@ -80,6 +84,7 @@ func TestRunCommandReal(t *testing.T) {
 }
 
 func TestGitRunGitWrapsExitError(t *testing.T) {
+	t.Parallel()
 	ctx := stubCommands(t, nil, map[string]error{
 		"git status --porcelain -z": &exec.ExitError{Stderr: []byte("fatal: not a repo")},
 	})
@@ -99,6 +104,7 @@ func TestGitRunGitWrapsExitError(t *testing.T) {
 }
 
 func TestGitGetCurrentBranch(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		canned   map[string]string
@@ -134,6 +140,7 @@ func TestGitGetCurrentBranch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
@@ -149,6 +156,7 @@ func TestGitGetCurrentBranch(t *testing.T) {
 }
 
 func TestGitGetUpstream(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		canned   map[string]string
@@ -170,6 +178,7 @@ func TestGitGetUpstream(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
@@ -185,6 +194,7 @@ func TestGitGetUpstream(t *testing.T) {
 }
 
 func TestGitGetAheadBehind(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		canned   map[string]string
@@ -213,6 +223,7 @@ func TestGitGetAheadBehind(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
@@ -228,6 +239,7 @@ func TestGitGetAheadBehind(t *testing.T) {
 }
 
 func TestGitStatusCountMethods(t *testing.T) {
+	t.Parallel()
 	ctx := stubCommands(t, map[string]string{
 		"git status --porcelain -z": "M  staged.txt\x00 M unstaged.txt\x00?? new.txt\x00UU conflict.txt\x00",
 	}, nil)
@@ -247,6 +259,7 @@ func TestGitStatusCountMethods(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			count, err := tt.fn(ctx, testRepoPath)
 			if err != nil {
 				t.Fatal(err)
@@ -259,6 +272,7 @@ func TestGitStatusCountMethods(t *testing.T) {
 }
 
 func TestGitGetRepoSummary(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		canned   map[string]string
@@ -337,6 +351,7 @@ func TestGitGetRepoSummary(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
@@ -355,6 +370,7 @@ func TestGitGetRepoSummary(t *testing.T) {
 }
 
 func TestGitGetBranchList(t *testing.T) {
+	t.Parallel()
 	key := "git for-each-ref --format=%(refname:short)\t%(upstream:short)\t%(upstream:track)\t%(committerdate:unix)\t%(HEAD) refs/heads/"
 
 	tests := []struct {
@@ -391,6 +407,7 @@ func TestGitGetBranchList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
@@ -411,6 +428,7 @@ func TestGitGetBranchList(t *testing.T) {
 }
 
 func TestGitGetStashList(t *testing.T) {
+	t.Parallel()
 	key := "git stash list --format=%(reflog:short)\t%(reflog:subject)\t%(committerdate:unix)"
 
 	tests := []struct {
@@ -445,6 +463,7 @@ func TestGitGetStashList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
@@ -465,6 +484,7 @@ func TestGitGetStashList(t *testing.T) {
 }
 
 func TestGitGetWorktreeList(t *testing.T) {
+	t.Parallel()
 	key := "git worktree list --porcelain"
 
 	tests := []struct {
@@ -501,6 +521,7 @@ func TestGitGetWorktreeList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
@@ -521,6 +542,7 @@ func TestGitGetWorktreeList(t *testing.T) {
 }
 
 func TestGitGetCommitLog(t *testing.T) {
+	t.Parallel()
 	key := "git log -n2 --format=%H\t%h\t%s\t%an\t%ct"
 
 	tests := []struct {
@@ -555,6 +577,7 @@ func TestGitGetCommitLog(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
@@ -575,6 +598,7 @@ func TestGitGetCommitLog(t *testing.T) {
 }
 
 func TestGitGetLastModified(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		canned   map[string]string
@@ -601,6 +625,7 @@ func TestGitGetLastModified(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
@@ -616,6 +641,7 @@ func TestGitGetLastModified(t *testing.T) {
 }
 
 func TestGitGetRemoteURL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		canned   map[string]string
@@ -637,6 +663,7 @@ func TestGitGetRemoteURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
@@ -652,6 +679,7 @@ func TestGitGetRemoteURL(t *testing.T) {
 }
 
 func TestGitFetchAllAndPruneRemote(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		canned     map[string]string
@@ -700,6 +728,7 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			ok, msg, err := tt.run(ctx, NewGitOperations())
@@ -717,6 +746,7 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 }
 
 func TestGitCleanupMergedBranches(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		canned     map[string]string
@@ -771,6 +801,7 @@ func TestGitCleanupMergedBranches(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()

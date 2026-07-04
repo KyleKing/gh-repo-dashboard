@@ -2,6 +2,16 @@ package models
 
 import "time"
 
+// Display values shared by PRInfo/ChecksStatus/WorkflowSummary and the views
+// that render them, so both sides compare against the same constant.
+const (
+	PRStatusMerged         = "MERGED"
+	PRStatusClosed         = "CLOSED"
+	ReviewApproved         = "approved"
+	ReviewChangesRequested = "changes requested"
+	StatusFailing          = "failing"
+)
+
 type PRInfo struct {
 	Number          int
 	Title           string
@@ -24,10 +34,10 @@ func (p PRInfo) StatusDisplay() string {
 	switch p.State {
 	case "OPEN":
 		return "OPEN"
-	case "MERGED":
-		return "MERGED"
-	case "CLOSED":
-		return "CLOSED"
+	case PRStatusMerged:
+		return PRStatusMerged
+	case PRStatusClosed:
+		return PRStatusClosed
 	default:
 		return p.State
 	}
@@ -36,14 +46,14 @@ func (p PRInfo) StatusDisplay() string {
 func (p PRInfo) ReviewStatus() string {
 	switch p.ReviewDecision {
 	case "APPROVED":
-		return "approved"
+		return ReviewApproved
 	case "CHANGES_REQUESTED":
-		return "changes requested"
+		return ReviewChangesRequested
 	case "REVIEW_REQUIRED":
 		return "review required"
 	default:
 		if len(p.ApprovedBy) > 0 {
-			return "approved"
+			return ReviewApproved
 		}
 
 		return "—"
@@ -63,7 +73,7 @@ func (c ChecksStatus) Summary() string {
 		return "—"
 	}
 	if c.Failing > 0 {
-		return "failing"
+		return StatusFailing
 	}
 	if c.Pending > 0 {
 		return "pending"
@@ -128,7 +138,7 @@ func (w WorkflowSummary) StatusDisplay() string {
 		return "—"
 	}
 	if w.Failing > 0 {
-		return "failing"
+		return StatusFailing
 	}
 	if w.InProgress > 0 {
 		return "running"

@@ -37,6 +37,7 @@ func pressKeys(t *testing.T, m Model, keys string) (Model, tea.Cmd) {
 }
 
 func TestResolveTextObjects(t *testing.T) {
+	t.Parallel()
 	m := operatorModel()
 
 	tests := []struct {
@@ -50,6 +51,7 @@ func TestResolveTextObjects(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.key, func(t *testing.T) {
+			t.Parallel()
 			obj, ok := lookupTextObject(tt.key)
 			if !ok {
 				t.Fatalf("text object %q not found", tt.key)
@@ -68,6 +70,7 @@ func TestResolveTextObjects(t *testing.T) {
 }
 
 func TestSelectedTextObject(t *testing.T) {
+	t.Parallel()
 	m := operatorModel()
 	m.selectedPaths = map[string]bool{"/test/clean": true, "/test/dirty": true}
 
@@ -79,6 +82,7 @@ func TestSelectedTextObject(t *testing.T) {
 }
 
 func TestOperatorComposition(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		keys          string
@@ -93,6 +97,7 @@ func TestOperatorComposition(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			m := operatorModel()
 			m2, cmd := pressKeys(t, m, tt.keys)
 			if m2.viewMode != ViewModeBatchProgress {
@@ -112,6 +117,7 @@ func TestOperatorComposition(t *testing.T) {
 }
 
 func TestOperatorSelectedComposition(t *testing.T) {
+	t.Parallel()
 	m := operatorModel()
 	m2, _ := m.ExecuteCommand("select where dirty")
 	m3, cmd := pressKeys(t, m2, "Fsr")
@@ -127,6 +133,7 @@ func TestOperatorSelectedComposition(t *testing.T) {
 }
 
 func TestOperatorEscCancels(t *testing.T) {
+	t.Parallel()
 	m := operatorModel()
 	m2, _ := pressKeys(t, m, "F")
 	if m2.pendingOperator != "F" {
@@ -144,6 +151,7 @@ func TestOperatorEscCancels(t *testing.T) {
 }
 
 func TestOperatorUnknownObjectCancels(t *testing.T) {
+	t.Parallel()
 	m := operatorModel()
 	m2, cmd := pressKeys(t, m, "Fz")
 	if m2.pendingOperator != "" {
@@ -158,6 +166,7 @@ func TestOperatorUnknownObjectCancels(t *testing.T) {
 }
 
 func TestOperatorEmptyScope(t *testing.T) {
+	t.Parallel()
 	m := operatorModel()
 	m.summaries["/test/behind"] = models.RepoSummary{Path: "/test/behind", Branch: "main"}
 	m.updateFilteredPaths()
@@ -175,6 +184,7 @@ func TestOperatorEmptyScope(t *testing.T) {
 }
 
 func TestOperatorPendingFooterHint(t *testing.T) {
+	t.Parallel()
 	m := operatorModel()
 	m.width = 100
 	m.height = 30
@@ -186,6 +196,7 @@ func TestOperatorPendingFooterHint(t *testing.T) {
 }
 
 func TestBatchCommandWithPredicate(t *testing.T) {
+	t.Parallel()
 	m := operatorModel()
 	m2, cmd := m.ExecuteCommand("fetch dirty and has_pr")
 	if m2.batchTask != "Fetch All (dirty and has_pr)" {
@@ -200,6 +211,7 @@ func TestBatchCommandWithPredicate(t *testing.T) {
 }
 
 func TestBatchCommandPredicateNoMatch(t *testing.T) {
+	t.Parallel()
 	m := operatorModel()
 	m2, cmd := m.ExecuteCommand("prune has_stash")
 	if m2.viewMode == ViewModeBatchProgress {

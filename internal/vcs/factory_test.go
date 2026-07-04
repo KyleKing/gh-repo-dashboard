@@ -10,6 +10,7 @@ import (
 )
 
 func TestDetectVCSType(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		setup    func(dir string) error
@@ -45,6 +46,7 @@ func TestDetectVCSType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			if err := tt.setup(dir); err != nil {
 				t.Fatal(err)
@@ -59,6 +61,7 @@ func TestDetectVCSType(t *testing.T) {
 }
 
 func TestGetOperations(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		setup       func(dir string) error
@@ -78,6 +81,7 @@ func TestGetOperations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			if err := tt.setup(dir); err != nil {
 				t.Fatal(err)
@@ -92,6 +96,7 @@ func TestGetOperations(t *testing.T) {
 }
 
 func TestIsRepo(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		setup    func(dir string) error
@@ -121,6 +126,7 @@ func TestIsRepo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			if err := tt.setup(dir); err != nil {
 				t.Fatal(err)
@@ -135,6 +141,7 @@ func TestIsRepo(t *testing.T) {
 }
 
 func TestGetGitHubEnv(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		setup       func(dir string) error
@@ -167,6 +174,7 @@ func TestGetGitHubEnv(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			dir := t.TempDir()
 			if err := tt.setup(dir); err != nil {
 				t.Fatal(err)

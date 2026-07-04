@@ -3,6 +3,7 @@ package models
 import "testing"
 
 func TestActiveFilterNewActiveFilter(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		mode        FilterMode
 		wantEnabled bool
@@ -17,6 +18,7 @@ func TestActiveFilterNewActiveFilter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.mode.String(), func(t *testing.T) {
+			t.Parallel()
 			f := NewActiveFilter(tt.mode)
 			if f.Enabled != tt.wantEnabled {
 				t.Errorf("mode %s: expected enabled=%v, got %v", tt.mode, tt.wantEnabled, f.Enabled)
@@ -32,6 +34,7 @@ func TestActiveFilterNewActiveFilter(t *testing.T) {
 }
 
 func TestActiveFilterDisplayName(t *testing.T) {
+	t.Parallel()
 	f := NewActiveFilter(FilterModeAhead)
 	if f.DisplayName() != "Ahead" {
 		t.Errorf("expected 'Ahead', got %q", f.DisplayName())
@@ -39,6 +42,7 @@ func TestActiveFilterDisplayName(t *testing.T) {
 }
 
 func TestActiveFilterShortKey(t *testing.T) {
+	t.Parallel()
 	f := NewActiveFilter(FilterModeAhead)
 	if f.ShortKey() != ">" {
 		t.Errorf("expected '>', got %q", f.ShortKey())
@@ -46,6 +50,7 @@ func TestActiveFilterShortKey(t *testing.T) {
 }
 
 func TestSortDirectionString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		dir      SortDirection
 		expected string
@@ -64,6 +69,7 @@ func TestSortDirectionString(t *testing.T) {
 }
 
 func TestActiveSortNewActiveSort(t *testing.T) {
+	t.Parallel()
 	s := NewActiveSort(SortModeName, 0)
 	if s.Mode != SortModeName {
 		t.Errorf("expected SortModeName, got %v", s.Mode)
@@ -77,6 +83,7 @@ func TestActiveSortNewActiveSort(t *testing.T) {
 }
 
 func TestActiveSortIsEnabled(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		dir      SortDirection
 		expected bool
@@ -95,6 +102,7 @@ func TestActiveSortIsEnabled(t *testing.T) {
 }
 
 func TestActiveSortDisplayName(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		sort     ActiveSort
 		expected string
@@ -122,6 +130,7 @@ func TestActiveSortDisplayName(t *testing.T) {
 }
 
 func TestActiveSortShortKey(t *testing.T) {
+	t.Parallel()
 	s := ActiveSort{Mode: SortModeName}
 	if s.ShortKey() != "n" {
 		t.Errorf("expected 'n', got %q", s.ShortKey())

@@ -10,6 +10,7 @@ import (
 )
 
 func TestPRTabNavigation(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.detailTab = DetailTabBranches
 
@@ -35,6 +36,7 @@ func TestPRTabNavigation(t *testing.T) {
 }
 
 func TestPRTabBackwardNavigation(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.detailTab = DetailTabBranches
 
@@ -50,6 +52,7 @@ func TestPRTabBackwardNavigation(t *testing.T) {
 }
 
 func TestDetailListLenWithPRs(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.branches = make([]models.BranchInfo, 5)
 	m.stashes = make([]models.StashDetail, 3)
@@ -82,6 +85,7 @@ func TestDetailListLenWithPRs(t *testing.T) {
 }
 
 func TestPRCountInModel(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	if m.prCount == nil {
 		t.Error("prCount should be initialized")
@@ -104,6 +108,7 @@ func TestPRCountInModel(t *testing.T) {
 }
 
 func TestPRListSelection(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.prs = []models.PRInfo{
 		{Number: 123, Title: "First PR", HeadRef: "feature-1"},
@@ -126,6 +131,7 @@ func TestPRListSelection(t *testing.T) {
 }
 
 func TestPRDetailViewMode(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
 
@@ -158,6 +164,7 @@ func TestPRDetailViewMode(t *testing.T) {
 }
 
 func TestPRInfoStatusDisplay(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		pr       models.PRInfo
@@ -187,6 +194,7 @@ func TestPRInfoStatusDisplay(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := tt.pr.StatusDisplay()
 			if got != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, got)
@@ -196,6 +204,7 @@ func TestPRInfoStatusDisplay(t *testing.T) {
 }
 
 func TestPRInfoReviewStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		pr       models.PRInfo
@@ -230,6 +239,7 @@ func TestPRInfoReviewStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := tt.pr.ReviewStatus()
 			if got != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, got)
@@ -239,6 +249,7 @@ func TestPRInfoReviewStatus(t *testing.T) {
 }
 
 func TestPRDetailMetadata(t *testing.T) {
+	t.Parallel()
 	pr := models.PRDetail{
 		PRInfo: models.PRInfo{
 			Number:  100,
@@ -284,6 +295,7 @@ func TestPRDetailMetadata(t *testing.T) {
 }
 
 func TestRenderPRListEmpty(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.prs = []models.PRInfo{}
 
@@ -297,6 +309,7 @@ func TestRenderPRListEmpty(t *testing.T) {
 }
 
 func TestRenderPRListWithPRs(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.prs = []models.PRInfo{
 		{Number: 123, Title: "Test PR 1", State: "OPEN", HeadRef: "feature-1"},
@@ -314,6 +327,7 @@ func TestRenderPRListWithPRs(t *testing.T) {
 }
 
 func TestPRCountMessages(t *testing.T) {
+	t.Parallel()
 	msg := PRCountLoadedMsg{
 		Path:  "/test/repo",
 		Count: 5,
@@ -328,6 +342,7 @@ func TestPRCountMessages(t *testing.T) {
 }
 
 func TestPRListLoadedMessage(t *testing.T) {
+	t.Parallel()
 	prs := []models.PRInfo{
 		{Number: 1, Title: "PR 1"},
 		{Number: 2, Title: "PR 2"},
@@ -347,6 +362,7 @@ func TestPRListLoadedMessage(t *testing.T) {
 }
 
 func TestPRDetailLoadedMessage(t *testing.T) {
+	t.Parallel()
 	detail := models.PRDetail{
 		PRInfo: models.PRInfo{
 			Number: 123,
@@ -373,6 +389,7 @@ func TestPRDetailLoadedMessage(t *testing.T) {
 }
 
 func TestPRDetailUpdateWithMessage(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.selectedRepo = "/test/repo"
 	m.selectedPR = models.PRInfo{Number: 123}
@@ -420,6 +437,7 @@ func TestPRDetailUpdateWithMessage(t *testing.T) {
 }
 
 func TestPRDetailViewRender(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.width = 120
 	m.height = 40
@@ -493,6 +511,7 @@ func TestPRDetailViewRender(t *testing.T) {
 }
 
 func TestStatusMessages(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	msg := StatusMsg{Message: "Test status"}
@@ -513,6 +532,7 @@ func TestStatusMessages(t *testing.T) {
 }
 
 func TestCopySuccessMessage(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	msg := CopySuccessMsg{Text: "https://github.com/test/pr/123"}
@@ -528,6 +548,7 @@ func TestCopySuccessMessage(t *testing.T) {
 }
 
 func TestURLOpenedMessage(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	msg := URLOpenedMsg{URL: "https://github.com/test/pr/123"}
@@ -543,6 +564,7 @@ func TestURLOpenedMessage(t *testing.T) {
 }
 
 func TestPRDetailViewWithStatusMessage(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.width = 120
 	m.height = 40
@@ -570,6 +592,7 @@ func TestPRDetailViewWithStatusMessage(t *testing.T) {
 }
 
 func TestPRDetailErrorHandling(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.selectedRepo = "/test/repo"
 	m.selectedPR = models.PRInfo{Number: 999}
@@ -594,6 +617,7 @@ func TestPRDetailErrorHandling(t *testing.T) {
 }
 
 func TestPRNavigationFlow(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.prs = []models.PRInfo{
 		{Number: 1, Title: "First PR"},
@@ -623,6 +647,7 @@ func TestPRNavigationFlow(t *testing.T) {
 }
 
 func TestPRCountLoading(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	msg1 := PRCountLoadedMsg{Path: "/repo1", Count: 5}
@@ -647,6 +672,7 @@ func TestPRCountLoading(t *testing.T) {
 }
 
 func TestEmptyPRDetailFields(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.width = 120
 	m.height = 40
@@ -689,6 +715,7 @@ func TestEmptyPRDetailFields(t *testing.T) {
 }
 
 func TestPRDetailLoadingState(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.width = 120
 	m.height = 40
@@ -706,6 +733,7 @@ func TestPRDetailLoadingState(t *testing.T) {
 }
 
 func TestPRDetailClearedOnNavigation(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabPRs
@@ -735,6 +763,7 @@ func TestPRDetailClearedOnNavigation(t *testing.T) {
 }
 
 func TestPRDetailErrorPreservesBasicInfo(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
 	m.selectedRepo = "/test/repo"
@@ -782,6 +811,7 @@ func TestPRDetailErrorPreservesBasicInfo(t *testing.T) {
 }
 
 func TestPRDetailProgressiveLoading(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabPRs
@@ -840,6 +870,7 @@ func TestPRDetailProgressiveLoading(t *testing.T) {
 }
 
 func TestPRDetailProgressiveView(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.width = 120
 	m.height = 40

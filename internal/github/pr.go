@@ -70,6 +70,12 @@ func GetPRForBranch(ctx context.Context, repoPath, branch, upstream string) (*mo
 	return pr, nil
 }
 
+const (
+	checkStateSuccess = "success"
+	checkStateFailure = "failure"
+	checkStateError   = "error"
+)
+
 func parseChecks(checks []statusCheck) models.ChecksStatus {
 	var status models.ChecksStatus
 	status.Total = len(checks)
@@ -81,9 +87,9 @@ func parseChecks(checks []statusCheck) models.ChecksStatus {
 		switch {
 		case state == "pending" || c.Status == "IN_PROGRESS" || c.Status == "QUEUED":
 			status.Pending++
-		case conclusion == "success" || state == "success":
+		case conclusion == checkStateSuccess || state == checkStateSuccess:
 			status.Passing++
-		case conclusion == "failure" || conclusion == "error" || state == "failure" || state == "error":
+		case conclusion == checkStateFailure || conclusion == checkStateError || state == checkStateFailure || state == checkStateError:
 			status.Failing++
 		case conclusion == "skipped" || conclusion == "neutral":
 			status.Skipped++

@@ -25,6 +25,7 @@ func newListModel(paths ...string) Model {
 }
 
 func TestHelpToggle(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	updatedModel, _ := m.Update(keyPress('?'))
@@ -41,6 +42,7 @@ func TestHelpToggle(t *testing.T) {
 }
 
 func TestQuitKey(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	_, cmd := m.Update(keyPress('q'))
@@ -50,6 +52,7 @@ func TestQuitKey(t *testing.T) {
 }
 
 func TestFilterModalOpenClose(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	updatedModel, _ := m.Update(keyPress('f'))
@@ -66,6 +69,7 @@ func TestFilterModalOpenClose(t *testing.T) {
 }
 
 func TestSortModalOpenClose(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.sortCursor = 3
 
@@ -86,6 +90,7 @@ func TestSortModalOpenClose(t *testing.T) {
 }
 
 func TestEnterOpensRepoDetail(t *testing.T) {
+	t.Parallel()
 	m := newListModel("/alpha", "/beta")
 	m.cursor = 1
 	m.detailTab = DetailTabPRs
@@ -109,6 +114,7 @@ func TestEnterOpensRepoDetail(t *testing.T) {
 }
 
 func TestEnterOnEmptyListIsNoop(t *testing.T) {
+	t.Parallel()
 	m := newListModel()
 
 	updatedModel, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -126,6 +132,7 @@ func TestEnterOnEmptyListIsNoop(t *testing.T) {
 }
 
 func TestCursorMovement(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		paths      []string
@@ -145,6 +152,7 @@ func TestCursorMovement(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			m := newListModel(tt.paths...)
 			m.cursor = tt.cursor
 
@@ -159,6 +167,7 @@ func TestCursorMovement(t *testing.T) {
 }
 
 func TestBackNavigationChain(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		from ViewMode
@@ -174,6 +183,7 @@ func TestBackNavigationChain(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			m := New(nil, 1)
 			m.viewMode = tt.from
 
@@ -188,6 +198,7 @@ func TestBackNavigationChain(t *testing.T) {
 }
 
 func TestDetailTabCycling(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 
@@ -202,6 +213,7 @@ func TestDetailTabCycling(t *testing.T) {
 }
 
 func TestDetailTabLeftWrapsBackward(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabBranches
@@ -219,6 +231,7 @@ func TestDetailTabLeftWrapsBackward(t *testing.T) {
 }
 
 func TestDetailCursorMovement(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabBranches
@@ -256,6 +269,7 @@ func TestDetailCursorMovement(t *testing.T) {
 }
 
 func TestDetailBottomOnEmptyTab(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabStashes
@@ -269,6 +283,7 @@ func TestDetailBottomOnEmptyTab(t *testing.T) {
 }
 
 func TestDetailEnterOpensBranchDetail(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.selectedRepo = "/repo1"
@@ -295,6 +310,7 @@ func TestDetailEnterOpensBranchDetail(t *testing.T) {
 }
 
 func TestFilterModalEnterCyclesState(t *testing.T) {
+	t.Parallel()
 	m := newListModel("/alpha")
 	m.viewMode = ViewModeFilter
 	m.filterCursor = 0
@@ -331,6 +347,7 @@ func TestFilterModalEnterCyclesState(t *testing.T) {
 }
 
 func TestFilterModalShortKey(t *testing.T) {
+	t.Parallel()
 	m := newListModel("/alpha")
 	m.viewMode = ViewModeFilter
 	m.cursor = 0
@@ -349,6 +366,7 @@ func TestFilterModalShortKey(t *testing.T) {
 }
 
 func TestFilterModalReset(t *testing.T) {
+	t.Parallel()
 	m := newListModel("/alpha")
 	m.viewMode = ViewModeFilter
 	m.CycleFilterState(models.FilterModeAhead)
@@ -363,6 +381,7 @@ func TestFilterModalReset(t *testing.T) {
 }
 
 func TestFilterModalCursorClamping(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeFilter
 	modes := models.SelectableFilterModes()
@@ -389,6 +408,7 @@ func TestFilterModalCursorClamping(t *testing.T) {
 }
 
 func TestSortModalEnterCyclesDirection(t *testing.T) {
+	t.Parallel()
 	m := newListModel("/alpha")
 	m.viewMode = ViewModeSort
 	m.sortCursor = 0
@@ -402,6 +422,7 @@ func TestSortModalEnterCyclesDirection(t *testing.T) {
 }
 
 func TestSortModalPriorityMoves(t *testing.T) {
+	t.Parallel()
 	m := newListModel("/alpha")
 	m.viewMode = ViewModeSort
 	m.CycleSortState(models.SortModeModified)
@@ -443,6 +464,7 @@ func TestSortModalPriorityMoves(t *testing.T) {
 }
 
 func TestSortModalReset(t *testing.T) {
+	t.Parallel()
 	m := newListModel("/alpha")
 	m.viewMode = ViewModeSort
 	m.CycleSortState(models.SortModeModified)
@@ -463,6 +485,7 @@ func TestSortModalReset(t *testing.T) {
 }
 
 func TestSortModalShortKey(t *testing.T) {
+	t.Parallel()
 	m := newListModel("/alpha")
 	m.viewMode = ViewModeSort
 
@@ -477,6 +500,7 @@ func TestSortModalShortKey(t *testing.T) {
 }
 
 func TestSearchModeEntry(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	updatedModel, _ := m.Update(keyPress('/'))
@@ -491,6 +515,7 @@ func TestSearchModeEntry(t *testing.T) {
 }
 
 func TestSearchEscExits(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.searching = true
 	m.searchInput.Focus()
@@ -507,6 +532,7 @@ func TestSearchEscExits(t *testing.T) {
 }
 
 func TestSearchEnterCommits(t *testing.T) {
+	t.Parallel()
 	m := newListModel("/alpha", "/beta")
 	m.searching = true
 	m.searchInput.Focus()
@@ -530,6 +556,7 @@ func TestSearchEnterCommits(t *testing.T) {
 }
 
 func TestSearchTypingUpdatesLive(t *testing.T) {
+	t.Parallel()
 	m := newListModel("/alpha", "/beta")
 	m.searching = true
 	m.searchInput.Focus()
@@ -549,6 +576,7 @@ func TestSearchTypingUpdatesLive(t *testing.T) {
 }
 
 func TestBatchKeyBlockedWhileRunning(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeBatchProgress
 	m.batchRunning = true
@@ -566,6 +594,7 @@ func TestBatchKeyBlockedWhileRunning(t *testing.T) {
 }
 
 func TestBatchKeyAfterCompletion(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeBatchProgress
 	m.batchRunning = false

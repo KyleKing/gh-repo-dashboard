@@ -11,6 +11,7 @@ import (
 )
 
 func TestWindowSizeMsg(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 
 	updatedModel, cmd := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
@@ -25,6 +26,7 @@ func TestWindowSizeMsg(t *testing.T) {
 }
 
 func TestReposDiscoveredMsg(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		paths       []string
@@ -37,6 +39,7 @@ func TestReposDiscoveredMsg(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			m := New(nil, 1)
 			updatedModel, cmd := m.Update(ReposDiscoveredMsg{Paths: tt.paths})
 			m = mustModel(t, updatedModel)
@@ -61,6 +64,7 @@ func TestReposDiscoveredMsg(t *testing.T) {
 }
 
 func TestRepoSummaryLoadedSuccess(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.loadingCount = 2
 	m.loadedCount = 0
@@ -84,6 +88,7 @@ func TestRepoSummaryLoadedSuccess(t *testing.T) {
 }
 
 func TestRepoSummaryLoadedError(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.loadingCount = 1
 	loadErr := errBoom
@@ -105,6 +110,7 @@ func TestRepoSummaryLoadedError(t *testing.T) {
 }
 
 func TestRepoSummaryLoadingCompletion(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.repoPaths = []string{"/repo1", "/repo2"}
 	m.loadingCount = 2
@@ -127,6 +133,7 @@ func TestRepoSummaryLoadingCompletion(t *testing.T) {
 }
 
 func TestPRLoadedMsg(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.summaries["/repo1"] = models.RepoSummary{Path: "/repo1"}
 
@@ -149,6 +156,7 @@ func TestPRLoadedMsg(t *testing.T) {
 }
 
 func TestWorkflowLoadedMsg(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.summaries["/repo1"] = models.RepoSummary{Path: "/repo1"}
 
@@ -171,6 +179,7 @@ func TestWorkflowLoadedMsg(t *testing.T) {
 }
 
 func TestDetailLoadedMsg(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.selectedRepo = "/repo1"
 
@@ -192,6 +201,7 @@ func TestDetailLoadedMsg(t *testing.T) {
 }
 
 func TestDetailLoadedMsgPathMismatch(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.selectedRepo = "/repo1"
 
@@ -211,6 +221,7 @@ func TestDetailLoadedMsgPathMismatch(t *testing.T) {
 }
 
 func TestBranchDetailLoadedMsg(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.selectedRepo = "/repo1"
 
@@ -232,6 +243,7 @@ func TestBranchDetailLoadedMsg(t *testing.T) {
 }
 
 func TestPRListLoadedMsg(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.selectedRepo = "/repo1"
 
@@ -251,6 +263,7 @@ func TestPRListLoadedMsg(t *testing.T) {
 }
 
 func TestPRDetailLoadedMsgSuccess(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.selectedRepo = "/repo1"
 	m.selectedPR = models.PRInfo{Number: 42}
@@ -265,6 +278,7 @@ func TestPRDetailLoadedMsgSuccess(t *testing.T) {
 }
 
 func TestPRDetailLoadedMsgError(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.selectedRepo = "/repo1"
 	m.selectedPR = models.PRInfo{Number: 42}
@@ -285,6 +299,7 @@ func TestPRDetailLoadedMsgError(t *testing.T) {
 }
 
 func TestPRDetailLoadedMsgMismatch(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		path     string
@@ -296,6 +311,7 @@ func TestPRDetailLoadedMsgMismatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			m := New(nil, 1)
 			m.selectedRepo = "/repo1"
 			m.selectedPR = models.PRInfo{Number: 42}
@@ -315,6 +331,7 @@ func TestPRDetailLoadedMsgMismatch(t *testing.T) {
 }
 
 func TestPRCountLoadedMsg(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.prCount = nil
 
@@ -333,6 +350,7 @@ func TestPRCountLoadedMsg(t *testing.T) {
 }
 
 func TestBatchTaskProgressMsg(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.batchRunning = true
 
@@ -357,6 +375,7 @@ func TestBatchTaskProgressMsg(t *testing.T) {
 }
 
 func TestBatchTaskCompleteMsg(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.batchRunning = true
 
@@ -388,6 +407,7 @@ func TestBatchTaskCompleteMsg(t *testing.T) {
 }
 
 func TestUpdateFilteredPathsClampsCursor(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.repoPaths = []string{"/alpha", "/beta", "/gamma"}
 	m.summaries = map[string]models.RepoSummary{
@@ -410,6 +430,7 @@ func TestUpdateFilteredPathsClampsCursor(t *testing.T) {
 }
 
 func TestUpdateFilteredPathsEmptyResetsCursor(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.repoPaths = []string{"/alpha"}
 	m.summaries = map[string]models.RepoSummary{"/alpha": {Path: "/alpha"}}
@@ -428,6 +449,7 @@ func TestUpdateFilteredPathsEmptyResetsCursor(t *testing.T) {
 }
 
 func TestStartBatchTaskEmptyIsNoop(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.filteredPaths = nil
 
@@ -448,6 +470,7 @@ func TestStartBatchTaskEmptyIsNoop(t *testing.T) {
 }
 
 func TestStartBatchTaskWithRepos(t *testing.T) {
+	t.Parallel()
 	m := New(nil, 1)
 	m.filteredPaths = []string{"/repo1", "/repo2"}
 

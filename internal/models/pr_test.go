@@ -3,6 +3,7 @@ package models
 import "testing"
 
 func TestPRInfoStatusDisplay(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		pr       PRInfo
@@ -37,6 +38,7 @@ func TestPRInfoStatusDisplay(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := tt.pr.StatusDisplay()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
@@ -46,6 +48,7 @@ func TestPRInfoStatusDisplay(t *testing.T) {
 }
 
 func TestPRInfoReviewStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		pr       PRInfo
@@ -80,6 +83,7 @@ func TestPRInfoReviewStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := tt.pr.ReviewStatus()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
@@ -89,6 +93,7 @@ func TestPRInfoReviewStatus(t *testing.T) {
 }
 
 func TestChecksStatusSummary(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		checks   ChecksStatus
@@ -128,6 +133,7 @@ func TestChecksStatusSummary(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := tt.checks.Summary()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
@@ -137,6 +143,7 @@ func TestChecksStatusSummary(t *testing.T) {
 }
 
 func TestWorkflowRunStatusDisplay(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		run      WorkflowRun
@@ -161,6 +168,7 @@ func TestWorkflowRunStatusDisplay(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := tt.run.StatusDisplay()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
@@ -170,6 +178,7 @@ func TestWorkflowRunStatusDisplay(t *testing.T) {
 }
 
 func TestWorkflowSummaryStatusDisplay(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		summary  WorkflowSummary
@@ -209,6 +218,7 @@ func TestWorkflowSummaryStatusDisplay(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := tt.summary.StatusDisplay()
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)

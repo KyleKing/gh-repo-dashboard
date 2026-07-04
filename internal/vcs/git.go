@@ -112,8 +112,10 @@ func (g *GitOperations) GetAheadBehind(ctx context.Context, repoPath, branch, up
 		return 0, 0, err
 	}
 
+	const revListFieldCount = 2 // ahead, behind
+
 	parts := strings.Fields(out)
-	if len(parts) != 2 {
+	if len(parts) != revListFieldCount {
 		return 0, 0, fmt.Errorf("rev-list output %q: %w", out, ErrUnexpectedOutput)
 	}
 
@@ -192,6 +194,10 @@ func (g *GitOperations) getStashCount(ctx context.Context, repoPath string) (int
 	return len(strings.Split(out, "\n")), nil
 }
 
+// branchListFieldCount is the number of tab-separated fields in the
+// for-each-ref format below (refname, upstream, track, date, HEAD marker).
+const branchListFieldCount = 5
+
 func (g *GitOperations) GetBranchList(ctx context.Context, repoPath string) ([]models.BranchInfo, error) {
 	format := "%(refname:short)\t%(upstream:short)\t%(upstream:track)\t%(committerdate:unix)\t%(HEAD)"
 	out, err := g.runGit(ctx, repoPath, "for-each-ref", "--format="+format, "refs/heads/")
@@ -206,7 +212,7 @@ func (g *GitOperations) GetBranchList(ctx context.Context, repoPath string) ([]m
 	for scanner.Scan() {
 		line := scanner.Text()
 		parts := strings.Split(line, "\t")
-		if len(parts) < 5 {
+		if len(parts) < branchListFieldCount {
 			continue
 		}
 
@@ -238,6 +244,10 @@ func (g *GitOperations) GetBranchList(ctx context.Context, repoPath string) ([]m
 	return branches, nil
 }
 
+// stashListFieldCount is the number of tab-separated fields in the
+// stash-list format below (reflog short name, subject, date).
+const stashListFieldCount = 3
+
 func (g *GitOperations) GetStashList(ctx context.Context, repoPath string) ([]models.StashDetail, error) {
 	format := "%(reflog:short)\t%(reflog:subject)\t%(committerdate:unix)"
 	out, err := g.runGit(ctx, repoPath, "stash", "list", "--format="+format)
@@ -256,7 +266,7 @@ func (g *GitOperations) GetStashList(ctx context.Context, repoPath string) ([]mo
 	for scanner.Scan() {
 		line := scanner.Text()
 		parts := strings.Split(line, "\t")
-		if len(parts) < 3 {
+		if len(parts) < stashListFieldCount {
 			continue
 		}
 
@@ -312,6 +322,10 @@ func (g *GitOperations) GetWorktreeList(ctx context.Context, repoPath string) ([
 	return worktrees, nil
 }
 
+// commitLogFieldCount is the number of tab-separated fields in the log
+// format below (hash, short hash, subject, author, date).
+const commitLogFieldCount = 5
+
 func (g *GitOperations) GetCommitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error) {
 	format := "%H\t%h\t%s\t%an\t%ct"
 	out, err := g.runGit(ctx, repoPath, "log", fmt.Sprintf("-n%d", count), "--format="+format)
@@ -324,7 +338,7 @@ func (g *GitOperations) GetCommitLog(ctx context.Context, repoPath string, count
 
 	for scanner.Scan() {
 		parts := strings.Split(scanner.Text(), "\t")
-		if len(parts) < 5 {
+		if len(parts) < commitLogFieldCount {
 			continue
 		}
 
@@ -386,8 +400,8 @@ func (g *GitOperations) PruneRemote(ctx context.Context, repoPath string) (bool,
 }
 
 func (g *GitOperations) CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error) {
-	mainBranch := "main"
-	if _, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", "main"); err != nil {
+	mainBranch := defaultMainBranch
+	if _, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", defaultMainBranch); err != nil {
 		if _, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", "master"); err == nil {
 			mainBranch = "master"
 		} else {
@@ -407,7 +421,7 @@ func (g *GitOperations) CleanupMergedBranches(ctx context.Context, repoPath stri
 		branch := strings.TrimSpace(scanner.Text())
 		branch = strings.TrimPrefix(branch, "* ")
 
-		if branch == mainBranch || branch == "master" || branch == "main" || branch == "" {
+		if branch == mainBranch || branch == "master" || branch == defaultMainBranch || branch == "" {
 			continue
 		}
 

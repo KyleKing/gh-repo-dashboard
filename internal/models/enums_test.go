@@ -3,6 +3,7 @@ package models
 import "testing"
 
 func TestVCSTypeString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		vcs      VCSType
 		expected string
@@ -19,6 +20,7 @@ func TestVCSTypeString(t *testing.T) {
 }
 
 func TestFilterModeString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		mode     FilterMode
 		expected string
@@ -39,6 +41,7 @@ func TestFilterModeString(t *testing.T) {
 }
 
 func TestFilterModeShortKey(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		mode     FilterMode
 		expected string
@@ -59,6 +62,7 @@ func TestFilterModeShortKey(t *testing.T) {
 }
 
 func TestAllFilterModes(t *testing.T) {
+	t.Parallel()
 	modes := AllFilterModes()
 	if len(modes) != 6 {
 		t.Errorf("expected 6 filter modes, got %d", len(modes))
@@ -66,6 +70,7 @@ func TestAllFilterModes(t *testing.T) {
 }
 
 func TestSortModeString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		mode     SortMode
 		expected string
@@ -84,6 +89,7 @@ func TestSortModeString(t *testing.T) {
 }
 
 func TestSortModeNext(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		mode     SortMode
 		expected SortMode
@@ -102,6 +108,7 @@ func TestSortModeNext(t *testing.T) {
 }
 
 func TestRepoStatusString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		status   RepoStatus
 		expected string
@@ -121,6 +128,7 @@ func TestRepoStatusString(t *testing.T) {
 }
 
 func TestItemKindString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		kind     ItemKind
 		expected string

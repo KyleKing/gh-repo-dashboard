@@ -6,6 +6,7 @@ import (
 )
 
 func TestRepoSummaryName(t *testing.T) {
+	t.Parallel()
 	s := RepoSummary{Path: "/home/user/projects/my-repo"}
 	if s.Name() != "my-repo" {
 		t.Errorf("expected 'my-repo', got '%s'", s.Name())
@@ -13,6 +14,7 @@ func TestRepoSummaryName(t *testing.T) {
 }
 
 func TestRepoSummaryUncommittedCount(t *testing.T) {
+	t.Parallel()
 	s := RepoSummary{
 		Staged:     2,
 		Unstaged:   3,
@@ -25,6 +27,7 @@ func TestRepoSummaryUncommittedCount(t *testing.T) {
 }
 
 func TestRepoSummaryIsDirty(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		summary  RepoSummary
@@ -64,6 +67,7 @@ func TestRepoSummaryIsDirty(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if tt.summary.IsDirty() != tt.expected {
 				t.Errorf("expected IsDirty() = %v, got %v", tt.expected, tt.summary.IsDirty())
 			}
@@ -72,6 +76,7 @@ func TestRepoSummaryIsDirty(t *testing.T) {
 }
 
 func TestRepoSummaryStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		summary  RepoSummary
@@ -106,6 +111,7 @@ func TestRepoSummaryStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if tt.summary.Status() != tt.expected {
 				t.Errorf("expected Status() = %v, got %v", tt.expected, tt.summary.Status())
 			}
@@ -114,6 +120,7 @@ func TestRepoSummaryStatus(t *testing.T) {
 }
 
 func TestRepoSummaryStatusSummary(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		summary  RepoSummary
@@ -158,6 +165,7 @@ func TestRepoSummaryStatusSummary(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if tt.summary.StatusSummary() != tt.expected {
 				t.Errorf("expected StatusSummary() = '%s', got '%s'", tt.expected, tt.summary.StatusSummary())
 			}
@@ -166,6 +174,7 @@ func TestRepoSummaryStatusSummary(t *testing.T) {
 }
 
 func TestRepoSummaryRelativeModified(t *testing.T) {
+	t.Parallel()
 	s := RepoSummary{}
 	if s.RelativeModified() != "—" {
 		t.Errorf("expected '—' for zero time, got '%s'", s.RelativeModified())
