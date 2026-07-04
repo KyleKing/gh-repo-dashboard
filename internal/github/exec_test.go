@@ -16,18 +16,18 @@ var (
 	errNoPRsFound = errors.New("no pull requests found")
 )
 
-func stubRunGH(t *testing.T, out []byte, err error) *[][]string {
-	t.Helper()
-	original := runGH
-	t.Cleanup(func() { runGH = original })
-
+// stubRunGH returns a context that makes runGH answer with (out, err) instead
+// of shelling out, plus a pointer to the recorded call args. It's local to the
+// returned context, so subtests using their own stubRunGH call can run with
+// t.Parallel() safely.
+func stubRunGH(out []byte, err error) (context.Context, *[][]string) {
 	var calls [][]string
-	runGH = func(_ context.Context, _ string, _ []string, args ...string) ([]byte, error) {
+	ctx := withGHRunner(context.Background(), func(_ context.Context, _ string, _ []string, args ...string) ([]byte, error) {
 		calls = append(calls, args)
 		return out, err
-	}
+	})
 
-	return &calls
+	return ctx, &calls
 }
 
 func TestGetPRForBranch(t *testing.T) {
@@ -86,9 +86,9 @@ func TestGetPRForBranch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cache.ClearAll()
-			calls := stubRunGH(t, tt.output, tt.runErr)
+			ctx, calls := stubRunGH(tt.output, tt.runErr)
 
-			pr, err := GetPRForBranch(context.Background(), "/repo", "feature-branch", "owner/repo")
+			pr, err := GetPRForBranch(ctx, "/repo", "feature-branch", "owner/repo")
 			if tt.expectErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -101,7 +101,7 @@ func TestGetPRForBranch(t *testing.T) {
 			}
 
 			if tt.expected != nil || tt.cachesNil {
-				cachedPR, cachedErr := GetPRForBranch(context.Background(), "/repo", "feature-branch", "owner/repo")
+				cachedPR, cachedErr := GetPRForBranch(ctx, "/repo", "feature-branch", "owner/repo")
 				if cachedErr != nil {
 					t.Errorf("expected cached result without error, got %v", cachedErr)
 				}
@@ -118,9 +118,9 @@ func TestGetPRForBranch(t *testing.T) {
 
 func TestGetPRForBranchArgs(t *testing.T) {
 	cache.ClearAll()
-	calls := stubRunGH(t, []byte(`{"number": 1}`), nil)
+	ctx, calls := stubRunGH([]byte(`{"number": 1}`), nil)
 
-	if _, err := GetPRForBranch(context.Background(), "/repo", "my-branch", "owner/repo"); err != nil {
+	if _, err := GetPRForBranch(ctx, "/repo", "my-branch", "owner/repo"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -193,9 +193,9 @@ func TestGetPRDetail(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cache.ClearAll()
-			calls := stubRunGH(t, tt.output, tt.runErr)
+			ctx, calls := stubRunGH(tt.output, tt.runErr)
 
-			detail, err := GetPRDetail(context.Background(), "/repo", 7)
+			detail, err := GetPRDetail(ctx, "/repo", 7)
 			if tt.expectErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -210,7 +210,7 @@ func TestGetPRDetail(t *testing.T) {
 				t.Errorf("expected %+v, got %+v", tt.expected, detail)
 			}
 
-			cachedDetail, err := GetPRDetail(context.Background(), "/repo", 7)
+			cachedDetail, err := GetPRDetail(ctx, "/repo", 7)
 			if err != nil {
 				t.Fatalf("unexpected error on cached call: %v", err)
 			}
@@ -293,9 +293,9 @@ func TestGetPRsForRepo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cache.ClearAll()
-			calls := stubRunGH(t, tt.output, tt.runErr)
+			ctx, calls := stubRunGH(tt.output, tt.runErr)
 
-			prs, err := GetPRsForRepo(context.Background(), "/repo", tt.upstream)
+			prs, err := GetPRsForRepo(ctx, "/repo", tt.upstream)
 			if tt.expectErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -320,13 +320,13 @@ func TestGetPRsForRepo(t *testing.T) {
 
 func TestGetPRsForRepoUsesCache(t *testing.T) {
 	cache.ClearAll()
-	calls := stubRunGH(t, []byte(`[{"number": 5, "title": "Cached"}]`), nil)
+	ctx, calls := stubRunGH([]byte(`[{"number": 5, "title": "Cached"}]`), nil)
 
-	first, err := GetPRsForRepo(context.Background(), "/repo", "owner/repo")
+	first, err := GetPRsForRepo(ctx, "/repo", "owner/repo")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	second, err := GetPRsForRepo(context.Background(), "/repo", "owner/repo")
+	second, err := GetPRsForRepo(ctx, "/repo", "owner/repo")
 	if err != nil {
 		t.Fatalf("unexpected error on cached call: %v", err)
 	}
@@ -354,9 +354,9 @@ func TestGetPRCount(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cache.ClearAll()
-			stubRunGH(t, tt.output, tt.runErr)
+			ctx, _ := stubRunGH(tt.output, tt.runErr)
 
-			count, err := GetPRCount(context.Background(), "/repo", "owner/repo")
+			count, err := GetPRCount(ctx, "/repo", "owner/repo")
 			if tt.expectErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -446,9 +446,9 @@ func TestGetWorkflowRunsForCommit(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cache.ClearAll()
-			calls := stubRunGH(t, tt.output, tt.runErr)
+			ctx, calls := stubRunGH(tt.output, tt.runErr)
 
-			summary, err := GetWorkflowRunsForCommit(context.Background(), "/repo", tt.commitSHA)
+			summary, err := GetWorkflowRunsForCommit(ctx, "/repo", tt.commitSHA)
 			if tt.expectErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -469,7 +469,7 @@ func TestGetWorkflowRunsForCommit(t *testing.T) {
 			}
 
 			if tt.expected != nil || tt.cachesNil {
-				cachedSummary, cachedErr := GetWorkflowRunsForCommit(context.Background(), "/repo", tt.commitSHA)
+				cachedSummary, cachedErr := GetWorkflowRunsForCommit(ctx, "/repo", tt.commitSHA)
 				if cachedErr != nil {
 					t.Errorf("expected cached result without error, got %v", cachedErr)
 				}

@@ -24,10 +24,13 @@ var (
 	errUnknownRevision   = errors.New("unknown revision")
 )
 
-func stubCommands(t *testing.T, canned map[string]string, failures map[string]error) {
+// stubCommands returns a context that makes runCommand answer from canned/failures
+// instead of shelling out. It's local to the returned context, so subtests using
+// their own stubCommands call can run with t.Parallel() safely.
+func stubCommands(t *testing.T, canned map[string]string, failures map[string]error) context.Context {
 	t.Helper()
-	orig := runCommand
-	runCommand = func(ctx context.Context, dir, name string, args ...string) (string, error) {
+
+	return withCommandRunner(context.Background(), func(ctx context.Context, dir, name string, args ...string) (string, error) {
 		key := name + " " + strings.Join(args, " ")
 		if err, ok := failures[key]; ok {
 			return "", err
@@ -37,8 +40,7 @@ func stubCommands(t *testing.T, canned map[string]string, failures map[string]er
 		}
 
 		return "", fmt.Errorf("%s: %w", key, errUnexpectedCommand)
-	}
-	t.Cleanup(func() { runCommand = orig })
+	})
 }
 
 func TestRunCommandReal(t *testing.T) {
@@ -78,12 +80,12 @@ func TestRunCommandReal(t *testing.T) {
 }
 
 func TestGitRunGitWrapsExitError(t *testing.T) {
-	stubCommands(t, nil, map[string]error{
+	ctx := stubCommands(t, nil, map[string]error{
 		"git status --porcelain -z": &exec.ExitError{Stderr: []byte("fatal: not a repo")},
 	})
 
 	g := NewGitOperations()
-	_, err := g.runGit(context.Background(), testRepoPath, "status", "--porcelain", "-z")
+	_, err := g.runGit(ctx, testRepoPath, "status", "--porcelain", "-z")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -132,10 +134,10 @@ func TestGitGetCurrentBranch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
-			branch, err := g.GetCurrentBranch(context.Background(), testRepoPath)
+			branch, err := g.GetCurrentBranch(ctx, testRepoPath)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -168,10 +170,10 @@ func TestGitGetUpstream(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
-			upstream, err := g.GetUpstream(context.Background(), testRepoPath, "main")
+			upstream, err := g.GetUpstream(ctx, testRepoPath, "main")
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -211,10 +213,10 @@ func TestGitGetAheadBehind(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
-			ahead, behind, err := g.GetAheadBehind(context.Background(), testRepoPath, "main", "origin/main")
+			ahead, behind, err := g.GetAheadBehind(ctx, testRepoPath, "main", "origin/main")
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -226,12 +228,11 @@ func TestGitGetAheadBehind(t *testing.T) {
 }
 
 func TestGitStatusCountMethods(t *testing.T) {
-	stubCommands(t, map[string]string{
+	ctx := stubCommands(t, map[string]string{
 		"git status --porcelain -z": "M  staged.txt\x00 M unstaged.txt\x00?? new.txt\x00UU conflict.txt\x00",
 	}, nil)
 
 	g := NewGitOperations()
-	ctx := context.Background()
 
 	tests := []struct {
 		name     string
@@ -336,10 +337,10 @@ func TestGitGetRepoSummary(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
-			summary, err := g.GetRepoSummary(context.Background(), testRepoPath)
+			summary, err := g.GetRepoSummary(ctx, testRepoPath)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -390,10 +391,10 @@ func TestGitGetBranchList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
-			branches, err := g.GetBranchList(context.Background(), testRepoPath)
+			branches, err := g.GetBranchList(ctx, testRepoPath)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -444,10 +445,10 @@ func TestGitGetStashList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
-			stashes, err := g.GetStashList(context.Background(), testRepoPath)
+			stashes, err := g.GetStashList(ctx, testRepoPath)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -500,10 +501,10 @@ func TestGitGetWorktreeList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
-			worktrees, err := g.GetWorktreeList(context.Background(), testRepoPath)
+			worktrees, err := g.GetWorktreeList(ctx, testRepoPath)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -554,10 +555,10 @@ func TestGitGetCommitLog(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
-			commits, err := g.GetCommitLog(context.Background(), testRepoPath, 2)
+			commits, err := g.GetCommitLog(ctx, testRepoPath, 2)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -600,10 +601,10 @@ func TestGitGetLastModified(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
-			ts, err := g.GetLastModified(context.Background(), testRepoPath)
+			ts, err := g.GetLastModified(ctx, testRepoPath)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -636,10 +637,10 @@ func TestGitGetRemoteURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
-			url, err := g.GetRemoteURL(context.Background(), testRepoPath)
+			url, err := g.GetRemoteURL(ctx, testRepoPath)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -655,15 +656,15 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 		name       string
 		canned     map[string]string
 		failures   map[string]error
-		run        func(*GitOperations) (bool, string, error)
+		run        func(context.Context, *GitOperations) (bool, string, error)
 		expectedOK bool
 		expected   string
 	}{
 		{
 			name:   "fetch success",
 			canned: map[string]string{"git fetch --all --prune": ""},
-			run: func(g *GitOperations) (bool, string, error) {
-				return g.FetchAll(context.Background(), testRepoPath)
+			run: func(ctx context.Context, g *GitOperations) (bool, string, error) {
+				return g.FetchAll(ctx, testRepoPath)
 			},
 			expectedOK: true,
 			expected:   "Fetched from all remotes",
@@ -671,8 +672,8 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 		{
 			name:     "fetch failure",
 			failures: map[string]error{"git fetch --all --prune": errNetworkDown},
-			run: func(g *GitOperations) (bool, string, error) {
-				return g.FetchAll(context.Background(), testRepoPath)
+			run: func(ctx context.Context, g *GitOperations) (bool, string, error) {
+				return g.FetchAll(ctx, testRepoPath)
 			},
 			expectedOK: false,
 			expected:   "network down",
@@ -680,8 +681,8 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 		{
 			name:   "prune success",
 			canned: map[string]string{"git remote prune origin": ""},
-			run: func(g *GitOperations) (bool, string, error) {
-				return g.PruneRemote(context.Background(), testRepoPath)
+			run: func(ctx context.Context, g *GitOperations) (bool, string, error) {
+				return g.PruneRemote(ctx, testRepoPath)
 			},
 			expectedOK: true,
 			expected:   "Pruned stale remote branches",
@@ -689,8 +690,8 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 		{
 			name:     "prune failure",
 			failures: map[string]error{"git remote prune origin": errNoRemote},
-			run: func(g *GitOperations) (bool, string, error) {
-				return g.PruneRemote(context.Background(), testRepoPath)
+			run: func(ctx context.Context, g *GitOperations) (bool, string, error) {
+				return g.PruneRemote(ctx, testRepoPath)
 			},
 			expectedOK: false,
 			expected:   "no remote",
@@ -699,9 +700,9 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
-			ok, msg, err := tt.run(NewGitOperations())
+			ok, msg, err := tt.run(ctx, NewGitOperations())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -770,10 +771,10 @@ func TestGitCleanupMergedBranches(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := NewGitOperations()
-			ok, msg, err := g.CleanupMergedBranches(context.Background(), testRepoPath)
+			ok, msg, err := g.CleanupMergedBranches(ctx, testRepoPath)
 			if err != nil {
 				t.Fatal(err)
 			}

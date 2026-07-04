@@ -19,12 +19,12 @@ const jjCommitFormat = `change_id.short() ++ "\t" ++ description.first_line() ++
 const jjTimestampFormat = `committer.timestamp().utc().format("%s")`
 
 func TestJJRunJJWrapsExitError(t *testing.T) {
-	stubCommands(t, nil, map[string]error{
+	ctx := stubCommands(t, nil, map[string]error{
 		jjKey("status"): &exec.ExitError{Stderr: []byte("Error: no jj repo")},
 	})
 
 	j := NewJJOperations()
-	_, err := j.runJJ(context.Background(), testRepoPath, "status")
+	_, err := j.runJJ(ctx, testRepoPath, "status")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -70,10 +70,10 @@ func TestJJGetCurrentBranch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
-			branch, err := j.GetCurrentBranch(context.Background(), testRepoPath)
+			branch, err := j.GetCurrentBranch(ctx, testRepoPath)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -122,10 +122,10 @@ func TestJJGetUpstream(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
-			upstream, err := j.GetUpstream(context.Background(), testRepoPath, tt.branch)
+			upstream, err := j.GetUpstream(ctx, testRepoPath, tt.branch)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -181,10 +181,10 @@ func TestJJGetAheadBehind(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
-			ahead, behind, err := j.GetAheadBehind(context.Background(), testRepoPath, tt.branch, tt.upstream)
+			ahead, behind, err := j.GetAheadBehind(ctx, testRepoPath, tt.branch, tt.upstream)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -196,12 +196,11 @@ func TestJJGetAheadBehind(t *testing.T) {
 }
 
 func TestJJCountMethods(t *testing.T) {
-	stubCommands(t, map[string]string{
+	ctx := stubCommands(t, map[string]string{
 		jjKey("status"): "Working copy changes:\nM changed.txt\nA new.txt\nWorking copy : abc123",
 	}, nil)
 
 	j := NewJJOperations()
-	ctx := context.Background()
 
 	tests := []struct {
 		name     string
@@ -271,10 +270,10 @@ func TestJJGetRepoSummary(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
-			summary, err := j.GetRepoSummary(context.Background(), testRepoPath)
+			summary, err := j.GetRepoSummary(ctx, testRepoPath)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -326,10 +325,10 @@ func TestJJGetBranchList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
-			branches, err := j.GetBranchList(context.Background(), testRepoPath)
+			branches, err := j.GetBranchList(ctx, testRepoPath)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -390,10 +389,10 @@ func TestJJGetWorktreeList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
-			worktrees, err := j.GetWorktreeList(context.Background(), testRepoPath)
+			worktrees, err := j.GetWorktreeList(ctx, testRepoPath)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -444,10 +443,10 @@ func TestJJGetCommitLog(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
-			commits, err := j.GetCommitLog(context.Background(), testRepoPath, 2)
+			commits, err := j.GetCommitLog(ctx, testRepoPath, 2)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -487,10 +486,10 @@ func TestJJGetLastModified(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
-			ts, err := j.GetLastModified(context.Background(), testRepoPath)
+			ts, err := j.GetLastModified(ctx, testRepoPath)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -530,10 +529,10 @@ func TestJJGetRemoteURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
-			url, err := j.GetRemoteURL(context.Background(), testRepoPath)
+			url, err := j.GetRemoteURL(ctx, testRepoPath)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
 			}
@@ -551,15 +550,15 @@ func TestJJFetchAllAndPruneRemote(t *testing.T) {
 		name       string
 		canned     map[string]string
 		failures   map[string]error
-		run        func(*JJOperations) (bool, string, error)
+		run        func(context.Context, *JJOperations) (bool, string, error)
 		expectedOK bool
 		expected   string
 	}{
 		{
 			name:   "fetch success",
 			canned: map[string]string{fetchKey: ""},
-			run: func(j *JJOperations) (bool, string, error) {
-				return j.FetchAll(context.Background(), testRepoPath)
+			run: func(ctx context.Context, j *JJOperations) (bool, string, error) {
+				return j.FetchAll(ctx, testRepoPath)
 			},
 			expectedOK: true,
 			expected:   "Fetched from all remotes",
@@ -567,16 +566,16 @@ func TestJJFetchAllAndPruneRemote(t *testing.T) {
 		{
 			name:     "fetch failure",
 			failures: map[string]error{fetchKey: errNetworkDown},
-			run: func(j *JJOperations) (bool, string, error) {
-				return j.FetchAll(context.Background(), testRepoPath)
+			run: func(ctx context.Context, j *JJOperations) (bool, string, error) {
+				return j.FetchAll(ctx, testRepoPath)
 			},
 			expectedOK: false,
 			expected:   "network down",
 		},
 		{
 			name: "prune is a no-op",
-			run: func(j *JJOperations) (bool, string, error) {
-				return j.PruneRemote(context.Background(), testRepoPath)
+			run: func(ctx context.Context, j *JJOperations) (bool, string, error) {
+				return j.PruneRemote(ctx, testRepoPath)
 			},
 			expectedOK: true,
 			expected:   "JJ doesn't require explicit pruning",
@@ -585,9 +584,9 @@ func TestJJFetchAllAndPruneRemote(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
-			ok, msg, err := tt.run(NewJJOperations())
+			ok, msg, err := tt.run(ctx, NewJJOperations())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -640,10 +639,10 @@ func TestJJCleanupMergedBranches(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stubCommands(t, tt.canned, tt.failures)
+			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := NewJJOperations()
-			ok, msg, err := j.CleanupMergedBranches(context.Background(), testRepoPath)
+			ok, msg, err := j.CleanupMergedBranches(ctx, testRepoPath)
 			if err != nil {
 				t.Fatal(err)
 			}
