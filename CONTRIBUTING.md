@@ -1,206 +1,140 @@
-# Contributing to Repo Dashboard
+# Contributing to gh-repo-dashboard
 
-## Development Setup
+## Setup
 
-### Prerequisites
-
-- Go 1.23+
-- git (required for core functionality)
-- jj (optional, for Jujutsu repository support)
-- gh (GitHub CLI, optional for PR features)
-
-### Installation
+Prerequisites: Go (see `go.mod`), [mise](https://mise.jdx.dev/), [hk](https://hk.jdx.dev/)
 
 ```bash
-# Build and run
-go build -o gh-repo-dashboard .
-./gh-repo-dashboard ~/Developer
+mise install
+hk install --mise
+mise run ci
+```
 
-# Or install as gh extension
+## Tasks
+
+Shared tasks live in `.config/mise/conf.d/template.toml` (managed by the copier template).
+Project-specific tasks go in additional `.config/mise/conf.d/*.toml` files, which mise always loads regardless of `MISE_ENV`.
+
+| Command | Description |
+|---------|-------------|
+| `mise run bench` | Run benchmarks |
+| `mise run build` | Build binary |
+| `mise run ci` | Full CI check (tests + build) |
+| `mise run clean` | Clean build artifacts |
+| `mise run demo` | Generate VHS demo recordings |
+| `mise run format` | Auto-fix lint and formatting |
+| `mise run hooks` | Run git hooks |
+| `mise run lint` | Run linter |
+| `mise run test` | Run tests with coverage |
+| `mise tasks` | List all available tasks |
+
+## Code Guidelines
+
+Follow [AGENTS.md](AGENTS.md) for code organization, testing patterns, and error handling.
+
+Linting is configured in `.golangci.toml` with 40+ rules. Run `mise run format` to auto-fix.
+
+## Git Workflow
+
+Conventional commits enforced via [commitizen](https://commitizen-tools.github.io/commitizen/):
+
+```
+<type>(<scope>): <subject>
+```
+
+Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+
+Git hooks run automatically via hk on commit and push.
+
+
+## Development Install
+
+For GH CLI extensions, install locally during development:
+
+```bash
+mise run build
 gh extension install .
-gh repo-dashboard ~/Developer
 ```
 
-## Testing
-
-### Unit Tests
-
-Run all tests:
-```bash
-go test ./...
-```
-
-Run with verbose output:
-```bash
-go test -v ./...
-```
-
-Run specific package:
-```bash
-go test -v ./internal/filters/...
-```
-
-Run specific test:
-```bash
-go test -v -run TestFilterRepos ./internal/filters/
-```
-
-Run with coverage:
-```bash
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out
-```
-
-Run with race detector:
-```bash
-go test -race ./...
-```
-
-### Visual Testing
-
-See `test-improvements.md` for comprehensive testing patterns:
-
-1. **teatest (Golden File Testing)** - Visual regression with snapshot comparison
-2. **catwalk (Data-Driven Testing)** - Complex interaction sequence testing
-3. **Direct Testing** - State transition and business logic testing
+After code changes, rebuild and reinstall:
 
 ```bash
-# Run golden file tests (if using build tag)
-go test -tags=golden ./...
-
-# Update golden files
-go test -tags=golden -update ./...
+gh extension remove gh-repo-dashboard
+mise run build
+gh extension install .
 ```
 
-## Recording Demo
-
-Generate demo GIF using VHS:
+Or test directly without installing:
 
 ```bash
-# Install VHS (if not already installed)
-# macOS:
-brew install vhs
-
-# Other platforms:
-# https://github.com/charmbracelet/vhs#installation
-
-# Record the demo
-vhs < .github/assets/demo.tape
+mise run build
+./gh-repo-dashboard [args]
 ```
 
-The demo will be saved as `.github/assets/demo.gif`.
 
-**Editing the demo:**
-1. Edit `.github/assets/demo.tape` to change the recording script
-2. Run `vhs < .github/assets/demo.tape` to regenerate
-3. Commit both the tape file and generated GIF
 
-**VHS tips:**
-- Use `Set PlaybackSpeed` to control animation speed
-- Use `Sleep` between actions to let UI settle
-- Use `Hide`/`Show` to hide setup commands
-- Use Catppuccin Macchiato theme to match app theme
 
-## Code Style
+## Releases
 
-See [CLAUDE.md](./CLAUDE.md) for detailed code style guidelines.
+Automated via goreleaser on tag push. **Note:** For GH CLI extensions, the first release is required before users can run `gh extension install kyleking/gh-repo-dashboard`.
 
-**Key principles:**
-- Use interfaces for abstraction
-- Write small, composable functions with single responsibility
-- Return errors explicitly with context
-- Use `context.Context` for cancellation and timeouts
-- No inline comments explaining what code does
-- Add doc comments for exported functions/types
+### Creating a Release
 
-## Architecture
+1. Tag and push:
 
-See [CLAUDE.md](./CLAUDE.md) for detailed architecture documentation.
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
 
-**Key packages:**
-- `internal/app/` - Bubble Tea app (Model, Update, View)
-- `internal/models/` - Data structures (RepoSummary, BranchInfo, PRInfo)
-- `internal/filters/` - Filter and sort logic with fuzzy search
-- `internal/vcs/` - VCS abstraction (git and jj implementations)
-- `internal/github/` - GitHub CLI integration
-- `internal/discovery/` - Repository discovery
-- `internal/cache/` - Generic TTL-based caching
-- `internal/batch/` - Batch task runner
+2. GitHub Actions will automatically:
+   - Run tests and build
+   - Create release with binaries for Linux, macOS, Windows, and FreeBSD (amd64/arm64)
+   - Publish to GitHub Releases
 
-## Common Tasks
+3. Verify the release has properly named binaries:
+   - `gh-repo-dashboard-linux-amd64`
+   - `gh-repo-dashboard-darwin-arm64`
+   - `gh-repo-dashboard-windows-amd64.exe`
+   - etc.
 
-### Adding a new filter mode
+### Updating the Homebrew Formula
 
-1. Add const to `FilterMode` in `internal/models/enums.go`
-2. Add filter function in `internal/filters/filter.go`
-3. Add case to `FilterRepos()` in `internal/filters/filter.go`
-4. Add tests in `internal/filters/filter_test.go`
+After a release, update `Formula/gh-repo-dashboard.rb`:
 
-### Adding a new keybinding
+1. Download the release binaries from the GitHub release page
+2. Generate SHA256 checksums:
 
-1. Add key binding to `internal/app/keymap.go`
-2. Add case to key handling in `internal/app/update.go`
-3. Update help text in `internal/app/view.go`
-4. Add test in `internal/app/app_test.go`
+   ```bash
+   shasum -a 256 gh-repo-dashboard-darwin-arm64 gh-repo-dashboard-darwin-amd64 gh-repo-dashboard-linux-arm64 gh-repo-dashboard-linux-amd64
+   ```
 
-### Adding a new view mode
+   Or run `mise run brew:sha` for a reminder of these steps.
 
-1. Add const to `ViewMode` in `internal/app/app.go`
-2. Add view rendering in `internal/app/view.go`
-3. Add update handling in `internal/app/update.go`
-4. Add navigation logic (enter/exit)
+3. Update the `version` and `sha256` values in `Formula/gh-repo-dashboard.rb`
+4. Commit and push the formula changes
 
-### Adding a new batch task
+### Installing via Homebrew
 
-1. Add method to `VCSOperations` interface in `internal/vcs/operations.go`
-2. Implement in both `GitOperations` and `JJOperations`
-3. Create task function in `internal/batch/tasks.go`
-4. Add handler in `internal/app/update.go`
-5. Add keybinding to `internal/app/keymap.go`
-6. Add tests to `internal/batch/batch_test.go`
-
-## External Dependencies
-
-### Required
-
-- **git** - Core functionality depends on git CLI
-
-### Optional
-
-- **jj** (Jujutsu) - For jj repository support
-  - Install: See https://github.com/martinvonz/jj
-
-- **gh** (GitHub CLI) - PR features require this
-  - Install: `brew install gh` (macOS) or see https://cli.github.com/
-
-## Debugging
-
-### Logging
+Users can install directly from the repository formula:
 
 ```bash
-# Run with debug output to stderr
-./gh-repo-dashboard ~/Developer 2>debug.log
+brew install --formula https://github.com/kyleking/gh-repo-dashboard/raw/main/Formula/gh-repo-dashboard.rb
 ```
 
-### Common Issues
+Or from a local checkout:
 
-**Terminal size issues:**
-- Model receives `tea.WindowSizeMsg` on startup and resize
-- Ensure width/height are updated in Update()
+```bash
+brew install --formula ./Formula/gh-repo-dashboard.rb
+```
 
-**Message ordering:**
-- Commands execute asynchronously
-- Don't assume message arrival order
-- Use state flags to track loading/completion
+To set up a [homebrew tap](https://docs.brew.sh/Taps) for `brew install kyleking/tap/gh-repo-dashboard`, create a `homebrew-tap` repo at `https://github.com/kyleking/homebrew-tap` and copy the formula there.
 
-**Goroutine leaks:**
-- Use `context.Context` for cancellation
-- Cancel contexts when leaving views or quitting
 
-## Performance Considerations
+## Troubleshooting
 
-- Fuzzy search uses sahilm/fuzzy for efficient matching
-- Progressive loading prevents blocking on initial scan
-- TTL caching with mutex protection for thread safety
-- Goroutines with Tea commands for parallel data loading
-- Lipgloss style caching (reuse style objects)
+```bash
+mise install --force   # Reinstall tools
+hk install --mise --force  # Reinstall hooks
+go test -v -run TestName ./package  # Debug specific test
+```

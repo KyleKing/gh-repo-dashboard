@@ -1,3 +1,4 @@
+// Package main implements gh-repo-dashboard: K9s-inspired Bubble Tea TUI for managing multiple git and jj repositories
 package main
 
 import (
@@ -8,6 +9,12 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/kyleking/gh-repo-dashboard/internal/app"
+)
+
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 )
 
 func findGitRoot(startPath string) (string, bool) {
@@ -33,8 +40,14 @@ func findGitRoot(startPath string) (string, bool) {
 }
 
 func main() {
+	showVersion := flag.Bool("version", false, "Show version information")
 	depth := flag.Int("depth", 1, "Maximum directory depth to scan")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("gh-repo-dashboard %s (commit: %s, built: %s)\n", version, commit, date)
+		os.Exit(0)
+	}
 
 	scanPaths := flag.Args()
 	if len(scanPaths) == 0 {
