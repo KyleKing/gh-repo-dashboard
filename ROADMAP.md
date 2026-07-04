@@ -105,11 +105,6 @@ behavior so fixes are visible diffs. Fix opportunistically between milestones.
   and the error is swallowed on cache hits
 - git `GetBranchList` silently drops the last branch when it has no upstream
   (output trimming eats the trailing tab, leaving too few fields)
-- jj `GetUpstream`/`GetBranchList` misparse real `jj bookmark list` output:
-  remotes appear on indented `@origin:` continuation lines, so tracking is
-  never detected and `@origin` can be parsed as a separate bookmark
-- jj `GetWorktreeList` regex expects `name@id: path` but `jj workspace list`
-  emits `name: change_id ...`, so real output never matches
 
 ## Deferred features
 
