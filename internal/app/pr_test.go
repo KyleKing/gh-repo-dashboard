@@ -776,10 +776,10 @@ func TestPRDetailErrorPreservesBasicInfo(t *testing.T) {
 	updatedModel, _ := m.Update(errorMsg)
 	m = updatedModel.(Model)
 
-	// BUG: prDetail.Number should NOT be cleared when there's an error
-	// It should preserve the basic info that was already populated
+	// prDetail.Number must survive an error: it preserves the basic info
+	// that was already populated before the detail fetch failed.
 	if m.prDetail.Number == 0 {
-		t.Error("ERROR: prDetail.Number was cleared to 0 when error occurred - basic info should be preserved!")
+		t.Error("prDetail.Number was cleared to 0 when error occurred - basic info should be preserved!")
 	}
 	if m.prDetail.Number != 456 {
 		t.Errorf("expected PR #456 to be preserved after error, got #%d", m.prDetail.Number)

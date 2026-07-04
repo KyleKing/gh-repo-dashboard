@@ -10,22 +10,9 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
-type workflowResponse struct {
-	Runs []workflowRun `json:"workflow_runs"`
-}
-
-type workflowRun struct {
-	ID         int64  `json:"id"`
-	Name       string `json:"name"`
-	Status     string `json:"status"`
-	Conclusion string `json:"conclusion"`
-	HTMLURL    string `json:"html_url"`
-	CreatedAt  string `json:"created_at"`
-	UpdatedAt  string `json:"updated_at"`
-}
-
 func GetWorkflowRunsForCommit(ctx context.Context, repoPath, commitSHA string) (*models.WorkflowSummary, error) {
 	if commitSHA == "" {
+		//nolint:nilnil // no commit means nothing to look up, not a failure
 		return nil, nil
 	}
 

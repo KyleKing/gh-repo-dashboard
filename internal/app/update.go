@@ -301,6 +301,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.viewMode = ViewModeRepoList
 		case ViewModeSort:
 			m.viewMode = ViewModeRepoList
+		default:
+			// no back transition from this view
 		}
 
 		return m, nil
@@ -601,6 +603,9 @@ func (m Model) handleRefresh() (tea.Model, tea.Cmd) {
 		if m.selectedRepo != "" && m.selectedPR.Number > 0 {
 			cmds = append(cmds, loadPRDetailCmd(m.selectedRepo, m.selectedPR.Number))
 		}
+
+	default:
+		// no per-view refresh behavior for this view
 	}
 
 	return m, tea.Batch(cmds...)
@@ -972,10 +977,6 @@ func (m *Model) updateFilteredPaths() {
 	}
 }
 
-func (m Model) startBatchTask(taskName string, taskCmd func([]string) tea.Cmd) (tea.Model, tea.Cmd) {
-	return m.startBatchTaskOn(taskName, m.filteredPaths, taskCmd)
-}
-
 func (m Model) startBatchTaskOn(taskName string, paths []string, taskCmd func([]string) tea.Cmd) (tea.Model, tea.Cmd) {
 	if len(paths) == 0 {
 		return m, nil
@@ -1098,23 +1099,6 @@ func loadPRCountCmd(path, upstream string) tea.Cmd {
 		}
 
 		return PRCountLoadedMsg{Path: path, Count: count}
-	}
-}
-
-func loadPRListCmd(path, upstream string) tea.Cmd {
-	if upstream == "" {
-		return nil
-	}
-
-	return func() tea.Msg {
-		ctx := context.Background()
-		prs, err := github.GetPRsForRepo(ctx, path, upstream)
-
-		return PRListLoadedMsg{
-			Path:  path,
-			PRs:   prs,
-			Error: err,
-		}
 	}
 }
 

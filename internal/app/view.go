@@ -198,7 +198,7 @@ func (m Model) renderStatusBar() string {
 	}
 
 	if len(enabledSorts) > 0 {
-		for i := range len(enabledSorts) {
+		for i := range enabledSorts {
 			for _, s := range m.activeSorts {
 				if s.IsEnabled() && s.Priority == i {
 					parts = append(parts, styles.Badge(s.DisplayName(), styles.SortBadgeStyle))
@@ -550,6 +550,8 @@ func (m Model) renderRepoDetail() string {
 		footer = "tab: switch tabs  j/k: navigate  enter: view branch  esc: back"
 	case DetailTabPRs:
 		footer = "tab: switch tabs  j/k: navigate  enter: view PR  esc: back"
+	default:
+		// stashes/worktrees tabs use the generic footer above
 	}
 
 	contentLines := strings.Count(b.String(), "\n")
@@ -1007,7 +1009,7 @@ func (m Model) renderSortModal() string {
 		}
 	}
 
-	for i := range len(sortsByPriority) {
+	for i := range sortsByPriority {
 		for j := range sortsByPriority {
 			if sortsByPriority[j].Priority == i {
 				break

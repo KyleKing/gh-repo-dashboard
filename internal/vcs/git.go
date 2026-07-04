@@ -60,11 +60,11 @@ func (g *GitOperations) GetRepoSummary(ctx context.Context, repoPath string) (mo
 		summary.Behind = behind
 	}
 
-	staged, unstaged, untracked, conflicted := g.getStatusCounts(ctx, repoPath)
-	summary.Staged = staged
-	summary.Unstaged = unstaged
-	summary.Untracked = untracked
-	summary.Conflicted = conflicted
+	counts := g.getStatusCounts(ctx, repoPath)
+	summary.Staged = counts.staged
+	summary.Unstaged = counts.unstaged
+	summary.Untracked = counts.untracked
+	summary.Conflicted = counts.conflicted
 
 	stashCount, _ := g.getStashCount(ctx, repoPath)
 	summary.StashCount = stashCount
@@ -120,10 +120,19 @@ func (g *GitOperations) GetAheadBehind(ctx context.Context, repoPath, branch, up
 	return ahead, behind, nil
 }
 
-func (g *GitOperations) getStatusCounts(ctx context.Context, repoPath string) (staged, unstaged, untracked, conflicted int) {
+type statusCounts struct {
+	staged     int
+	unstaged   int
+	untracked  int
+	conflicted int
+}
+
+func (g *GitOperations) getStatusCounts(ctx context.Context, repoPath string) statusCounts {
+	var counts statusCounts
+
 	out, err := g.runGit(ctx, repoPath, "status", "--porcelain", "-z")
 	if err != nil {
-		return staged, unstaged, untracked, conflicted
+		return counts
 	}
 
 	entries := strings.Split(out, "\x00")
@@ -136,40 +145,36 @@ func (g *GitOperations) getStatusCounts(ctx context.Context, repoPath string) (s
 
 		switch {
 		case x == 'U' || y == 'U' || (x == 'D' && y == 'D') || (x == 'A' && y == 'A'):
-			conflicted++
+			counts.conflicted++
 		case x == '?':
-			untracked++
+			counts.untracked++
 		default:
 			if x != ' ' && x != '?' {
-				staged++
+				counts.staged++
 			}
 			if y != ' ' && y != '?' {
-				unstaged++
+				counts.unstaged++
 			}
 		}
 	}
 
-	return staged, unstaged, untracked, conflicted
+	return counts
 }
 
 func (g *GitOperations) GetStagedCount(ctx context.Context, repoPath string) (int, error) {
-	staged, _, _, _ := g.getStatusCounts(ctx, repoPath)
-	return staged, nil
+	return g.getStatusCounts(ctx, repoPath).staged, nil
 }
 
 func (g *GitOperations) GetUnstagedCount(ctx context.Context, repoPath string) (int, error) {
-	_, unstaged, _, _ := g.getStatusCounts(ctx, repoPath)
-	return unstaged, nil
+	return g.getStatusCounts(ctx, repoPath).unstaged, nil
 }
 
 func (g *GitOperations) GetUntrackedCount(ctx context.Context, repoPath string) (int, error) {
-	_, _, untracked, _ := g.getStatusCounts(ctx, repoPath)
-	return untracked, nil
+	return g.getStatusCounts(ctx, repoPath).untracked, nil
 }
 
 func (g *GitOperations) GetConflictedCount(ctx context.Context, repoPath string) (int, error) {
-	_, _, _, conflicted := g.getStatusCounts(ctx, repoPath)
-	return conflicted, nil
+	return g.getStatusCounts(ctx, repoPath).conflicted, nil
 }
 
 func (g *GitOperations) getStashCount(ctx context.Context, repoPath string) (int, error) {

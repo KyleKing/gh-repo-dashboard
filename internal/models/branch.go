@@ -58,6 +58,7 @@ func (b BranchDetail) FileChangesSummary() string {
 	if len(parts) == 0 {
 		return "No uncommitted changes"
 	}
+
 	return strings.Join(parts, ", ")
 }
 

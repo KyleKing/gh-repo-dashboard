@@ -413,6 +413,8 @@ func TestSortModalPriorityMoves(t *testing.T) {
 			nameIdx = i
 		case models.SortModeModified:
 			modIdx = i
+		default:
+			// only name/modified indices are needed below
 		}
 	}
 

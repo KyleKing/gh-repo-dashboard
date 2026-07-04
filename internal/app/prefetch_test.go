@@ -59,7 +59,7 @@ func TestPrefetchOnTabSwitch(t *testing.T) {
 
 	// Switch to PR tab
 	msg := tea.KeyPressMsg{Code: tea.KeyTab}
-	updatedModel, cmd := m.Update(msg)
+	updatedModel, _ := m.Update(msg)
 	m = updatedModel.(Model)
 
 	if m.detailTab != DetailTabStashes {
@@ -71,7 +71,7 @@ func TestPrefetchOnTabSwitch(t *testing.T) {
 	m = updatedModel.(Model)
 
 	// Tab to PRs
-	updatedModel, cmd = m.Update(msg)
+	updatedModel, cmd := m.Update(msg)
 	m = updatedModel.(Model)
 
 	if m.detailTab != DetailTabPRs {

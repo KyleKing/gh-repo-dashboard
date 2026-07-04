@@ -120,8 +120,7 @@ func (j *JJOperations) GetRepoSummary(ctx context.Context, repoPath string) (mod
 		}
 	}
 
-	_, unstaged, _, _ := j.getStatusCounts(ctx, repoPath)
-	summary.Unstaged = unstaged
+	summary.Unstaged = j.getUnstagedCount(ctx, repoPath)
 
 	lastMod, _ := j.GetLastModified(ctx, repoPath)
 	if lastMod > 0 {
@@ -185,12 +184,15 @@ func (j *JJOperations) GetAheadBehind(ctx context.Context, repoPath, branch, ups
 	return 0, 0, nil
 }
 
-func (j *JJOperations) getStatusCounts(ctx context.Context, repoPath string) (staged, unstaged, untracked, conflicted int) {
+// getUnstagedCount returns jj's uncommitted-change count. There is no
+// separate staged/untracked/conflicted state, so those always report zero.
+func (j *JJOperations) getUnstagedCount(ctx context.Context, repoPath string) int {
 	out, err := j.runJJ(ctx, repoPath, "status")
 	if err != nil {
-		return staged, unstaged, untracked, conflicted
+		return 0
 	}
 
+	unstaged := 0
 	for _, line := range strings.Split(out, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "A ") || strings.HasPrefix(trimmed, "M ") ||
@@ -199,7 +201,7 @@ func (j *JJOperations) getStatusCounts(ctx context.Context, repoPath string) (st
 		}
 	}
 
-	return 0, unstaged, 0, 0
+	return unstaged
 }
 
 func (j *JJOperations) GetStagedCount(ctx context.Context, repoPath string) (int, error) {
@@ -207,8 +209,7 @@ func (j *JJOperations) GetStagedCount(ctx context.Context, repoPath string) (int
 }
 
 func (j *JJOperations) GetUnstagedCount(ctx context.Context, repoPath string) (int, error) {
-	_, unstaged, _, _ := j.getStatusCounts(ctx, repoPath)
-	return unstaged, nil
+	return j.getUnstagedCount(ctx, repoPath), nil
 }
 
 func (j *JJOperations) GetUntrackedCount(ctx context.Context, repoPath string) (int, error) {

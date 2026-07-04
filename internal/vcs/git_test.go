@@ -254,7 +254,7 @@ func TestParseBranchTrackingInfo(t *testing.T) {
 	}
 }
 
-func parseBranchTracking(s string) (ahead, behind int) {
+func parseBranchTracking(s string) (int, int) {
 	if s == "" || s == "[gone]" {
 		return 0, 0
 	}
@@ -265,6 +265,7 @@ func parseBranchTracking(s string) (ahead, behind int) {
 		return 0, 0
 	}
 
+	var ahead, behind int
 	if matches[1] != "" {
 		ahead, _ = strconv.Atoi(matches[1])
 	}
@@ -476,13 +477,13 @@ func TestParseRevListOutput(t *testing.T) {
 	}
 }
 
-func parseRevListOutput(out string) (ahead, behind int) {
+func parseRevListOutput(out string) (int, int) {
 	parts := strings.Fields(out)
 	if len(parts) != 2 {
 		return 0, 0
 	}
-	ahead, _ = strconv.Atoi(parts[0])
-	behind, _ = strconv.Atoi(parts[1])
+	ahead, _ := strconv.Atoi(parts[0])
+	behind, _ := strconv.Atoi(parts[1])
 
 	return ahead, behind
 }
