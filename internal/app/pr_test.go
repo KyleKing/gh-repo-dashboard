@@ -401,7 +401,7 @@ func TestPRDetailUpdateWithMessage(t *testing.T) {
 	}
 
 	updatedModel, _ := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.prDetail.Number != 123 {
 		t.Errorf("expected PR #123, got #%d", m.prDetail.Number)
@@ -498,7 +498,7 @@ func TestStatusMessages(t *testing.T) {
 
 	msg := StatusMsg{Message: "Test status"}
 	updatedModel, _ := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.statusMessage != "Test status" {
 		t.Errorf("expected status message 'Test status', got %q", m.statusMessage)
@@ -506,7 +506,7 @@ func TestStatusMessages(t *testing.T) {
 
 	clearMsg := ClearStatusMsg{}
 	updatedModel, _ = m.Update(clearMsg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.statusMessage != "" {
 		t.Errorf("expected empty status message, got %q", m.statusMessage)
@@ -518,7 +518,7 @@ func TestCopySuccessMessage(t *testing.T) {
 
 	msg := CopySuccessMsg{Text: "https://github.com/test/pr/123"}
 	updatedModel, _ := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if !strings.Contains(m.statusMessage, "Copied to clipboard") {
 		t.Errorf("expected copy success message, got %q", m.statusMessage)
@@ -533,7 +533,7 @@ func TestURLOpenedMessage(t *testing.T) {
 
 	msg := URLOpenedMsg{URL: "https://github.com/test/pr/123"}
 	updatedModel, _ := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if !strings.Contains(m.statusMessage, "Opened in browser") {
 		t.Errorf("expected URL opened message, got %q", m.statusMessage)
@@ -587,7 +587,7 @@ func TestPRDetailErrorHandling(t *testing.T) {
 	}
 
 	updatedModel, _ := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.prDetail.Number != 999 {
 		t.Errorf("PR detail should be loaded even without error")
@@ -628,7 +628,7 @@ func TestPRCountLoading(t *testing.T) {
 
 	msg1 := PRCountLoadedMsg{Path: "/repo1", Count: 5}
 	updatedModel, _ := m.Update(msg1)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.prCount["/repo1"] != 5 {
 		t.Errorf("expected 5 PRs for /repo1, got %d", m.prCount["/repo1"])
@@ -636,7 +636,7 @@ func TestPRCountLoading(t *testing.T) {
 
 	msg2 := PRCountLoadedMsg{Path: "/repo2", Count: 3}
 	updatedModel, _ = m.Update(msg2)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.prCount["/repo2"] != 3 {
 		t.Errorf("expected 3 PRs for /repo2, got %d", m.prCount["/repo2"])
@@ -722,7 +722,7 @@ func TestPRDetailClearedOnNavigation(t *testing.T) {
 	// Simulate Enter key on PR list
 	msg := tea.KeyPressMsg{Code: tea.KeyEnter}
 	updatedModel, _ := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.prDetail.Number != 123 {
 		t.Errorf("prDetail should be populated with basic info from list, got number %d", m.prDetail.Number)
@@ -767,7 +767,7 @@ func TestPRDetailErrorPreservesBasicInfo(t *testing.T) {
 	}
 
 	updatedModel, _ := m.Update(errorMsg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	// prDetail.Number must survive an error: it preserves the basic info
 	// that was already populated before the detail fetch failed.
@@ -806,7 +806,7 @@ func TestPRDetailProgressiveLoading(t *testing.T) {
 	// Navigate to PR detail
 	msg := tea.KeyPressMsg{Code: tea.KeyEnter}
 	updatedModel, _ := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	// Verify basic info is immediately available
 	if m.prDetail.Number != 456 {

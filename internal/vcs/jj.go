@@ -64,8 +64,8 @@ func parseJJBookmarkList(out string) []jjBookmark {
 
 		if len(fields) == 4 && fields[1] == "origin" {
 			bookmark.upstream = name + "@origin"
-			bookmark.ahead, _ = strconv.Atoi(fields[2])
-			bookmark.behind, _ = strconv.Atoi(fields[3])
+			bookmark.ahead, _ = strconv.Atoi(fields[2])  //nolint:errcheck // jj's template emits digits here
+			bookmark.behind, _ = strconv.Atoi(fields[3]) //nolint:errcheck // jj's template emits digits here
 		}
 	}
 
@@ -109,12 +109,14 @@ func (j *JJOperations) GetRepoSummary(ctx context.Context, repoPath string) (mod
 		summary.Branch = bookmark
 	}
 
+	// The remaining fields are best-effort: a failure on any one of them
+	// shouldn't blank out an otherwise-populated summary.
 	if bookmark != "@" && bookmark != "" {
-		upstream, _ := j.GetUpstream(ctx, repoPath, bookmark)
+		upstream, _ := j.GetUpstream(ctx, repoPath, bookmark) //nolint:errcheck // best-effort, see comment above
 		summary.Upstream = upstream
 
 		if upstream != "" {
-			ahead, behind, _ := j.GetAheadBehind(ctx, repoPath, bookmark, upstream)
+			ahead, behind, _ := j.GetAheadBehind(ctx, repoPath, bookmark, upstream) //nolint:errcheck // best-effort, see comment above
 			summary.Ahead = ahead
 			summary.Behind = behind
 		}
@@ -122,7 +124,7 @@ func (j *JJOperations) GetRepoSummary(ctx context.Context, repoPath string) (mod
 
 	summary.Unstaged = j.getUnstagedCount(ctx, repoPath)
 
-	lastMod, _ := j.GetLastModified(ctx, repoPath)
+	lastMod, _ := j.GetLastModified(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
 	if lastMod > 0 {
 		summary.LastModified = time.Unix(lastMod, 0)
 	}
@@ -228,7 +230,7 @@ func (j *JJOperations) GetBranchList(ctx context.Context, repoPath string) ([]mo
 		return nil, err
 	}
 
-	currentBookmark, _ := j.GetCurrentBranch(ctx, repoPath)
+	currentBookmark, _ := j.GetCurrentBranch(ctx, repoPath) //nolint:errcheck // never actually returns an error
 
 	var branches []models.BranchInfo
 	for _, bookmark := range parseJJBookmarkList(out) {
@@ -292,7 +294,7 @@ func (j *JJOperations) GetCommitLog(ctx context.Context, repoPath string, count 
 			continue
 		}
 
-		ts, _ := strconv.ParseInt(parts[3], 10, 64)
+		ts, _ := strconv.ParseInt(parts[3], 10, 64) //nolint:errcheck // jj's template emits a unix timestamp here
 
 		commits = append(commits, models.CommitInfo{
 			Hash:      parts[0],

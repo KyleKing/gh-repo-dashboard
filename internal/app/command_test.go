@@ -9,6 +9,16 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+func mustModel(t *testing.T, tm tea.Model) Model {
+	t.Helper()
+	m, ok := tm.(Model)
+	if !ok {
+		t.Fatal("Update did not return a Model")
+	}
+
+	return m
+}
+
 func commandModel() Model {
 	m := New([]string{"/test"}, 1)
 	m.loading = false
@@ -172,25 +182,21 @@ func TestCommandModeKeyFlow(t *testing.T) {
 	m := commandModel()
 
 	newModel, _ := m.Update(keyPress(':'))
-	var ok bool
-	m, ok = newModel.(Model)
-	if !ok {
-		t.Fatal("Update did not return a Model")
-	}
+	m = mustModel(t, newModel)
 	if !m.commandMode {
 		t.Fatal("expected command mode after ':'")
 	}
 
 	for _, r := range "filter dirty" {
 		newModel, _ = m.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-		m = newModel.(Model)
+		m = mustModel(t, newModel)
 	}
 	if m.commandInput.Value() != "filter dirty" {
 		t.Fatalf("expected input %q, got %q", "filter dirty", m.commandInput.Value())
 	}
 
 	newModel, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = newModel.(Model)
+	m = mustModel(t, newModel)
 	if m.commandMode {
 		t.Error("expected command mode exit after enter")
 	}
@@ -203,12 +209,12 @@ func TestCommandModeEscCancels(t *testing.T) {
 	m := commandModel()
 
 	newModel, _ := m.Update(keyPress(':'))
-	m = newModel.(Model)
+	m = mustModel(t, newModel)
 	newModel, _ = m.Update(keyPress('q'))
-	m = newModel.(Model)
+	m = mustModel(t, newModel)
 
 	newModel, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	m = newModel.(Model)
+	m = mustModel(t, newModel)
 	if m.commandMode {
 		t.Error("expected command mode exit after esc")
 	}
@@ -221,24 +227,24 @@ func TestCommandCompletionCyclesCommands(t *testing.T) {
 	m := commandModel()
 
 	newModel, _ := m.Update(keyPress(':'))
-	m = newModel.(Model)
+	m = mustModel(t, newModel)
 	newModel, _ = m.Update(keyPress('f'))
-	m = newModel.(Model)
+	m = mustModel(t, newModel)
 
 	newModel, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-	m = newModel.(Model)
+	m = mustModel(t, newModel)
 	if m.commandInput.Value() != "fetch" {
 		t.Fatalf("expected first candidate %q, got %q", "fetch", m.commandInput.Value())
 	}
 
 	newModel, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-	m = newModel.(Model)
+	m = mustModel(t, newModel)
 	if m.commandInput.Value() != "filter" {
 		t.Fatalf("expected second candidate %q, got %q", "filter", m.commandInput.Value())
 	}
 
 	newModel, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-	m = newModel.(Model)
+	m = mustModel(t, newModel)
 	if m.commandInput.Value() != "fetch" {
 		t.Errorf("expected wrap to %q, got %q", "fetch", m.commandInput.Value())
 	}
@@ -248,14 +254,14 @@ func TestCommandCompletionArgs(t *testing.T) {
 	m := commandModel()
 
 	newModel, _ := m.Update(keyPress(':'))
-	m = newModel.(Model)
+	m = mustModel(t, newModel)
 	for _, r := range "filter d" {
 		newModel, _ = m.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-		m = newModel.(Model)
+		m = mustModel(t, newModel)
 	}
 
 	newModel, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-	m = newModel.(Model)
+	m = mustModel(t, newModel)
 	if m.commandInput.Value() != "filter dirty" {
 		t.Errorf("expected %q, got %q", "filter dirty", m.commandInput.Value())
 	}
@@ -267,7 +273,7 @@ func TestCommandBarRendered(t *testing.T) {
 	m.height = 24
 
 	newModel, _ := m.Update(keyPress(':'))
-	m = newModel.(Model)
+	m = mustModel(t, newModel)
 
 	output := m.view()
 	lines := strings.Split(output, "\n")

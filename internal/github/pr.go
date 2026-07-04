@@ -140,8 +140,10 @@ func GetPRDetail(ctx context.Context, repoPath string, prNumber int) (*models.PR
 		return nil, err
 	}
 
-	createdAt, _ := time.Parse(time.RFC3339, resp.CreatedAt)
-	updatedAt, _ := time.Parse(time.RFC3339, resp.UpdatedAt)
+	// A malformed timestamp degrades to a zero time rather than failing the
+	// whole detail fetch.
+	createdAt, _ := time.Parse(time.RFC3339, resp.CreatedAt) //nolint:errcheck // best-effort, see comment above
+	updatedAt, _ := time.Parse(time.RFC3339, resp.UpdatedAt) //nolint:errcheck // best-effort, see comment above
 
 	assignees := make([]string, 0, len(resp.Assignees))
 	for _, a := range resp.Assignees {

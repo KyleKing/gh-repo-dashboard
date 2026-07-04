@@ -188,7 +188,10 @@ func TestPruneRemote(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &mockVCS{pruneResult: tt.result}
 			ctx := context.Background()
-			success, _, _ := PruneRemote(ctx, mock, "/repo")
+			success, _, err := PruneRemote(ctx, mock, "/repo")
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			if success != tt.wantSuccess {
 				t.Errorf("expected success=%v, got %v", tt.wantSuccess, success)
 			}
@@ -218,7 +221,10 @@ func TestCleanupMerged(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &mockVCS{cleanupResult: tt.result}
 			ctx := context.Background()
-			_, msg, _ := CleanupMerged(ctx, mock, "/repo")
+			_, msg, err := CleanupMerged(ctx, mock, "/repo")
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			if msg != tt.wantMsg {
 				t.Errorf("expected msg=%q, got %q", tt.wantMsg, msg)
 			}

@@ -273,6 +273,7 @@ func batchCommand(name, description, taskName string, taskCmd func([]string) tea
 			if len(paths) == 0 {
 				return m, statusCmd("No repos match")
 			}
+
 			return m.startBatchTaskOn(label, paths, taskCmd)
 		},
 	}

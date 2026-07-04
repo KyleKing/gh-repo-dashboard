@@ -267,13 +267,13 @@ func parseBranchTracking(s string) (int, int) {
 
 	var ahead, behind int
 	if matches[1] != "" {
-		ahead, _ = strconv.Atoi(matches[1])
+		ahead, _ = strconv.Atoi(matches[1]) //nolint:errcheck // regex guarantees digits
 	}
 	if matches[2] != "" {
-		behind, _ = strconv.Atoi(matches[2])
+		behind, _ = strconv.Atoi(matches[2]) //nolint:errcheck // regex guarantees digits
 	}
 	if matches[3] != "" {
-		behind, _ = strconv.Atoi(matches[3])
+		behind, _ = strconv.Atoi(matches[3]) //nolint:errcheck // regex guarantees digits
 	}
 
 	return ahead, behind
@@ -482,8 +482,8 @@ func parseRevListOutput(out string) (int, int) {
 	if len(parts) != 2 {
 		return 0, 0
 	}
-	ahead, _ := strconv.Atoi(parts[0])
-	behind, _ := strconv.Atoi(parts[1])
+	ahead, _ := strconv.Atoi(parts[0])  //nolint:errcheck // caller already validated numeric format
+	behind, _ := strconv.Atoi(parts[1]) //nolint:errcheck // caller already validated numeric format
 
 	return ahead, behind
 }

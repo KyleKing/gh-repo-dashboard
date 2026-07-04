@@ -14,7 +14,7 @@ func TestWindowSizeMsg(t *testing.T) {
 	m := New(nil, 1)
 
 	updatedModel, cmd := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.width != 120 || m.height != 40 {
 		t.Errorf("expected 120x40, got %dx%d", m.width, m.height)
@@ -39,7 +39,7 @@ func TestReposDiscoveredMsg(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m := New(nil, 1)
 			updatedModel, cmd := m.Update(ReposDiscoveredMsg{Paths: tt.paths})
-			m = updatedModel.(Model)
+			m = mustModel(t, updatedModel)
 
 			if len(m.repoPaths) != len(tt.paths) {
 				t.Errorf("expected %d repo paths, got %d", len(tt.paths), len(m.repoPaths))
@@ -70,7 +70,7 @@ func TestRepoSummaryLoadedSuccess(t *testing.T) {
 		Summary: models.RepoSummary{Path: "/repo1", Branch: "main"},
 	}
 	updatedModel, _ := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.loadedCount != 1 {
 		t.Errorf("expected loadedCount 1, got %d", m.loadedCount)
@@ -90,7 +90,7 @@ func TestRepoSummaryLoadedError(t *testing.T) {
 
 	msg := RepoSummaryLoadedMsg{Path: "/repo1", Error: loadErr}
 	updatedModel, _ := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	summary, ok := m.summaries["/repo1"]
 	if !ok {
@@ -116,7 +116,7 @@ func TestRepoSummaryLoadingCompletion(t *testing.T) {
 		Summary: models.RepoSummary{Path: "/repo2"},
 	}
 	updatedModel, _ := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.loading {
 		t.Error("loading should be false once loadedCount reaches loadingCount")
@@ -132,7 +132,7 @@ func TestPRLoadedMsg(t *testing.T) {
 
 	prInfo := &models.PRInfo{Number: 7}
 	updatedModel, cmd := m.Update(PRLoadedMsg{Path: "/repo1", PRInfo: prInfo})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.summaries["/repo1"].PRInfo != prInfo {
 		t.Error("PRInfo should be attached to the summary")
@@ -142,7 +142,7 @@ func TestPRLoadedMsg(t *testing.T) {
 	}
 
 	updatedModel, _ = m.Update(PRLoadedMsg{Path: "/unknown", PRInfo: prInfo})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if _, ok := m.summaries["/unknown"]; ok {
 		t.Error("unknown path should not create a summary")
 	}
@@ -154,7 +154,7 @@ func TestWorkflowLoadedMsg(t *testing.T) {
 
 	workflow := &models.WorkflowSummary{}
 	updatedModel, cmd := m.Update(WorkflowLoadedMsg{Path: "/repo1", Workflow: workflow})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.summaries["/repo1"].WorkflowInfo != workflow {
 		t.Error("WorkflowInfo should be attached to the summary")
@@ -164,7 +164,7 @@ func TestWorkflowLoadedMsg(t *testing.T) {
 	}
 
 	updatedModel, _ = m.Update(WorkflowLoadedMsg{Path: "/unknown", Workflow: workflow})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if _, ok := m.summaries["/unknown"]; ok {
 		t.Error("unknown path should not create a summary")
 	}
@@ -181,7 +181,7 @@ func TestDetailLoadedMsg(t *testing.T) {
 		Worktrees: []models.WorktreeInfo{{Path: "/wt"}},
 	}
 	updatedModel, cmd := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if len(m.branches) != 1 || len(m.stashes) != 1 || len(m.worktrees) != 1 {
 		t.Error("detail data should be stored for the selected repo")
@@ -200,7 +200,7 @@ func TestDetailLoadedMsgPathMismatch(t *testing.T) {
 		Branches: []models.BranchInfo{{Name: "main"}},
 	}
 	updatedModel, cmd := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.branches != nil {
 		t.Error("mismatched path should not update branches")
@@ -216,7 +216,7 @@ func TestBranchDetailLoadedMsg(t *testing.T) {
 
 	detail := models.BranchDetail{Branch: models.BranchInfo{Name: "feature"}}
 	updatedModel, _ := m.Update(BranchDetailLoadedMsg{Path: "/repo1", Detail: detail})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.branchDetail.Branch.Name != "feature" {
 		t.Errorf("expected branch detail stored, got %q", m.branchDetail.Branch.Name)
@@ -224,7 +224,7 @@ func TestBranchDetailLoadedMsg(t *testing.T) {
 
 	other := models.BranchDetail{Branch: models.BranchInfo{Name: "stale"}}
 	updatedModel, _ = m.Update(BranchDetailLoadedMsg{Path: "/other", Detail: other})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.branchDetail.Branch.Name != "feature" {
 		t.Error("mismatched path should not overwrite branch detail")
@@ -236,14 +236,14 @@ func TestPRListLoadedMsg(t *testing.T) {
 	m.selectedRepo = "/repo1"
 
 	updatedModel, _ := m.Update(PRListLoadedMsg{Path: "/repo1", PRs: []models.PRInfo{{Number: 1}, {Number: 2}}})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if len(m.prs) != 2 {
 		t.Errorf("expected 2 PRs, got %d", len(m.prs))
 	}
 
 	updatedModel, _ = m.Update(PRListLoadedMsg{Path: "/other", PRs: []models.PRInfo{{Number: 9}}})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if len(m.prs) != 2 {
 		t.Error("mismatched path should not overwrite PR list")
@@ -257,7 +257,7 @@ func TestPRDetailLoadedMsgSuccess(t *testing.T) {
 
 	detail := models.PRDetail{PRInfo: models.PRInfo{Number: 42, Title: "Add feature"}}
 	updatedModel, _ := m.Update(PRDetailLoadedMsg{Path: "/repo1", PRNumber: 42, Detail: detail})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.prDetail.Title != "Add feature" {
 		t.Errorf("expected PR detail stored, got %q", m.prDetail.Title)
@@ -271,7 +271,7 @@ func TestPRDetailLoadedMsgError(t *testing.T) {
 	m.prDetail = models.PRDetail{PRInfo: models.PRInfo{Number: 42, Title: "Existing"}}
 
 	updatedModel, cmd := m.Update(PRDetailLoadedMsg{Path: "/repo1", PRNumber: 42, Error: errors.New("gh failed")})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.statusMessage == "" {
 		t.Error("error should set a status message")
@@ -302,7 +302,7 @@ func TestPRDetailLoadedMsgMismatch(t *testing.T) {
 
 			detail := models.PRDetail{PRInfo: models.PRInfo{Number: tt.prNumber, Title: "stale"}}
 			updatedModel, cmd := m.Update(PRDetailLoadedMsg{Path: tt.path, PRNumber: tt.prNumber, Detail: detail})
-			m2 := updatedModel.(Model)
+			m2 := mustModel(t, updatedModel)
 
 			if m2.prDetail.Title != "" {
 				t.Error("mismatched message should not update PR detail")
@@ -319,7 +319,7 @@ func TestPRCountLoadedMsg(t *testing.T) {
 	m.prCount = nil
 
 	updatedModel, cmd := m.Update(PRCountLoadedMsg{Path: "/repo1", Count: 3})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.prCount == nil {
 		t.Fatal("prCount map should be initialized")
@@ -340,7 +340,7 @@ func TestBatchTaskProgressMsg(t *testing.T) {
 		Result: batch.TaskResult{Path: "/repo1", Success: true, Message: "fetched"},
 	}
 	updatedModel, cmd := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if len(m.batchResults) != 1 {
 		t.Fatalf("expected 1 batch result, got %d", len(m.batchResults))
@@ -368,7 +368,7 @@ func TestBatchTaskCompleteMsg(t *testing.T) {
 		},
 	}
 	updatedModel, cmd := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.batchRunning {
 		t.Error("batchRunning should be false after completion")
@@ -432,9 +432,9 @@ func TestStartBatchTaskEmptyIsNoop(t *testing.T) {
 	m.filteredPaths = nil
 
 	intermediate, _ := m.Update(tea.KeyPressMsg{Code: 'F', Text: "F"})
-	m = intermediate.(Model)
+	m = mustModel(t, intermediate)
 	updatedModel, cmd := m.Update(tea.KeyPressMsg{Code: 'F', Text: "F"})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.viewMode != ViewModeRepoList {
 		t.Errorf("empty batch should not change view mode, got %v", m.viewMode)
@@ -452,9 +452,9 @@ func TestStartBatchTaskWithRepos(t *testing.T) {
 	m.filteredPaths = []string{"/repo1", "/repo2"}
 
 	intermediate, _ := m.Update(tea.KeyPressMsg{Code: 'F', Text: "F"})
-	m = intermediate.(Model)
+	m = mustModel(t, intermediate)
 	updatedModel, cmd := m.Update(tea.KeyPressMsg{Code: 'F', Text: "F"})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.viewMode != ViewModeBatchProgress {
 		t.Errorf("expected ViewModeBatchProgress, got %v", m.viewMode)

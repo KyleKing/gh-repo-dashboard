@@ -28,13 +28,13 @@ func TestHelpToggle(t *testing.T) {
 	m := New(nil, 1)
 
 	updatedModel, _ := m.Update(keyPress('?'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if m.viewMode != ViewModeHelp {
 		t.Errorf("expected ViewModeHelp, got %v", m.viewMode)
 	}
 
 	updatedModel, _ = m.Update(keyPress('?'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if m.viewMode != ViewModeRepoList {
 		t.Errorf("expected ViewModeRepoList after toggle, got %v", m.viewMode)
 	}
@@ -53,13 +53,13 @@ func TestFilterModalOpenClose(t *testing.T) {
 	m := New(nil, 1)
 
 	updatedModel, _ := m.Update(keyPress('f'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if m.viewMode != ViewModeFilter {
 		t.Errorf("expected ViewModeFilter, got %v", m.viewMode)
 	}
 
 	updatedModel, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if m.viewMode != ViewModeRepoList {
 		t.Errorf("expected ViewModeRepoList after esc, got %v", m.viewMode)
 	}
@@ -70,7 +70,7 @@ func TestSortModalOpenClose(t *testing.T) {
 	m.sortCursor = 3
 
 	updatedModel, _ := m.Update(keyPress('s'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if m.viewMode != ViewModeSort {
 		t.Errorf("expected ViewModeSort, got %v", m.viewMode)
 	}
@@ -79,7 +79,7 @@ func TestSortModalOpenClose(t *testing.T) {
 	}
 
 	updatedModel, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if m.viewMode != ViewModeRepoList {
 		t.Errorf("expected ViewModeRepoList after esc, got %v", m.viewMode)
 	}
@@ -92,7 +92,7 @@ func TestEnterOpensRepoDetail(t *testing.T) {
 	m.detailCursor = 3
 
 	updatedModel, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.viewMode != ViewModeRepoDetail {
 		t.Errorf("expected ViewModeRepoDetail, got %v", m.viewMode)
@@ -112,7 +112,7 @@ func TestEnterOnEmptyListIsNoop(t *testing.T) {
 	m := newListModel()
 
 	updatedModel, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.viewMode != ViewModeRepoList {
 		t.Errorf("empty list enter should not change view mode, got %v", m.viewMode)
@@ -149,7 +149,7 @@ func TestCursorMovement(t *testing.T) {
 			m.cursor = tt.cursor
 
 			updatedModel, _ := m.Update(tt.key)
-			m = updatedModel.(Model)
+			m = mustModel(t, updatedModel)
 
 			if m.cursor != tt.wantCursor {
 				t.Errorf("expected cursor %d, got %d", tt.wantCursor, m.cursor)
@@ -178,7 +178,7 @@ func TestBackNavigationChain(t *testing.T) {
 			m.viewMode = tt.from
 
 			updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-			m = updatedModel.(Model)
+			m = mustModel(t, updatedModel)
 
 			if m.viewMode != tt.want {
 				t.Errorf("expected %v, got %v", tt.want, m.viewMode)
@@ -194,7 +194,7 @@ func TestDetailTabCycling(t *testing.T) {
 	expected := []DetailTab{DetailTabStashes, DetailTabWorktrees, DetailTabPRs, DetailTabBranches}
 	for i, want := range expected {
 		updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-		m = updatedModel.(Model)
+		m = mustModel(t, updatedModel)
 		if m.detailTab != want {
 			t.Errorf("tab press %d: expected %v, got %v", i+1, want, m.detailTab)
 		}
@@ -208,7 +208,7 @@ func TestDetailTabLeftWrapsBackward(t *testing.T) {
 	m.detailCursor = 2
 
 	updatedModel, _ := m.Update(keyPress('h'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.detailTab != DetailTabPRs {
 		t.Errorf("left from first tab should wrap to PRs, got %v", m.detailTab)
@@ -225,31 +225,31 @@ func TestDetailCursorMovement(t *testing.T) {
 	m.branches = []models.BranchInfo{{Name: "a"}, {Name: "b"}, {Name: "c"}}
 
 	updatedModel, _ := m.Update(keyPress('j'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if m.detailCursor != 1 {
 		t.Errorf("expected detailCursor 1, got %d", m.detailCursor)
 	}
 
 	updatedModel, _ = m.Update(keyPress('G'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if m.detailCursor != 2 {
 		t.Errorf("G should move to last item, got %d", m.detailCursor)
 	}
 
 	updatedModel, _ = m.Update(keyPress('j'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if m.detailCursor != 2 {
 		t.Errorf("down at bottom should clamp, got %d", m.detailCursor)
 	}
 
 	updatedModel, _ = m.Update(keyPress('g'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if m.detailCursor != 0 {
 		t.Errorf("g should move to top, got %d", m.detailCursor)
 	}
 
 	updatedModel, _ = m.Update(keyPress('k'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if m.detailCursor != 0 {
 		t.Errorf("up at top should clamp, got %d", m.detailCursor)
 	}
@@ -261,7 +261,7 @@ func TestDetailBottomOnEmptyTab(t *testing.T) {
 	m.detailTab = DetailTabStashes
 
 	updatedModel, _ := m.Update(keyPress('G'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.detailCursor != 0 {
 		t.Errorf("G on empty tab should keep cursor 0, got %d", m.detailCursor)
@@ -278,7 +278,7 @@ func TestDetailEnterOpensBranchDetail(t *testing.T) {
 	m.branchDetail = models.BranchDetail{Branch: models.BranchInfo{Name: "stale"}}
 
 	updatedModel, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.viewMode != ViewModeBranchDetail {
 		t.Errorf("expected ViewModeBranchDetail, got %v", m.viewMode)
@@ -312,19 +312,19 @@ func TestFilterModalEnterCyclesState(t *testing.T) {
 	}
 
 	updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if f := find(m); !f.Enabled || f.Inverted {
 		t.Error("first enter should enable the filter")
 	}
 
 	updatedModel, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if f := find(m); !f.Enabled || !f.Inverted {
 		t.Error("second enter should invert the filter")
 	}
 
 	updatedModel, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if f := find(m); f.Enabled || f.Inverted {
 		t.Error("third enter should disable the filter")
 	}
@@ -336,7 +336,7 @@ func TestFilterModalShortKey(t *testing.T) {
 	m.cursor = 0
 
 	updatedModel, _ := m.Update(keyPress('d'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	for _, f := range m.activeFilters {
 		if f.Mode == models.FilterModeDirty && !f.Enabled {
@@ -355,7 +355,7 @@ func TestFilterModalReset(t *testing.T) {
 	m.CycleFilterState(models.FilterModeDirty)
 
 	updatedModel, _ := m.Update(keyPress('*'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if len(m.ActiveFilterModes()) != 0 {
 		t.Error("'*' should reset all filters")
@@ -368,21 +368,21 @@ func TestFilterModalCursorClamping(t *testing.T) {
 	modes := models.SelectableFilterModes()
 
 	updatedModel, _ := m.Update(keyPress('k'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if m.filterCursor != 0 {
 		t.Errorf("up at top should clamp filterCursor to 0, got %d", m.filterCursor)
 	}
 
 	m.filterCursor = len(modes) - 1
 	updatedModel, _ = m.Update(keyPress('j'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if m.filterCursor != len(modes)-1 {
 		t.Errorf("down at bottom should clamp filterCursor, got %d", m.filterCursor)
 	}
 
 	m.filterCursor = 0
 	updatedModel, _ = m.Update(keyPress('j'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 	if m.filterCursor != 1 {
 		t.Errorf("down should advance filterCursor, got %d", m.filterCursor)
 	}
@@ -394,7 +394,7 @@ func TestSortModalEnterCyclesDirection(t *testing.T) {
 	m.sortCursor = 0
 
 	updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.activeSorts[0].Direction != models.SortDirectionDesc {
 		t.Errorf("Name starts Asc, enter should cycle to Desc, got %v", m.activeSorts[0].Direction)
@@ -422,7 +422,7 @@ func TestSortModalPriorityMoves(t *testing.T) {
 	m.activeSorts[modIdx].Priority = 1
 	m.sortCursor = modIdx
 	updatedModel, _ := m.Update(keyPress('['))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.activeSorts[modIdx].Priority != 0 {
 		t.Errorf("'[' should move Modified to priority 0, got %d", m.activeSorts[modIdx].Priority)
@@ -432,7 +432,7 @@ func TestSortModalPriorityMoves(t *testing.T) {
 	}
 
 	updatedModel, _ = m.Update(keyPress(']'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.activeSorts[modIdx].Priority != 1 {
 		t.Errorf("']' should move Modified back to priority 1, got %d", m.activeSorts[modIdx].Priority)
@@ -449,7 +449,7 @@ func TestSortModalReset(t *testing.T) {
 	m.CycleSortState(models.SortModeStatus)
 
 	updatedModel, _ := m.Update(keyPress('*'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	for _, s := range m.activeSorts {
 		if s.Mode == models.SortModeName {
@@ -467,7 +467,7 @@ func TestSortModalShortKey(t *testing.T) {
 	m.viewMode = ViewModeSort
 
 	updatedModel, _ := m.Update(keyPress('m'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	for _, s := range m.activeSorts {
 		if s.Mode == models.SortModeModified && s.Direction != models.SortDirectionAsc {
@@ -480,7 +480,7 @@ func TestSearchModeEntry(t *testing.T) {
 	m := New(nil, 1)
 
 	updatedModel, _ := m.Update(keyPress('/'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if !m.searching {
 		t.Error("'/' should enter search mode")
@@ -496,7 +496,7 @@ func TestSearchEscExits(t *testing.T) {
 	m.searchInput.Focus()
 
 	updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.searching {
 		t.Error("esc should exit search mode")
@@ -513,7 +513,7 @@ func TestSearchEnterCommits(t *testing.T) {
 	m.searchInput.SetValue("alpha")
 
 	updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.searching {
 		t.Error("enter should exit search mode")
@@ -535,7 +535,7 @@ func TestSearchTypingUpdatesLive(t *testing.T) {
 	m.searchInput.Focus()
 
 	updatedModel, _ := m.Update(keyPress('b'))
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if !m.searching {
 		t.Error("typing should stay in search mode")
@@ -559,7 +559,7 @@ func TestBatchKeyBlockedWhileRunning(t *testing.T) {
 	}
 
 	updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	m2 := updatedModel.(Model)
+	m2 := mustModel(t, updatedModel)
 	if m2.viewMode != ViewModeBatchProgress {
 		t.Error("back should be blocked while batch is running")
 	}
@@ -571,7 +571,7 @@ func TestBatchKeyAfterCompletion(t *testing.T) {
 	m.batchRunning = false
 
 	updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	m2 := updatedModel.(Model)
+	m2 := mustModel(t, updatedModel)
 	if m2.viewMode != ViewModeRepoList {
 		t.Errorf("back after completion should return to repo list, got %v", m2.viewMode)
 	}

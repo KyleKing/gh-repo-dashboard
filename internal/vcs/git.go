@@ -51,11 +51,13 @@ func (g *GitOperations) GetRepoSummary(ctx context.Context, repoPath string) (mo
 	}
 	summary.Branch = branch
 
-	upstream, _ := g.GetUpstream(ctx, repoPath, branch)
+	// The remaining fields are best-effort: a failure on any one of them
+	// shouldn't blank out an otherwise-populated summary.
+	upstream, _ := g.GetUpstream(ctx, repoPath, branch) //nolint:errcheck // best-effort, see comment above
 	summary.Upstream = upstream
 
 	if upstream != "" {
-		ahead, behind, _ := g.GetAheadBehind(ctx, repoPath, branch, upstream)
+		ahead, behind, _ := g.GetAheadBehind(ctx, repoPath, branch, upstream) //nolint:errcheck // best-effort, see comment above
 		summary.Ahead = ahead
 		summary.Behind = behind
 	}
@@ -66,10 +68,10 @@ func (g *GitOperations) GetRepoSummary(ctx context.Context, repoPath string) (mo
 	summary.Untracked = counts.untracked
 	summary.Conflicted = counts.conflicted
 
-	stashCount, _ := g.getStashCount(ctx, repoPath)
+	stashCount, _ := g.getStashCount(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
 	summary.StashCount = stashCount
 
-	lastMod, _ := g.GetLastModified(ctx, repoPath)
+	lastMod, _ := g.GetLastModified(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
 	if lastMod > 0 {
 		summary.LastModified = time.Unix(lastMod, 0)
 	}
@@ -115,8 +117,8 @@ func (g *GitOperations) GetAheadBehind(ctx context.Context, repoPath, branch, up
 		return 0, 0, fmt.Errorf("unexpected rev-list output: %s", out)
 	}
 
-	ahead, _ := strconv.Atoi(parts[0])
-	behind, _ := strconv.Atoi(parts[1])
+	ahead, _ := strconv.Atoi(parts[0])  //nolint:errcheck // regex guarantees digits
+	behind, _ := strconv.Atoi(parts[1]) //nolint:errcheck // regex guarantees digits
 
 	return ahead, behind, nil
 }
@@ -211,17 +213,17 @@ func (g *GitOperations) GetBranchList(ctx context.Context, repoPath string) ([]m
 		var ahead, behind int
 		if matches := trackRe.FindStringSubmatch(parts[2]); matches != nil {
 			if matches[1] != "" {
-				ahead, _ = strconv.Atoi(matches[1])
+				ahead, _ = strconv.Atoi(matches[1]) //nolint:errcheck // regex guarantees digits
 			}
 			if matches[2] != "" {
-				behind, _ = strconv.Atoi(matches[2])
+				behind, _ = strconv.Atoi(matches[2]) //nolint:errcheck // regex guarantees digits
 			}
 			if matches[3] != "" {
-				behind, _ = strconv.Atoi(matches[3])
+				behind, _ = strconv.Atoi(matches[3]) //nolint:errcheck // regex guarantees digits
 			}
 		}
 
-		ts, _ := strconv.ParseInt(parts[3], 10, 64)
+		ts, _ := strconv.ParseInt(parts[3], 10, 64) //nolint:errcheck // git emits a unix timestamp here
 
 		branches = append(branches, models.BranchInfo{
 			Name:       parts[0],
@@ -260,10 +262,10 @@ func (g *GitOperations) GetStashList(ctx context.Context, repoPath string) ([]mo
 
 		var index int
 		if matches := stashRe.FindStringSubmatch(parts[0]); matches != nil {
-			index, _ = strconv.Atoi(matches[1])
+			index, _ = strconv.Atoi(matches[1]) //nolint:errcheck // regex guarantees digits
 		}
 
-		ts, _ := strconv.ParseInt(parts[2], 10, 64)
+		ts, _ := strconv.ParseInt(parts[2], 10, 64) //nolint:errcheck // git emits a unix timestamp here
 
 		stashes = append(stashes, models.StashDetail{
 			Index:   index,
@@ -326,7 +328,7 @@ func (g *GitOperations) GetCommitLog(ctx context.Context, repoPath string, count
 			continue
 		}
 
-		ts, _ := strconv.ParseInt(parts[4], 10, 64)
+		ts, _ := strconv.ParseInt(parts[4], 10, 64) //nolint:errcheck // git emits a unix timestamp here
 
 		commits = append(commits, models.CommitInfo{
 			Hash:      parts[0],

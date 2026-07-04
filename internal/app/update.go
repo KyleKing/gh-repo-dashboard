@@ -1027,14 +1027,16 @@ func loadDetailCmd(path string) tea.Cmd {
 		ctx := context.Background()
 		ops := vcs.GetOperations(path)
 
-		branches, _ := ops.GetBranchList(ctx, path)
-		stashes, _ := ops.GetStashList(ctx, path)
-		worktrees, _ := ops.GetWorktreeList(ctx, path)
+		// DetailLoadedMsg has no error field: a failed section just renders
+		// empty rather than blocking the rest of the detail view.
+		branches, _ := ops.GetBranchList(ctx, path)    //nolint:errcheck // best-effort, see comment above
+		stashes, _ := ops.GetStashList(ctx, path)      //nolint:errcheck // best-effort, see comment above
+		worktrees, _ := ops.GetWorktreeList(ctx, path) //nolint:errcheck // best-effort, see comment above
 
-		summary, _ := ops.GetRepoSummary(ctx, path)
+		summary, _ := ops.GetRepoSummary(ctx, path) //nolint:errcheck // best-effort, see comment above
 		var prs []models.PRInfo
 		if summary.Upstream != "" {
-			prs, _ = github.GetPRsForRepo(ctx, path, summary.Upstream)
+			prs, _ = github.GetPRsForRepo(ctx, path, summary.Upstream) //nolint:errcheck // best-effort, see comment above
 		}
 
 		return DetailLoadedMsg{
@@ -1052,7 +1054,9 @@ func loadBranchDetailCmd(repoPath, branchName string) tea.Cmd {
 		ctx := context.Background()
 		ops := vcs.GetOperations(repoPath)
 
-		branches, _ := ops.GetBranchList(ctx, repoPath)
+		// BranchDetailLoadedMsg has no error field: a failed section just
+		// renders empty rather than blocking the rest of the detail view.
+		branches, _ := ops.GetBranchList(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
 		var selectedBranch models.BranchInfo
 		for _, b := range branches {
 			if b.Name == branchName {
@@ -1061,9 +1065,9 @@ func loadBranchDetailCmd(repoPath, branchName string) tea.Cmd {
 			}
 		}
 
-		commits, _ := ops.GetCommitLog(ctx, repoPath, 20)
+		commits, _ := ops.GetCommitLog(ctx, repoPath, 20) //nolint:errcheck // best-effort, see comment above
 
-		summary, _ := ops.GetRepoSummary(ctx, repoPath)
+		summary, _ := ops.GetRepoSummary(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
 
 		detail := models.BranchDetail{
 			Branch:       selectedBranch,
@@ -1074,9 +1078,6 @@ func loadBranchDetailCmd(repoPath, branchName string) tea.Cmd {
 			Conflicted:   summary.Conflicted,
 			PRInfo:       summary.PRInfo,
 			WorkflowInfo: summary.WorkflowInfo,
-		}
-
-		if vcsType := vcs.DetectVCSType(repoPath); vcsType == models.VCSTypeJJ {
 		}
 
 		return BranchDetailLoadedMsg{
@@ -1127,7 +1128,7 @@ func prefetchPRDetailCmd(repoPath string, prNumber int) tea.Cmd {
 		ctx := context.Background()
 		// Prefetch runs in background and populates cache
 		// No message sent to avoid UI updates during prefetch
-		_, _ = github.GetPRDetail(ctx, repoPath, prNumber)
+		_, _ = github.GetPRDetail(ctx, repoPath, prNumber) //nolint:errcheck // prefetch only warms the cache, no message is sent
 
 		return nil
 	}

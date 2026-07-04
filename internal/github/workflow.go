@@ -52,8 +52,10 @@ func GetWorkflowRunsForCommit(ctx context.Context, repoPath, commitSHA string) (
 	}
 
 	for _, r := range runs {
-		createdAt, _ := time.Parse(time.RFC3339, r.CreatedAt)
-		updatedAt, _ := time.Parse(time.RFC3339, r.UpdatedAt)
+		// A malformed timestamp degrades to a zero time rather than failing
+		// the whole run list.
+		createdAt, _ := time.Parse(time.RFC3339, r.CreatedAt) //nolint:errcheck // best-effort, see comment above
+		updatedAt, _ := time.Parse(time.RFC3339, r.UpdatedAt) //nolint:errcheck // best-effort, see comment above
 
 		run := models.WorkflowRun{
 			ID:         r.DatabaseID,

@@ -147,7 +147,7 @@ func runFixtureStep(t *testing.T, m Model, step fixtureStep) Model {
 	} else {
 		for _, keyName := range step.Keys {
 			newModel, c := m.Update(fixtureKeyMsg(keyName))
-			m = newModel.(Model)
+			m = mustModel(t, newModel)
 			cmd = c
 		}
 	}
@@ -156,7 +156,7 @@ func runFixtureStep(t *testing.T, m Model, step fixtureStep) Model {
 		if assertion.Field == "status" && cmd != nil {
 			if msg := cmd(); msg != nil {
 				newModel, _ := m.Update(msg)
-				m = newModel.(Model)
+				m = mustModel(t, newModel)
 			}
 			cmd = nil
 		}

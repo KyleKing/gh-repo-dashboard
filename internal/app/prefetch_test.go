@@ -23,7 +23,7 @@ func TestPrefetchOnCursorMovement(t *testing.T) {
 	// Move down - should trigger prefetch
 	msg := tea.KeyPressMsg{Code: tea.KeyDown}
 	updatedModel, cmd := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.detailCursor != 1 {
 		t.Errorf("cursor should move to 1, got %d", m.detailCursor)
@@ -36,7 +36,7 @@ func TestPrefetchOnCursorMovement(t *testing.T) {
 	// Move up - should trigger prefetch
 	msg = tea.KeyPressMsg{Code: tea.KeyUp}
 	updatedModel, cmd = m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.detailCursor != 0 {
 		t.Errorf("cursor should move to 0, got %d", m.detailCursor)
@@ -60,7 +60,7 @@ func TestPrefetchOnTabSwitch(t *testing.T) {
 	// Switch to PR tab
 	msg := tea.KeyPressMsg{Code: tea.KeyTab}
 	updatedModel, _ := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.detailTab != DetailTabStashes {
 		t.Error("first tab should move to stashes")
@@ -68,11 +68,11 @@ func TestPrefetchOnTabSwitch(t *testing.T) {
 
 	// Tab again to worktrees
 	updatedModel, _ = m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	// Tab to PRs
 	updatedModel, cmd := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.detailTab != DetailTabPRs {
 		t.Error("should be on PR tab")
@@ -101,7 +101,7 @@ func TestPrefetchOnDetailLoad(t *testing.T) {
 	}
 
 	updatedModel, cmd := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if len(m.prs) != 4 {
 		t.Errorf("expected 4 PRs, got %d", len(m.prs))
@@ -131,7 +131,7 @@ func TestNavigateBetweenPRsInDetailView(t *testing.T) {
 	// Press down to go to next PR
 	msg := tea.KeyPressMsg{Code: tea.KeyDown}
 	updatedModel, cmd := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.selectedPR.Number != 2 {
 		t.Errorf("should switch to PR #2, got #%d", m.selectedPR.Number)
@@ -148,7 +148,7 @@ func TestNavigateBetweenPRsInDetailView(t *testing.T) {
 	// Press up to go back
 	msg = tea.KeyPressMsg{Code: tea.KeyUp}
 	updatedModel, cmd = m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.selectedPR.Number != 1 {
 		t.Errorf("should switch back to PR #1, got #%d", m.selectedPR.Number)
@@ -173,7 +173,7 @@ func TestNavigatePRDetailAtBoundaries(t *testing.T) {
 	// Try to go down (should do nothing)
 	msg := tea.KeyPressMsg{Code: tea.KeyDown}
 	updatedModel, cmd := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.selectedPR.Number != 1 {
 		t.Error("should stay on PR #1")
@@ -186,7 +186,7 @@ func TestNavigatePRDetailAtBoundaries(t *testing.T) {
 	// Try to go up (should do nothing)
 	msg = tea.KeyPressMsg{Code: tea.KeyUp}
 	updatedModel, cmd = m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.selectedPR.Number != 1 {
 		t.Error("should stay on PR #1")
@@ -211,7 +211,7 @@ func TestPrefetchNotTriggeredOnNonPRTabs(t *testing.T) {
 	// Move down on branch tab
 	msg := tea.KeyPressMsg{Code: tea.KeyDown}
 	updatedModel, cmd := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.detailCursor != 1 {
 		t.Error("cursor should move")

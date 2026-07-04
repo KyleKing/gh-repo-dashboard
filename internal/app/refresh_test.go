@@ -21,7 +21,7 @@ func TestRefreshFromRepoList(t *testing.T) {
 	}
 
 	updatedModel, cmd := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if cmd == nil {
 		t.Error("refresh should return a command")
@@ -57,7 +57,7 @@ func TestRefreshFromRepoDetail(t *testing.T) {
 	}
 
 	updatedModel, cmd := m.Update(msg)
-	m = updatedModel.(Model)
+	_ = mustModel(t, updatedModel)
 
 	if cmd == nil {
 		t.Error("refresh should return a command")
@@ -75,7 +75,7 @@ func TestRefreshFromBranchDetail(t *testing.T) {
 
 	msg := tea.KeyPressMsg{Code: 'r', Text: "r"}
 	updatedModel, cmd := m.Update(msg)
-	m = updatedModel.(Model)
+	_ = mustModel(t, updatedModel)
 
 	if cmd == nil {
 		t.Error("refresh should return a command from branch detail view")
@@ -93,7 +93,7 @@ func TestRefreshFromPRDetail(t *testing.T) {
 
 	msg := tea.KeyPressMsg{Code: 'r', Text: "r"}
 	updatedModel, cmd := m.Update(msg)
-	m = updatedModel.(Model)
+	_ = mustModel(t, updatedModel)
 
 	if cmd == nil {
 		t.Error("refresh should return a command from PR detail view")
@@ -106,7 +106,7 @@ func TestRefreshCompleteMessage(t *testing.T) {
 
 	msg := RefreshCompleteMsg{ViewMode: ViewModeRepoList}
 	updatedModel, cmd := m.Update(msg)
-	m = updatedModel.(Model)
+	m = mustModel(t, updatedModel)
 
 	if m.statusMessage != "Data refreshed" {
 		t.Errorf("expected 'Data refreshed' status message, got %q", m.statusMessage)
@@ -150,7 +150,7 @@ func TestRefreshFromEmptyState(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
 
-	m, cmd := m.handleRefresh()
+	_, cmd := m.handleRefresh()
 
 	if cmd == nil {
 		t.Error("refresh should always return a command")

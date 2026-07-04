@@ -29,7 +29,7 @@ func pressKeys(t *testing.T, m Model, keys string) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	for _, r := range keys {
 		newModel, c := m.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-		m = newModel.(Model)
+		m = mustModel(t, newModel)
 		cmd = c
 	}
 
@@ -134,7 +134,7 @@ func TestOperatorEscCancels(t *testing.T) {
 	}
 
 	newModel, _ := m2.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	m3 := newModel.(Model)
+	m3 := mustModel(t, newModel)
 	if m3.pendingOperator != "" {
 		t.Error("expected esc to cancel pending operator")
 	}
