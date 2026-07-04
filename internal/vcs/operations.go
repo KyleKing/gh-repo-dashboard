@@ -13,9 +13,12 @@ var ErrCommandFailed = errors.New("command failed")
 // ErrUnexpectedOutput wraps a CLI output that didn't match the expected format.
 var ErrUnexpectedOutput = errors.New("unexpected command output")
 
-// defaultMainBranch is the conventional primary branch name assumed when
-// scanning for merged branches to clean up.
-const defaultMainBranch = "main"
+// defaultMainBranch and masterBranch are the conventional primary branch
+// names assumed when scanning for merged branches to clean up.
+const (
+	defaultMainBranch = "main"
+	masterBranch      = "master"
+)
 
 type Operations interface {
 	GetRepoSummary(ctx context.Context, repoPath string) (models.RepoSummary, error)

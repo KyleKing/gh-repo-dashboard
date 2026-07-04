@@ -368,7 +368,7 @@ func (j *JJOperations) CleanupMergedBranches(ctx context.Context, repoPath strin
 
 	var deleted []string
 	for _, bookmark := range parseJJBookmarkList(out) {
-		if bookmark.name == defaultMainBranch || bookmark.name == "master" || bookmark.name == "trunk" {
+		if bookmark.name == defaultMainBranch || bookmark.name == masterBranch || bookmark.name == "trunk" {
 			continue
 		}
 

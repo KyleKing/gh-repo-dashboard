@@ -402,8 +402,8 @@ func (g *GitOperations) PruneRemote(ctx context.Context, repoPath string) (bool,
 func (g *GitOperations) CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error) {
 	mainBranch := defaultMainBranch
 	if _, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", defaultMainBranch); err != nil {
-		if _, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", "master"); err == nil {
-			mainBranch = "master"
+		if _, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", masterBranch); err == nil {
+			mainBranch = masterBranch
 		} else {
 			return false, "Could not find main or master branch", nil
 		}
@@ -421,7 +421,7 @@ func (g *GitOperations) CleanupMergedBranches(ctx context.Context, repoPath stri
 		branch := strings.TrimSpace(scanner.Text())
 		branch = strings.TrimPrefix(branch, "* ")
 
-		if branch == mainBranch || branch == "master" || branch == defaultMainBranch || branch == "" {
+		if branch == mainBranch || branch == masterBranch || branch == defaultMainBranch || branch == "" {
 			continue
 		}
 
