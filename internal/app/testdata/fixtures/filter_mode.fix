@@ -1,0 +1,6 @@
+doc: Filter with a single mode name
+given standard
+when :filter dirty
+then filtered = dirty dirty-pr
+when :filter all
+then filtered = behind clean dirty dirty-pr

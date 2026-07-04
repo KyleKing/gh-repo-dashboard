@@ -27,6 +27,10 @@ run = "rm -f coverage.out"
 description = "Generate VHS demo recordings"
 run = 'find . -name "*.tape" -not -path "./.git/*" -exec vhs {} +'
 
+[tasks."docs:usage"]
+description = "Regenerate docs/USAGE.md from command fixtures"
+run = "go test ./internal/app/ -run TestUsageDocsCurrent -update-docs"
+
 [tasks.format]
 description = "Format code with golangci-lint and golines"
 run = ["golangci-lint run --fix ./...", "golines -w ."]

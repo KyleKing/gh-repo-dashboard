@@ -1,0 +1,6 @@
+doc: Compose operators with text objects
+given standard
+when keys F d r
+then view = batch
+then task = Fetch All (dirty)
+then total = 2

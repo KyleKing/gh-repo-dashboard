@@ -1,0 +1,8 @@
+doc: Select repos by predicate, then fetch the selection
+given standard
+when :select where dirty
+then selected = dirty dirty-pr
+when keys F s r
+then view = batch
+then task = Fetch All (selected)
+then total = 2

@@ -1,0 +1,6 @@
+doc: Complete command names with tab
+given standard
+when keys : f tab
+then input = fetch
+when keys tab
+then input = filter

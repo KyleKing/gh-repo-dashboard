@@ -1,0 +1,10 @@
+doc: Filter by predicate expression
+given standard
+when :filter dirty and has_pr
+then filtered = dirty-pr
+then predicate = dirty and has_pr
+when :filter behind or has_pr
+then filtered = behind dirty-pr
+when :filter all
+then filtered = behind clean dirty dirty-pr
+then predicate =

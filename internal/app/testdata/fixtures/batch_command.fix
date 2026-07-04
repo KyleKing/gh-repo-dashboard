@@ -1,0 +1,6 @@
+doc: Run a scoped batch from command mode
+given standard
+when :fetch dirty and has_pr
+then view = batch
+then task = Fetch All (dirty and has_pr)
+then total = 1

@@ -1,0 +1,12 @@
+doc: Navigate the repo list with vim keys
+given standard
+when keys j j
+then cursor = 2
+when keys G
+then cursor = 3
+when keys g
+then cursor = 0
+when keys enter
+then view = detail
+when keys esc
+then view = list

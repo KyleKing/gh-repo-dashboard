@@ -35,7 +35,7 @@ A layered pyramid, adopted incrementally across the milestones below:
 
 ## Milestones
 
-### M1: Bubble Tea v2 upgrade (next)
+### M1: Bubble Tea v2 upgrade (shipped)
 
 Foundational. v2 reworks input/key handling and the cursor model and ships companion
 `bubbles`/`lipgloss` v2 releases. It touches the same `Model`/`Update`/`View` surface
@@ -48,7 +48,7 @@ same code twice.
   jj repos
 - Ship: no behavior change, v2 on `main`, green CI
 
-### M2: Test foundation
+### M2: Test foundation (shipped)
 
 Raise the floor before building new surfaces on top of it.
 
@@ -58,7 +58,7 @@ Raise the floor before building new surfaces on top of it.
 - Add the thin teatest golden layer for the stable screens under the `golden` build tag
 - Ship: coverage targets met, golden snapshots committed, CI runs both tag sets
 
-### M3: Command mode
+### M3: Command mode (shipped)
 
 First vim slice and the seam the rest depends on. An in-repo command layer, no
 external package yet.
@@ -68,20 +68,20 @@ external package yet.
   alongside the current keybindings (both work)
 - Ship: command mode usable for the common filter/fetch flows
 
-### M4: Predicates
+### M4: Predicates (shipped)
 
 - Predicate parser for `dirty and has_pr`, `behind or ahead`, etc.
 - `:filter <predicate>` and `:select where <predicate>` over the repo set
 - Ship: compositional filtering by expression, no visual mode needed
 
-### M5: Text objects and operators
+### M5: Text objects and operators (shipped)
 
 - Text objects: `dr` (dirty), `pr` (has PR), `br` (behind), `ar` (all)
 - Operators: `F` (fetch), `P` (prune), `C` (cleanup)
 - Composition: operator × text object (`Fdr`, `Cpr`) plus a keybinding layer
 - Ship: composable batch actions scoped by text object
 
-### M6: Fixture-based tests and docs
+### M6: Fixture-based tests and docs (shipped)
 
 Couples to command mode: fixtures script command sequences and generate usage docs.
 

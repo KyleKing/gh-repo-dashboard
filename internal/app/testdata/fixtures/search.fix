@@ -1,0 +1,5 @@
+doc: Search repos by name
+given standard
+when keys / d i r t enter
+then filtered = dirty dirty-pr
+then search = dirt
