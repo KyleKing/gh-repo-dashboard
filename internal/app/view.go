@@ -73,6 +73,17 @@ func (m Model) renderView() string {
 	}
 }
 
+// centerModal centers content on screen as a single block. Content is first
+// left-padded to a uniform width because lipgloss.Place centers each line of
+// a multi-line string independently based on that line's own width, which
+// would otherwise stagger rows of differing length (e.g. table rows).
+func centerModal(m Model, content string) string {
+	width := lipgloss.Width(content)
+	content = lipgloss.NewStyle().Width(width).Render(content)
+
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+}
+
 func (m Model) renderRepoList() string {
 	var b strings.Builder
 
@@ -961,7 +972,7 @@ func (m Model) renderFilterModal() string {
 
 	content := b.String()
 
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+	return centerModal(m, content)
 }
 
 func (m Model) countForFilter(mode models.FilterMode) int {
@@ -1103,7 +1114,7 @@ func (m Model) renderSortModal() string {
 
 	content := b.String()
 
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+	return centerModal(m, content)
 }
 
 func (m Model) renderBatchProgress() string {

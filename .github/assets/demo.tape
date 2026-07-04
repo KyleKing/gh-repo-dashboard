@@ -56,31 +56,61 @@ Set Width 1600
 Set Height 1000
 
 Hide
-Type `cd ~/Developer/kyleking/repo-dashboard`  Enter  Sleep 500ms
+Type `cd ~/Developer/kyleking/gh-repo-dashboard`  Enter  Sleep 500ms
 Type `go build -o gh-repo-dashboard .`  Enter  Sleep 2s
 Type `cd ~/Developer/kyleking`  Enter  Sleep 500ms
 Type `clear`  Enter
 Show
 
 # Start the TUI
-Type `./repo-dashboard/gh-repo-dashboard . --depth 2`  Sleep 500ms  Enter
+Type `./gh-repo-dashboard/gh-repo-dashboard . --depth 2`  Sleep 500ms  Enter
 Sleep 2s
 
 # Navigate repos
 Down 3
 Sleep 800ms
 
-# Cycle filter mode (2 examples)
+# Open filter modal, toggle Dirty (off/on/NOT), then close
 Type `f`
-Sleep 1s
-Type `f`
-Sleep 1s
+Sleep 700ms
+Type `d`
+Sleep 800ms
+Type `d`
+Sleep 800ms
+Escape
+Sleep 500ms
 
-# Cycle sort mode (2 examples)
+# Open sort modal, cycle Modified then Name, then close
 Type `s`
+Sleep 700ms
+Type `m`
+Sleep 800ms
+Type `n`
+Sleep 800ms
+Escape
+Sleep 500ms
+
+# Command mode: tab-completion and a predicate filter
+Type `:`
+Sleep 400ms
+Type `fil`
+Sleep 400ms
+Tab
+Sleep 500ms
+Type ` dirty`
+Sleep 600ms
+Enter
 Sleep 1s
-Type `s`
-Sleep 1s
+Type `:filter all`
+Sleep 400ms
+Enter
+Sleep 700ms
+
+# Operator + text-object (vim-style batch actions): F=fetch, ar=all repos
+Type `F`
+Sleep 800ms
+Escape
+Sleep 500ms
 
 # Activate search
 Type `/`
