@@ -30,7 +30,7 @@ func (g *GitOperations) runGit(ctx context.Context, repoPath string, args ...str
 	if err != nil {
 		exitErr := &exec.ExitError{}
 		if errors.As(err, &exitErr) {
-			return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), string(exitErr.Stderr))
+			return "", fmt.Errorf("git %s: %s: %w", strings.Join(args, " "), string(exitErr.Stderr), ErrCommandFailed)
 		}
 
 		return "", err
@@ -114,7 +114,7 @@ func (g *GitOperations) GetAheadBehind(ctx context.Context, repoPath, branch, up
 
 	parts := strings.Fields(out)
 	if len(parts) != 2 {
-		return 0, 0, fmt.Errorf("unexpected rev-list output: %s", out)
+		return 0, 0, fmt.Errorf("rev-list output %q: %w", out, ErrUnexpectedOutput)
 	}
 
 	ahead, _ := strconv.Atoi(parts[0])  //nolint:errcheck // regex guarantees digits
@@ -348,7 +348,12 @@ func (g *GitOperations) GetLastModified(ctx context.Context, repoPath string) (i
 		return 0, err
 	}
 
-	return strconv.ParseInt(out, 10, 64)
+	ts, err := strconv.ParseInt(out, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parsing commit timestamp: %w", err)
+	}
+
+	return ts, nil
 }
 
 func (g *GitOperations) GetRemoteURL(ctx context.Context, repoPath string) (string, error) {

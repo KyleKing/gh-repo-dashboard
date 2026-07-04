@@ -2,9 +2,16 @@ package vcs
 
 import (
 	"context"
+	"errors"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
+
+// ErrCommandFailed wraps a non-zero exit from the underlying git/jj CLI.
+var ErrCommandFailed = errors.New("command failed")
+
+// ErrUnexpectedOutput wraps a CLI output that didn't match the expected format.
+var ErrUnexpectedOutput = errors.New("unexpected command output")
 
 type Operations interface {
 	GetRepoSummary(ctx context.Context, repoPath string) (models.RepoSummary, error)

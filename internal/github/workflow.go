@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
@@ -43,7 +44,7 @@ func GetWorkflowRunsForCommit(ctx context.Context, repoPath, commitSHA string) (
 	}
 
 	if err := json.Unmarshal(out, &runs); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing gh run list output: %w", err)
 	}
 
 	summary := &models.WorkflowSummary{

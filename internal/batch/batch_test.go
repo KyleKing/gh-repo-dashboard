@@ -9,6 +9,8 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
+var errNetwork = errors.New("network error")
+
 func TestRepoName(t *testing.T) {
 	tests := []struct {
 		path     string
@@ -144,7 +146,7 @@ func TestFetchAll(t *testing.T) {
 		},
 		{
 			name:        "error propagates",
-			result:      func() (bool, string, error) { return false, "", errors.New("network error") },
+			result:      func() (bool, string, error) { return false, "", errNetwork },
 			wantSuccess: false,
 			wantErr:     true,
 		},

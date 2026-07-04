@@ -1,12 +1,19 @@
 package app
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+)
+
+var (
+	errBoom         = errors.New("boom")
+	errGHFailed     = errors.New("gh failed")
+	errPRDetailLoad = errors.New("failed to load PR details")
 )
 
 func mustModel(t *testing.T, tm tea.Model) Model {

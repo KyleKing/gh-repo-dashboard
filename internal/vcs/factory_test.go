@@ -1,6 +1,7 @@
 package vcs
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -28,7 +29,7 @@ func TestDetectVCSType(t *testing.T) {
 			name: "colocated prefers jj",
 			setup: func(dir string) error {
 				if err := os.Mkdir(filepath.Join(dir, ".git"), 0o750); err != nil {
-					return err
+					return fmt.Errorf("mkdir .git: %w", err)
 				}
 
 				return os.Mkdir(filepath.Join(dir, ".jj"), 0o750)
@@ -148,7 +149,7 @@ func TestGetGitHubEnv(t *testing.T) {
 			name: "colocated jj repo returns nil",
 			setup: func(dir string) error {
 				if err := os.Mkdir(filepath.Join(dir, ".git"), 0o750); err != nil {
-					return err
+					return fmt.Errorf("mkdir .git: %w", err)
 				}
 
 				return os.Mkdir(filepath.Join(dir, ".jj"), 0o750)

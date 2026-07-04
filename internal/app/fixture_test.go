@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,15 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+)
+
+var (
+	errFixtureBadWhen        = errors.New("when must be ':command' or 'keys ...'")
+	errFixtureThenBeforeWhen = errors.New("then before any when")
+	errFixtureBadThen        = errors.New("then requires 'field = value'")
+	errFixtureUnrecognized   = errors.New("unrecognized line")
+	errFixtureMissingGiven   = errors.New("missing given")
+	errFixtureNoSteps        = errors.New("no steps")
 )
 
 type fixtureStep struct {
@@ -35,7 +45,7 @@ type fixture struct {
 func parseFixture(path string) (fixture, error) {
 	data, err := os.ReadFile(path) //nolint:gosec // path comes from a glob over our own testdata dir
 	if err != nil {
-		return fixture{}, err
+		return fixture{}, fmt.Errorf("reading fixture %s: %w", path, err)
 	}
 
 	f := fixture{Path: path}
@@ -61,17 +71,17 @@ func parseFixture(path string) (fixture, error) {
 			case strings.HasPrefix(input, "keys "):
 				step.Keys = strings.Fields(strings.TrimPrefix(input, "keys "))
 			default:
-				return fixture{}, fmt.Errorf("%s:%d: when must be ':command' or 'keys ...'", path, lineNo+1)
+				return fixture{}, fmt.Errorf("%s:%d: %w", path, lineNo+1, errFixtureBadWhen)
 			}
 			f.Steps = append(f.Steps, step)
 
 		case strings.HasPrefix(line, "then "):
 			if len(f.Steps) == 0 {
-				return fixture{}, fmt.Errorf("%s:%d: then before any when", path, lineNo+1)
+				return fixture{}, fmt.Errorf("%s:%d: %w", path, lineNo+1, errFixtureThenBeforeWhen)
 			}
 			field, value, found := strings.Cut(strings.TrimPrefix(line, "then "), "=")
 			if !found {
-				return fixture{}, fmt.Errorf("%s:%d: then requires 'field = value'", path, lineNo+1)
+				return fixture{}, fmt.Errorf("%s:%d: %w", path, lineNo+1, errFixtureBadThen)
 			}
 			last := &f.Steps[len(f.Steps)-1]
 			last.Assertions = append(last.Assertions, fixtureAssertion{
@@ -80,15 +90,15 @@ func parseFixture(path string) (fixture, error) {
 			})
 
 		default:
-			return fixture{}, fmt.Errorf("%s:%d: unrecognized line %q", path, lineNo+1, line)
+			return fixture{}, fmt.Errorf("%s:%d: %w: %q", path, lineNo+1, errFixtureUnrecognized, line)
 		}
 	}
 
 	if f.Given == "" {
-		return fixture{}, fmt.Errorf("%s: missing given", path)
+		return fixture{}, fmt.Errorf("%s: %w", path, errFixtureMissingGiven)
 	}
 	if len(f.Steps) == 0 {
-		return fixture{}, fmt.Errorf("%s: no steps", path)
+		return fixture{}, fmt.Errorf("%s: %w", path, errFixtureNoSteps)
 	}
 
 	return f, nil

@@ -87,7 +87,7 @@ func (j *JJOperations) runJJ(ctx context.Context, repoPath string, args ...strin
 	if err != nil {
 		exitErr := &exec.ExitError{}
 		if errors.As(err, &exitErr) {
-			return "", fmt.Errorf("jj %s: %s", strings.Join(args, " "), string(exitErr.Stderr))
+			return "", fmt.Errorf("jj %s: %s: %w", strings.Join(args, " "), string(exitErr.Stderr), ErrCommandFailed)
 		}
 
 		return "", err
@@ -315,7 +315,12 @@ func (j *JJOperations) GetLastModified(ctx context.Context, repoPath string) (in
 		return 0, err
 	}
 
-	return strconv.ParseInt(strings.TrimSpace(out), 10, 64)
+	ts, err := strconv.ParseInt(strings.TrimSpace(out), 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parsing commit timestamp: %w", err)
+	}
+
+	return ts, nil
 }
 
 func (j *JJOperations) GetRemoteURL(ctx context.Context, repoPath string) (string, error) {

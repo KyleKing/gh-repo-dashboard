@@ -28,9 +28,12 @@ func TestJJRunJJWrapsExitError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	expected := "jj status: Error: no jj repo"
+	expected := "jj status: Error: no jj repo: command failed"
 	if err.Error() != expected {
 		t.Errorf("expected %q, got %q", expected, err.Error())
+	}
+	if !errors.Is(err, ErrCommandFailed) {
+		t.Error("expected error to wrap ErrCommandFailed")
 	}
 }
 
@@ -60,7 +63,7 @@ func TestJJGetCurrentBranch(t *testing.T) {
 		},
 		{
 			name:     "command failure falls back to @",
-			failures: map[string]error{key: errors.New("boom")},
+			failures: map[string]error{key: errBoom},
 			expected: "@",
 		},
 	}
@@ -112,7 +115,7 @@ func TestJJGetUpstream(t *testing.T) {
 		{
 			name:     "command failure",
 			branch:   "main",
-			failures: map[string]error{key: errors.New("boom")},
+			failures: map[string]error{key: errBoom},
 			wantErr:  true,
 		},
 	}
@@ -172,7 +175,7 @@ func TestJJGetAheadBehind(t *testing.T) {
 			name:     "listing failure returns zeros",
 			branch:   "main",
 			upstream: "main@origin",
-			failures: map[string]error{key: errors.New("boom")},
+			failures: map[string]error{key: errBoom},
 		},
 	}
 
@@ -316,7 +319,7 @@ func TestJJGetBranchList(t *testing.T) {
 		},
 		{
 			name:     "command failure",
-			failures: map[string]error{listKey: errors.New("boom")},
+			failures: map[string]error{listKey: errBoom},
 			wantErr:  true,
 		},
 	}
@@ -380,7 +383,7 @@ func TestJJGetWorktreeList(t *testing.T) {
 		},
 		{
 			name:     "command failure",
-			failures: map[string]error{key: errors.New("boom")},
+			failures: map[string]error{key: errBoom},
 			wantErr:  true,
 		},
 	}
@@ -434,7 +437,7 @@ func TestJJGetCommitLog(t *testing.T) {
 		},
 		{
 			name:     "command failure",
-			failures: map[string]error{key: errors.New("boom")},
+			failures: map[string]error{key: errBoom},
 			wantErr:  true,
 		},
 	}
@@ -477,7 +480,7 @@ func TestJJGetLastModified(t *testing.T) {
 		},
 		{
 			name:     "command failure",
-			failures: map[string]error{key: errors.New("boom")},
+			failures: map[string]error{key: errBoom},
 			wantErr:  true,
 		},
 	}
@@ -520,7 +523,7 @@ func TestJJGetRemoteURL(t *testing.T) {
 		},
 		{
 			name:     "command failure",
-			failures: map[string]error{key: errors.New("boom")},
+			failures: map[string]error{key: errBoom},
 			wantErr:  true,
 		},
 	}
@@ -563,7 +566,7 @@ func TestJJFetchAllAndPruneRemote(t *testing.T) {
 		},
 		{
 			name:     "fetch failure",
-			failures: map[string]error{fetchKey: errors.New("network down")},
+			failures: map[string]error{fetchKey: errNetworkDown},
 			run: func(j *JJOperations) (bool, string, error) {
 				return j.FetchAll(context.Background(), testRepoPath)
 			},
@@ -629,7 +632,7 @@ func TestJJCleanupMergedBranches(t *testing.T) {
 		},
 		{
 			name:       "listing failure",
-			failures:   map[string]error{listKey: errors.New("boom")},
+			failures:   map[string]error{listKey: errBoom},
 			expectedOK: false,
 			expected:   "boom",
 		},

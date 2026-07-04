@@ -48,7 +48,7 @@ func GetPRForBranch(ctx context.Context, repoPath, branch, upstream string) (*mo
 
 	var resp prResponse
 	if err := json.Unmarshal(out, &resp); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing gh pr view output: %w", err)
 	}
 
 	checks := parseChecks(resp.StatusCheckRollup)
@@ -137,7 +137,7 @@ func GetPRDetail(ctx context.Context, repoPath string, prNumber int) (*models.PR
 	}
 
 	if err := json.Unmarshal(out, &resp); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing gh pr view output: %w", err)
 	}
 
 	// A malformed timestamp degrades to a zero time rather than failing the
@@ -215,7 +215,7 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 	}
 
 	if err := json.Unmarshal(out, &prList); err != nil {
-		return []models.PRInfo{}, err
+		return []models.PRInfo{}, fmt.Errorf("parsing gh pr list output: %w", err)
 	}
 
 	result := make([]models.PRInfo, 0, len(prList))

@@ -11,6 +11,11 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+var (
+	errGHFailed   = errors.New("gh failed")
+	errNoPRsFound = errors.New("no pull requests found")
+)
+
 func stubRunGH(t *testing.T, out []byte, err error) *[][]string {
 	t.Helper()
 	original := runGH
@@ -67,7 +72,7 @@ func TestGetPRForBranch(t *testing.T) {
 		},
 		{
 			name:      "gh error caches nil",
-			runErr:    errors.New("no pull requests found"),
+			runErr:    errNoPRsFound,
 			expectErr: true,
 			cachesNil: true,
 		},
@@ -181,7 +186,7 @@ func TestGetPRDetail(t *testing.T) {
 		expectErr bool
 	}{
 		{name: "success", output: successJSON, expected: expectedDetail},
-		{name: "gh error", runErr: errors.New("gh failed"), expectErr: true},
+		{name: "gh error", runErr: errGHFailed, expectErr: true},
 		{name: "malformed JSON", output: []byte(`not json`), expectErr: true},
 	}
 
@@ -270,7 +275,7 @@ func TestGetPRsForRepo(t *testing.T) {
 		{
 			name:      "gh error returns empty list",
 			upstream:  "owner/repo",
-			runErr:    errors.New("gh failed"),
+			runErr:    errGHFailed,
 			expected:  []models.PRInfo{},
 			expectErr: true,
 			expectGH:  true,
@@ -343,7 +348,7 @@ func TestGetPRCount(t *testing.T) {
 	}{
 		{name: "counts PRs", output: []byte(`[{"number": 1}, {"number": 2}, {"number": 3}]`), expected: 3},
 		{name: "empty list", output: []byte(`[]`), expected: 0},
-		{name: "gh error", runErr: errors.New("gh failed"), expectErr: true},
+		{name: "gh error", runErr: errGHFailed, expectErr: true},
 	}
 
 	for _, tt := range tests {
@@ -434,7 +439,7 @@ func TestGetWorkflowRunsForCommit(t *testing.T) {
 	}{
 		{name: "empty commit SHA short-circuits", commitSHA: ""},
 		{name: "success", commitSHA: "abc123", output: successJSON, expected: expectedSummary, expectGH: true},
-		{name: "gh error caches nil", commitSHA: "abc123", runErr: errors.New("gh failed"), expectErr: true, expectGH: true, cachesNil: true},
+		{name: "gh error caches nil", commitSHA: "abc123", runErr: errGHFailed, expectErr: true, expectGH: true, cachesNil: true},
 		{name: "malformed JSON", commitSHA: "abc123", output: []byte(`{`), expectErr: true, expectGH: true},
 	}
 

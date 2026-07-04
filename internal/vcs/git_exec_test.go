@@ -14,6 +14,16 @@ import (
 
 const testRepoPath = "/repo"
 
+var (
+	errUnexpectedCommand = errors.New("unexpected command")
+	errBoom              = errors.New("boom")
+	errNoUpstream        = errors.New("no upstream")
+	errNoSuchRemote      = errors.New("no such remote")
+	errNetworkDown       = errors.New("network down")
+	errNoRemote          = errors.New("no remote")
+	errUnknownRevision   = errors.New("unknown revision")
+)
+
 func stubCommands(t *testing.T, canned map[string]string, failures map[string]error) {
 	t.Helper()
 	orig := runCommand
@@ -26,7 +36,7 @@ func stubCommands(t *testing.T, canned map[string]string, failures map[string]er
 			return out, nil
 		}
 
-		return "", fmt.Errorf("unexpected command: %s", key)
+		return "", fmt.Errorf("%s: %w", key, errUnexpectedCommand)
 	}
 	t.Cleanup(func() { runCommand = orig })
 }
@@ -77,9 +87,12 @@ func TestGitRunGitWrapsExitError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	expected := "git status --porcelain -z: fatal: not a repo"
+	expected := "git status --porcelain -z: fatal: not a repo: command failed"
 	if err.Error() != expected {
 		t.Errorf("expected %q, got %q", expected, err.Error())
+	}
+	if !errors.Is(err, ErrCommandFailed) {
+		t.Error("expected error to wrap ErrCommandFailed")
 	}
 }
 
@@ -107,12 +120,12 @@ func TestGitGetCurrentBranch(t *testing.T) {
 		{
 			name:     "detached head with short hash failure",
 			canned:   map[string]string{"git rev-parse --abbrev-ref HEAD": "HEAD"},
-			failures: map[string]error{"git rev-parse --short HEAD": errors.New("boom")},
+			failures: map[string]error{"git rev-parse --short HEAD": errBoom},
 			expected: "HEAD",
 		},
 		{
 			name:     "command failure",
-			failures: map[string]error{"git rev-parse --abbrev-ref HEAD": errors.New("boom")},
+			failures: map[string]error{"git rev-parse --abbrev-ref HEAD": errBoom},
 			wantErr:  true,
 		},
 	}
@@ -148,7 +161,7 @@ func TestGitGetUpstream(t *testing.T) {
 		},
 		{
 			name:     "no upstream configured",
-			failures: map[string]error{"git rev-parse --abbrev-ref main@{upstream}": errors.New("no upstream")},
+			failures: map[string]error{"git rev-parse --abbrev-ref main@{upstream}": errNoUpstream},
 			wantErr:  true,
 		},
 	}
@@ -191,7 +204,7 @@ func TestGitGetAheadBehind(t *testing.T) {
 		},
 		{
 			name:     "command failure",
-			failures: map[string]error{"git rev-list --left-right --count main...origin/main": errors.New("boom")},
+			failures: map[string]error{"git rev-list --left-right --count main...origin/main": errBoom},
 			wantErr:  true,
 		},
 	}
@@ -303,7 +316,7 @@ func TestGitGetRepoSummary(t *testing.T) {
 				"git log -1 --format=%ct":         "1700000000",
 			},
 			failures: map[string]error{
-				"git rev-parse --abbrev-ref feature@{upstream}": errors.New("no upstream"),
+				"git rev-parse --abbrev-ref feature@{upstream}": errNoUpstream,
 			},
 			expected: models.RepoSummary{
 				Path:         testRepoPath,
@@ -315,7 +328,7 @@ func TestGitGetRepoSummary(t *testing.T) {
 		{
 			name: "branch failure returns error",
 			failures: map[string]error{
-				"git rev-parse --abbrev-ref HEAD": errors.New("boom"),
+				"git rev-parse --abbrev-ref HEAD": errBoom,
 			},
 			wantErr: true,
 		},
@@ -370,7 +383,7 @@ func TestGitGetBranchList(t *testing.T) {
 		},
 		{
 			name:     "command failure",
-			failures: map[string]error{key: errors.New("boom")},
+			failures: map[string]error{key: errBoom},
 			wantErr:  true,
 		},
 	}
@@ -424,7 +437,7 @@ func TestGitGetStashList(t *testing.T) {
 		},
 		{
 			name:     "command failure",
-			failures: map[string]error{key: errors.New("boom")},
+			failures: map[string]error{key: errBoom},
 			wantErr:  true,
 		},
 	}
@@ -480,7 +493,7 @@ func TestGitGetWorktreeList(t *testing.T) {
 		},
 		{
 			name:     "command failure",
-			failures: map[string]error{key: errors.New("boom")},
+			failures: map[string]error{key: errBoom},
 			wantErr:  true,
 		},
 	}
@@ -534,7 +547,7 @@ func TestGitGetCommitLog(t *testing.T) {
 		},
 		{
 			name:     "command failure",
-			failures: map[string]error{key: errors.New("boom")},
+			failures: map[string]error{key: errBoom},
 			wantErr:  true,
 		},
 	}
@@ -575,7 +588,7 @@ func TestGitGetLastModified(t *testing.T) {
 		},
 		{
 			name:     "command failure",
-			failures: map[string]error{"git log -1 --format=%ct": errors.New("boom")},
+			failures: map[string]error{"git log -1 --format=%ct": errBoom},
 			wantErr:  true,
 		},
 		{
@@ -616,7 +629,7 @@ func TestGitGetRemoteURL(t *testing.T) {
 		},
 		{
 			name:     "no origin",
-			failures: map[string]error{"git remote get-url origin": errors.New("no such remote")},
+			failures: map[string]error{"git remote get-url origin": errNoSuchRemote},
 			wantErr:  true,
 		},
 	}
@@ -657,7 +670,7 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 		},
 		{
 			name:     "fetch failure",
-			failures: map[string]error{"git fetch --all --prune": errors.New("network down")},
+			failures: map[string]error{"git fetch --all --prune": errNetworkDown},
 			run: func(g *GitOperations) (bool, string, error) {
 				return g.FetchAll(context.Background(), testRepoPath)
 			},
@@ -675,7 +688,7 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 		},
 		{
 			name:     "prune failure",
-			failures: map[string]error{"git remote prune origin": errors.New("no remote")},
+			failures: map[string]error{"git remote prune origin": errNoRemote},
 			run: func(g *GitOperations) (bool, string, error) {
 				return g.PruneRemote(context.Background(), testRepoPath)
 			},
@@ -728,7 +741,7 @@ func TestGitCleanupMergedBranches(t *testing.T) {
 				"git branch --merged master":    "* master",
 			},
 			failures: map[string]error{
-				"git rev-parse --verify main": errors.New("unknown revision"),
+				"git rev-parse --verify main": errUnknownRevision,
 			},
 			expectedOK: true,
 			expected:   "No merged branches to delete",
@@ -736,8 +749,8 @@ func TestGitCleanupMergedBranches(t *testing.T) {
 		{
 			name: "neither main nor master",
 			failures: map[string]error{
-				"git rev-parse --verify main":   errors.New("unknown revision"),
-				"git rev-parse --verify master": errors.New("unknown revision"),
+				"git rev-parse --verify main":   errUnknownRevision,
+				"git rev-parse --verify master": errUnknownRevision,
 			},
 			expectedOK: false,
 			expected:   "Could not find main or master branch",
@@ -748,7 +761,7 @@ func TestGitCleanupMergedBranches(t *testing.T) {
 				"git rev-parse --verify main": "abc123",
 			},
 			failures: map[string]error{
-				"git branch --merged main": errors.New("boom"),
+				"git branch --merged main": errBoom,
 			},
 			expectedOK: false,
 			expected:   "boom",

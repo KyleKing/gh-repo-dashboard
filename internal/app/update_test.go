@@ -86,7 +86,7 @@ func TestRepoSummaryLoadedSuccess(t *testing.T) {
 func TestRepoSummaryLoadedError(t *testing.T) {
 	m := New(nil, 1)
 	m.loadingCount = 1
-	loadErr := errors.New("boom")
+	loadErr := errBoom
 
 	msg := RepoSummaryLoadedMsg{Path: "/repo1", Error: loadErr}
 	updatedModel, _ := m.Update(msg)
@@ -270,7 +270,7 @@ func TestPRDetailLoadedMsgError(t *testing.T) {
 	m.selectedPR = models.PRInfo{Number: 42}
 	m.prDetail = models.PRDetail{PRInfo: models.PRInfo{Number: 42, Title: "Existing"}}
 
-	updatedModel, cmd := m.Update(PRDetailLoadedMsg{Path: "/repo1", PRNumber: 42, Error: errors.New("gh failed")})
+	updatedModel, cmd := m.Update(PRDetailLoadedMsg{Path: "/repo1", PRNumber: 42, Error: errGHFailed})
 	m = mustModel(t, updatedModel)
 
 	if m.statusMessage == "" {

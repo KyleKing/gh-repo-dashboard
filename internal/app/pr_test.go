@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -763,7 +762,7 @@ func TestPRDetailErrorPreservesBasicInfo(t *testing.T) {
 		Path:     "/test/repo",
 		PRNumber: 456,
 		Detail:   models.PRDetail{}, // Empty detail due to error
-		Error:    errors.New("failed to load PR details"),
+		Error:    errPRDetailLoad,
 	}
 
 	updatedModel, _ := m.Update(errorMsg)
