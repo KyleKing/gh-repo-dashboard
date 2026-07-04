@@ -33,10 +33,11 @@ func discoverInPath(basePath string, maxDepth int) []string {
 	}
 
 	scanDir(basePath, 0, maxDepth, &repos)
+
 	return repos
 }
 
-func scanDir(dir string, depth int, maxDepth int, repos *[]string) {
+func scanDir(dir string, depth, maxDepth int, repos *[]string) {
 	if depth >= maxDepth {
 		return
 	}

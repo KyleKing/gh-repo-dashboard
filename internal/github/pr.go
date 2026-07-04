@@ -31,7 +31,7 @@ type statusCheck struct {
 	Conclusion string `json:"conclusion,omitempty"`
 }
 
-func GetPRForBranch(ctx context.Context, repoPath string, branch string, upstream string) (*models.PRInfo, error) {
+func GetPRForBranch(ctx context.Context, repoPath, branch, upstream string) (*models.PRInfo, error) {
 	cacheKey := upstream + ":" + branch
 	if cached, ok := cache.PRCache.Get(cacheKey); ok {
 		return cached, nil
@@ -66,6 +66,7 @@ func GetPRForBranch(ctx context.Context, repoPath string, branch string, upstrea
 	}
 
 	cache.PRCache.Set(cacheKey, pr)
+
 	return pr, nil
 }
 
@@ -176,10 +177,11 @@ func GetPRDetail(ctx context.Context, repoPath string, prNumber int) (*models.PR
 	}
 
 	cache.PRDetailCache.Set(cacheKey, detail)
+
 	return detail, nil
 }
 
-func GetPRsForRepo(ctx context.Context, repoPath string, upstream string) ([]models.PRInfo, error) {
+func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRInfo, error) {
 	if upstream == "" {
 		return []models.PRInfo{}, nil
 	}
@@ -229,13 +231,15 @@ func GetPRsForRepo(ctx context.Context, repoPath string, upstream string) ([]mod
 	}
 
 	cache.PRListCache.Set(cacheKey, result)
+
 	return result, nil
 }
 
-func GetPRCount(ctx context.Context, repoPath string, upstream string) (int, error) {
+func GetPRCount(ctx context.Context, repoPath, upstream string) (int, error) {
 	prs, err := GetPRsForRepo(ctx, repoPath, upstream)
 	if err != nil {
 		return 0, err
 	}
+
 	return len(prs), nil
 }

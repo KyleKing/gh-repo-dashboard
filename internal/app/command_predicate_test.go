@@ -17,6 +17,7 @@ func predicateModel() Model {
 		"/test/dirty-pr": {Path: "/test/dirty-pr", Branch: "feat", Unstaged: 1, PRInfo: &models.PRInfo{Number: 7}},
 	}
 	m.updateFilteredPaths()
+
 	return m
 }
 

@@ -165,7 +165,10 @@ blocked.modules = []
 
 [linters.settings.govet]
 enable-all = true
-disable = ["shadow"]
+# fieldalignment reorders struct fields for tighter packing; disabled because
+# reordering exported struct fields breaks the many positional struct literals
+# in this codebase's table-driven tests, for a marginal memory win.
+disable = ["shadow", "fieldalignment"]
 
 [linters.settings.ireturn]
 allow = ["error", "empty", "stdlib"]

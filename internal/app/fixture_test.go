@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -89,6 +90,7 @@ func parseFixture(path string) (fixture, error) {
 	if len(f.Steps) == 0 {
 		return fixture{}, fmt.Errorf("%s: no steps", path)
 	}
+
 	return f, nil
 }
 
@@ -110,6 +112,7 @@ func fixtureDataset(t *testing.T, name string) Model {
 		"/repos/dirty-pr": {Path: "/repos/dirty-pr", Branch: "feat", Unstaged: 1, PRInfo: &models.PRInfo{Number: 7}},
 	}
 	m.updateFilteredPaths()
+
 	return m
 }
 
@@ -190,6 +193,7 @@ func runFixtureStep(t *testing.T, m Model, step fixtureStep) Model {
 			t.Errorf("after %q: %s = %q; want %q", step.Input, assertion.Field, got, assertion.Value)
 		}
 	}
+
 	return m
 }
 
@@ -197,6 +201,7 @@ func joinOrNone(items []string) string {
 	if len(items) == 0 {
 		return "(none)"
 	}
+
 	return strings.Join(items, " ")
 }
 
@@ -218,6 +223,7 @@ func loadFixtures(t *testing.T) []fixture {
 		}
 		fixtures = append(fixtures, f)
 	}
+
 	return fixtures
 }
 

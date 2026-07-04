@@ -24,7 +24,7 @@ type workflowRun struct {
 	UpdatedAt  string `json:"updated_at"`
 }
 
-func GetWorkflowRunsForCommit(ctx context.Context, repoPath string, commitSHA string) (*models.WorkflowSummary, error) {
+func GetWorkflowRunsForCommit(ctx context.Context, repoPath, commitSHA string) (*models.WorkflowSummary, error) {
 	if commitSHA == "" {
 		return nil, nil
 	}
@@ -90,5 +90,6 @@ func GetWorkflowRunsForCommit(ctx context.Context, repoPath string, commitSHA st
 	}
 
 	cache.WorkflowCache.Set(cacheKey, summary)
+
 	return summary, nil
 }

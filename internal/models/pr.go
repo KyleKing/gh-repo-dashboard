@@ -45,6 +45,7 @@ func (p PRInfo) ReviewStatus() string {
 		if len(p.ApprovedBy) > 0 {
 			return "approved"
 		}
+
 		return "—"
 	}
 }
@@ -70,6 +71,7 @@ func (c ChecksStatus) Summary() string {
 	if c.Passing == c.Total {
 		return "passing"
 	}
+
 	return "mixed"
 }
 
@@ -109,6 +111,7 @@ func (w WorkflowRun) StatusDisplay() string {
 	if w.Status == "completed" {
 		return w.Conclusion
 	}
+
 	return w.Status
 }
 
@@ -133,5 +136,6 @@ func (w WorkflowSummary) StatusDisplay() string {
 	if w.Passing == w.Total {
 		return "passing"
 	}
+
 	return "mixed"
 }

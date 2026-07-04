@@ -143,7 +143,7 @@ func TestModelCycleFilter(t *testing.T) {
 	m := New(nil, 1)
 	modes := models.AllFilterModes()
 
-	for i := 0; i < len(modes)+1; i++ {
+	for i := range len(modes) + 1 {
 		expectedIdx := (i + 1) % len(modes)
 		m.CycleFilter()
 		current := m.CurrentFilter()

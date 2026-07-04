@@ -21,6 +21,7 @@ func stubRunGH(t *testing.T, out []byte, err error) *[][]string {
 		calls = append(calls, args)
 		return out, err
 	}
+
 	return &calls
 }
 
@@ -118,8 +119,10 @@ func TestGetPRForBranchArgs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	expected := []string{"pr", "view", "my-branch",
-		"--json", "number,title,state,url,isDraft,mergeStateStatus,headRefName,baseRefName,statusCheckRollup"}
+	expected := []string{
+		"pr", "view", "my-branch",
+		"--json", "number,title,state,url,isDraft,mergeStateStatus,headRefName,baseRefName,statusCheckRollup",
+	}
 	if len(*calls) != 1 || !reflect.DeepEqual((*calls)[0], expected) {
 		t.Errorf("expected args %v, got %v", expected, *calls)
 	}
@@ -192,6 +195,7 @@ func TestGetPRDetail(t *testing.T) {
 				if err == nil {
 					t.Fatal("expected error, got nil")
 				}
+
 				return
 			}
 			if err != nil {
@@ -352,6 +356,7 @@ func TestGetPRCount(t *testing.T) {
 				if err == nil {
 					t.Fatal("expected error, got nil")
 				}
+
 				return
 			}
 			if err != nil {

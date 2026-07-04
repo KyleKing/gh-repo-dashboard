@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -50,6 +51,7 @@ func (r RepoSummary) Status() RepoStatus {
 	if r.UncommittedCount() > 0 {
 		return RepoStatusDirty
 	}
+
 	return RepoStatusClean
 }
 
@@ -79,20 +81,14 @@ func (r RepoSummary) StatusSummary() string {
 		return "✓"
 	}
 
-	result := ""
-	for i, p := range parts {
-		if i > 0 {
-			result += " "
-		}
-		result += p
-	}
-	return result
+	return strings.Join(parts, " ")
 }
 
 func (r RepoSummary) RelativeModified() string {
 	if r.LastModified.IsZero() {
 		return "—"
 	}
+
 	return RelativeTime(r.LastModified)
 }
 

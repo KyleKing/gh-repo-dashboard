@@ -3,6 +3,7 @@ package vcs
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strconv"
@@ -72,6 +73,7 @@ func parseJJBookmarkList(out string) []jjBookmark {
 	for _, name := range order {
 		bookmarks = append(bookmarks, *byName[name])
 	}
+
 	return bookmarks
 }
 
@@ -83,11 +85,14 @@ func (j *JJOperations) runJJ(ctx context.Context, repoPath string, args ...strin
 	fullArgs := append([]string{"-R", repoPath}, args...)
 	out, err := runCommand(ctx, "", "jj", fullArgs...)
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		exitErr := &exec.ExitError{}
+		if errors.As(err, &exitErr) {
 			return "", fmt.Errorf("jj %s: %s", strings.Join(args, " "), string(exitErr.Stderr))
 		}
+
 		return "", err
 	}
+
 	return out, nil
 }
 
@@ -138,10 +143,11 @@ func (j *JJOperations) GetCurrentBranch(ctx context.Context, repoPath string) (s
 			return parts[0], nil
 		}
 	}
+
 	return "@", nil
 }
 
-func (j *JJOperations) GetUpstream(ctx context.Context, repoPath string, branch string) (string, error) {
+func (j *JJOperations) GetUpstream(ctx context.Context, repoPath, branch string) (string, error) {
 	if branch == "@" || branch == "" {
 		return "", nil
 	}
@@ -156,10 +162,11 @@ func (j *JJOperations) GetUpstream(ctx context.Context, repoPath string, branch 
 			return bookmark.upstream, nil
 		}
 	}
+
 	return "", nil
 }
 
-func (j *JJOperations) GetAheadBehind(ctx context.Context, repoPath string, branch string, upstream string) (int, int, error) {
+func (j *JJOperations) GetAheadBehind(ctx context.Context, repoPath, branch, upstream string) (int, int, error) {
 	if branch == "@" || branch == "" || upstream == "" {
 		return 0, 0, nil
 	}
@@ -174,13 +181,14 @@ func (j *JJOperations) GetAheadBehind(ctx context.Context, repoPath string, bran
 			return bookmark.ahead, bookmark.behind, nil
 		}
 	}
+
 	return 0, 0, nil
 }
 
 func (j *JJOperations) getStatusCounts(ctx context.Context, repoPath string) (staged, unstaged, untracked, conflicted int) {
 	out, err := j.runJJ(ctx, repoPath, "status")
 	if err != nil {
-		return
+		return staged, unstaged, untracked, conflicted
 	}
 
 	for _, line := range strings.Split(out, "\n") {
@@ -190,6 +198,7 @@ func (j *JJOperations) getStatusCounts(ctx context.Context, repoPath string) (st
 			unstaged++
 		}
 	}
+
 	return 0, unstaged, 0, 0
 }
 
@@ -300,6 +309,7 @@ func (j *JJOperations) GetLastModified(ctx context.Context, repoPath string) (in
 	if err != nil {
 		return 0, err
 	}
+
 	return strconv.ParseInt(strings.TrimSpace(out), 10, 64)
 }
 
@@ -317,6 +327,7 @@ func (j *JJOperations) GetRemoteURL(ctx context.Context, repoPath string) (strin
 			}
 		}
 	}
+
 	return "", nil
 }
 
@@ -325,6 +336,7 @@ func (j *JJOperations) FetchAll(ctx context.Context, repoPath string) (bool, str
 	if err != nil {
 		return false, err.Error(), nil
 	}
+
 	return true, "Fetched from all remotes", nil
 }
 
@@ -345,7 +357,7 @@ func (j *JJOperations) CleanupMergedBranches(ctx context.Context, repoPath strin
 		}
 
 		isMerged, err := j.runJJ(ctx, repoPath, "log", "-r",
-			fmt.Sprintf("%s@origin..main@origin", bookmark.name), "-T", "change_id", "--no-graph")
+			bookmark.name+"@origin..main@origin", "-T", "change_id", "--no-graph")
 		if err != nil {
 			continue
 		}
@@ -360,5 +372,6 @@ func (j *JJOperations) CleanupMergedBranches(ctx context.Context, repoPath strin
 	if len(deleted) == 0 {
 		return true, "No merged bookmarks to delete", nil
 	}
+
 	return true, fmt.Sprintf("Deleted %d bookmarks: %s", len(deleted), strings.Join(deleted, ", ")), nil
 }

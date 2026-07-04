@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -19,6 +20,7 @@ func operatorModel() Model {
 		"/test/dirty-pr": {Path: "/test/dirty-pr", Branch: "feat", Unstaged: 1, PRInfo: &models.PRInfo{Number: 7}},
 	}
 	m.updateFilteredPaths()
+
 	return m
 }
 
@@ -30,6 +32,7 @@ func pressKeys(t *testing.T, m Model, keys string) (Model, tea.Cmd) {
 		m = newModel.(Model)
 		cmd = c
 	}
+
 	return m, cmd
 }
 

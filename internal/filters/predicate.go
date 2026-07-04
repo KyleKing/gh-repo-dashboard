@@ -42,6 +42,7 @@ func AtomNames() []string {
 		names = append(names, name)
 	}
 	slices.Sort(names)
+
 	return names
 }
 
@@ -66,6 +67,7 @@ func ParsePredicate(input string) (Predicate, error) {
 	if p.pos < len(p.tokens) {
 		return nil, &ParseError{Input: input, Message: fmt.Sprintf("unexpected token %q", p.tokens[p.pos])}
 	}
+
 	return pred, nil
 }
 
@@ -78,6 +80,7 @@ func (p *parser) peek() (string, bool) {
 	if p.pos < len(p.tokens) {
 		return p.tokens[p.pos], true
 	}
+
 	return "", false
 }
 
@@ -134,6 +137,7 @@ func (p *parser) parseUnary() (Predicate, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		return func(s models.RepoSummary) bool { return !inner(s) }, nil
 
 	case "(":
@@ -147,6 +151,7 @@ func (p *parser) parseUnary() (Predicate, error) {
 			return nil, &ParseError{Input: p.input, Message: "missing closing paren"}
 		}
 		p.pos++
+
 		return inner, nil
 
 	case ")", "and", "or":
@@ -158,6 +163,7 @@ func (p *parser) parseUnary() (Predicate, error) {
 			return nil, &ParseError{Input: p.input, Message: fmt.Sprintf("unknown atom %q (valid: %s)", tok, strings.Join(AtomNames(), ", "))}
 		}
 		p.pos++
+
 		return atom, nil
 	}
 }

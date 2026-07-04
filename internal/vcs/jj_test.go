@@ -123,6 +123,7 @@ func parseJJStatusCounts(out string) int {
 			count++
 		}
 	}
+
 	return count
 }
 

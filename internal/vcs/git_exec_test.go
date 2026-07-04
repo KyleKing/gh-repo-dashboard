@@ -17,7 +17,7 @@ const testRepoPath = "/repo"
 func stubCommands(t *testing.T, canned map[string]string, failures map[string]error) {
 	t.Helper()
 	orig := runCommand
-	runCommand = func(ctx context.Context, dir string, name string, args ...string) (string, error) {
+	runCommand = func(ctx context.Context, dir, name string, args ...string) (string, error) {
 		key := name + " " + strings.Join(args, " ")
 		if err, ok := failures[key]; ok {
 			return "", err
@@ -25,6 +25,7 @@ func stubCommands(t *testing.T, canned map[string]string, failures map[string]er
 		if out, ok := canned[key]; ok {
 			return out, nil
 		}
+
 		return "", fmt.Errorf("unexpected command: %s", key)
 	}
 	t.Cleanup(func() { runCommand = orig })

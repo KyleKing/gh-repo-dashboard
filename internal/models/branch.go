@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -19,6 +20,7 @@ func (b BranchInfo) RelativeLastCommit() string {
 	if b.LastCommit.IsZero() {
 		return "—"
 	}
+
 	return RelativeTime(b.LastCommit)
 }
 
@@ -56,14 +58,7 @@ func (b BranchDetail) FileChangesSummary() string {
 	if len(parts) == 0 {
 		return "No uncommitted changes"
 	}
-	result := ""
-	for i, p := range parts {
-		if i > 0 {
-			result += ", "
-		}
-		result += p
-	}
-	return result
+	return strings.Join(parts, ", ")
 }
 
 type CommitInfo struct {
@@ -105,36 +100,42 @@ func RelativeTime(t time.Time) string {
 		if mins == 1 {
 			return "1 min ago"
 		}
+
 		return fmt.Sprintf("%d mins ago", mins)
 	case diff < 24*time.Hour:
 		hours := int(diff.Hours())
 		if hours == 1 {
 			return "1 hour ago"
 		}
+
 		return fmt.Sprintf("%d hours ago", hours)
 	case diff < 7*24*time.Hour:
 		days := int(diff.Hours() / 24)
 		if days == 1 {
 			return "1 day ago"
 		}
+
 		return fmt.Sprintf("%d days ago", days)
 	case diff < 30*24*time.Hour:
 		weeks := int(diff.Hours() / 24 / 7)
 		if weeks == 1 {
 			return "1 week ago"
 		}
+
 		return fmt.Sprintf("%d weeks ago", weeks)
 	case diff < 365*24*time.Hour:
 		months := int(diff.Hours() / 24 / 30)
 		if months == 1 {
 			return "1 month ago"
 		}
+
 		return fmt.Sprintf("%d months ago", months)
 	default:
 		years := int(diff.Hours() / 24 / 365)
 		if years == 1 {
 			return "1 year ago"
 		}
+
 		return fmt.Sprintf("%d years ago", years)
 	}
 }

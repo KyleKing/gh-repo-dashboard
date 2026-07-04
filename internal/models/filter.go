@@ -52,6 +52,7 @@ func (s ActiveSort) DisplayName() string {
 	if s.Direction != SortDirectionOff {
 		name += " (" + s.Direction.String() + ")"
 	}
+
 	return name
 }
 

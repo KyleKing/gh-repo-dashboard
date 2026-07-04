@@ -1,11 +1,12 @@
 package app
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -769,7 +770,7 @@ func TestPRDetailErrorPreservesBasicInfo(t *testing.T) {
 		Path:     "/test/repo",
 		PRNumber: 456,
 		Detail:   models.PRDetail{}, // Empty detail due to error
-		Error:    fmt.Errorf("failed to load PR details"),
+		Error:    errors.New("failed to load PR details"),
 	}
 
 	updatedModel, _ := m.Update(errorMsg)

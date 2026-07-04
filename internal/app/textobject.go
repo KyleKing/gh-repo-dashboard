@@ -38,6 +38,7 @@ func lookupTextObject(key string) (TextObject, bool) {
 			return obj, true
 		}
 	}
+
 	return TextObject{}, false
 }
 
@@ -49,6 +50,7 @@ func (m Model) resolveTextObject(obj TextObject) []string {
 			paths = append(paths, path)
 		}
 	}
+
 	return paths
 }
 
@@ -72,5 +74,6 @@ func lookupOperator(key string) (operator, bool) {
 			return op, true
 		}
 	}
+
 	return operator{}, false
 }

@@ -40,64 +40,84 @@ type mockVCS struct {
 func (m *mockVCS) GetRepoSummary(ctx context.Context, repoPath string) (models.RepoSummary, error) {
 	return models.RepoSummary{}, nil
 }
+
 func (m *mockVCS) GetCurrentBranch(ctx context.Context, repoPath string) (string, error) {
 	return "main", nil
 }
-func (m *mockVCS) GetUpstream(ctx context.Context, repoPath string, branch string) (string, error) {
+
+func (m *mockVCS) GetUpstream(ctx context.Context, repoPath, branch string) (string, error) {
 	return "", nil
 }
-func (m *mockVCS) GetAheadBehind(ctx context.Context, repoPath string, branch string, upstream string) (int, int, error) {
+
+func (m *mockVCS) GetAheadBehind(ctx context.Context, repoPath, branch, upstream string) (int, int, error) {
 	return 0, 0, nil
 }
+
 func (m *mockVCS) GetStagedCount(ctx context.Context, repoPath string) (int, error) {
 	return 0, nil
 }
+
 func (m *mockVCS) GetUnstagedCount(ctx context.Context, repoPath string) (int, error) {
 	return 0, nil
 }
+
 func (m *mockVCS) GetUntrackedCount(ctx context.Context, repoPath string) (int, error) {
 	return 0, nil
 }
+
 func (m *mockVCS) GetConflictedCount(ctx context.Context, repoPath string) (int, error) {
 	return 0, nil
 }
+
 func (m *mockVCS) GetBranchList(ctx context.Context, repoPath string) ([]models.BranchInfo, error) {
 	return nil, nil
 }
+
 func (m *mockVCS) GetStashList(ctx context.Context, repoPath string) ([]models.StashDetail, error) {
 	return nil, nil
 }
+
 func (m *mockVCS) GetWorktreeList(ctx context.Context, repoPath string) ([]models.WorktreeInfo, error) {
 	return nil, nil
 }
+
 func (m *mockVCS) GetCommitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error) {
 	return nil, nil
 }
+
 func (m *mockVCS) GetLastModified(ctx context.Context, repoPath string) (int64, error) {
 	return 0, nil
 }
+
 func (m *mockVCS) GetRemoteURL(ctx context.Context, repoPath string) (string, error) {
 	return "", nil
 }
+
 func (m *mockVCS) VCSType() models.VCSType {
 	return models.VCSTypeGit
 }
+
 func (m *mockVCS) FetchAll(ctx context.Context, repoPath string) (bool, string, error) {
 	if m.fetchResult != nil {
 		return m.fetchResult()
 	}
+
 	return true, "success", nil
 }
+
 func (m *mockVCS) PruneRemote(ctx context.Context, repoPath string) (bool, string, error) {
 	if m.pruneResult != nil {
 		return m.pruneResult()
 	}
+
 	return true, "success", nil
 }
+
 func (m *mockVCS) CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error) {
 	if m.cleanupResult != nil {
 		return m.cleanupResult()
 	}
+
 	return true, "success", nil
 }
 

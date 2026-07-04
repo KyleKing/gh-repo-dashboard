@@ -3,6 +3,7 @@ package vcs
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -27,11 +28,14 @@ func (g *GitOperations) VCSType() models.VCSType {
 func (g *GitOperations) runGit(ctx context.Context, repoPath string, args ...string) (string, error) {
 	out, err := runCommand(ctx, repoPath, "git", args...)
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		exitErr := &exec.ExitError{}
+		if errors.As(err, &exitErr) {
 			return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), string(exitErr.Stderr))
 		}
+
 		return "", err
 	}
+
 	return out, nil
 }
 
@@ -83,20 +87,23 @@ func (g *GitOperations) GetCurrentBranch(ctx context.Context, repoPath string) (
 		if err != nil {
 			return "HEAD", nil
 		}
+
 		return fmt.Sprintf("(%s)", hash), nil
 	}
+
 	return out, nil
 }
 
-func (g *GitOperations) GetUpstream(ctx context.Context, repoPath string, branch string) (string, error) {
-	out, err := g.runGit(ctx, repoPath, "rev-parse", "--abbrev-ref", fmt.Sprintf("%s@{upstream}", branch))
+func (g *GitOperations) GetUpstream(ctx context.Context, repoPath, branch string) (string, error) {
+	out, err := g.runGit(ctx, repoPath, "rev-parse", "--abbrev-ref", branch+"@{upstream}")
 	if err != nil {
 		return "", err
 	}
+
 	return out, nil
 }
 
-func (g *GitOperations) GetAheadBehind(ctx context.Context, repoPath string, branch string, upstream string) (int, int, error) {
+func (g *GitOperations) GetAheadBehind(ctx context.Context, repoPath, branch, upstream string) (int, int, error) {
 	out, err := g.runGit(ctx, repoPath, "rev-list", "--left-right", "--count", fmt.Sprintf("%s...%s", branch, upstream))
 	if err != nil {
 		return 0, 0, err
@@ -109,13 +116,14 @@ func (g *GitOperations) GetAheadBehind(ctx context.Context, repoPath string, bra
 
 	ahead, _ := strconv.Atoi(parts[0])
 	behind, _ := strconv.Atoi(parts[1])
+
 	return ahead, behind, nil
 }
 
 func (g *GitOperations) getStatusCounts(ctx context.Context, repoPath string) (staged, unstaged, untracked, conflicted int) {
 	out, err := g.runGit(ctx, repoPath, "status", "--porcelain", "-z")
 	if err != nil {
-		return
+		return staged, unstaged, untracked, conflicted
 	}
 
 	entries := strings.Split(out, "\x00")
@@ -140,7 +148,8 @@ func (g *GitOperations) getStatusCounts(ctx context.Context, repoPath string) (s
 			}
 		}
 	}
-	return
+
+	return staged, unstaged, untracked, conflicted
 }
 
 func (g *GitOperations) GetStagedCount(ctx context.Context, repoPath string) (int, error) {
@@ -171,6 +180,7 @@ func (g *GitOperations) getStashCount(ctx context.Context, repoPath string) (int
 	if out == "" {
 		return 0, nil
 	}
+
 	return len(strings.Split(out, "\n")), nil
 }
 
@@ -329,6 +339,7 @@ func (g *GitOperations) GetLastModified(ctx context.Context, repoPath string) (i
 	if err != nil {
 		return 0, err
 	}
+
 	return strconv.ParseInt(out, 10, 64)
 }
 
@@ -337,6 +348,7 @@ func (g *GitOperations) GetRemoteURL(ctx context.Context, repoPath string) (stri
 	if err != nil {
 		return "", err
 	}
+
 	return out, nil
 }
 
@@ -345,6 +357,7 @@ func (g *GitOperations) FetchAll(ctx context.Context, repoPath string) (bool, st
 	if err != nil {
 		return false, err.Error(), nil
 	}
+
 	return true, "Fetched from all remotes", nil
 }
 
@@ -353,6 +366,7 @@ func (g *GitOperations) PruneRemote(ctx context.Context, repoPath string) (bool,
 	if err != nil {
 		return false, err.Error(), nil
 	}
+
 	return true, "Pruned stale remote branches", nil
 }
 
@@ -389,6 +403,7 @@ func (g *GitOperations) CleanupMergedBranches(ctx context.Context, repoPath stri
 	if len(deleted) == 0 {
 		return true, "No merged branches to delete", nil
 	}
+
 	return true, fmt.Sprintf("Deleted %d branches: %s", len(deleted), strings.Join(deleted, ", ")), nil
 }
 
@@ -408,5 +423,6 @@ func ExtractRepoPath(remoteURL string) string {
 	if len(parts) >= 3 {
 		return filepath.Join(parts[len(parts)-2], parts[len(parts)-1])
 	}
+
 	return ""
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
@@ -66,5 +67,6 @@ func repoName(path string) string {
 			return path[i+1:]
 		}
 	}
+
 	return path
 }

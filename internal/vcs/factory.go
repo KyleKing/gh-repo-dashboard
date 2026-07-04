@@ -11,6 +11,7 @@ func DetectVCSType(repoPath string) models.VCSType {
 	if _, err := os.Stat(filepath.Join(repoPath, ".jj")); err == nil {
 		return models.VCSTypeJJ
 	}
+
 	return models.VCSTypeGit
 }
 
@@ -32,8 +33,10 @@ func GetGitHubEnv(repoPath string) []string {
 			return nil
 		}
 		jjGit := filepath.Join(repoPath, ".jj", "repo", "store", "git")
+
 		return []string{"GIT_DIR=" + jjGit}
 	}
+
 	return nil
 }
 

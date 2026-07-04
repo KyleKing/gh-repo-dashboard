@@ -46,6 +46,7 @@ func describeInput(step fixtureStep) string {
 	for i, k := range step.Keys {
 		keys[i] = "`" + k + "`"
 	}
+
 	return "press " + strings.Join(keys, " ")
 }
 
@@ -72,6 +73,7 @@ func generateUsageDocs(fixtures []fixture) string {
 			fmt.Fprintf(&b, "| %s | %s |\n", describeInput(step), result)
 		}
 	}
+
 	return b.String()
 }
 
@@ -85,6 +87,7 @@ func TestUsageDocsCurrent(t *testing.T) {
 		if err := os.WriteFile(usageDocsPath, []byte(generated), 0o644); err != nil {
 			t.Fatal(err)
 		}
+
 		return
 	}
 

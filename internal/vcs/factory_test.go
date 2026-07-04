@@ -16,21 +16,22 @@ func TestDetectVCSType(t *testing.T) {
 	}{
 		{
 			name:     "git repo",
-			setup:    func(dir string) error { return os.Mkdir(filepath.Join(dir, ".git"), 0755) },
+			setup:    func(dir string) error { return os.Mkdir(filepath.Join(dir, ".git"), 0o755) },
 			expected: models.VCSTypeGit,
 		},
 		{
 			name:     "jj repo",
-			setup:    func(dir string) error { return os.Mkdir(filepath.Join(dir, ".jj"), 0755) },
+			setup:    func(dir string) error { return os.Mkdir(filepath.Join(dir, ".jj"), 0o755) },
 			expected: models.VCSTypeJJ,
 		},
 		{
 			name: "colocated prefers jj",
 			setup: func(dir string) error {
-				if err := os.Mkdir(filepath.Join(dir, ".git"), 0755); err != nil {
+				if err := os.Mkdir(filepath.Join(dir, ".git"), 0o755); err != nil {
 					return err
 				}
-				return os.Mkdir(filepath.Join(dir, ".jj"), 0755)
+
+				return os.Mkdir(filepath.Join(dir, ".jj"), 0o755)
 			},
 			expected: models.VCSTypeJJ,
 		},
@@ -64,12 +65,12 @@ func TestGetOperations(t *testing.T) {
 	}{
 		{
 			name:        "returns git ops for git repo",
-			setup:       func(dir string) error { return os.Mkdir(filepath.Join(dir, ".git"), 0755) },
+			setup:       func(dir string) error { return os.Mkdir(filepath.Join(dir, ".git"), 0o755) },
 			expectedVCS: models.VCSTypeGit,
 		},
 		{
 			name:        "returns jj ops for jj repo",
-			setup:       func(dir string) error { return os.Mkdir(filepath.Join(dir, ".jj"), 0755) },
+			setup:       func(dir string) error { return os.Mkdir(filepath.Join(dir, ".jj"), 0o755) },
 			expectedVCS: models.VCSTypeJJ,
 		},
 	}
@@ -97,12 +98,12 @@ func TestIsRepo(t *testing.T) {
 	}{
 		{
 			name:     "git repo",
-			setup:    func(dir string) error { return os.Mkdir(filepath.Join(dir, ".git"), 0755) },
+			setup:    func(dir string) error { return os.Mkdir(filepath.Join(dir, ".git"), 0o755) },
 			expected: true,
 		},
 		{
 			name:     "jj repo",
-			setup:    func(dir string) error { return os.Mkdir(filepath.Join(dir, ".jj"), 0755) },
+			setup:    func(dir string) error { return os.Mkdir(filepath.Join(dir, ".jj"), 0o755) },
 			expected: true,
 		},
 		{
@@ -112,7 +113,7 @@ func TestIsRepo(t *testing.T) {
 		},
 		{
 			name:     "has other dot dirs but not vcs",
-			setup:    func(dir string) error { return os.Mkdir(filepath.Join(dir, ".config"), 0755) },
+			setup:    func(dir string) error { return os.Mkdir(filepath.Join(dir, ".config"), 0o755) },
 			expected: false,
 		},
 	}
@@ -140,23 +141,24 @@ func TestGetGitHubEnv(t *testing.T) {
 	}{
 		{
 			name:        "git repo returns nil",
-			setup:       func(dir string) error { return os.Mkdir(filepath.Join(dir, ".git"), 0755) },
+			setup:       func(dir string) error { return os.Mkdir(filepath.Join(dir, ".git"), 0o755) },
 			expectEmpty: true,
 		},
 		{
 			name: "colocated jj repo returns nil",
 			setup: func(dir string) error {
-				if err := os.Mkdir(filepath.Join(dir, ".git"), 0755); err != nil {
+				if err := os.Mkdir(filepath.Join(dir, ".git"), 0o755); err != nil {
 					return err
 				}
-				return os.Mkdir(filepath.Join(dir, ".jj"), 0755)
+
+				return os.Mkdir(filepath.Join(dir, ".jj"), 0o755)
 			},
 			expectEmpty: true,
 		},
 		{
 			name: "non-colocated jj repo sets GIT_DIR",
 			setup: func(dir string) error {
-				return os.MkdirAll(filepath.Join(dir, ".jj", "repo", "store", "git"), 0755)
+				return os.MkdirAll(filepath.Join(dir, ".jj", "repo", "store", "git"), 0o755)
 			},
 			expectEmpty: false,
 		},

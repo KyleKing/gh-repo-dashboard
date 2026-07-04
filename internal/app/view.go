@@ -3,10 +3,12 @@ package app
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
@@ -14,6 +16,7 @@ import (
 func (m Model) View() tea.View {
 	v := tea.NewView(m.view())
 	v.AltScreen = true
+
 	return v
 }
 
@@ -26,12 +29,13 @@ func (m Model) view() string {
 	if m.commandMode {
 		return overlayBottomLine(content, m.commandInput.View(), m.height)
 	}
+
 	return content
 }
 
 // overlayBottomLine pins line onto the last row of content, padding or
 // truncating content to keep the overall height stable.
-func overlayBottomLine(content string, line string, height int) string {
+func overlayBottomLine(content, line string, height int) string {
 	lines := strings.Split(content, "\n")
 	if height < 1 {
 		return content
@@ -44,6 +48,7 @@ func overlayBottomLine(content string, line string, height int) string {
 			lines = append(lines, "")
 		}
 	}
+
 	return strings.Join(lines, "\n") + "\n" + line
 }
 
@@ -193,7 +198,7 @@ func (m Model) renderStatusBar() string {
 	}
 
 	if len(enabledSorts) > 0 {
-		for i := 0; i < len(enabledSorts); i++ {
+		for i := range len(enabledSorts) {
 			for _, s := range m.activeSorts {
 				if s.IsEnabled() && s.Priority == i {
 					parts = append(parts, styles.Badge(s.DisplayName(), styles.SortBadgeStyle))
@@ -229,6 +234,7 @@ func (m Model) renderTable() string {
 		if m.loading {
 			return emptyStyle.Render("Discovering repositories...")
 		}
+
 		return emptyStyle.Render("No repositories found")
 	}
 
@@ -296,7 +302,8 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 	pr       int
 	prs      int
 	modified int
-}) string {
+},
+) string {
 	cursorChar := " "
 	if selected {
 		cursorChar = ">"
@@ -317,9 +324,10 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 
 		// Add review status indicator
 		reviewStatus := s.PRInfo.ReviewStatus()
-		if reviewStatus == "approved" {
+		switch reviewStatus {
+		case "approved":
 			prNum += " ✓"
-		} else if reviewStatus == "changes requested" {
+		case "changes requested":
 			prNum += " ✗"
 		}
 
@@ -341,7 +349,7 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 
 	prCountStr := "—"
 	if count, ok := m.prCount[s.Path]; ok && count > 0 {
-		prCountStr = fmt.Sprintf("%d", count)
+		prCountStr = strconv.Itoa(count)
 	}
 
 	modified := s.RelativeModified()
@@ -537,9 +545,10 @@ func (m Model) renderRepoDetail() string {
 	}
 
 	footer := "tab: switch tabs  j/k: navigate  esc: back"
-	if m.detailTab == DetailTabBranches {
+	switch m.detailTab {
+	case DetailTabBranches:
 		footer = "tab: switch tabs  j/k: navigate  enter: view branch  esc: back"
-	} else if m.detailTab == DetailTabPRs {
+	case DetailTabPRs:
 		footer = "tab: switch tabs  j/k: navigate  enter: view PR  esc: back"
 	}
 
@@ -557,7 +566,7 @@ func (m Model) renderRepoDetail() string {
 }
 
 func (m Model) renderDetailTabs() string {
-	summary, _ := m.summaries[m.selectedRepo]
+	summary := m.summaries[m.selectedRepo]
 	isJJ := summary.VCSType == models.VCSTypeJJ
 
 	worktreeLabel := "Worktrees"
@@ -601,6 +610,7 @@ func (m Model) renderBranchList() string {
 			BorderForeground(styles.Surface1).
 			Padding(2, 4).
 			Foreground(styles.Subtext0)
+
 		return emptyStyle.Render("No branches found")
 	}
 
@@ -674,6 +684,7 @@ func (m Model) renderStashList() string {
 			BorderForeground(styles.Surface1).
 			Padding(2, 4).
 			Foreground(styles.Subtext0)
+
 		return emptyStyle.Render("No stashes found\n\nStashes are only available for git repositories.\nJJ repositories use the working copy change instead.")
 	}
 
@@ -715,7 +726,7 @@ func (m Model) renderStashList() string {
 }
 
 func (m Model) renderWorktreeList() string {
-	summary, _ := m.summaries[m.selectedRepo]
+	summary := m.summaries[m.selectedRepo]
 	isJJ := summary.VCSType == models.VCSTypeJJ
 
 	if len(m.worktrees) == 0 {
@@ -729,6 +740,7 @@ func (m Model) renderWorktreeList() string {
 		if isJJ {
 			emptyMsg = "No workspaces found\n\nWorkspaces (jj's version of worktrees) allow working on multiple\nchanges simultaneously in separate working directories."
 		}
+
 		return emptyStyle.Render(emptyMsg)
 	}
 
@@ -793,6 +805,7 @@ func (m Model) renderPRList() string {
 			BorderForeground(styles.Surface1).
 			Padding(2, 4).
 			Foreground(styles.Subtext0)
+
 		return emptyStyle.Render("No open pull requests")
 	}
 
@@ -833,9 +846,10 @@ func (m Model) renderPRList() string {
 		}
 
 		reviewStyle := styles.SubtitleStyle
-		if review == "approved" {
+		switch review {
+		case "approved":
 			reviewStyle = styles.CleanStyle
-		} else if review == "changes requested" {
+		case "changes requested":
 			reviewStyle = styles.ErrorStyle
 		}
 		if i == m.detailCursor {
@@ -922,7 +936,7 @@ func (m Model) renderFilterModal() string {
 		formattedCheck := fmt.Sprintf("%-4s", checkbox)
 		formattedKey := fmt.Sprintf("%-3s", shortKey)
 		formattedLabel := fmt.Sprintf("%-15s", label)
-		formattedCount := fmt.Sprintf("%d", count)
+		formattedCount := strconv.Itoa(count)
 
 		row := fmt.Sprintf("%s%s  %s  %s  %s",
 			cursor,
@@ -944,6 +958,7 @@ func (m Model) renderFilterModal() string {
 	b.WriteString(strings.Join(helpLines, "  "))
 
 	content := b.String()
+
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
 }
 
@@ -975,6 +990,7 @@ func (m Model) countForFilter(mode models.FilterMode) int {
 			}
 		}
 	}
+
 	return count
 }
 
@@ -991,7 +1007,7 @@ func (m Model) renderSortModal() string {
 		}
 	}
 
-	for i := 0; i < len(sortsByPriority); i++ {
+	for i := range len(sortsByPriority) {
 		for j := range sortsByPriority {
 			if sortsByPriority[j].Priority == i {
 				break
@@ -1084,6 +1100,7 @@ func (m Model) renderSortModal() string {
 	b.WriteString(strings.Join(helpLines, "  "))
 
 	content := b.String()
+
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
 }
 
@@ -1139,7 +1156,7 @@ func (m Model) renderBatchProgress() string {
 }
 
 func (m Model) renderBranchDetail() string {
-	summary, _ := m.summaries[m.selectedRepo]
+	summary := m.summaries[m.selectedRepo]
 	isJJ := summary.VCSType == models.VCSTypeJJ
 
 	var b strings.Builder
@@ -1263,9 +1280,10 @@ func (m Model) renderBranchDetail() string {
 			pr := m.branchDetail.PRInfo
 			prStatus := pr.StatusDisplay()
 			prStyle := styles.PROpenStyle
-			if prStatus == "MERGED" {
+			switch prStatus {
+			case "MERGED":
 				prStyle = styles.CleanStyle
-			} else if prStatus == "CLOSED" {
+			case "CLOSED":
 				prStyle = styles.SubtitleStyle
 			}
 
@@ -1281,9 +1299,10 @@ func (m Model) renderBranchDetail() string {
 			// Review Status
 			reviewStatus := pr.ReviewStatus()
 			reviewStyle := styles.SubtitleStyle
-			if reviewStatus == "approved" {
+			switch reviewStatus {
+			case "approved":
 				reviewStyle = styles.CleanStyle
-			} else if reviewStatus == "changes requested" {
+			case "changes requested":
 				reviewStyle = styles.ErrorStyle
 			}
 			b.WriteString(infoStyle.Render(
@@ -1303,9 +1322,10 @@ func (m Model) renderBranchDetail() string {
 			if pr.Checks.Total > 0 {
 				checkStatus := pr.Checks.Summary()
 				checkStyle := styles.SubtitleStyle
-				if checkStatus == "passing" {
+				switch checkStatus {
+				case "passing":
 					checkStyle = styles.CleanStyle
-				} else if checkStatus == "failing" {
+				case "failing":
 					checkStyle = styles.ErrorStyle
 				}
 				checkDetail := fmt.Sprintf("%s (%d/%d passing)", checkStatus, pr.Checks.Passing, pr.Checks.Total)
@@ -1321,9 +1341,10 @@ func (m Model) renderBranchDetail() string {
 			wf := m.branchDetail.WorkflowInfo
 			wfStatus := wf.StatusDisplay()
 			wfStyle := styles.SubtitleStyle
-			if wfStatus == "passing" {
+			switch wfStatus {
+			case "passing":
 				wfStyle = styles.CleanStyle
-			} else if wfStatus == "failing" {
+			case "failing":
 				wfStyle = styles.ErrorStyle
 			}
 			wfDetail := fmt.Sprintf("%s (%d/%d passing)", wfStatus, wf.Passing, wf.Total)
@@ -1351,7 +1372,7 @@ func (m Model) renderBranchDetail() string {
 		if len(m.branchDetail.Commits) < maxCommits {
 			maxCommits = len(m.branchDetail.Commits)
 		}
-		for i := 0; i < maxCommits; i++ {
+		for i := range maxCommits {
 			commit := m.branchDetail.Commits[i]
 			hash := styles.SubtitleStyle.Render(commit.ShortHash)
 			subject := truncate(commit.Subject, 50)
@@ -1409,7 +1430,7 @@ func (m Model) renderBranchDetail() string {
 func (m Model) renderPRDetail() string {
 	var b strings.Builder
 
-	summary, _ := m.summaries[m.selectedRepo]
+	summary := m.summaries[m.selectedRepo]
 	home := styles.SubtitleStyle.Render("Repos")
 	sep := styles.SubtitleStyle.Render(" > ")
 	repo := styles.BranchStyle.Render(summary.Name())
@@ -1428,6 +1449,7 @@ func (m Model) renderPRDetail() string {
 		footer := styles.FooterKeyStyle.Render("esc") + styles.FooterDescStyle.Render(" back  ") +
 			styles.FooterKeyStyle.Render("?") + styles.FooterDescStyle.Render(" help")
 		b.WriteString(styles.FooterStyle.Render(footer))
+
 		return b.String()
 	}
 
@@ -1509,9 +1531,10 @@ func (m Model) renderPRDetail() string {
 
 	reviewStyle := styles.SubtitleStyle
 	reviewStatus := m.prDetail.ReviewStatus()
-	if reviewStatus == "approved" {
+	switch reviewStatus {
+	case "approved":
 		reviewStyle = styles.CleanStyle
-	} else if reviewStatus == "changes requested" {
+	case "changes requested":
 		reviewStyle = styles.ErrorStyle
 	}
 
@@ -1531,7 +1554,7 @@ func (m Model) renderPRDetail() string {
 
 		if m.prDetail.Comments > 0 {
 			b.WriteString(valueStyle.Render(
-				labelStyle.Render("Comments:") + " " + fmt.Sprintf("%d", m.prDetail.Comments),
+				labelStyle.Render("Comments:") + " " + strconv.Itoa(m.prDetail.Comments),
 			))
 			b.WriteString("\n")
 		}
@@ -1611,6 +1634,7 @@ func (m Model) findDefaultBranch() string {
 			return branch.Name
 		}
 	}
+
 	return ""
 }
 
@@ -1651,5 +1675,6 @@ func truncate(s string, maxLen int) string {
 	if maxLen <= 3 {
 		return s[:maxLen]
 	}
+
 	return s[:maxLen-3] + "..."
 }

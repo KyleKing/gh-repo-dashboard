@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/app"
 )
 
@@ -36,6 +37,7 @@ func findGitRoot(startPath string) (string, bool) {
 		}
 		current = parent
 	}
+
 	return startPath, false
 }
 

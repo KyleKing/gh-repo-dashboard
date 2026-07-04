@@ -10,6 +10,7 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
@@ -25,6 +26,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.help.SetWidth(msg.Width)
+
 		return m, nil
 
 	case tea.KeyMsg:
@@ -39,6 +41,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.commandInput.Reset()
 			m.completionCandidates = nil
 			m.commandInput.Focus()
+
 			return m, nil
 		}
 		switch m.viewMode {
@@ -73,6 +76,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for _, path := range msg.Paths {
 			cmds = append(cmds, loadRepoSummaryCmd(path))
 		}
+
 		return m, tea.Batch(cmds...)
 
 	case RepoSummaryLoadedMsg:
@@ -104,6 +108,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			summary.PRInfo = msg.PRInfo
 			m.summaries[msg.Path] = summary
 		}
+
 		return m, nil
 
 	case WorkflowLoadedMsg:
@@ -111,6 +116,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			summary.WorkflowInfo = msg.Workflow
 			m.summaries[msg.Path] = summary
 		}
+
 		return m, nil
 
 	case DetailLoadedMsg:
@@ -126,25 +132,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(msg.PRs) < prefetchCount {
 				prefetchCount = len(msg.PRs)
 			}
-			for i := 0; i < prefetchCount; i++ {
+			for i := range prefetchCount {
 				cmds = append(cmds, prefetchPRDetailCmd(msg.Path, msg.PRs[i].Number))
 			}
 			if len(cmds) > 0 {
 				return m, tea.Batch(cmds...)
 			}
 		}
+
 		return m, nil
 
 	case BranchDetailLoadedMsg:
 		if msg.Path == m.selectedRepo {
 			m.branchDetail = msg.Detail
 		}
+
 		return m, nil
 
 	case PRListLoadedMsg:
 		if msg.Path == m.selectedRepo {
 			m.prs = msg.PRs
 		}
+
 		return m, nil
 
 	case PRDetailLoadedMsg:
@@ -157,6 +166,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.prDetail = msg.Detail
 		}
+
 		return m, nil
 
 	case PRCountLoadedMsg:
@@ -164,20 +174,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.prCount = make(map[string]int)
 		}
 		m.prCount[msg.Path] = msg.Count
+
 		return m, nil
 
 	case PRCreatedMsg:
 		if msg.Error != nil {
 			return m, nil
 		}
+
 		return m, nil
 
 	case CopySuccessMsg:
-		m.statusMessage = fmt.Sprintf("Copied to clipboard: %s", msg.Text)
+		m.statusMessage = "Copied to clipboard: " + msg.Text
 		return m, clearStatusAfterDelay()
 
 	case URLOpenedMsg:
-		m.statusMessage = fmt.Sprintf("Opened in browser: %s", msg.URL)
+		m.statusMessage = "Opened in browser: " + msg.URL
 		return m, clearStatusAfterDelay()
 
 	case StatusMsg:
@@ -199,6 +211,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Message: msg.Result.Message,
 		})
 		m.batchProgress = len(m.batchResults)
+
 		return m, nil
 
 	case batch.TaskCompleteMsg:
@@ -211,6 +224,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			})
 		}
 		m.batchProgress = len(m.batchResults)
+
 		return m, nil
 
 	case ErrorMsg:
@@ -235,18 +249,21 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else {
 			m.viewMode = ViewModeHelp
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Up):
 		if m.cursor > 0 {
 			m.cursor--
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Down):
 		if m.cursor < len(m.filteredPaths)-1 {
 			m.cursor++
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Top):
@@ -257,6 +274,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(m.filteredPaths) > 0 {
 			m.cursor = len(m.filteredPaths) - 1
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Enter):
@@ -265,8 +283,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.viewMode = ViewModeRepoDetail
 			m.detailTab = DetailTabBranches
 			m.detailCursor = 0
+
 			return m, loadDetailCmd(m.selectedRepo)
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Back):
@@ -282,6 +302,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case ViewModeSort:
 			m.viewMode = ViewModeRepoList
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Refresh):
@@ -294,11 +315,13 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Sort):
 		m.viewMode = ViewModeSort
 		m.sortCursor = 0
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Search):
 		m.searching = true
 		m.searchInput.Focus()
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.FetchAll),
@@ -306,6 +329,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		key.Matches(msg, m.keys.CleanupMerged):
 		m.pendingOperator = msg.String()
 		m.pendingObject = ""
+
 		return m, nil
 	}
 
@@ -317,6 +341,7 @@ func (m Model) handleOperatorPendingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if !ok {
 		m.pendingOperator = ""
 		m.pendingObject = ""
+
 		return m, nil
 	}
 
@@ -325,6 +350,7 @@ func (m Model) handleOperatorPendingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case keyStr == "esc":
 		m.pendingOperator = ""
 		m.pendingObject = ""
+
 		return m, nil
 
 	case keyStr == m.pendingOperator && m.pendingObject == "":
@@ -339,7 +365,8 @@ func (m Model) handleOperatorPendingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.pendingOperator = ""
 		m.pendingObject = ""
-		return m, statusCmd(fmt.Sprintf("Unknown text object: %s", keyStr))
+
+		return m, statusCmd("Unknown text object: " + keyStr)
 	}
 
 	objKey := m.pendingObject
@@ -348,13 +375,14 @@ func (m Model) handleOperatorPendingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	obj, found := lookupTextObject(objKey)
 	if !found {
-		return m, statusCmd(fmt.Sprintf("Unknown text object: %s", objKey))
+		return m, statusCmd("Unknown text object: " + objKey)
 	}
 
 	paths := m.resolveTextObject(obj)
 	if len(paths) == 0 {
-		return m, statusCmd(fmt.Sprintf("No repos match %s", obj.Name))
+		return m, statusCmd("No repos match " + obj.Name)
 	}
+
 	return m.startBatchTaskOn(fmt.Sprintf("%s (%s)", op.TaskName, obj.Name), paths, op.Cmd)
 }
 
@@ -364,6 +392,7 @@ func hasTextObjectPrefix(prefix string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -387,6 +416,7 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.detailTab == DetailTabPRs && len(m.prs) > 0 {
 			return m, prefetchPRDetailCmd(m.selectedRepo, m.prs[0].Number)
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Left):
@@ -401,6 +431,7 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.detailTab == DetailTabPRs && len(m.prs) > 0 {
 			return m, prefetchPRDetailCmd(m.selectedRepo, m.prs[0].Number)
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Up):
@@ -412,6 +443,7 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return m, prefetchPRDetailCmd(m.selectedRepo, pr.Number)
 			}
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Down):
@@ -424,6 +456,7 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return m, prefetchPRDetailCmd(m.selectedRepo, pr.Number)
 			}
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Top):
@@ -435,6 +468,7 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if maxIdx >= 0 {
 			m.detailCursor = maxIdx
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Enter):
@@ -442,6 +476,7 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.selectedBranch = m.branches[m.detailCursor]
 			m.branchDetail = models.BranchDetail{} // Clear previous detail
 			m.viewMode = ViewModeBranchDetail
+
 			return m, loadBranchDetailCmd(m.selectedRepo, m.selectedBranch.Name)
 		} else if m.detailTab == DetailTabPRs && m.detailCursor < len(m.prs) {
 			m.selectedPR = m.prs[m.detailCursor]
@@ -451,8 +486,10 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				// Full details (author, assignees, etc.) will load async
 			}
 			m.viewMode = ViewModePRDetail
+
 			return m, loadPRDetailCmd(m.selectedRepo, m.selectedPR.Number)
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Help):
@@ -485,6 +522,7 @@ func (m Model) handleBranchDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.branchDetail.PRInfo != nil && m.branchDetail.PRInfo.URL != "" {
 			return m, openURLCmd(m.branchDetail.PRInfo.URL)
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Help):
@@ -506,6 +544,7 @@ func (m Model) detailListLen() int {
 	case DetailTabPRs:
 		return len(m.prs)
 	}
+
 	return 0
 }
 
@@ -617,18 +656,21 @@ func (m Model) handlePRDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 			return m, tea.Batch(cmds...)
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.OpenURL):
 		if m.prDetail.URL != "" {
 			return m, openURLCmd(m.prDetail.URL)
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.CopyURL):
 		if m.prDetail.URL != "" {
 			return m, copyToClipboardCmd(m.prDetail.URL)
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.CopyPRNumber):
@@ -639,6 +681,7 @@ func (m Model) handlePRDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.prDetail.HeadRef != "" {
 			return m, copyToClipboardCmd(m.prDetail.HeadRef)
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Help):
@@ -664,12 +707,14 @@ func (m Model) handleFilterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.filterCursor > 0 {
 			m.filterCursor--
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Down):
 		if m.filterCursor < len(modes)-1 {
 			m.filterCursor++
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Enter):
@@ -677,12 +722,14 @@ func (m Model) handleFilterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.CycleFilterState(selectedMode)
 		m.updateFilteredPaths()
 		m.cursor = 0
+
 		return m, nil
 
 	case msg.String() == "*":
 		m.ResetFilters()
 		m.updateFilteredPaths()
 		m.cursor = 0
+
 		return m, nil
 
 	default:
@@ -691,6 +738,7 @@ func (m Model) handleFilterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.CycleFilterState(mode)
 				m.updateFilteredPaths()
 				m.cursor = 0
+
 				return m, nil
 			}
 		}
@@ -714,33 +762,39 @@ func (m Model) handleSortKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.sortCursor > 0 {
 			m.sortCursor--
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Down):
 		if m.sortCursor < len(modes)-1 {
 			m.sortCursor++
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Enter):
 		selectedMode := modes[m.sortCursor]
 		m.CycleSortState(selectedMode)
 		m.updateFilteredPaths()
+
 		return m, nil
 
 	case msg.String() == "[":
 		m.MoveSortUp()
 		m.updateFilteredPaths()
+
 		return m, nil
 
 	case msg.String() == "]":
 		m.MoveSortDown()
 		m.updateFilteredPaths()
+
 		return m, nil
 
 	case msg.String() == "*":
 		m.ResetSorts()
 		m.updateFilteredPaths()
+
 		return m, nil
 
 	default:
@@ -748,6 +802,7 @@ func (m Model) handleSortKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if msg.String() == mode.ShortKey() {
 				m.CycleSortState(mode)
 				m.updateFilteredPaths()
+
 				return m, nil
 			}
 		}
@@ -762,12 +817,14 @@ func (m Model) handleBatchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if !m.batchRunning {
 			return m, tea.Quit
 		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Back):
 		if !m.batchRunning {
 			m.viewMode = ViewModeRepoList
 		}
+
 		return m, nil
 	}
 
@@ -779,6 +836,7 @@ func (m Model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		m.searching = false
 		m.searchInput.Blur()
+
 		return m, nil
 
 	case "enter":
@@ -787,6 +845,7 @@ func (m Model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.searchInput.Blur()
 		m.updateFilteredPaths()
 		m.cursor = 0
+
 		return m, nil
 
 	case "ctrl+c":
@@ -798,6 +857,7 @@ func (m Model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.searchText = m.searchInput.Value()
 	m.updateFilteredPaths()
 	m.cursor = 0
+
 	return m, cmd
 }
 
@@ -806,12 +866,14 @@ func (m Model) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		m.commandMode = false
 		m.commandInput.Blur()
+
 		return m, nil
 
 	case "enter":
 		line := m.commandInput.Value()
 		m.commandMode = false
 		m.commandInput.Blur()
+
 		return m.ExecuteCommand(line)
 
 	case "ctrl+c":
@@ -825,6 +887,7 @@ func (m Model) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.completionCandidates = nil
 	var cmd tea.Cmd
 	m.commandInput, cmd = m.commandInput.Update(msg)
+
 	return m, cmd
 }
 
@@ -939,6 +1002,7 @@ func loadRepoSummaryCmd(path string) tea.Cmd {
 	return func() tea.Msg {
 		ops := vcs.GetOperations(path)
 		summary, err := ops.GetRepoSummary(context.Background(), path)
+
 		return RepoSummaryLoadedMsg{
 			Path:    path,
 			Summary: summary,
@@ -947,10 +1011,11 @@ func loadRepoSummaryCmd(path string) tea.Cmd {
 	}
 }
 
-func loadPRCmd(path string, branch string, upstream string) tea.Cmd {
+func loadPRCmd(path, branch, upstream string) tea.Cmd {
 	if upstream == "" {
 		return nil
 	}
+
 	return func() tea.Msg {
 		return PRLoadedMsg{Path: path, PRInfo: nil}
 	}
@@ -981,7 +1046,7 @@ func loadDetailCmd(path string) tea.Cmd {
 	}
 }
 
-func loadBranchDetailCmd(repoPath string, branchName string) tea.Cmd {
+func loadBranchDetailCmd(repoPath, branchName string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
 		ops := vcs.GetOperations(repoPath)
@@ -1020,27 +1085,31 @@ func loadBranchDetailCmd(repoPath string, branchName string) tea.Cmd {
 	}
 }
 
-func loadPRCountCmd(path string, upstream string) tea.Cmd {
+func loadPRCountCmd(path, upstream string) tea.Cmd {
 	if upstream == "" {
 		return nil
 	}
+
 	return func() tea.Msg {
 		ctx := context.Background()
 		count, err := github.GetPRCount(ctx, path, upstream)
 		if err != nil {
 			return PRCountLoadedMsg{Path: path, Count: 0}
 		}
+
 		return PRCountLoadedMsg{Path: path, Count: count}
 	}
 }
 
-func loadPRListCmd(path string, upstream string) tea.Cmd {
+func loadPRListCmd(path, upstream string) tea.Cmd {
 	if upstream == "" {
 		return nil
 	}
+
 	return func() tea.Msg {
 		ctx := context.Background()
 		prs, err := github.GetPRsForRepo(ctx, path, upstream)
+
 		return PRListLoadedMsg{
 			Path:  path,
 			PRs:   prs,
@@ -1060,6 +1129,7 @@ func loadPRDetailCmd(repoPath string, prNumber int) tea.Cmd {
 				Error:    err,
 			}
 		}
+
 		return PRDetailLoadedMsg{
 			Path:     repoPath,
 			PRNumber: prNumber,
@@ -1074,11 +1144,12 @@ func prefetchPRDetailCmd(repoPath string, prNumber int) tea.Cmd {
 		// Prefetch runs in background and populates cache
 		// No message sent to avoid UI updates during prefetch
 		_, _ = github.GetPRDetail(ctx, repoPath, prNumber)
+
 		return nil
 	}
 }
 
-func openOrCreatePRCmd(repoPath string, branchName string) tea.Cmd {
+func openOrCreatePRCmd(repoPath, branchName string) tea.Cmd {
 	return func() tea.Msg {
 		return PRCreatedMsg{
 			URL:   "",

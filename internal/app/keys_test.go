@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -19,6 +20,7 @@ func newListModel(paths ...string) Model {
 		m.summaries[p] = models.RepoSummary{Path: p}
 	}
 	m.updateFilteredPaths()
+
 	return m
 }
 
@@ -305,6 +307,7 @@ func TestFilterModalEnterCyclesState(t *testing.T) {
 			}
 		}
 		t.Fatalf("filter mode %v not found", mode)
+
 		return models.ActiveFilter{}
 	}
 

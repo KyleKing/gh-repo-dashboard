@@ -24,6 +24,7 @@ func SortPaths(paths []string, summaries map[string]models.RepoSummary, mode mod
 		if reverse {
 			return !less
 		}
+
 		return less
 	})
 
@@ -53,6 +54,7 @@ func compareByModified(a, b models.RepoSummary) bool {
 	if a.LastModified.Equal(b.LastModified) {
 		return compareByName(a, b)
 	}
+
 	return a.LastModified.After(b.LastModified)
 }
 
@@ -77,6 +79,7 @@ func compareByBranch(a, b models.RepoSummary) bool {
 	if a.Branch != b.Branch {
 		return strings.ToLower(a.Branch) < strings.ToLower(b.Branch)
 	}
+
 	return compareByName(a, b)
 }
 

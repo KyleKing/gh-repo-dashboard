@@ -4,6 +4,7 @@ import (
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -146,6 +147,7 @@ func (m Model) CurrentFilter() models.FilterMode {
 			return f.Mode
 		}
 	}
+
 	return models.FilterModeAll
 }
 
@@ -156,6 +158,7 @@ func (m Model) ActiveFilterModes() []models.FilterMode {
 			modes = append(modes, f.Mode)
 		}
 	}
+
 	return modes
 }
 
@@ -192,6 +195,7 @@ func (m *Model) CycleFilter() {
 		if mode == current {
 			next := modes[(i+1)%len(modes)]
 			m.SetFilter(next)
+
 			return
 		}
 	}
@@ -235,6 +239,7 @@ func (m *Model) MoveSortUp() {
 		if m.activeSorts[i].IsEnabled() && m.activeSorts[i].Priority == currentSort.Priority-1 {
 			m.activeSorts[i].Priority++
 			currentSort.Priority--
+
 			return
 		}
 	}
@@ -265,6 +270,7 @@ func (m *Model) MoveSortDown() {
 		if m.activeSorts[i].IsEnabled() && m.activeSorts[i].Priority == currentSort.Priority+1 {
 			m.activeSorts[i].Priority--
 			currentSort.Priority++
+
 			return
 		}
 	}
@@ -306,6 +312,7 @@ func (m Model) DirtyCount() int {
 			count++
 		}
 	}
+
 	return count
 }
 
@@ -316,6 +323,7 @@ func (m Model) PRCount() int {
 			count++
 		}
 	}
+
 	return count
 }
 
@@ -326,5 +334,6 @@ func (m Model) SelectedSummary() (models.RepoSummary, bool) {
 			return summary, true
 		}
 	}
+
 	return models.RepoSummary{}, false
 }

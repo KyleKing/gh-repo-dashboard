@@ -173,7 +173,7 @@ func TestParseStatusCounts(t *testing.T) {
 
 func parseStatusOutput(out string) (staged, unstaged, untracked, conflicted int) {
 	if out == "" {
-		return
+		return staged, unstaged, untracked, conflicted
 	}
 
 	entries := strings.Split(out, "\x00")
@@ -198,7 +198,8 @@ func parseStatusOutput(out string) (staged, unstaged, untracked, conflicted int)
 			}
 		}
 	}
-	return
+
+	return staged, unstaged, untracked, conflicted
 }
 
 func TestParseBranchTrackingInfo(t *testing.T) {
@@ -273,7 +274,8 @@ func parseBranchTracking(s string) (ahead, behind int) {
 	if matches[3] != "" {
 		behind, _ = strconv.Atoi(matches[3])
 	}
-	return
+
+	return ahead, behind
 }
 
 func TestParseWorktreePorcelain(t *testing.T) {
@@ -424,6 +426,7 @@ func countStashEntries(out string) int {
 	if out == "" {
 		return 0
 	}
+
 	return len(strings.Split(out, "\n"))
 }
 
@@ -480,5 +483,6 @@ func parseRevListOutput(out string) (ahead, behind int) {
 	}
 	ahead, _ = strconv.Atoi(parts[0])
 	behind, _ = strconv.Atoi(parts[1])
-	return
+
+	return ahead, behind
 }

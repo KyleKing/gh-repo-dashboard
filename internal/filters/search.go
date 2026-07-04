@@ -4,8 +4,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/sahilm/fuzzy"
+
+	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 const fuzzyThreshold = 0.6
@@ -64,5 +65,6 @@ func FuzzyMatch(pattern, text string) bool {
 	}
 
 	matches := fuzzy.Find(pattern, []string{text})
+
 	return len(matches) > 0 && matches[0].Score > 0
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -43,6 +44,7 @@ func (r Registry) Lookup(name string) (Command, bool) {
 	if len(prefixMatches) == 1 {
 		return prefixMatches[0], true
 	}
+
 	return Command{}, false
 }
 
@@ -53,6 +55,7 @@ func (r Registry) Candidates(prefix string) []string {
 			names = append(names, c.Name)
 		}
 	}
+
 	return names
 }
 
@@ -84,6 +87,7 @@ func namesMatching[T any](modes map[string]T, prefix string) []string {
 		}
 	}
 	slices.Sort(names)
+
 	return names
 }
 
@@ -99,6 +103,7 @@ func DefaultRegistry() Registry {
 				if len(args) > 0 {
 					prefix = args[len(args)-1]
 				}
+
 				return predicateCandidates(prefix)
 			},
 			Run: func(m Model, args []string) (Model, tea.Cmd) {
@@ -115,6 +120,7 @@ func DefaultRegistry() Registry {
 						}
 						m.updateFilteredPaths()
 						m.cursor = 0
+
 						return m, nil
 					}
 				}
@@ -126,6 +132,7 @@ func DefaultRegistry() Registry {
 				m.SetPredicate(expr, pred)
 				m.updateFilteredPaths()
 				m.cursor = 0
+
 				return m, nil
 			},
 		},
@@ -162,8 +169,10 @@ func DefaultRegistry() Registry {
 					if len(args) == 1 {
 						prefix = args[0]
 					}
+
 					return namesMatching(map[string]struct{}{"all": {}, "none": {}, "where": {}}, prefix)
 				}
+
 				return predicateCandidates(args[len(args)-1])
 			},
 			Run: func(m Model, args []string) (Model, tea.Cmd) {
@@ -179,6 +188,7 @@ func DefaultRegistry() Registry {
 					for _, path := range m.repoPaths {
 						m.selectedPaths[path] = true
 					}
+
 					return m, statusCmd(fmt.Sprintf("Selected %d repos", len(m.selectedPaths)))
 				case "where":
 					expr := strings.Join(args[1:], " ")
@@ -192,9 +202,10 @@ func DefaultRegistry() Registry {
 							m.selectedPaths[path] = true
 						}
 					}
+
 					return m, statusCmd(fmt.Sprintf("Selected %d repos", len(m.selectedPaths)))
 				default:
-					return m, statusCmd(fmt.Sprintf("Unknown select action: %s", args[0]))
+					return m, statusCmd("Unknown select action: " + args[0])
 				}
 			},
 		},
@@ -206,20 +217,23 @@ func DefaultRegistry() Registry {
 				if len(args) > 0 {
 					prefix = args[len(args)-1]
 				}
+
 				return namesMatching(sortModeNames(), prefix)
 			},
 			Run: func(m Model, args []string) (Model, tea.Cmd) {
 				if len(args) == 0 {
 					m.viewMode = ViewModeSort
 					m.sortCursor = 0
+
 					return m, nil
 				}
 				mode, ok := sortModeNames()[args[0]]
 				if !ok {
-					return m, statusCmd(fmt.Sprintf("Unknown sort: %s", args[0]))
+					return m, statusCmd("Unknown sort: " + args[0])
 				}
 				m.CycleSortState(mode)
 				m.updateFilteredPaths()
+
 				return m, nil
 			},
 		},
@@ -228,7 +242,7 @@ func DefaultRegistry() Registry {
 
 // batchCommand builds a batch operator command that runs over the visible
 // repos, narrowed by an optional predicate expression argument.
-func batchCommand(name string, description string, taskName string, taskCmd func([]string) tea.Cmd) Command {
+func batchCommand(name, description, taskName string, taskCmd func([]string) tea.Cmd) Command {
 	return Command{
 		Name:        name,
 		Description: description,
@@ -237,6 +251,7 @@ func batchCommand(name string, description string, taskName string, taskCmd func
 			if len(args) > 0 {
 				prefix = args[len(args)-1]
 			}
+
 			return predicateCandidates(prefix)
 		},
 		Run: func(m Model, args []string) (Model, tea.Cmd) {
@@ -260,6 +275,7 @@ func batchCommand(name string, description string, taskName string, taskCmd func
 				return m, statusCmd("No repos match")
 			}
 			newModel, cmd := m.startBatchTaskOn(label, paths, taskCmd)
+
 			return newModel.(Model), cmd
 		},
 	}
@@ -278,6 +294,7 @@ func predicateCandidates(prefix string) []string {
 		}
 	}
 	slices.Sort(names)
+
 	return names
 }
 
@@ -295,7 +312,8 @@ func (m Model) ExecuteCommand(line string) (Model, tea.Cmd) {
 	}
 	cmd, ok := m.registry.Lookup(fields[0])
 	if !ok {
-		return m, statusCmd(fmt.Sprintf("Unknown command: %s", fields[0]))
+		return m, statusCmd("Unknown command: " + fields[0])
 	}
+
 	return cmd.Run(m, fields[1:])
 }

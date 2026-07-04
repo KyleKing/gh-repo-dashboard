@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -17,6 +18,7 @@ func commandModel() Model {
 		"/test/dirty": {Path: "/test/dirty", Branch: "main", Unstaged: 2},
 	}
 	m.updateFilteredPaths()
+
 	return m
 }
 
