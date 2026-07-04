@@ -286,7 +286,6 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.searchInput.Focus()
 		return m, nil
 
-
 	case key.Matches(msg, m.keys.FetchAll):
 		return m.startBatchTask("Fetch All", batchFetchAllCmd)
 

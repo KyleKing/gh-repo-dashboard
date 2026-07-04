@@ -1335,11 +1335,11 @@ func (m Model) renderBranchDetail() string {
 
 	if m.branchDetail.PRInfo != nil {
 		actions = append(actions,
-			styles.FooterKeyStyle.Render("p") + actionStyle.Render(" open PR in browser"),
-			styles.FooterKeyStyle.Render("o") + actionStyle.Render(" open PR URL"))
+			styles.FooterKeyStyle.Render("p")+actionStyle.Render(" open PR in browser"),
+			styles.FooterKeyStyle.Render("o")+actionStyle.Render(" open PR URL"))
 	} else {
 		actions = append(actions,
-			styles.FooterKeyStyle.Render("p") + actionStyle.Render(" create new PR"))
+			styles.FooterKeyStyle.Render("p")+actionStyle.Render(" create new PR"))
 	}
 
 	b.WriteString(strings.Join(actions, "  "))

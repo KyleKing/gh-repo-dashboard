@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -15,15 +14,15 @@ import (
 )
 
 type prResponse struct {
-	Number              int    `json:"number"`
-	Title               string `json:"title"`
-	State               string `json:"state"`
-	URL                 string `json:"url"`
-	IsDraft             bool   `json:"isDraft"`
-	MergeStateStatus    string `json:"mergeStateStatus"`
-	HeadRefName         string `json:"headRefName"`
-	BaseRefName         string `json:"baseRefName"`
-	StatusCheckRollup   []statusCheck `json:"statusCheckRollup"`
+	Number            int           `json:"number"`
+	Title             string        `json:"title"`
+	State             string        `json:"state"`
+	URL               string        `json:"url"`
+	IsDraft           bool          `json:"isDraft"`
+	MergeStateStatus  string        `json:"mergeStateStatus"`
+	HeadRefName       string        `json:"headRefName"`
+	BaseRefName       string        `json:"baseRefName"`
+	StatusCheckRollup []statusCheck `json:"statusCheckRollup"`
 }
 
 type statusCheck struct {
@@ -40,14 +39,8 @@ func GetPRForBranch(ctx context.Context, repoPath string, branch string, upstrea
 
 	env := vcs.GetGitHubEnv(repoPath)
 
-	cmd := exec.CommandContext(ctx, "gh", "pr", "view", branch,
+	out, err := runGH(ctx, repoPath, env, "pr", "view", branch,
 		"--json", "number,title,state,url,isDraft,mergeStateStatus,headRefName,baseRefName,statusCheckRollup")
-	cmd.Dir = repoPath
-	if len(env) > 0 {
-		cmd.Env = append(cmd.Environ(), env...)
-	}
-
-	out, err := cmd.Output()
 	if err != nil {
 		cache.PRCache.Set(cacheKey, nil)
 		return nil, err
@@ -109,29 +102,23 @@ func GetPRDetail(ctx context.Context, repoPath string, prNumber int) (*models.PR
 
 	env := vcs.GetGitHubEnv(repoPath)
 
-	cmd := exec.CommandContext(ctx, "gh", "pr", "view", strconv.Itoa(prNumber),
+	out, err := runGH(ctx, repoPath, env, "pr", "view", strconv.Itoa(prNumber),
 		"--json", "number,title,state,url,isDraft,mergeStateStatus,headRefName,baseRefName,body,author,assignees,reviewRequests,createdAt,updatedAt,additions,deletions,comments,reviewDecision")
-	cmd.Dir = repoPath
-	if len(env) > 0 {
-		cmd.Env = append(cmd.Environ(), env...)
-	}
-
-	out, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
 
 	var resp struct {
-		Number         int    `json:"number"`
-		Title          string `json:"title"`
-		State          string `json:"state"`
-		URL            string `json:"url"`
-		IsDraft        bool   `json:"isDraft"`
+		Number           int    `json:"number"`
+		Title            string `json:"title"`
+		State            string `json:"state"`
+		URL              string `json:"url"`
+		IsDraft          bool   `json:"isDraft"`
 		MergeStateStatus string `json:"mergeStateStatus"`
-		HeadRefName    string `json:"headRefName"`
-		BaseRefName    string `json:"baseRefName"`
-		Body           string `json:"body"`
-		Author         struct {
+		HeadRefName      string `json:"headRefName"`
+		BaseRefName      string `json:"baseRefName"`
+		Body             string `json:"body"`
+		Author           struct {
 			Login string `json:"login"`
 		} `json:"author"`
 		Assignees []struct {
@@ -204,15 +191,9 @@ func GetPRsForRepo(ctx context.Context, repoPath string, upstream string) ([]mod
 
 	env := vcs.GetGitHubEnv(repoPath)
 
-	cmd := exec.CommandContext(ctx, "gh", "pr", "list",
+	out, err := runGH(ctx, repoPath, env, "pr", "list",
 		"--json", "number,title,state,url,isDraft,headRefName,baseRefName,reviewDecision",
 		"--limit", "100")
-	cmd.Dir = repoPath
-	if len(env) > 0 {
-		cmd.Env = append(cmd.Environ(), env...)
-	}
-
-	out, err := cmd.Output()
 	if err != nil {
 		cache.PRListCache.Set(cacheKey, []models.PRInfo{})
 		return []models.PRInfo{}, err

@@ -7,22 +7,22 @@ import (
 )
 
 type RepoSummary struct {
-	Path          string
-	VCSType       VCSType
-	Branch        string
-	Upstream      string
-	Ahead         int
-	Behind        int
-	Staged        int
-	Unstaged      int
-	Untracked     int
-	Conflicted    int
-	StashCount    int
-	LastModified  time.Time
-	PRInfo        *PRInfo
-	WorkflowInfo  *WorkflowSummary
-	Loading       bool
-	Error         error
+	Path         string
+	VCSType      VCSType
+	Branch       string
+	Upstream     string
+	Ahead        int
+	Behind       int
+	Staged       int
+	Unstaged     int
+	Untracked    int
+	Conflicted   int
+	StashCount   int
+	LastModified time.Time
+	PRInfo       *PRInfo
+	WorkflowInfo *WorkflowSummary
+	Loading      bool
+	Error        error
 }
 
 func (r RepoSummary) Name() string {

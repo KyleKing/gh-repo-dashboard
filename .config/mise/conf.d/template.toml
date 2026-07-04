@@ -17,7 +17,7 @@ run = "go build -v -o gh-repo-dashboard ./cmd/gh-repo-dashboard"
 
 [tasks.ci]
 description = "Run all checks (used in GitHub Actions)"
-run = ["go test -v -coverprofile=coverage.out ./...", "go build -v -o gh-repo-dashboard ./cmd/gh-repo-dashboard"]
+run = ["go test -v -coverprofile=coverage.out ./...", "go test -tags=golden -run TestGolden ./internal/app/", "go build -v -o gh-repo-dashboard ./cmd/gh-repo-dashboard"]
 
 [tasks.clean]
 description = "Clean build artifacts"
@@ -42,6 +42,14 @@ run = "golangci-lint run ./..."
 [tasks.test]
 description = "Run tests with coverage"
 run = "go test -coverprofile=coverage.out ./..."
+
+[tasks."test:golden"]
+description = "Run golden snapshot tests"
+run = "go test -tags=golden -run TestGolden ./internal/app/"
+
+[tasks."test:golden-update"]
+description = "Regenerate golden snapshots"
+run = "go test -tags=golden -run TestGolden ./internal/app/ -update"
 
 [tasks."test:coverage-min"]
 description = "Verify minimum coverage threshold (70%)"

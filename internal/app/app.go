@@ -45,19 +45,19 @@ type Model struct {
 	searching     bool
 	searchInput   textinput.Model
 
-	viewMode       ViewMode
-	selectedRepo   string
-	width          int
-	height         int
-	loading        bool
-	loadingCount   int
-	loadedCount    int
+	viewMode     ViewMode
+	selectedRepo string
+	width        int
+	height       int
+	loading      bool
+	loadingCount int
+	loadedCount  int
 
-	detailTab      DetailTab
-	detailCursor   int
-	branches       []models.BranchInfo
-	stashes        []models.StashDetail
-	worktrees      []models.WorktreeInfo
+	detailTab    DetailTab
+	detailCursor int
+	branches     []models.BranchInfo
+	stashes      []models.StashDetail
+	worktrees    []models.WorktreeInfo
 
 	selectedBranch models.BranchInfo
 	branchDetail   models.BranchDetail

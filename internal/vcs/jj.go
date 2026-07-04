@@ -25,15 +25,14 @@ func (j *JJOperations) VCSType() models.VCSType {
 
 func (j *JJOperations) runJJ(ctx context.Context, repoPath string, args ...string) (string, error) {
 	fullArgs := append([]string{"-R", repoPath}, args...)
-	cmd := exec.CommandContext(ctx, "jj", fullArgs...)
-	out, err := cmd.Output()
+	out, err := runCommand(ctx, "", "jj", fullArgs...)
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			return "", fmt.Errorf("jj %s: %s", strings.Join(args, " "), string(exitErr.Stderr))
 		}
 		return "", err
 	}
-	return strings.TrimSpace(string(out)), nil
+	return out, nil
 }
 
 func (j *JJOperations) GetRepoSummary(ctx context.Context, repoPath string) (models.RepoSummary, error) {

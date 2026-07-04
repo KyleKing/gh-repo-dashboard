@@ -25,16 +25,14 @@ func (g *GitOperations) VCSType() models.VCSType {
 }
 
 func (g *GitOperations) runGit(ctx context.Context, repoPath string, args ...string) (string, error) {
-	cmd := exec.CommandContext(ctx, "git", args...)
-	cmd.Dir = repoPath
-	out, err := cmd.Output()
+	out, err := runCommand(ctx, repoPath, "git", args...)
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), string(exitErr.Stderr))
 		}
 		return "", err
 	}
-	return strings.TrimSpace(string(out)), nil
+	return out, nil
 }
 
 func (g *GitOperations) GetRepoSummary(ctx context.Context, repoPath string) (models.RepoSummary, error) {

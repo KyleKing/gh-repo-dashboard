@@ -3,7 +3,6 @@ package github
 import (
 	"context"
 	"encoding/json"
-	"os/exec"
 	"time"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
@@ -37,16 +36,10 @@ func GetWorkflowRunsForCommit(ctx context.Context, repoPath string, commitSHA st
 
 	env := vcs.GetGitHubEnv(repoPath)
 
-	cmd := exec.CommandContext(ctx, "gh", "run", "list",
+	out, err := runGH(ctx, repoPath, env, "run", "list",
 		"--commit", commitSHA,
 		"--json", "databaseId,name,status,conclusion,url,createdAt,updatedAt",
 		"--limit", "10")
-	cmd.Dir = repoPath
-	if len(env) > 0 {
-		cmd.Env = append(cmd.Environ(), env...)
-	}
-
-	out, err := cmd.Output()
 	if err != nil {
 		cache.WorkflowCache.Set(cacheKey, nil)
 		return nil, err

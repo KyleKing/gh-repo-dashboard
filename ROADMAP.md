@@ -92,6 +92,25 @@ Couples to command mode: fixtures script command sequences and generate usage do
 - Optional: extract `tui-commander` once a second TUI (for example jj-diff) shares it
 - Ship: fixtures cover the core workflows, docs regenerate from them
 
+## Known issues (found during the M2 test audit)
+
+Real bugs surfaced while writing tests; tests currently assert the existing
+behavior so fixes are visible diffs. Fix opportunistically between milestones.
+
+- `Model.CycleSortState` counts the just-enabled sort when computing the next
+  priority, leaving a gap; `[`/`MoveSortUp` is then a silent no-op until
+  priorities happen to be contiguous
+- `github.GetPRForBranch` and `GetWorkflowRunsForCommit` cache `nil` on gh
+  failure, so "gh errored" is indistinguishable from "no PR" for the cache TTL
+  and the error is swallowed on cache hits
+- git `GetBranchList` silently drops the last branch when it has no upstream
+  (output trimming eats the trailing tab, leaving too few fields)
+- jj `GetUpstream`/`GetBranchList` misparse real `jj bookmark list` output:
+  remotes appear on indented `@origin:` continuation lines, so tracking is
+  never detected and `@origin` can be parsed as a separate bookmark
+- jj `GetWorktreeList` regex expects `name@id: path` but `jj workspace list`
+  emits `name: change_id ...`, so real output never matches
+
 ## Deferred features
 
 Low priority; slot between milestones when convenient rather than blocking the line

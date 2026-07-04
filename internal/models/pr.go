@@ -50,11 +50,11 @@ func (p PRInfo) ReviewStatus() string {
 }
 
 type ChecksStatus struct {
-	Total    int
-	Passing  int
-	Failing  int
-	Pending  int
-	Skipped  int
+	Total   int
+	Passing int
+	Failing int
+	Pending int
+	Skipped int
 }
 
 func (c ChecksStatus) Summary() string {
