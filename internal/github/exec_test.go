@@ -1,4 +1,4 @@
-package github
+package github_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
+	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -28,7 +29,7 @@ func stubRunGH(out []byte, err error) (context.Context, *[][]string) {
 		calls = append(calls, args)
 		return out, err
 	}
-	ctx := withGHRunner(context.Background(), stub)
+	ctx := github.WithGHRunner(context.Background(), stub)
 
 	return ctx, &calls
 }
@@ -92,7 +93,7 @@ func TestGetPRForBranch(t *testing.T) {
 			cache.ClearAll()
 			ctx, calls := stubRunGH(tt.output, tt.runErr)
 
-			pr, err := GetPRForBranch(ctx, "/repo", "feature-branch", "owner/repo")
+			pr, err := github.GetPRForBranch(ctx, "/repo", "feature-branch", "owner/repo")
 			if tt.expectErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -105,7 +106,7 @@ func TestGetPRForBranch(t *testing.T) {
 			}
 
 			if tt.expected != nil || tt.cachesNil {
-				cachedPR, cachedErr := GetPRForBranch(ctx, "/repo", "feature-branch", "owner/repo")
+				cachedPR, cachedErr := github.GetPRForBranch(ctx, "/repo", "feature-branch", "owner/repo")
 				if cachedErr != nil {
 					t.Errorf("expected cached result without error, got %v", cachedErr)
 				}
@@ -125,7 +126,7 @@ func TestGetPRForBranchArgs(t *testing.T) {
 	cache.ClearAll()
 	ctx, calls := stubRunGH([]byte(`{"number": 1}`), nil)
 
-	if _, err := GetPRForBranch(ctx, "/repo", "my-branch", "owner/repo"); err != nil {
+	if _, err := github.GetPRForBranch(ctx, "/repo", "my-branch", "owner/repo"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -201,7 +202,7 @@ func TestGetPRDetail(t *testing.T) {
 			cache.ClearAll()
 			ctx, calls := stubRunGH(tt.output, tt.runErr)
 
-			detail, err := GetPRDetail(ctx, "/repo", 7)
+			detail, err := github.GetPRDetail(ctx, "/repo", 7)
 			if tt.expectErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -216,7 +217,7 @@ func TestGetPRDetail(t *testing.T) {
 				t.Errorf("expected %+v, got %+v", tt.expected, detail)
 			}
 
-			cachedDetail, err := GetPRDetail(ctx, "/repo", 7)
+			cachedDetail, err := github.GetPRDetail(ctx, "/repo", 7)
 			if err != nil {
 				t.Fatalf("unexpected error on cached call: %v", err)
 			}
@@ -308,7 +309,7 @@ func TestGetPRsForRepo(t *testing.T) {
 			cache.ClearAll()
 			ctx, calls := stubRunGH(tt.output, tt.runErr)
 
-			prs, err := GetPRsForRepo(ctx, "/repo", tt.upstream)
+			prs, err := github.GetPRsForRepo(ctx, "/repo", tt.upstream)
 			if tt.expectErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -336,11 +337,11 @@ func TestGetPRsForRepoUsesCache(t *testing.T) {
 	cache.ClearAll()
 	ctx, calls := stubRunGH([]byte(`[{"number": 5, "title": "Cached"}]`), nil)
 
-	first, err := GetPRsForRepo(ctx, "/repo", "owner/repo")
+	first, err := github.GetPRsForRepo(ctx, "/repo", "owner/repo")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	second, err := GetPRsForRepo(ctx, "/repo", "owner/repo")
+	second, err := github.GetPRsForRepo(ctx, "/repo", "owner/repo")
 	if err != nil {
 		t.Fatalf("unexpected error on cached call: %v", err)
 	}
@@ -371,7 +372,7 @@ func TestGetPRCount(t *testing.T) {
 			cache.ClearAll()
 			ctx, _ := stubRunGH(tt.output, tt.runErr)
 
-			count, err := GetPRCount(ctx, "/repo", "owner/repo")
+			count, err := github.GetPRCount(ctx, "/repo", "owner/repo")
 			if tt.expectErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -487,7 +488,7 @@ func TestGetWorkflowRunsForCommit(t *testing.T) {
 			cache.ClearAll()
 			ctx, calls := stubRunGH(tt.output, tt.runErr)
 
-			summary, err := GetWorkflowRunsForCommit(ctx, "/repo", tt.commitSHA)
+			summary, err := github.GetWorkflowRunsForCommit(ctx, "/repo", tt.commitSHA)
 			if tt.expectErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -508,7 +509,7 @@ func TestGetWorkflowRunsForCommit(t *testing.T) {
 			}
 
 			if tt.expected != nil || tt.cachesNil {
-				cachedSummary, cachedErr := GetWorkflowRunsForCommit(ctx, "/repo", tt.commitSHA)
+				cachedSummary, cachedErr := github.GetWorkflowRunsForCommit(ctx, "/repo", tt.commitSHA)
 				if cachedErr != nil {
 					t.Errorf("expected cached result without error, got %v", cachedErr)
 				}

@@ -1,14 +1,15 @@
-package github
+package github_test
 
 import (
 	"testing"
 
+	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 type parseChecksTestCase struct {
 	name     string
-	input    []statusCheck
+	input    []github.StatusCheck
 	expected models.ChecksStatus
 }
 
@@ -17,46 +18,46 @@ func parseChecksTestCases() []parseChecksTestCase {
 		{name: "empty checks", input: nil, expected: models.ChecksStatus{Total: 0}},
 		{
 			name:     "all passing",
-			input:    []statusCheck{{Conclusion: "success"}, {Conclusion: "success"}},
+			input:    []github.StatusCheck{{Conclusion: "success"}, {Conclusion: "success"}},
 			expected: models.ChecksStatus{Total: 2, Passing: 2},
 		},
 		{
 			name:     "all failing",
-			input:    []statusCheck{{Conclusion: "failure"}, {Conclusion: "error"}},
+			input:    []github.StatusCheck{{Conclusion: "failure"}, {Conclusion: "error"}},
 			expected: models.ChecksStatus{Total: 2, Failing: 2},
 		},
 		{
 			name: "pending checks",
-			input: []statusCheck{
+			input: []github.StatusCheck{
 				{State: "pending"}, {Status: "IN_PROGRESS"}, {Status: "QUEUED"},
 			},
 			expected: models.ChecksStatus{Total: 3, Pending: 3},
 		},
 		{
 			name:     "skipped checks",
-			input:    []statusCheck{{Conclusion: "skipped"}, {Conclusion: "neutral"}},
+			input:    []github.StatusCheck{{Conclusion: "skipped"}, {Conclusion: "neutral"}},
 			expected: models.ChecksStatus{Total: 2, Skipped: 2},
 		},
 		{
 			name: "mixed status",
-			input: []statusCheck{
+			input: []github.StatusCheck{
 				{Conclusion: "success"}, {Conclusion: "failure"}, {State: "pending"}, {Conclusion: "skipped"},
 			},
 			expected: models.ChecksStatus{Total: 4, Passing: 1, Failing: 1, Pending: 1, Skipped: 1},
 		},
 		{
 			name:     "state success overrides",
-			input:    []statusCheck{{State: "success"}},
+			input:    []github.StatusCheck{{State: "success"}},
 			expected: models.ChecksStatus{Total: 1, Passing: 1},
 		},
 		{
 			name:     "state failure overrides",
-			input:    []statusCheck{{State: "failure"}},
+			input:    []github.StatusCheck{{State: "failure"}},
 			expected: models.ChecksStatus{Total: 1, Failing: 1},
 		},
 		{
 			name:     "unknown state defaults to pending",
-			input:    []statusCheck{{State: "unknown"}},
+			input:    []github.StatusCheck{{State: "unknown"}},
 			expected: models.ChecksStatus{Total: 1, Pending: 1},
 		},
 	}
@@ -69,7 +70,7 @@ func TestParseChecks(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result := parseChecks(tt.input)
+			result := github.ParseChecks(tt.input)
 			if result != tt.expected {
 				t.Errorf("expected %+v, got %+v", tt.expected, result)
 			}
