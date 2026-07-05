@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -24,31 +25,32 @@ const (
 
 // Layout constants for the repo list table, detail panes, and batch results view.
 const (
-	repoNameColWidth     = 20
-	branchColWidth       = 15
-	statusColWidth       = 12
-	prColWidth           = 12
-	prsColWidth          = 6
-	modifiedColWidth     = 12
-	nonListRowHeight     = 6
-	visibleWindowCenter  = 2
-	branchNameTruncLen   = 20
-	upstreamTruncLen     = 20
-	messageTruncLen      = 40
-	worktreePathTruncLen = 30
-	batchNameTruncLen    = 25
-	descriptionTruncLen  = 60
-	commitSubjectLen     = 50
-	commitAuthorLen      = 15
-	detailLabelWidth     = 18
-	detailLabelWidthPR   = 16
-	prBodyMaxLen         = 400
-	statusBarHeight      = 2
-	emptyStateVPad       = 2
-	emptyStateHPad       = 4
-	infoPaddingLeft      = 2
-	commitEmptyStateVPad = 1
-	loadingStatePad      = 2
+	repoNameColWidth       = 20
+	branchColWidth         = 15
+	statusColWidth         = 12
+	prColWidth             = 12
+	prsColWidth            = 6
+	modifiedColWidth       = 12
+	nonListRowHeight       = 6
+	visibleWindowCenter    = 2
+	branchNameTruncLen     = 20
+	upstreamTruncLen       = 20
+	messageTruncLen        = 40
+	worktreePathTruncLen   = 30
+	batchNameTruncLen      = 25
+	descriptionTruncLen    = 60
+	commitSubjectLen       = 50
+	commitAuthorLen        = 15
+	detailLabelWidth       = 18
+	detailLabelWidthPR     = 16
+	prBodyMaxLen           = 400
+	statusBarHeight        = 2
+	emptyStateVPad         = 2
+	emptyStateHPad         = 4
+	infoPaddingLeft        = 2
+	commitEmptyStateVPad   = 1
+	loadingStatePad        = 2
+	branchDetailMaxCommits = 10
 )
 
 // View renders the TUI for the current model state.
@@ -1086,6 +1088,26 @@ func (m Model) countForFilter(mode models.FilterMode) int {
 
 // buildSortModalRows orders activeSorts for display: enabled sorts first (with
 // their priority gaps compacted), then disabled sorts.
+// CompactSortPriorities closes any gaps in sortsByPriority's Priority values
+// (e.g. after a sort was disabled) so priorities are a contiguous 0..n-1
+// sequence, in place.
+func compactSortPriorities(sortsByPriority []models.ActiveSort) {
+	for i := range sortsByPriority {
+		hasPriority := slices.ContainsFunc(sortsByPriority, func(s models.ActiveSort) bool {
+			return s.Priority == i
+		})
+		if hasPriority {
+			continue
+		}
+
+		for k := range sortsByPriority {
+			if sortsByPriority[k].Priority > i {
+				sortsByPriority[k].Priority--
+			}
+		}
+	}
+}
+
 func buildSortModalRows(activeSorts []models.ActiveSort) []models.ActiveSort {
 	sortsByPriority := make([]models.ActiveSort, 0)
 	for _, s := range activeSorts {
@@ -1094,20 +1116,7 @@ func buildSortModalRows(activeSorts []models.ActiveSort) []models.ActiveSort {
 		}
 	}
 
-	for i := range sortsByPriority {
-		for j := range sortsByPriority {
-			if sortsByPriority[j].Priority == i {
-				break
-			}
-			if j == len(sortsByPriority)-1 {
-				for k := range sortsByPriority {
-					if sortsByPriority[k].Priority > i {
-						sortsByPriority[k].Priority--
-					}
-				}
-			}
-		}
-	}
+	compactSortPriorities(sortsByPriority)
 
 	inactiveSorts := make([]models.ActiveSort, 0)
 	for _, s := range activeSorts {
@@ -1256,209 +1265,174 @@ func (m Model) renderBatchProgress() string {
 	return b.String()
 }
 
-func (m Model) renderBranchDetail() string {
-	summary := m.summaries[m.selectedRepo]
-	isJJ := summary.VCSType == models.VCSTypeJJ
+// branchDetailStyles are the shared styles used across renderBranchDetail's sections.
+type branchDetailStyles struct {
+	section lipgloss.Style
+	info    lipgloss.Style
+	label   lipgloss.Style
+}
 
-	var b strings.Builder
+func newBranchDetailStyles() branchDetailStyles {
+	return branchDetailStyles{
+		section: lipgloss.NewStyle().Foreground(styles.Blue).Bold(true).PaddingLeft(1),
+		info:    lipgloss.NewStyle().Foreground(styles.Text).PaddingLeft(infoPaddingLeft),
+		label:   lipgloss.NewStyle().Foreground(styles.Subtext0).Width(detailLabelWidth),
+	}
+}
 
-	b.WriteString(m.renderBreadcrumbs())
+// writeInfoLine renders "label: value" through the shared info style and
+// appends it (plus a trailing newline) to b.
+func (s branchDetailStyles) writeInfoLine(b *strings.Builder, label, value string) {
+	b.WriteString(s.info.Render(s.label.Render(label) + " " + value))
+	b.WriteString("\n")
+}
+
+// aheadBehindStatus renders an ahead/behind pair through AheadStyle/BehindStyle,
+// or empty if both are zero.
+func aheadBehindStatus(ahead, behind int) string {
+	status := ""
+	if ahead > 0 {
+		status += styles.AheadStyle.Render(fmt.Sprintf("↑%d ahead", ahead))
+	}
+	if behind > 0 {
+		if status != "" {
+			status += " "
+		}
+		status += styles.BehindStyle.Render(fmt.Sprintf("↓%d behind", behind))
+	}
+
+	return status
+}
+
+func (m Model) writeBranchInfoSection(b *strings.Builder, s branchDetailStyles) {
+	b.WriteString(s.section.Render("Branch Information"))
 	b.WriteString("\n\n")
 
-	sectionStyle := lipgloss.NewStyle().
-		Foreground(styles.Blue).
-		Bold(true).
-		PaddingLeft(1)
-
-	infoStyle := lipgloss.NewStyle().
-		Foreground(styles.Text).
-		PaddingLeft(infoPaddingLeft)
-
-	labelStyle := lipgloss.NewStyle().
-		Foreground(styles.Subtext0).
-		Width(detailLabelWidth)
-
-	// Branch Information Section
-	b.WriteString(sectionStyle.Render("Branch Information"))
-	b.WriteString("\n\n")
-
-	if m.branchDetail.Branch.Upstream != "" {
-		b.WriteString(infoStyle.Render(
-			labelStyle.Render("Upstream:") + " " + m.branchDetail.Branch.Upstream,
-		))
-		b.WriteString("\n")
+	branch := m.branchDetail.Branch
+	if branch.Upstream != "" {
+		s.writeInfoLine(b, "Upstream:", branch.Upstream)
 	}
 
-	if m.branchDetail.Branch.Ahead > 0 || m.branchDetail.Branch.Behind > 0 {
-		status := ""
-		if m.branchDetail.Branch.Ahead > 0 {
-			status += styles.AheadStyle.Render(fmt.Sprintf("↑%d ahead", m.branchDetail.Branch.Ahead))
-		}
-		if m.branchDetail.Branch.Behind > 0 {
-			if status != "" {
-				status += " "
-			}
-			status += styles.BehindStyle.Render(fmt.Sprintf("↓%d behind", m.branchDetail.Branch.Behind))
-		}
-		b.WriteString(infoStyle.Render(
-			labelStyle.Render("Tracking:") + " " + status,
-		))
-		b.WriteString("\n")
+	if branch.Ahead > 0 || branch.Behind > 0 {
+		s.writeInfoLine(b, "Tracking:", aheadBehindStatus(branch.Ahead, branch.Behind))
 	}
 
-	defaultBranch := m.findDefaultBranch()
-	if defaultBranch != "" && m.branchDetail.Branch.Name != defaultBranch {
-		ahead, behind := m.compareToDefaultBranch(defaultBranch)
-		if ahead >= 0 && behind >= 0 {
-			status := ""
-			if ahead > 0 {
-				status += styles.AheadStyle.Render(fmt.Sprintf("↑%d ahead", ahead))
-			}
-			if behind > 0 {
-				if status != "" {
-					status += " "
-				}
-				status += styles.BehindStyle.Render(fmt.Sprintf("↓%d behind", behind))
-			}
-			if status == "" {
-				status = styles.CleanStyle.Render("up to date")
-			}
-			b.WriteString(infoStyle.Render(
-				labelStyle.Render("vs "+defaultBranch+":") + " " + status,
-			))
-			b.WriteString("\n")
-		}
-	}
+	m.writeDefaultBranchComparison(b, s)
 
 	if len(m.branchDetail.Commits) > 0 {
 		lastCommit := m.branchDetail.Commits[0]
-		b.WriteString(infoStyle.Render(
-			labelStyle.Render("Last commit:") + " " + lastCommit.RelativeDate(),
-		))
-		b.WriteString("\n")
-		b.WriteString(infoStyle.Render(
-			labelStyle.Render("Author:") + " " + lastCommit.Author,
-		))
-		b.WriteString("\n")
+		s.writeInfoLine(b, "Last commit:", lastCommit.RelativeDate())
+		s.writeInfoLine(b, "Author:", lastCommit.Author)
 	}
 
-	// File Changes
 	fileChanges := m.branchDetail.FileChangesSummary()
-	fileStyle := infoStyle
+	fileStyle := s.info
 	if m.branchDetail.UncommittedCount() > 0 {
-		fileStyle = lipgloss.NewStyle().
-			Foreground(styles.Peach).
-			PaddingLeft(infoPaddingLeft)
+		fileStyle = lipgloss.NewStyle().Foreground(styles.Peach).PaddingLeft(infoPaddingLeft)
 	}
-	b.WriteString(fileStyle.Render(
-		labelStyle.Render("File changes:") + " " + fileChanges,
-	))
+	b.WriteString(fileStyle.Render(s.label.Render("File changes:") + " " + fileChanges))
 	b.WriteString("\n")
 
-	// JJ-specific information
-	if isJJ {
+	if summary := m.summaries[m.selectedRepo]; summary.VCSType == models.VCSTypeJJ {
 		if m.branchDetail.ChangeID != "" {
-			b.WriteString(infoStyle.Render(
-				labelStyle.Render("Change ID:") + " " + styles.SubtitleStyle.Render(m.branchDetail.ChangeID),
-			))
-			b.WriteString("\n")
+			s.writeInfoLine(b, "Change ID:", styles.SubtitleStyle.Render(m.branchDetail.ChangeID))
 		}
 		if m.branchDetail.Description != "" {
-			b.WriteString(infoStyle.Render(
-				labelStyle.Render("Description:") + " " + truncate(m.branchDetail.Description, descriptionTruncLen),
-			))
-			b.WriteString("\n")
+			s.writeInfoLine(b, "Description:", truncate(m.branchDetail.Description, descriptionTruncLen))
 		}
 	}
+}
 
-	// PR & CI Section
-	if m.branchDetail.PRInfo != nil || m.branchDetail.WorkflowInfo != nil {
-		b.WriteString("\n")
-		b.WriteString(sectionStyle.Render("Pull Request & CI/CD"))
-		b.WriteString("\n\n")
-
-		if m.branchDetail.PRInfo != nil {
-			pr := m.branchDetail.PRInfo
-			prStatus := pr.StatusDisplay()
-			prStyle := styles.PROpenStyle
-			switch prStatus {
-			case models.PRStatusMerged:
-				prStyle = styles.CleanStyle
-			case models.PRStatusClosed:
-				prStyle = styles.SubtitleStyle
-			}
-
-			b.WriteString(infoStyle.Render(
-				labelStyle.Render("PR:") + " " + prStyle.Render(fmt.Sprintf("#%d %s", pr.Number, prStatus)),
-			))
-			b.WriteString("\n")
-			b.WriteString(infoStyle.Render(
-				labelStyle.Render("Title:") + " " + truncate(pr.Title, descriptionTruncLen),
-			))
-			b.WriteString("\n")
-
-			// Review Status
-			reviewStatus := pr.ReviewStatus()
-			reviewStyle := styles.SubtitleStyle
-			switch reviewStatus {
-			case models.ReviewApproved:
-				reviewStyle = styles.CleanStyle
-			case models.ReviewChangesRequested:
-				reviewStyle = styles.ErrorStyle
-			}
-			b.WriteString(infoStyle.Render(
-				labelStyle.Render("Review:") + " " + reviewStyle.Render(reviewStatus),
-			))
-			b.WriteString("\n")
-
-			if len(pr.ApprovedBy) > 0 {
-				approvers := strings.Join(pr.ApprovedBy, ", ")
-				b.WriteString(infoStyle.Render(
-					labelStyle.Render("Approved by:") + " " + truncate(approvers, descriptionTruncLen),
-				))
-				b.WriteString("\n")
-			}
-
-			// CI Checks
-			if pr.Checks.Total > 0 {
-				checkStatus := pr.Checks.Summary()
-				checkStyle := styles.SubtitleStyle
-				switch checkStatus {
-				case "passing":
-					checkStyle = styles.CleanStyle
-				case models.StatusFailing:
-					checkStyle = styles.ErrorStyle
-				}
-				checkDetail := fmt.Sprintf("%s (%d/%d passing)", checkStatus, pr.Checks.Passing, pr.Checks.Total)
-				b.WriteString(infoStyle.Render(
-					labelStyle.Render("Checks:") + " " + checkStyle.Render(checkDetail),
-				))
-				b.WriteString("\n")
-			}
-		}
-
-		// Workflow Status
-		if m.branchDetail.WorkflowInfo != nil {
-			wf := m.branchDetail.WorkflowInfo
-			wfStatus := wf.StatusDisplay()
-			wfStyle := styles.SubtitleStyle
-			switch wfStatus {
-			case "passing":
-				wfStyle = styles.CleanStyle
-			case models.StatusFailing:
-				wfStyle = styles.ErrorStyle
-			}
-			wfDetail := fmt.Sprintf("%s (%d/%d passing)", wfStatus, wf.Passing, wf.Total)
-			b.WriteString(infoStyle.Render(
-				labelStyle.Render("Workflows:") + " " + wfStyle.Render(wfDetail),
-			))
-			b.WriteString("\n")
-		}
+func (m Model) writeDefaultBranchComparison(b *strings.Builder, s branchDetailStyles) {
+	defaultBranch := m.findDefaultBranch()
+	if defaultBranch == "" || m.branchDetail.Branch.Name == defaultBranch {
+		return
 	}
 
-	// Recent Commits Section
+	ahead, behind := m.compareToDefaultBranch(defaultBranch)
+	if ahead < 0 || behind < 0 {
+		return
+	}
+
+	status := aheadBehindStatus(ahead, behind)
+	if status == "" {
+		status = styles.CleanStyle.Render("up to date")
+	}
+	s.writeInfoLine(b, "vs "+defaultBranch+":", status)
+}
+
+func (m Model) writeBranchPRSection(b *strings.Builder, s branchDetailStyles) {
+	if m.branchDetail.PRInfo == nil && m.branchDetail.WorkflowInfo == nil {
+		return
+	}
+
 	b.WriteString("\n")
-	b.WriteString(sectionStyle.Render("Recent Commits"))
+	b.WriteString(s.section.Render("Pull Request & CI/CD"))
+	b.WriteString("\n\n")
+
+	if pr := m.branchDetail.PRInfo; pr != nil {
+		writeBranchPRInfo(b, s, pr)
+	}
+
+	if wf := m.branchDetail.WorkflowInfo; wf != nil {
+		wfStatus := wf.StatusDisplay()
+		wfStyle := styles.SubtitleStyle
+		switch wfStatus {
+		case "passing":
+			wfStyle = styles.CleanStyle
+		case models.StatusFailing:
+			wfStyle = styles.ErrorStyle
+		}
+		wfDetail := fmt.Sprintf("%s (%d/%d passing)", wfStatus, wf.Passing, wf.Total)
+		s.writeInfoLine(b, "Workflows:", wfStyle.Render(wfDetail))
+	}
+}
+
+func writeBranchPRInfo(b *strings.Builder, s branchDetailStyles, pr *models.PRInfo) {
+	prStatus := pr.StatusDisplay()
+	prStyle := styles.PROpenStyle
+	switch prStatus {
+	case models.PRStatusMerged:
+		prStyle = styles.CleanStyle
+	case models.PRStatusClosed:
+		prStyle = styles.SubtitleStyle
+	}
+
+	s.writeInfoLine(b, "PR:", prStyle.Render(fmt.Sprintf("#%d %s", pr.Number, prStatus)))
+	s.writeInfoLine(b, "Title:", truncate(pr.Title, descriptionTruncLen))
+
+	reviewStatus := pr.ReviewStatus()
+	reviewStyle := styles.SubtitleStyle
+	switch reviewStatus {
+	case models.ReviewApproved:
+		reviewStyle = styles.CleanStyle
+	case models.ReviewChangesRequested:
+		reviewStyle = styles.ErrorStyle
+	}
+	s.writeInfoLine(b, "Review:", reviewStyle.Render(reviewStatus))
+
+	if len(pr.ApprovedBy) > 0 {
+		approvers := strings.Join(pr.ApprovedBy, ", ")
+		s.writeInfoLine(b, "Approved by:", truncate(approvers, descriptionTruncLen))
+	}
+
+	if pr.Checks.Total > 0 {
+		checkStatus := pr.Checks.Summary()
+		checkStyle := styles.SubtitleStyle
+		switch checkStatus {
+		case "passing":
+			checkStyle = styles.CleanStyle
+		case models.StatusFailing:
+			checkStyle = styles.ErrorStyle
+		}
+		checkDetail := fmt.Sprintf("%s (%d/%d passing)", checkStatus, pr.Checks.Passing, pr.Checks.Total)
+		s.writeInfoLine(b, "Checks:", checkStyle.Render(checkDetail))
+	}
+}
+
+func (m Model) writeBranchCommitsSection(b *strings.Builder, s branchDetailStyles) {
+	b.WriteString("\n")
+	b.WriteString(s.section.Render("Recent Commits"))
 	b.WriteString("\n\n")
 
 	if len(m.branchDetail.Commits) == 0 {
@@ -1468,36 +1442,29 @@ func (m Model) renderBranchDetail() string {
 			Padding(commitEmptyStateVPad, emptyStateHPad).
 			Foreground(styles.Subtext0)
 		b.WriteString(emptyStyle.Render("No commits found"))
-	} else {
-		maxCommits := 10
-		if len(m.branchDetail.Commits) < maxCommits {
-			maxCommits = len(m.branchDetail.Commits)
-		}
-		for i := range maxCommits {
-			commit := m.branchDetail.Commits[i]
-			hash := styles.SubtitleStyle.Render(commit.ShortHash)
-			subject := truncate(commit.Subject, commitSubjectLen)
-			author := truncate(commit.Author, commitAuthorLen)
-			date := commit.RelativeDate()
 
-			line := fmt.Sprintf("  %s  %-50s  %s  %s\n",
-				hash,
-				subject,
-				styles.SubtitleStyle.Render(author),
-				styles.SubtitleStyle.Render(date),
-			)
-			b.WriteString(line)
-		}
+		return
 	}
 
-	// Actions Section
+	maxCommits := min(branchDetailMaxCommits, len(m.branchDetail.Commits))
+	for i := range maxCommits {
+		commit := m.branchDetail.Commits[i]
+		line := fmt.Sprintf("  %s  %-50s  %s  %s\n",
+			styles.SubtitleStyle.Render(commit.ShortHash),
+			truncate(commit.Subject, commitSubjectLen),
+			styles.SubtitleStyle.Render(truncate(commit.Author, commitAuthorLen)),
+			styles.SubtitleStyle.Render(commit.RelativeDate()),
+		)
+		b.WriteString(line)
+	}
+}
+
+func (m Model) writeBranchActionsSection(b *strings.Builder, s branchDetailStyles) {
 	b.WriteString("\n")
-	b.WriteString(sectionStyle.Render("Actions"))
+	b.WriteString(s.section.Render("Actions"))
 	b.WriteString("\n\n")
 
-	actionStyle := lipgloss.NewStyle().
-		Foreground(styles.Blue).
-		PaddingLeft(infoPaddingLeft)
+	actionStyle := lipgloss.NewStyle().Foreground(styles.Blue).PaddingLeft(infoPaddingLeft)
 
 	actions := []string{
 		styles.FooterKeyStyle.Render("y") + actionStyle.Render(" copy branch name"),
@@ -1514,6 +1481,19 @@ func (m Model) renderBranchDetail() string {
 
 	b.WriteString(strings.Join(actions, "  "))
 	b.WriteString("\n")
+}
+
+func (m Model) renderBranchDetail() string {
+	var b strings.Builder
+
+	b.WriteString(m.renderBreadcrumbs())
+	b.WriteString("\n\n")
+
+	s := newBranchDetailStyles()
+	m.writeBranchInfoSection(&b, s)
+	m.writeBranchPRSection(&b, s)
+	m.writeBranchCommitsSection(&b, s)
+	m.writeBranchActionsSection(&b, s)
 
 	contentLines := strings.Count(b.String(), "\n")
 	footerHeight := 1
