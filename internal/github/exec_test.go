@@ -30,6 +30,7 @@ func stubRunGH(out []byte, err error) (context.Context, *[][]string) {
 	return ctx, &calls
 }
 
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
 func TestGetPRForBranch(t *testing.T) {
 	successJSON := []byte(`{
 		"number": 42,
@@ -116,6 +117,7 @@ func TestGetPRForBranch(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
 func TestGetPRForBranchArgs(t *testing.T) {
 	cache.ClearAll()
 	ctx, calls := stubRunGH([]byte(`{"number": 1}`), nil)
@@ -133,6 +135,7 @@ func TestGetPRForBranchArgs(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
 func TestGetPRDetail(t *testing.T) {
 	successJSON := []byte(`{
 		"number": 7,
@@ -224,6 +227,7 @@ func TestGetPRDetail(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
 func TestGetPRsForRepo(t *testing.T) {
 	successJSON := []byte(`[
 		{
@@ -318,6 +322,7 @@ func TestGetPRsForRepo(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
 func TestGetPRsForRepoUsesCache(t *testing.T) {
 	cache.ClearAll()
 	ctx, calls := stubRunGH([]byte(`[{"number": 5, "title": "Cached"}]`), nil)
@@ -338,6 +343,7 @@ func TestGetPRsForRepoUsesCache(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
 func TestGetPRCount(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -374,6 +380,7 @@ func TestGetPRCount(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
 func TestGetWorkflowRunsForCommit(t *testing.T) {
 	successJSON := []byte(`[
 		{

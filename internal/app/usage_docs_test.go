@@ -77,6 +77,7 @@ func generateUsageDocs(fixtures []fixture) string {
 	return b.String()
 }
 
+//nolint:paralleltest // conditionally writes usageDocsPath under -update-docs; not safe to run concurrently with other doc-writing tests
 func TestUsageDocsCurrent(t *testing.T) {
 	generated := generateUsageDocs(loadFixtures(t))
 
