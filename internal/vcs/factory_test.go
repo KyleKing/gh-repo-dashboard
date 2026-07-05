@@ -1,4 +1,4 @@
-package vcs
+package vcs_test
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 func TestDetectVCSType(t *testing.T) {
@@ -52,7 +53,7 @@ func TestDetectVCSType(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			result := DetectVCSType(dir)
+			result := vcs.DetectVCSType(dir)
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
@@ -87,7 +88,7 @@ func TestGetOperations(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			ops := GetOperations(dir)
+			ops := vcs.GetOperations(dir)
 			if ops.VCSType() != tt.expectedVCS {
 				t.Errorf("expected %v, got %v", tt.expectedVCS, ops.VCSType())
 			}
@@ -132,7 +133,7 @@ func TestIsRepo(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			result := IsRepo(dir)
+			result := vcs.IsRepo(dir)
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
@@ -180,7 +181,7 @@ func TestGetGitHubEnv(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			env := GetGitHubEnv(dir)
+			env := vcs.GetGitHubEnv(dir)
 			if tt.expectEmpty && len(env) > 0 {
 				t.Errorf("expected empty env, got %v", env)
 			}

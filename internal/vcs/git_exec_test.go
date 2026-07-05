@@ -1,4 +1,4 @@
-package vcs
+package vcs_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 const testRepoPath = "/repo"
@@ -60,7 +61,7 @@ func stubCommands(t *testing.T, canned map[string]string, failures map[string]er
 		return "", fmt.Errorf("%s: %w", key, errUnexpectedCommand)
 	}
 
-	return withCommandRunner(context.Background(), stub)
+	return vcs.WithCommandRunner(context.Background(), stub)
 }
 
 func TestRunCommandReal(t *testing.T) {
@@ -71,7 +72,7 @@ func TestRunCommandReal(t *testing.T) {
 
 	t.Run("success trims output", func(t *testing.T) {
 		t.Parallel()
-		out, err := runCommand(context.Background(), t.TempDir(), "git", "--version")
+		out, err := vcs.RunCommand(context.Background(), t.TempDir(), "git", "--version")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -85,15 +86,15 @@ func TestRunCommandReal(t *testing.T) {
 
 	t.Run("missing binary returns error", func(t *testing.T) {
 		t.Parallel()
-		if _, err := runCommand(context.Background(), t.TempDir(), "definitely-missing-binary-xyz"); err == nil {
+		if _, err := vcs.RunCommand(context.Background(), t.TempDir(), "definitely-missing-binary-xyz"); err == nil {
 			t.Error("expected error")
 		}
 	})
 
 	t.Run("exit error is wrapped by runGit", func(t *testing.T) {
 		t.Parallel()
-		g := NewGitOperations()
-		_, err := g.runGit(context.Background(), t.TempDir(), "rev-parse", "--verify", "HEAD")
+		g := vcs.NewGitOperations()
+		_, err := g.RunGitForTest(context.Background(), t.TempDir(), "rev-parse", "--verify", "HEAD")
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -109,8 +110,8 @@ func TestGitRunGitWrapsExitError(t *testing.T) {
 		"git status --porcelain -z": &exec.ExitError{Stderr: []byte("fatal: not a repo")},
 	})
 
-	g := NewGitOperations()
-	_, err := g.runGit(ctx, testRepoPath, "status", "--porcelain", "-z")
+	g := vcs.NewGitOperations()
+	_, err := g.RunGitForTest(ctx, testRepoPath, "status", "--porcelain", "-z")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -118,8 +119,8 @@ func TestGitRunGitWrapsExitError(t *testing.T) {
 	if err.Error() != expected {
 		t.Errorf("expected %q, got %q", expected, err.Error())
 	}
-	if !errors.Is(err, ErrCommandFailed) {
-		t.Error("expected error to wrap ErrCommandFailed")
+	if !errors.Is(err, vcs.ErrCommandFailed) {
+		t.Error("expected error to wrap vcs.ErrCommandFailed")
 	}
 }
 
@@ -163,7 +164,7 @@ func TestGitGetCurrentBranch(t *testing.T) {
 			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
-			g := NewGitOperations()
+			g := vcs.NewGitOperations()
 			branch, err := g.GetCurrentBranch(ctx, testRepoPath)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
@@ -201,7 +202,7 @@ func TestGitGetUpstream(t *testing.T) {
 			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
-			g := NewGitOperations()
+			g := vcs.NewGitOperations()
 			upstream, err := g.GetUpstream(ctx, testRepoPath, "main")
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
@@ -246,7 +247,7 @@ func TestGitGetAheadBehind(t *testing.T) {
 			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
-			g := NewGitOperations()
+			g := vcs.NewGitOperations()
 			ahead, behind, err := g.GetAheadBehind(ctx, testRepoPath, "main", "origin/main")
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
@@ -264,7 +265,7 @@ func TestGitStatusCountMethods(t *testing.T) {
 		"git status --porcelain -z": "M  staged.txt\x00 M unstaged.txt\x00?? new.txt\x00UU conflict.txt\x00",
 	}, nil)
 
-	g := NewGitOperations()
+	g := vcs.NewGitOperations()
 
 	tests := []struct {
 		name     string
@@ -374,7 +375,7 @@ func TestGitGetRepoSummary(t *testing.T) {
 			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
-			g := NewGitOperations()
+			g := vcs.NewGitOperations()
 			summary, err := g.GetRepoSummary(ctx, testRepoPath)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
@@ -437,7 +438,7 @@ func TestGitGetBranchList(t *testing.T) {
 			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
-			g := NewGitOperations()
+			g := vcs.NewGitOperations()
 			branches, err := g.GetBranchList(ctx, testRepoPath)
 			assertListResult(t, tt.wantErr, tt.expected, branches, err, "branch")
 		})
@@ -483,7 +484,7 @@ func TestGitGetStashList(t *testing.T) {
 			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
-			g := NewGitOperations()
+			g := vcs.NewGitOperations()
 			stashes, err := g.GetStashList(ctx, testRepoPath)
 			assertListResult(t, tt.wantErr, tt.expected, stashes, err, "stash")
 		})
@@ -531,7 +532,7 @@ func TestGitGetWorktreeList(t *testing.T) {
 			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
-			g := NewGitOperations()
+			g := vcs.NewGitOperations()
 			worktrees, err := g.GetWorktreeList(ctx, testRepoPath)
 			assertListResult(t, tt.wantErr, tt.expected, worktrees, err, "worktree")
 		})
@@ -584,7 +585,7 @@ func TestGitGetCommitLog(t *testing.T) {
 			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
-			g := NewGitOperations()
+			g := vcs.NewGitOperations()
 			commits, err := g.GetCommitLog(ctx, testRepoPath, 2)
 			assertListResult(t, tt.wantErr, tt.expected, commits, err, "commit")
 		})
@@ -622,7 +623,7 @@ func TestGitGetLastModified(t *testing.T) {
 			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
-			g := NewGitOperations()
+			g := vcs.NewGitOperations()
 			ts, err := g.GetLastModified(ctx, testRepoPath)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
@@ -660,7 +661,7 @@ func TestGitGetRemoteURL(t *testing.T) {
 			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
-			g := NewGitOperations()
+			g := vcs.NewGitOperations()
 			url, err := g.GetRemoteURL(ctx, testRepoPath)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error state: %v", err)
@@ -678,14 +679,14 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 		name       string
 		canned     map[string]string
 		failures   map[string]error
-		run        func(context.Context, *GitOperations) (bool, string, error)
+		run        func(context.Context, *vcs.GitOperations) (bool, string, error)
 		expectedOK bool
 		expected   string
 	}{
 		{
 			name:   "fetch success",
 			canned: map[string]string{"git fetch --all --prune": ""},
-			run: func(ctx context.Context, g *GitOperations) (bool, string, error) {
+			run: func(ctx context.Context, g *vcs.GitOperations) (bool, string, error) {
 				return g.FetchAll(ctx, testRepoPath)
 			},
 			expectedOK: true,
@@ -694,7 +695,7 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 		{
 			name:     "fetch failure",
 			failures: map[string]error{"git fetch --all --prune": errNetworkDown},
-			run: func(ctx context.Context, g *GitOperations) (bool, string, error) {
+			run: func(ctx context.Context, g *vcs.GitOperations) (bool, string, error) {
 				return g.FetchAll(ctx, testRepoPath)
 			},
 			expectedOK: false,
@@ -703,7 +704,7 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 		{
 			name:   "prune success",
 			canned: map[string]string{"git remote prune origin": ""},
-			run: func(ctx context.Context, g *GitOperations) (bool, string, error) {
+			run: func(ctx context.Context, g *vcs.GitOperations) (bool, string, error) {
 				return g.PruneRemote(ctx, testRepoPath)
 			},
 			expectedOK: true,
@@ -712,7 +713,7 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 		{
 			name:     "prune failure",
 			failures: map[string]error{"git remote prune origin": errNoRemote},
-			run: func(ctx context.Context, g *GitOperations) (bool, string, error) {
+			run: func(ctx context.Context, g *vcs.GitOperations) (bool, string, error) {
 				return g.PruneRemote(ctx, testRepoPath)
 			},
 			expectedOK: false,
@@ -725,7 +726,7 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
-			ok, msg, err := tt.run(ctx, NewGitOperations())
+			ok, msg, err := tt.run(ctx, vcs.NewGitOperations())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -739,6 +740,7 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 	}
 }
 
+//nolint:dupl // same table shape as TestJJCleanupMergedBranches, different VCS output formats/literals
 func TestGitCleanupMergedBranches(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -798,7 +800,7 @@ func TestGitCleanupMergedBranches(t *testing.T) {
 			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
-			g := NewGitOperations()
+			g := vcs.NewGitOperations()
 			ok, msg, err := g.CleanupMergedBranches(ctx, testRepoPath)
 			if err != nil {
 				t.Fatal(err)

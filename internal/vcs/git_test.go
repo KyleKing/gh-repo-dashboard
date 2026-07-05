@@ -1,4 +1,4 @@
-package vcs
+package vcs_test
 
 import (
 	"bufio"
@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 func TestExtractRepoPath(t *testing.T) {
@@ -60,7 +62,7 @@ func TestExtractRepoPath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := ExtractRepoPath(tt.input)
+			result := vcs.ExtractRepoPath(tt.input)
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}

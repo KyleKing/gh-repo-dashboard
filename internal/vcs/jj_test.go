@@ -1,8 +1,10 @@
-package vcs
+package vcs_test
 
 import (
 	"strings"
 	"testing"
+
+	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 func TestParseJJBookmarkList(t *testing.T) {
@@ -10,7 +12,7 @@ func TestParseJJBookmarkList(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
-		expected []jjBookmark
+		expected []vcs.JJBookmark
 	}{
 		{
 			name:     "empty",
@@ -20,29 +22,29 @@ func TestParseJJBookmarkList(t *testing.T) {
 		{
 			name:     "single local bookmark",
 			input:    "main\tlocal\n",
-			expected: []jjBookmark{{name: "main"}},
+			expected: []vcs.JJBookmark{vcs.NewJJBookmark("main", "", 0, 0)},
 		},
 		{
 			name:  "bookmark tracked at origin",
 			input: "main\tlocal\nmain\torigin\t1\t2\n",
-			expected: []jjBookmark{
-				{name: "main", upstream: "main@origin", ahead: 1, behind: 2},
+			expected: []vcs.JJBookmark{
+				vcs.NewJJBookmark("main", "main@origin", 1, 2),
 			},
 		},
 		{
 			name:  "multiple bookmarks",
 			input: "main\tlocal\nfeature\tlocal\n",
-			expected: []jjBookmark{
-				{name: "main"},
-				{name: "feature"},
+			expected: []vcs.JJBookmark{
+				vcs.NewJJBookmark("main", "", 0, 0),
+				vcs.NewJJBookmark("feature", "", 0, 0),
 			},
 		},
 		{
 			name: "colocated git remote is ignored",
 			input: "main\tlocal\n" +
 				"main\torigin\t0\t1\n",
-			expected: []jjBookmark{
-				{name: "main", upstream: "main@origin", behind: 1},
+			expected: []vcs.JJBookmark{
+				vcs.NewJJBookmark("main", "main@origin", 0, 1),
 			},
 		},
 	}
@@ -50,7 +52,7 @@ func TestParseJJBookmarkList(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			bookmarks := parseJJBookmarkList(tt.input)
+			bookmarks := vcs.ParseJJBookmarkList(tt.input)
 			if len(bookmarks) != len(tt.expected) {
 				t.Fatalf("expected %d bookmarks, got %d", len(tt.expected), len(bookmarks))
 			}
@@ -133,7 +135,7 @@ func parseJJStatusCounts(out string) int {
 
 func TestJJOperationsVCSType(t *testing.T) {
 	t.Parallel()
-	ops := NewJJOperations()
+	ops := vcs.NewJJOperations()
 	if ops.VCSType().String() != "jj" {
 		t.Errorf("expected jj, got %s", ops.VCSType().String())
 	}
@@ -141,7 +143,7 @@ func TestJJOperationsVCSType(t *testing.T) {
 
 func TestGitOperationsVCSType(t *testing.T) {
 	t.Parallel()
-	ops := NewGitOperations()
+	ops := vcs.NewGitOperations()
 	if ops.VCSType().String() != "git" {
 		t.Errorf("expected git, got %s", ops.VCSType().String())
 	}
