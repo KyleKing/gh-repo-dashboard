@@ -422,6 +422,20 @@ func TestGitGetBranchList(t *testing.T) {
 			},
 		},
 		{
+			name: "last branch without upstream survives output trimming",
+			canned: map[string]string{
+				key: "main\torigin/main\t\t1700000000\t*\n" +
+					"zz-experiment\t\t\t1680000000",
+			},
+			expected: []models.BranchInfo{
+				{
+					Name: "main", Upstream: "origin/main",
+					LastCommit: time.Unix(1700000000, 0), IsCurrent: true,
+				},
+				{Name: "zz-experiment", LastCommit: time.Unix(1680000000, 0)},
+			},
+		},
+		{
 			name:     "empty output",
 			canned:   map[string]string{key: ""},
 			expected: nil,

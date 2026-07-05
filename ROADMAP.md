@@ -97,8 +97,6 @@ Couples to command mode: fixtures script command sequences and generate usage do
 Real bugs surfaced while writing tests; tests currently assert the existing
 behavior so fixes are visible diffs. Fix opportunistically between milestones.
 
-- git `GetBranchList` silently drops the last branch when it has no upstream
-  (output trimming eats the trailing tab, leaving too few fields)
 - `Model.compareToDefaultBranch` (view.go) diffs `m.branchDetail.Commits` against
   itself instead of the default branch's commit log, so `ahead` is always 0 and
   `behind` is hardcoded to 0; the branch detail's ahead/behind-of-default display
