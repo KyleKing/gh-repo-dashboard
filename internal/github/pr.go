@@ -43,7 +43,6 @@ func GetPRForBranch(ctx context.Context, repoPath, branch, upstream string) (*mo
 	out, err := runGH(ctx, repoPath, env, "pr", "view", branch,
 		"--json", "number,title,state,url,isDraft,mergeStateStatus,headRefName,baseRefName,statusCheckRollup")
 	if err != nil {
-		cache.PRCache.Set(cacheKey, nil)
 		return nil, err
 	}
 

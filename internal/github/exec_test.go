@@ -69,10 +69,9 @@ func TestGetPRForBranch(t *testing.T) {
 			},
 		},
 		{
-			name:      "gh error caches nil",
+			name:      "gh error",
 			runErr:    errNoPRsFound,
 			expectErr: true,
-			cachesNil: true,
 		},
 		{
 			name:      "malformed JSON",
@@ -94,7 +93,6 @@ type getPRForBranchCase struct {
 	runErr    error
 	expected  *models.PRInfo
 	expectErr bool
-	cachesNil bool
 }
 
 func runGetPRForBranchCase(t *testing.T, tt getPRForBranchCase) {
@@ -114,7 +112,7 @@ func runGetPRForBranchCase(t *testing.T, tt getPRForBranchCase) {
 		t.Errorf("expected %+v, got %+v", tt.expected, pr)
 	}
 
-	if tt.expected == nil && !tt.cachesNil {
+	if tt.expected == nil {
 		return
 	}
 
@@ -127,6 +125,29 @@ func runGetPRForBranchCase(t *testing.T, tt getPRForBranchCase) {
 	}
 	if len(*calls) != 1 {
 		t.Errorf("expected 1 gh invocation, got %d", len(*calls))
+	}
+}
+
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
+func TestGetPRForBranchDoesNotCacheError(t *testing.T) {
+	cache.ClearAll()
+	failCtx, _ := stubRunGH(nil, errGHFailed)
+
+	if _, err := github.GetPRForBranch(failCtx, "/repo", "feature-branch", "owner/repo"); err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	okCtx, okCalls := stubRunGH([]byte(`{"number": 9}`), nil)
+
+	pr, err := github.GetPRForBranch(okCtx, "/repo", "feature-branch", "owner/repo")
+	if err != nil {
+		t.Fatalf("unexpected error after gh recovered: %v", err)
+	}
+	if pr == nil || pr.Number != 9 {
+		t.Errorf("expected fresh PR #9 after gh recovered, got %+v", pr)
+	}
+	if len(*okCalls) != 1 {
+		t.Errorf("expected gh to be re-invoked after a failure, got %d invocations", len(*okCalls))
 	}
 }
 
@@ -483,10 +504,7 @@ func TestGetWorkflowRunsForCommit(t *testing.T) {
 	tests := []getWorkflowRunsCase{
 		{name: "empty commit SHA short-circuits", commitSHA: ""},
 		{name: "success", commitSHA: "abc123", output: successJSON, expected: expectedSummary, expectGH: true},
-		{
-			name: "gh error caches nil", commitSHA: "abc123", runErr: errGHFailed,
-			expectErr: true, expectGH: true, cachesNil: true,
-		},
+		{name: "gh error", commitSHA: "abc123", runErr: errGHFailed, expectErr: true, expectGH: true},
 		{name: "malformed JSON", commitSHA: "abc123", output: []byte(`{`), expectErr: true, expectGH: true},
 	}
 
@@ -505,7 +523,6 @@ type getWorkflowRunsCase struct {
 	expected  *models.WorkflowSummary
 	expectErr bool
 	expectGH  bool
-	cachesNil bool
 }
 
 func runGetWorkflowRunsCase(t *testing.T, tt *getWorkflowRunsCase) {
@@ -533,7 +550,7 @@ func runGetWorkflowRunsCase(t *testing.T, tt *getWorkflowRunsCase) {
 		t.Errorf("expected %d gh invocations, got %d", expectedCalls, len(*calls))
 	}
 
-	if tt.expected == nil && !tt.cachesNil {
+	if tt.expected == nil {
 		return
 	}
 
@@ -546,5 +563,28 @@ func runGetWorkflowRunsCase(t *testing.T, tt *getWorkflowRunsCase) {
 	}
 	if len(*calls) != expectedCalls {
 		t.Errorf("expected still %d gh invocations after cache hit, got %d", expectedCalls, len(*calls))
+	}
+}
+
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
+func TestGetWorkflowRunsForCommitDoesNotCacheError(t *testing.T) {
+	cache.ClearAll()
+	failCtx, _ := stubRunGH(nil, errGHFailed)
+
+	if _, err := github.GetWorkflowRunsForCommit(failCtx, "/repo", "abc123"); err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	okCtx, okCalls := stubRunGH([]byte(`[{"databaseId": 7, "name": "CI", "status": "completed", "conclusion": "success"}]`), nil)
+
+	summary, err := github.GetWorkflowRunsForCommit(okCtx, "/repo", "abc123")
+	if err != nil {
+		t.Fatalf("unexpected error after gh recovered: %v", err)
+	}
+	if summary == nil || summary.Total != 1 || summary.Passing != 1 {
+		t.Errorf("expected fresh summary with 1 passing run after gh recovered, got %+v", summary)
+	}
+	if len(*okCalls) != 1 {
+		t.Errorf("expected gh to be re-invoked after a failure, got %d invocations", len(*okCalls))
 	}
 }

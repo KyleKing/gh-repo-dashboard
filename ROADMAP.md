@@ -97,9 +97,6 @@ Couples to command mode: fixtures script command sequences and generate usage do
 Real bugs surfaced while writing tests; tests currently assert the existing
 behavior so fixes are visible diffs. Fix opportunistically between milestones.
 
-- `github.GetPRForBranch` and `GetWorkflowRunsForCommit` cache `nil` on gh
-  failure, so "gh errored" is indistinguishable from "no PR" for the cache TTL
-  and the error is swallowed on cache hits
 - git `GetBranchList` silently drops the last branch when it has no upstream
   (output trimming eats the trailing tab, leaving too few fields)
 - `Model.compareToDefaultBranch` (view.go) diffs `m.branchDetail.Commits` against

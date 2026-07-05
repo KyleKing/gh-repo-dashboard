@@ -30,7 +30,6 @@ func GetWorkflowRunsForCommit(ctx context.Context, repoPath, commitSHA string) (
 		"--json", "databaseId,name,status,conclusion,url,createdAt,updatedAt",
 		"--limit", "10")
 	if err != nil {
-		cache.WorkflowCache.Set(cacheKey, nil)
 		return nil, err
 	}
 
