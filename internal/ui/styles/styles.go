@@ -4,6 +4,9 @@ package styles
 
 import "charm.land/lipgloss/v2"
 
+// horizontalPadding is the left/right padding applied to modals and tabs.
+const horizontalPadding = 2
+
 // Catppuccin Macchiato palette colors.
 var (
 	Base     = lipgloss.Color("#24273a")
@@ -117,7 +120,7 @@ var (
 	ModalStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(Blue).
-			Padding(1, 2).
+			Padding(1, horizontalPadding).
 			Background(Base)
 
 	ErrorStyle = lipgloss.NewStyle().
@@ -140,11 +143,11 @@ var (
 			Foreground(Blue).
 			Bold(true).
 			Underline(true).
-			Padding(0, 2)
+			Padding(0, horizontalPadding)
 
 	TabInactiveStyle = lipgloss.NewStyle().
 				Foreground(Subtext0).
-				Padding(0, 2)
+				Padding(0, horizontalPadding)
 
 	TabSeparatorStyle = lipgloss.NewStyle().
 				Foreground(Surface1)

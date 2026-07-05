@@ -15,6 +15,11 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+const (
+	porcelainStatusCodeLen = 2
+	minRemoteURLPathParts  = 3
+)
+
 // GitOperations implements Operations for git repositories.
 type GitOperations struct{}
 
@@ -149,7 +154,7 @@ func (g *GitOperations) getStatusCounts(ctx context.Context, repoPath string) st
 
 	entries := strings.Split(out, "\x00")
 	for _, entry := range entries {
-		if len(entry) < 2 {
+		if len(entry) < porcelainStatusCodeLen {
 			continue
 		}
 		x := entry[0]
@@ -462,17 +467,18 @@ func (g *GitOperations) CleanupMergedBranches(ctx context.Context, repoPath stri
 func ExtractRepoPath(remoteURL string) string {
 	url := strings.TrimSuffix(remoteURL, ".git")
 
-	if strings.HasPrefix(url, "git@") {
+	switch {
+	case strings.HasPrefix(url, "git@"):
 		url = strings.TrimPrefix(url, "git@")
 		url = strings.Replace(url, ":", "/", 1)
-	} else if strings.HasPrefix(url, "https://") {
+	case strings.HasPrefix(url, "https://"):
 		url = strings.TrimPrefix(url, "https://")
-	} else if strings.HasPrefix(url, "http://") {
+	case strings.HasPrefix(url, "http://"):
 		url = strings.TrimPrefix(url, "http://")
 	}
 
 	parts := strings.Split(url, "/")
-	if len(parts) >= 3 {
+	if len(parts) >= minRemoteURLPathParts {
 		return filepath.Join(parts[len(parts)-2], parts[len(parts)-1])
 	}
 

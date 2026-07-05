@@ -30,6 +30,8 @@ func NewTTLCache[T any](ttl time.Duration) *TTLCache[T] {
 }
 
 // Get returns the cached value for key and whether it was present and unexpired.
+//
+//nolint:ireturn // T is the cache's own type parameter, not an abstraction leak
 func (c *TTLCache[T]) Get(key string) (T, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -75,14 +77,19 @@ func (c *TTLCache[T]) Delete(key string) {
 	delete(c.entries, key)
 }
 
+const (
+	defaultTTL  = 5 * time.Minute
+	workflowTTL = 2 * time.Minute
+)
+
 // Package-level caches shared across the app, keyed by repo path (or "path#N" for PR-numbered lookups).
 var (
-	PRCache       = NewTTLCache[*models.PRInfo](5 * time.Minute)
-	PRListCache   = NewTTLCache[[]models.PRInfo](5 * time.Minute)
-	PRDetailCache = NewTTLCache[*models.PRDetail](5 * time.Minute)
-	BranchCache   = NewTTLCache[[]models.BranchInfo](5 * time.Minute)
-	CommitCache   = NewTTLCache[[]models.CommitInfo](5 * time.Minute)
-	WorkflowCache = NewTTLCache[*models.WorkflowSummary](2 * time.Minute)
+	PRCache       = NewTTLCache[*models.PRInfo](defaultTTL)
+	PRListCache   = NewTTLCache[[]models.PRInfo](defaultTTL)
+	PRDetailCache = NewTTLCache[*models.PRDetail](defaultTTL)
+	BranchCache   = NewTTLCache[[]models.BranchInfo](defaultTTL)
+	CommitCache   = NewTTLCache[[]models.CommitInfo](defaultTTL)
+	WorkflowCache = NewTTLCache[*models.WorkflowSummary](workflowTTL)
 )
 
 // ClearAll clears every package-level cache.

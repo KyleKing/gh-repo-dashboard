@@ -36,6 +36,9 @@ const (
 	DetailTabPRs
 )
 
+// detailTabCount is the number of DetailTab values, used to cycle tabs.
+const detailTabCount = 4
+
 // Model is the root Bubble Tea model holding all TUI state.
 type Model struct {
 	scanPaths []string

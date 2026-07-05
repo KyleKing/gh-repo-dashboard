@@ -296,6 +296,10 @@ func (j *JJOperations) GetWorktreeList(ctx context.Context, repoPath string) ([]
 // template below (change id, subject, author, date).
 const jjCommitLogFieldCount = 4
 
+// jjRemoteListMinFields is the minimum whitespace-separated fields in a
+// `jj git remote list` line (remote name, URL).
+const jjRemoteListMinFields = 2
+
 // GetCommitLog implements Operations.
 func (j *JJOperations) GetCommitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error) {
 	format := `change_id.short() ++ "\t" ++ description.first_line() ++ "\t" ++ author.name() ++ "\t" ++ committer.timestamp().utc().format("%s")`
@@ -353,7 +357,7 @@ func (j *JJOperations) GetRemoteURL(ctx context.Context, repoPath string) (strin
 	for _, line := range strings.Split(out, "\n") {
 		if strings.HasPrefix(line, "origin") {
 			parts := strings.Fields(line)
-			if len(parts) >= 2 {
+			if len(parts) >= jjRemoteListMinFields {
 				return parts[1], nil
 			}
 		}

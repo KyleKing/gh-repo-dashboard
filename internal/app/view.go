@@ -22,6 +22,35 @@ const (
 	featureBranchName = "feature"
 )
 
+// Layout constants for the repo list table, detail panes, and batch results view.
+const (
+	repoNameColWidth     = 20
+	branchColWidth       = 15
+	statusColWidth       = 12
+	prColWidth           = 12
+	prsColWidth          = 6
+	modifiedColWidth     = 12
+	nonListRowHeight     = 6
+	visibleWindowCenter  = 2
+	branchNameTruncLen   = 20
+	upstreamTruncLen     = 20
+	messageTruncLen      = 40
+	worktreePathTruncLen = 30
+	batchNameTruncLen    = 25
+	descriptionTruncLen  = 60
+	commitSubjectLen     = 50
+	commitAuthorLen      = 15
+	detailLabelWidth     = 18
+	detailLabelWidthPR   = 16
+	prBodyMaxLen         = 400
+	statusBarHeight      = 2
+	emptyStateVPad       = 2
+	emptyStateHPad       = 4
+	infoPaddingLeft      = 2
+	commitEmptyStateVPad = 1
+	loadingStatePad      = 2
+)
+
 // View renders the TUI for the current model state.
 func (m Model) View() tea.View {
 	v := tea.NewView(m.renderScreen())
@@ -249,7 +278,7 @@ func (m Model) renderTable() string {
 		emptyStyle := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(styles.Surface1).
-			Padding(2, 4).
+			Padding(emptyStateVPad, emptyStateHPad).
 			Foreground(styles.Subtext0)
 
 		if m.loading {
@@ -267,12 +296,12 @@ func (m Model) renderTable() string {
 		prs      int
 		modified int
 	}{
-		name:     20,
-		branch:   15,
-		status:   12,
-		pr:       12,
-		prs:      6,
-		modified: 12,
+		name:     repoNameColWidth,
+		branch:   branchColWidth,
+		status:   statusColWidth,
+		pr:       prColWidth,
+		prs:      prsColWidth,
+		modified: modifiedColWidth,
 	}
 
 	header := fmt.Sprintf("  %-*s  %-*s  %-*s  %-*s  %-*s  %s",
@@ -285,12 +314,12 @@ func (m Model) renderTable() string {
 	)
 	header = styles.HeaderStyle.Render(header)
 
-	availableHeight := m.height - 6
+	availableHeight := m.height - nonListRowHeight
 	if m.searching {
 		availableHeight--
 	}
 
-	startIdx := m.cursor - availableHeight/2
+	startIdx := m.cursor - availableHeight/visibleWindowCenter
 	if startIdx < 0 {
 		startIdx = 0
 	}
@@ -631,7 +660,7 @@ func (m Model) renderBranchList() string {
 		emptyStyle := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(styles.Surface1).
-			Padding(2, 4).
+			Padding(emptyStateVPad, emptyStateHPad).
 			Foreground(styles.Subtext0)
 
 		return emptyStyle.Render("No branches found")
@@ -648,11 +677,11 @@ func (m Model) renderBranchList() string {
 			cursor = "> "
 		}
 
-		name := truncate(branch.Name, 20)
+		name := truncate(branch.Name, branchNameTruncLen)
 		if branch.IsCurrent {
 			name = "* " + name
 		}
-		upstream := truncate(branch.Upstream, 20)
+		upstream := truncate(branch.Upstream, upstreamTruncLen)
 		status := ""
 		if branch.Ahead > 0 {
 			status += fmt.Sprintf("↑%d", branch.Ahead)
@@ -705,7 +734,7 @@ func (m Model) renderStashList() string {
 		emptyStyle := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(styles.Surface1).
-			Padding(2, 4).
+			Padding(emptyStateVPad, emptyStateHPad).
 			Foreground(styles.Subtext0)
 
 		return emptyStyle.Render("No stashes found\n\nStashes are only available for git repositories.\nJJ repositories use the working copy change instead.")
@@ -723,7 +752,7 @@ func (m Model) renderStashList() string {
 		}
 
 		index := fmt.Sprintf("stash@{%d}", stash.Index)
-		message := truncate(stash.Message, 40)
+		message := truncate(stash.Message, messageTruncLen)
 		date := stash.RelativeDate()
 
 		var style lipgloss.Style
@@ -756,7 +785,7 @@ func (m Model) renderWorktreeList() string {
 		emptyStyle := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(styles.Surface1).
-			Padding(2, 4).
+			Padding(emptyStateVPad, emptyStateHPad).
 			Foreground(styles.Subtext0)
 
 		emptyMsg := "No worktrees found\n\nWorktrees allow working on multiple branches simultaneously."
@@ -778,8 +807,8 @@ func (m Model) renderWorktreeList() string {
 			cursor = "> "
 		}
 
-		path := truncate(filepath.Base(wt.Path), 30)
-		branch := truncate(wt.Branch, 20)
+		path := truncate(filepath.Base(wt.Path), worktreePathTruncLen)
+		branch := truncate(wt.Branch, branchNameTruncLen)
 		status := ""
 		if wt.IsBare {
 			status = "bare"
@@ -826,7 +855,7 @@ func (m Model) renderPRList() string {
 		emptyStyle := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(styles.Surface1).
-			Padding(2, 4).
+			Padding(emptyStateVPad, emptyStateHPad).
 			Foreground(styles.Subtext0)
 
 		return emptyStyle.Render("No open pull requests")
@@ -844,10 +873,10 @@ func (m Model) renderPRList() string {
 		}
 
 		number := fmt.Sprintf("#%d", pr.Number)
-		title := truncate(pr.Title, 40)
+		title := truncate(pr.Title, messageTruncLen)
 		state := pr.StatusDisplay()
 		review := pr.ReviewStatus()
-		branch := truncate(pr.HeadRef, 20)
+		branch := truncate(pr.HeadRef, branchNameTruncLen)
 
 		var rowStyle lipgloss.Style
 		if i == m.detailCursor {
@@ -1159,10 +1188,10 @@ func (m Model) renderBatchProgress() string {
 			if !result.Success {
 				icon = styles.ErrorStyle.Render("✗")
 			}
-			name := truncate(filepath.Base(result.Path), 25)
-			msg := truncate(result.Message, 40)
+			name := truncate(filepath.Base(result.Path), batchNameTruncLen)
+			msg := truncate(result.Message, messageTruncLen)
 
-			row := fmt.Sprintf("  %s %-25s  %s", icon, name, styles.SubtitleStyle.Render(msg))
+			row := fmt.Sprintf("  %s %-*s  %s", icon, batchNameTruncLen, name, styles.SubtitleStyle.Render(msg))
 			b.WriteString(row)
 			b.WriteString("\n")
 		}
@@ -1194,11 +1223,11 @@ func (m Model) renderBranchDetail() string {
 
 	infoStyle := lipgloss.NewStyle().
 		Foreground(styles.Text).
-		PaddingLeft(2)
+		PaddingLeft(infoPaddingLeft)
 
 	labelStyle := lipgloss.NewStyle().
 		Foreground(styles.Subtext0).
-		Width(18)
+		Width(detailLabelWidth)
 
 	// Branch Information Section
 	b.WriteString(sectionStyle.Render("Branch Information"))
@@ -1270,7 +1299,7 @@ func (m Model) renderBranchDetail() string {
 	if m.branchDetail.UncommittedCount() > 0 {
 		fileStyle = lipgloss.NewStyle().
 			Foreground(styles.Peach).
-			PaddingLeft(2)
+			PaddingLeft(infoPaddingLeft)
 	}
 	b.WriteString(fileStyle.Render(
 		labelStyle.Render("File changes:") + " " + fileChanges,
@@ -1287,7 +1316,7 @@ func (m Model) renderBranchDetail() string {
 		}
 		if m.branchDetail.Description != "" {
 			b.WriteString(infoStyle.Render(
-				labelStyle.Render("Description:") + " " + truncate(m.branchDetail.Description, 60),
+				labelStyle.Render("Description:") + " " + truncate(m.branchDetail.Description, descriptionTruncLen),
 			))
 			b.WriteString("\n")
 		}
@@ -1315,7 +1344,7 @@ func (m Model) renderBranchDetail() string {
 			))
 			b.WriteString("\n")
 			b.WriteString(infoStyle.Render(
-				labelStyle.Render("Title:") + " " + truncate(pr.Title, 60),
+				labelStyle.Render("Title:") + " " + truncate(pr.Title, descriptionTruncLen),
 			))
 			b.WriteString("\n")
 
@@ -1336,7 +1365,7 @@ func (m Model) renderBranchDetail() string {
 			if len(pr.ApprovedBy) > 0 {
 				approvers := strings.Join(pr.ApprovedBy, ", ")
 				b.WriteString(infoStyle.Render(
-					labelStyle.Render("Approved by:") + " " + truncate(approvers, 60),
+					labelStyle.Render("Approved by:") + " " + truncate(approvers, descriptionTruncLen),
 				))
 				b.WriteString("\n")
 			}
@@ -1387,7 +1416,7 @@ func (m Model) renderBranchDetail() string {
 		emptyStyle := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(styles.Surface1).
-			Padding(1, 2).
+			Padding(commitEmptyStateVPad, emptyStateHPad).
 			Foreground(styles.Subtext0)
 		b.WriteString(emptyStyle.Render("No commits found"))
 	} else {
@@ -1398,8 +1427,8 @@ func (m Model) renderBranchDetail() string {
 		for i := range maxCommits {
 			commit := m.branchDetail.Commits[i]
 			hash := styles.SubtitleStyle.Render(commit.ShortHash)
-			subject := truncate(commit.Subject, 50)
-			author := truncate(commit.Author, 15)
+			subject := truncate(commit.Subject, commitSubjectLen)
+			author := truncate(commit.Author, commitAuthorLen)
 			date := commit.RelativeDate()
 
 			line := fmt.Sprintf("  %s  %-50s  %s  %s\n",
@@ -1419,7 +1448,7 @@ func (m Model) renderBranchDetail() string {
 
 	actionStyle := lipgloss.NewStyle().
 		Foreground(styles.Blue).
-		PaddingLeft(2)
+		PaddingLeft(infoPaddingLeft)
 
 	actions := []string{
 		styles.FooterKeyStyle.Render("y") + actionStyle.Render(" copy branch name"),
@@ -1465,7 +1494,7 @@ func (m Model) renderPRDetail() string {
 		b.WriteString("\n\n")
 		loadingStyle := lipgloss.NewStyle().
 			Foreground(styles.Blue).
-			Padding(2)
+			Padding(loadingStatePad)
 		b.WriteString(loadingStyle.Render("Loading PR details..."))
 		b.WriteString("\n\n")
 
@@ -1499,11 +1528,11 @@ func (m Model) renderPRDetail() string {
 
 	labelStyle := lipgloss.NewStyle().
 		Foreground(styles.Subtext0).
-		Width(16)
+		Width(detailLabelWidthPR)
 
 	valueStyle := lipgloss.NewStyle().
 		Foreground(styles.Text).
-		PaddingLeft(2)
+		PaddingLeft(infoPaddingLeft)
 
 	b.WriteString(sectionStyle.Render("Pull Request"))
 	b.WriteString("\n")
@@ -1603,8 +1632,8 @@ func (m Model) renderPRDetail() string {
 		b.WriteString("\n")
 
 		desc := m.prDetail.Body
-		if len(desc) > 400 {
-			desc = desc[:400] + "..."
+		if len(desc) > prBodyMaxLen {
+			desc = desc[:prBodyMaxLen] + "..."
 		}
 		b.WriteString(valueStyle.Render(desc))
 		b.WriteString("\n")
@@ -1614,7 +1643,7 @@ func (m Model) renderPRDetail() string {
 	b.WriteString(sectionStyle.Render("Actions"))
 	b.WriteString("\n")
 
-	actionPadding := lipgloss.NewStyle().PaddingLeft(2)
+	actionPadding := lipgloss.NewStyle().PaddingLeft(infoPaddingLeft)
 	actions := []string{
 		styles.FooterKeyStyle.Render("o") + styles.FooterDescStyle.Render(" open in browser"),
 		styles.FooterKeyStyle.Render("u") + styles.FooterDescStyle.Render(" copy URL"),
@@ -1629,7 +1658,7 @@ func (m Model) renderPRDetail() string {
 	if m.statusMessage != "" {
 		statusLines = 1
 	}
-	paddingNeeded := m.height - contentLines - statusLines - 2
+	paddingNeeded := m.height - contentLines - statusLines - statusBarHeight
 	if paddingNeeded > 0 {
 		b.WriteString(strings.Repeat("\n", paddingNeeded))
 	}
@@ -1692,12 +1721,14 @@ func (m Model) compareToDefaultBranch(defaultBranch string) (int, int) {
 }
 
 func truncate(s string, maxLen int) string {
+	const ellipsis = "..."
+
 	if len(s) <= maxLen {
 		return s
 	}
-	if maxLen <= 3 {
+	if maxLen <= len(ellipsis) {
 		return s[:maxLen]
 	}
 
-	return s[:maxLen-3] + "..."
+	return s[:maxLen-len(ellipsis)] + ellipsis
 }

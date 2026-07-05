@@ -108,6 +108,9 @@ const (
 	SortModeBranch
 )
 
+// sortModeCount is the number of SortMode values, used to cycle modes.
+const sortModeCount = 4
+
 func (s SortMode) String() string {
 	switch s {
 	case SortModeName:
@@ -141,7 +144,7 @@ func (s SortMode) ShortKey() string {
 
 // Next returns the next SortMode in cyclic order.
 func (s SortMode) Next() SortMode {
-	return SortMode((int(s) + 1) % 4)
+	return SortMode((int(s) + 1) % sortModeCount)
 }
 
 // AllSortModes returns every SortMode in display order.

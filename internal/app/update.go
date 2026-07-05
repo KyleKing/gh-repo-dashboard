@@ -20,6 +20,12 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
+const (
+	textObjectKeyLen     = 2
+	branchDetailLogLimit = 20
+	statusClearDelay     = 3 * time.Second
+)
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -361,7 +367,7 @@ func (m Model) handleOperatorPendingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	m.pendingObject += keyStr
-	if len(m.pendingObject) < 2 {
+	if len(m.pendingObject) < textObjectKeyLen {
 		if hasTextObjectPrefix(m.pendingObject) {
 			return m, nil
 		}
@@ -411,7 +417,7 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleRefresh()
 
 	case key.Matches(msg, m.keys.Tab), key.Matches(msg, m.keys.Right):
-		m.detailTab = DetailTab((int(m.detailTab) + 1) % 4)
+		m.detailTab = DetailTab((int(m.detailTab) + 1) % detailTabCount)
 		m.detailCursor = 0
 
 		// Prefetch first PR when switching to PR tab
@@ -424,7 +430,7 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Left):
 		newTab := int(m.detailTab) - 1
 		if newTab < 0 {
-			newTab = 3
+			newTab = detailTabCount - 1
 		}
 		m.detailTab = DetailTab(newTab)
 		m.detailCursor = 0
@@ -1065,7 +1071,7 @@ func loadBranchDetailCmd(repoPath, branchName string) tea.Cmd {
 			}
 		}
 
-		commits, _ := ops.GetCommitLog(ctx, repoPath, 20) //nolint:errcheck // best-effort, see comment above
+		commits, _ := ops.GetCommitLog(ctx, repoPath, branchDetailLogLimit) //nolint:errcheck // best-effort, see comment above
 
 		summary, _ := ops.GetRepoSummary(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
 
@@ -1211,7 +1217,7 @@ func openURLCmd(url string) tea.Cmd {
 }
 
 func clearStatusAfterDelay() tea.Cmd {
-	return tea.Tick(3*time.Second, func(_ time.Time) tea.Msg {
+	return tea.Tick(statusClearDelay, func(_ time.Time) tea.Msg {
 		return ClearStatusMsg{}
 	})
 }
