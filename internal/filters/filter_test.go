@@ -1,8 +1,9 @@
-package filters
+package filters_test
 
 import (
 	"testing"
 
+	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -17,7 +18,7 @@ func TestFilterReposAll(t *testing.T) {
 		"/repo3":      {Path: "/repo3"},
 	}
 
-	result := FilterRepos(paths, summaries, models.FilterModeAll)
+	result := filters.FilterRepos(paths, summaries, models.FilterModeAll)
 	if len(result) != 3 {
 		t.Errorf("expected 3 repos, got %d", len(result))
 	}
@@ -32,7 +33,7 @@ func TestFilterReposAhead(t *testing.T) {
 		"/repo3":      {Path: "/repo3"},
 	}
 
-	result := FilterRepos(paths, summaries, models.FilterModeAhead)
+	result := filters.FilterRepos(paths, summaries, models.FilterModeAhead)
 	if len(result) != 1 {
 		t.Errorf("expected 1 repo, got %d", len(result))
 	}
@@ -50,7 +51,7 @@ func TestFilterReposBehind(t *testing.T) {
 		"/repo3":      {Path: "/repo3"},
 	}
 
-	result := FilterRepos(paths, summaries, models.FilterModeBehind)
+	result := filters.FilterRepos(paths, summaries, models.FilterModeBehind)
 	if len(result) != 1 {
 		t.Errorf("expected 1 repo, got %d", len(result))
 	}
@@ -68,7 +69,7 @@ func TestFilterReposDirty(t *testing.T) {
 		"/repo3":      {Path: "/repo3"},
 	}
 
-	result := FilterRepos(paths, summaries, models.FilterModeDirty)
+	result := filters.FilterRepos(paths, summaries, models.FilterModeDirty)
 	if len(result) != 2 {
 		t.Errorf("expected 2 repos, got %d", len(result))
 	}
@@ -82,7 +83,7 @@ func TestFilterReposHasPR(t *testing.T) {
 		"/repo2":      {Path: "/repo2"},
 	}
 
-	result := FilterRepos(paths, summaries, models.FilterModeHasPR)
+	result := filters.FilterRepos(paths, summaries, models.FilterModeHasPR)
 	if len(result) != 1 {
 		t.Errorf("expected 1 repo, got %d", len(result))
 	}
@@ -99,7 +100,7 @@ func TestFilterReposHasStash(t *testing.T) {
 		"/repo2":      {Path: "/repo2"},
 	}
 
-	result := FilterRepos(paths, summaries, models.FilterModeHasStash)
+	result := filters.FilterRepos(paths, summaries, models.FilterModeHasStash)
 	if len(result) != 1 {
 		t.Errorf("expected 1 repo, got %d", len(result))
 	}
@@ -121,7 +122,7 @@ func TestFilterReposMultiNoFilters(t *testing.T) {
 		{Mode: models.FilterModeAll, Enabled: true, Inverted: false},
 	}
 
-	result := FilterReposMulti(paths, summaries, activeFilters)
+	result := filters.FilterReposMulti(paths, summaries, activeFilters)
 	if len(result) != 3 {
 		t.Errorf("expected 3 repos, got %d", len(result))
 	}
@@ -141,7 +142,7 @@ func TestFilterReposMultiSingleFilter(t *testing.T) {
 		{Mode: models.FilterModeAhead, Enabled: true, Inverted: false},
 	}
 
-	result := FilterReposMulti(paths, summaries, activeFilters)
+	result := filters.FilterReposMulti(paths, summaries, activeFilters)
 	if len(result) != 1 {
 		t.Errorf("expected 1 repo, got %d", len(result))
 	}
@@ -166,7 +167,7 @@ func TestFilterReposMultipleFilters(t *testing.T) {
 		{Mode: models.FilterModeDirty, Enabled: true, Inverted: false},
 	}
 
-	result := FilterReposMulti(paths, summaries, activeFilters)
+	result := filters.FilterReposMulti(paths, summaries, activeFilters)
 	if len(result) != 2 {
 		t.Errorf("expected 2 repos (both ahead AND dirty; note IsDirty includes Ahead), got %d", len(result))
 	}
@@ -187,7 +188,7 @@ func TestFilterReposMultiWithPRAndDirty(t *testing.T) {
 		{Mode: models.FilterModeHasPR, Enabled: true, Inverted: false},
 	}
 
-	result := FilterReposMulti(paths, summaries, activeFilters)
+	result := filters.FilterReposMulti(paths, summaries, activeFilters)
 	if len(result) != 1 {
 		t.Errorf("expected 1 repo (both dirty AND has PR), got %d", len(result))
 	}
@@ -211,7 +212,7 @@ func TestFilterReposMultiWithInverted(t *testing.T) {
 		{Mode: models.FilterModeDirty, Enabled: true, Inverted: true},
 	}
 
-	result := FilterReposMulti(paths, summaries, activeFilters)
+	result := filters.FilterReposMulti(paths, summaries, activeFilters)
 	if len(result) != 2 {
 		t.Errorf("expected 2 repos (NOT dirty), got %d", len(result))
 	}
@@ -233,7 +234,7 @@ func TestFilterReposMultiMixedInverted(t *testing.T) {
 		{Mode: models.FilterModeHasPR, Enabled: true, Inverted: true},
 	}
 
-	result := FilterReposMulti(paths, summaries, activeFilters)
+	result := filters.FilterReposMulti(paths, summaries, activeFilters)
 	if len(result) != 1 {
 		t.Errorf("expected 1 repo (ahead AND NOT has PR), got %d", len(result))
 	}

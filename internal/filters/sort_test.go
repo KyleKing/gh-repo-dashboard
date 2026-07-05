@@ -1,9 +1,10 @@
-package filters
+package filters_test
 
 import (
 	"testing"
 	"time"
 
+	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -16,7 +17,7 @@ func TestSortPathsByName(t *testing.T) {
 		"/charlie": {Path: "/charlie"},
 	}
 
-	result := SortPaths(paths, summaries, models.SortModeName, false)
+	result := filters.SortPaths(paths, summaries, models.SortModeName, false)
 
 	expected := []string{"/alice", "/bob", "/charlie"}
 	for i, p := range result {
@@ -35,7 +36,7 @@ func TestSortPathsByNameReverse(t *testing.T) {
 		"/charlie": {Path: "/charlie"},
 	}
 
-	result := SortPaths(paths, summaries, models.SortModeName, true)
+	result := filters.SortPaths(paths, summaries, models.SortModeName, true)
 
 	expected := []string{"/charlie", "/bob", "/alice"}
 	for i, p := range result {
@@ -55,7 +56,7 @@ func TestSortPathsByModified(t *testing.T) {
 		"/middle": {Path: "/middle", LastModified: now.Add(-12 * time.Hour)},
 	}
 
-	result := SortPaths(paths, summaries, models.SortModeModified, false)
+	result := filters.SortPaths(paths, summaries, models.SortModeModified, false)
 
 	expected := []string{"/new", "/middle", "/old"}
 	for i, p := range result {
@@ -74,7 +75,7 @@ func TestSortPathsByStatus(t *testing.T) {
 		"/dirty2": {Path: "/dirty2", Unstaged: 1},
 	}
 
-	result := SortPaths(paths, summaries, models.SortModeStatus, false)
+	result := filters.SortPaths(paths, summaries, models.SortModeStatus, false)
 
 	if result[0] != "/dirty1" {
 		t.Errorf("expected /dirty1 first (most dirty), got %s", result[0])
@@ -96,7 +97,7 @@ func TestSortPathsByBranch(t *testing.T) {
 		"/repo3":      {Path: "/repo3", Branch: "feature"},
 	}
 
-	result := SortPaths(paths, summaries, models.SortModeBranch, false)
+	result := filters.SortPaths(paths, summaries, models.SortModeBranch, false)
 
 	expected := []string{"/repo2", "/repo3", testRepo1Path}
 	for i, p := range result {
@@ -111,7 +112,7 @@ func TestSortPathsEmpty(t *testing.T) {
 	var paths []string
 	summaries := map[string]models.RepoSummary{}
 
-	result := SortPaths(paths, summaries, models.SortModeName, false)
+	result := filters.SortPaths(paths, summaries, models.SortModeName, false)
 
 	if len(result) != 0 {
 		t.Errorf("expected empty result, got %d items", len(result))

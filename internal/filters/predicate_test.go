@@ -1,9 +1,10 @@
-package filters
+package filters_test
 
 import (
 	"errors"
 	"testing"
 
+	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -43,9 +44,9 @@ func TestParsePredicate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			pred, err := ParsePredicate(tt.expr)
+			pred, err := filters.ParsePredicate(tt.expr)
 			if err != nil {
-				t.Fatalf("ParsePredicate(%q) error: %v", tt.expr, err)
+				t.Fatalf("filters.ParsePredicate(%q) error: %v", tt.expr, err)
 			}
 			if got := pred(tt.summary); got != tt.expected {
 				t.Errorf("%q on %+v = %v; want %v", tt.expr, tt.summary, got, tt.expected)
@@ -72,13 +73,13 @@ func TestParsePredicateErrors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := ParsePredicate(tt.expr)
+			_, err := filters.ParsePredicate(tt.expr)
 			if err == nil {
-				t.Fatalf("ParsePredicate(%q) expected error", tt.expr)
+				t.Fatalf("filters.ParsePredicate(%q) expected error", tt.expr)
 			}
-			var parseErr *ParseError
+			var parseErr *filters.ParseError
 			if !errors.As(err, &parseErr) {
-				t.Errorf("expected *ParseError, got %T", err)
+				t.Errorf("expected *filters.ParseError, got %T", err)
 			}
 		})
 	}
@@ -86,13 +87,13 @@ func TestParsePredicateErrors(t *testing.T) {
 
 func TestAtomNamesSorted(t *testing.T) {
 	t.Parallel()
-	names := AtomNames()
+	names := filters.AtomNames()
 	if len(names) == 0 {
 		t.Fatal("expected atoms")
 	}
 	for i := 1; i < len(names); i++ {
 		if names[i] < names[i-1] {
-			t.Errorf("AtomNames not sorted: %q before %q", names[i-1], names[i])
+			t.Errorf("filters.AtomNames not sorted: %q before %q", names[i-1], names[i])
 		}
 	}
 }
