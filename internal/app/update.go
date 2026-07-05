@@ -29,7 +29,7 @@ const (
 
 // Update dispatches an incoming tea.Msg to the handler for its message type.
 //
-//nolint:gocyclo // flat message-type dispatch; complexity is the case count, not nesting
+//nolint:gocyclo,cyclop,funlen // flat message-type dispatch; complexity is the case count, not nesting
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -280,6 +280,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleOperatorPendingKey(msg)
 	}
 
+	if newM, handled := m.handleCursorKey(msg); handled {
+		return newM, nil
+	}
+
 	switch {
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit
@@ -293,60 +297,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	case key.Matches(msg, m.keys.Up):
-		if m.cursor > 0 {
-			m.cursor--
-		}
-
-		return m, nil
-
-	case key.Matches(msg, m.keys.Down):
-		if m.cursor < len(m.filteredPaths)-1 {
-			m.cursor++
-		}
-
-		return m, nil
-
-	case key.Matches(msg, m.keys.Top):
-		m.cursor = 0
-		return m, nil
-
-	case key.Matches(msg, m.keys.Bottom):
-		if len(m.filteredPaths) > 0 {
-			m.cursor = len(m.filteredPaths) - 1
-		}
-
-		return m, nil
-
 	case key.Matches(msg, m.keys.Enter):
-		if m.viewMode == ViewModeRepoList && m.cursor < len(m.filteredPaths) {
-			m.selectedRepo = m.filteredPaths[m.cursor]
-			m.viewMode = ViewModeRepoDetail
-			m.detailTab = DetailTabBranches
-			m.detailCursor = 0
-
-			return m, loadDetailCmd(m.selectedRepo)
-		}
-
-		return m, nil
+		return m.handleEnterKey()
 
 	case key.Matches(msg, m.keys.Back):
-		switch m.viewMode {
-		case ViewModeRepoDetail:
-			m.viewMode = ViewModeRepoList
-		case ViewModeBranchDetail:
-			m.viewMode = ViewModeRepoDetail
-		case ViewModeHelp:
-			m.viewMode = ViewModeRepoList
-		case ViewModeFilter:
-			m.viewMode = ViewModeRepoList
-		case ViewModeSort:
-			m.viewMode = ViewModeRepoList
-		default:
-			// no back transition from this view
-		}
-
-		return m, nil
+		return m.handleBackKey()
 
 	case key.Matches(msg, m.keys.Refresh):
 		return m.handleRefresh()
@@ -374,6 +329,69 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.pendingObject = ""
 
 		return m, nil
+	}
+
+	return m, nil
+}
+
+// handleCursorKey handles the repo-list cursor movement keys (up/down/top/
+// bottom). Handled is false if msg didn't match any of them.
+func (m Model) handleCursorKey(msg tea.KeyMsg) (Model, bool) {
+	switch {
+	case key.Matches(msg, m.keys.Up):
+		if m.cursor > 0 {
+			m.cursor--
+		}
+
+	case key.Matches(msg, m.keys.Down):
+		if m.cursor < len(m.filteredPaths)-1 {
+			m.cursor++
+		}
+
+	case key.Matches(msg, m.keys.Top):
+		m.cursor = 0
+
+	case key.Matches(msg, m.keys.Bottom):
+		if len(m.filteredPaths) > 0 {
+			m.cursor = len(m.filteredPaths) - 1
+		}
+
+	default:
+		return m, false
+	}
+
+	return m, true
+}
+
+// handleEnterKey opens the detail view for the selected repo, from the repo list.
+func (m Model) handleEnterKey() (tea.Model, tea.Cmd) {
+	if m.viewMode != ViewModeRepoList || m.cursor >= len(m.filteredPaths) {
+		return m, nil
+	}
+
+	m.selectedRepo = m.filteredPaths[m.cursor]
+	m.viewMode = ViewModeRepoDetail
+	m.detailTab = DetailTabBranches
+	m.detailCursor = 0
+
+	return m, loadDetailCmd(m.selectedRepo)
+}
+
+// handleBackKey pops the current view back to its parent, if it has one.
+func (m Model) handleBackKey() (tea.Model, tea.Cmd) {
+	switch m.viewMode {
+	case ViewModeRepoDetail:
+		m.viewMode = ViewModeRepoList
+	case ViewModeBranchDetail:
+		m.viewMode = ViewModeRepoDetail
+	case ViewModeHelp:
+		m.viewMode = ViewModeRepoList
+	case ViewModeFilter:
+		m.viewMode = ViewModeRepoList
+	case ViewModeSort:
+		m.viewMode = ViewModeRepoList
+	default:
+		// no back transition from this view
 	}
 
 	return m, nil
