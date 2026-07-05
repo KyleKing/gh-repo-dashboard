@@ -944,31 +944,46 @@ func (m Model) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// commandCompletionCandidates computes the completion candidates for the
+// token under the cursor: command names if completing the first word, or
+// that command's own Complete func for its arguments. The bool is false if
+// the first word doesn't resolve to a completable command.
+func (m Model) commandCompletionCandidates() ([]string, bool) {
+	line := m.commandInput.Value()
+	fields := strings.Fields(line)
+	endsWithSpace := strings.HasSuffix(line, " ")
+
+	if len(fields) == 0 || (len(fields) == 1 && !endsWithSpace) {
+		prefix := ""
+		if len(fields) == 1 {
+			prefix = fields[0]
+		}
+
+		return m.registry.Candidates(prefix), true
+	}
+
+	cmd, found := m.registry.Lookup(fields[0])
+	if !found || cmd.Complete == nil {
+		return nil, false
+	}
+
+	args := fields[1:]
+	if endsWithSpace {
+		args = append(args, "")
+	}
+
+	return cmd.Complete(m, args), true
+}
+
 // completeCommand cycles through completion candidates for the token
 // under the cursor; the candidate set is pinned on first tab press.
 func (m *Model) completeCommand() {
 	if m.completionCandidates == nil {
-		line := m.commandInput.Value()
-		fields := strings.Fields(line)
-		endsWithSpace := strings.HasSuffix(line, " ")
-
-		if len(fields) == 0 || (len(fields) == 1 && !endsWithSpace) {
-			prefix := ""
-			if len(fields) == 1 {
-				prefix = fields[0]
-			}
-			m.completionCandidates = m.registry.Candidates(prefix)
-		} else {
-			cmd, ok := m.registry.Lookup(fields[0])
-			if !ok || cmd.Complete == nil {
-				return
-			}
-			args := fields[1:]
-			if endsWithSpace {
-				args = append(args, "")
-			}
-			m.completionCandidates = cmd.Complete(*m, args)
+		candidates, ok := m.commandCompletionCandidates()
+		if !ok {
+			return
 		}
+		m.completionCandidates = candidates
 		m.completionIndex = 0
 	} else {
 		m.completionIndex = (m.completionIndex + 1) % len(m.completionCandidates)
@@ -1214,27 +1229,25 @@ func copyToClipboardCmd(text string) tea.Cmd {
 			return StatusMsg{Message: "Clipboard not supported on this platform"}
 		}
 
-		if cmd != nil {
-			stdin, err := cmd.StdinPipe()
-			if err != nil {
-				return StatusMsg{Message: fmt.Sprintf("Failed to copy: %v", err)}
-			}
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return StatusMsg{Message: fmt.Sprintf("Failed to copy: %v", err)}
+		}
 
-			if err := cmd.Start(); err != nil {
-				return StatusMsg{Message: fmt.Sprintf("Failed to copy: %v", err)}
-			}
+		if err := cmd.Start(); err != nil {
+			return StatusMsg{Message: fmt.Sprintf("Failed to copy: %v", err)}
+		}
 
-			if _, err := stdin.Write([]byte(text)); err != nil {
-				return StatusMsg{Message: fmt.Sprintf("Failed to copy: %v", err)}
-			}
+		if _, err := stdin.Write([]byte(text)); err != nil {
+			return StatusMsg{Message: fmt.Sprintf("Failed to copy: %v", err)}
+		}
 
-			if err := stdin.Close(); err != nil {
-				return StatusMsg{Message: fmt.Sprintf("Failed to copy: %v", err)}
-			}
+		if err := stdin.Close(); err != nil {
+			return StatusMsg{Message: fmt.Sprintf("Failed to copy: %v", err)}
+		}
 
-			if err := cmd.Wait(); err != nil {
-				return StatusMsg{Message: fmt.Sprintf("Failed to copy: %v", err)}
-			}
+		if err := cmd.Wait(); err != nil {
+			return StatusMsg{Message: fmt.Sprintf("Failed to copy: %v", err)}
 		}
 
 		return CopySuccessMsg{Text: text}
