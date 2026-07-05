@@ -30,7 +30,7 @@ var (
 func stubCommands(t *testing.T, canned map[string]string, failures map[string]error) context.Context {
 	t.Helper()
 
-	return withCommandRunner(context.Background(), func(_ context.Context, _, name string, args ...string) (string, error) {
+	stub := func(_ context.Context, _, name string, args ...string) (string, error) {
 		key := name + " " + strings.Join(args, " ")
 		if err, ok := failures[key]; ok {
 			return "", err
@@ -40,7 +40,9 @@ func stubCommands(t *testing.T, canned map[string]string, failures map[string]er
 		}
 
 		return "", fmt.Errorf("%s: %w", key, errUnexpectedCommand)
-	})
+	}
+
+	return withCommandRunner(context.Background(), stub)
 }
 
 func TestRunCommandReal(t *testing.T) {
@@ -371,7 +373,8 @@ func TestGitGetRepoSummary(t *testing.T) {
 
 func TestGitGetBranchList(t *testing.T) {
 	t.Parallel()
-	key := "git for-each-ref --format=%(refname:short)\t%(upstream:short)\t%(upstream:track)\t%(committerdate:unix)\t%(HEAD) refs/heads/"
+	key := "git for-each-ref --format=%(refname:short)\t%(upstream:short)\t" +
+		"%(upstream:track)\t%(committerdate:unix)\t%(HEAD) refs/heads/"
 
 	tests := []struct {
 		name     string
@@ -389,8 +392,14 @@ func TestGitGetBranchList(t *testing.T) {
 			},
 			expected: []models.BranchInfo{
 				{Name: "dev", LastCommit: time.Unix(1680000000, 0)},
-				{Name: "feature", Upstream: "origin/feature", Behind: 3, LastCommit: time.Unix(1690000000, 0)},
-				{Name: "main", Upstream: "origin/main", Ahead: 2, Behind: 1, LastCommit: time.Unix(1700000000, 0), IsCurrent: true},
+				{
+					Name: "feature", Upstream: "origin/feature", Behind: 3,
+					LastCommit: time.Unix(1690000000, 0),
+				},
+				{
+					Name: "main", Upstream: "origin/main", Ahead: 2, Behind: 1,
+					LastCommit: time.Unix(1700000000, 0), IsCurrent: true,
+				},
 			},
 		},
 		{
@@ -559,8 +568,14 @@ func TestGitGetCommitLog(t *testing.T) {
 					"bbbb2222\tbbbb\tfix: bug\tOther Dev\t1690000000",
 			},
 			expected: []models.CommitInfo{
-				{Hash: "aaaa1111", ShortHash: "aaaa", Subject: "feat: add thing", Author: "Kyle King", Date: time.Unix(1700000000, 0)},
-				{Hash: "bbbb2222", ShortHash: "bbbb", Subject: "fix: bug", Author: "Other Dev", Date: time.Unix(1690000000, 0)},
+				{
+					Hash: "aaaa1111", ShortHash: "aaaa", Subject: "feat: add thing",
+					Author: "Kyle King", Date: time.Unix(1700000000, 0),
+				},
+				{
+					Hash: "bbbb2222", ShortHash: "bbbb", Subject: "fix: bug",
+					Author: "Other Dev", Date: time.Unix(1690000000, 0),
+				},
 			},
 		},
 		{

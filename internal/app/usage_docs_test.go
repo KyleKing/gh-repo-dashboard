@@ -53,7 +53,8 @@ func describeInput(step fixtureStep) string {
 func generateUsageDocs(fixtures []fixture) string {
 	var b strings.Builder
 	b.WriteString("# Usage\n\n")
-	b.WriteString("<!-- Generated from internal/app/testdata/fixtures/ by `mise run docs:usage`; do not edit by hand. -->\n\n")
+	b.WriteString("<!-- Generated from internal/app/testdata/fixtures/ by `mise run docs:usage`; " +
+		"do not edit by hand. -->\n\n")
 	b.WriteString("Every example below is executed as a test (`TestFixtures`), so this page\n")
 	b.WriteString("cannot drift from the implementation. Commands (`:...`) can be typed after\n")
 	b.WriteString("pressing `:`; bare keys act on the repo list.\n")
@@ -77,7 +78,10 @@ func generateUsageDocs(fixtures []fixture) string {
 	return b.String()
 }
 
-//nolint:paralleltest // conditionally writes usageDocsPath under -update-docs; not safe to run concurrently with other doc-writing tests
+// TestUsageDocsCurrent conditionally writes usageDocsPath under -update-docs,
+// so it isn't safe to run concurrently with other doc-writing tests.
+//
+//nolint:paralleltest // see doc comment
 func TestUsageDocsCurrent(t *testing.T) {
 	generated := generateUsageDocs(loadFixtures(t))
 

@@ -90,7 +90,8 @@ func parseChecks(checks []statusCheck) models.ChecksStatus {
 			status.Pending++
 		case conclusion == checkStateSuccess || state == checkStateSuccess:
 			status.Passing++
-		case conclusion == checkStateFailure || conclusion == checkStateError || state == checkStateFailure || state == checkStateError:
+		case conclusion == checkStateFailure || conclusion == checkStateError ||
+			state == checkStateFailure || state == checkStateError:
 			status.Failing++
 		case conclusion == "skipped" || conclusion == "neutral":
 			status.Skipped++
@@ -111,8 +112,9 @@ func GetPRDetail(ctx context.Context, repoPath string, prNumber int) (*models.PR
 
 	env := vcs.GetGitHubEnv(repoPath)
 
-	out, err := runGH(ctx, repoPath, env, "pr", "view", strconv.Itoa(prNumber),
-		"--json", "number,title,state,url,isDraft,mergeStateStatus,headRefName,baseRefName,body,author,assignees,reviewRequests,createdAt,updatedAt,additions,deletions,comments,reviewDecision")
+	prDetailFields := "number,title,state,url,isDraft,mergeStateStatus,headRefName,baseRefName,body," +
+		"author,assignees,reviewRequests,createdAt,updatedAt,additions,deletions,comments,reviewDecision"
+	out, err := runGH(ctx, repoPath, env, "pr", "view", strconv.Itoa(prNumber), "--json", prDetailFields)
 	if err != nil {
 		return nil, err
 	}

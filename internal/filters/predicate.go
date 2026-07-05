@@ -161,7 +161,8 @@ func (p *parser) parseUnary() (Predicate, error) {
 	default:
 		atom, found := atoms()[tok]
 		if !found {
-			return nil, &ParseError{Input: p.input, Message: fmt.Sprintf("unknown atom %q (valid: %s)", tok, strings.Join(AtomNames(), ", "))}
+			msg := fmt.Sprintf("unknown atom %q (valid: %s)", tok, strings.Join(AtomNames(), ", "))
+			return nil, &ParseError{Input: p.input, Message: msg}
 		}
 		p.pos++
 

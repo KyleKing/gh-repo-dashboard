@@ -24,10 +24,11 @@ var (
 //nolint:gocritic // context.Context and *[][]string are unambiguous by type
 func stubRunGH(out []byte, err error) (context.Context, *[][]string) {
 	var calls [][]string
-	ctx := withGHRunner(context.Background(), func(_ context.Context, _ string, _ []string, args ...string) ([]byte, error) {
+	stub := func(_ context.Context, _ string, _ []string, args ...string) ([]byte, error) {
 		calls = append(calls, args)
 		return out, err
-	})
+	}
+	ctx := withGHRunner(context.Background(), stub)
 
 	return ctx, &calls
 }
@@ -273,8 +274,14 @@ func TestGetPRsForRepo(t *testing.T) {
 			upstream: "owner/repo",
 			output:   successJSON,
 			expected: []models.PRInfo{
-				{Number: 1, Title: "First", State: "OPEN", URL: "https://github.com/owner/repo/pull/1", HeadRef: "one", BaseRef: "main", ReviewDecision: "APPROVED"},
-				{Number: 2, Title: "Second", State: "OPEN", URL: "https://github.com/owner/repo/pull/2", IsDraft: true, HeadRef: "two", BaseRef: "main"},
+				{
+					Number: 1, Title: "First", State: "OPEN", URL: "https://github.com/owner/repo/pull/1",
+					HeadRef: "one", BaseRef: "main", ReviewDecision: "APPROVED",
+				},
+				{
+					Number: 2, Title: "Second", State: "OPEN", URL: "https://github.com/owner/repo/pull/2",
+					IsDraft: true, HeadRef: "two", BaseRef: "main",
+				},
 			},
 			expectGH: true,
 		},
@@ -425,10 +432,30 @@ func TestGetWorkflowRunsForCommit(t *testing.T) {
 
 	expectedSummary := &models.WorkflowSummary{
 		Runs: []models.WorkflowRun{
-			{ID: 100, Name: "CI", Status: "completed", Conclusion: "success", URL: "https://github.com/owner/repo/actions/runs/100", CreatedAt: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC), UpdatedAt: time.Date(2026, 1, 2, 3, 10, 0, 0, time.UTC)},
-			{ID: 101, Name: "Lint", Status: "in_progress", URL: "https://github.com/owner/repo/actions/runs/101", CreatedAt: time.Date(2026, 1, 2, 3, 5, 0, 0, time.UTC), UpdatedAt: time.Date(2026, 1, 2, 3, 6, 0, 0, time.UTC)},
-			{ID: 102, Name: "Deploy", Status: "completed", Conclusion: "failure", URL: "https://github.com/owner/repo/actions/runs/102", CreatedAt: time.Date(2026, 1, 2, 3, 7, 0, 0, time.UTC), UpdatedAt: time.Date(2026, 1, 2, 3, 8, 0, 0, time.UTC)},
-			{ID: 103, Name: "Nightly", Status: "queued", URL: "https://github.com/owner/repo/actions/runs/103", CreatedAt: time.Date(2026, 1, 2, 3, 9, 0, 0, time.UTC), UpdatedAt: time.Date(2026, 1, 2, 3, 9, 0, 0, time.UTC)},
+			{
+				ID: 100, Name: "CI", Status: "completed", Conclusion: "success",
+				URL:       "https://github.com/owner/repo/actions/runs/100",
+				CreatedAt: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC),
+				UpdatedAt: time.Date(2026, 1, 2, 3, 10, 0, 0, time.UTC),
+			},
+			{
+				ID: 101, Name: "Lint", Status: "in_progress",
+				URL:       "https://github.com/owner/repo/actions/runs/101",
+				CreatedAt: time.Date(2026, 1, 2, 3, 5, 0, 0, time.UTC),
+				UpdatedAt: time.Date(2026, 1, 2, 3, 6, 0, 0, time.UTC),
+			},
+			{
+				ID: 102, Name: "Deploy", Status: "completed", Conclusion: "failure",
+				URL:       "https://github.com/owner/repo/actions/runs/102",
+				CreatedAt: time.Date(2026, 1, 2, 3, 7, 0, 0, time.UTC),
+				UpdatedAt: time.Date(2026, 1, 2, 3, 8, 0, 0, time.UTC),
+			},
+			{
+				ID: 103, Name: "Nightly", Status: "queued",
+				URL:       "https://github.com/owner/repo/actions/runs/103",
+				CreatedAt: time.Date(2026, 1, 2, 3, 9, 0, 0, time.UTC),
+				UpdatedAt: time.Date(2026, 1, 2, 3, 9, 0, 0, time.UTC),
+			},
 		},
 		Total:      4,
 		Passing:    1,
@@ -448,7 +475,10 @@ func TestGetWorkflowRunsForCommit(t *testing.T) {
 	}{
 		{name: "empty commit SHA short-circuits", commitSHA: ""},
 		{name: "success", commitSHA: "abc123", output: successJSON, expected: expectedSummary, expectGH: true},
-		{name: "gh error caches nil", commitSHA: "abc123", runErr: errGHFailed, expectErr: true, expectGH: true, cachesNil: true},
+		{
+			name: "gh error caches nil", commitSHA: "abc123", runErr: errGHFailed,
+			expectErr: true, expectGH: true, cachesNil: true,
+		},
 		{name: "malformed JSON", commitSHA: "abc123", output: []byte(`{`), expectErr: true, expectGH: true},
 	}
 

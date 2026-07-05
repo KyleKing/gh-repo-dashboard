@@ -25,7 +25,9 @@ func FilterRepos(paths []string, summaries map[string]models.RepoSummary, mode m
 }
 
 // FilterReposMulti returns the subset of paths whose summary passes every enabled filter, honoring inversion.
-func FilterReposMulti(paths []string, summaries map[string]models.RepoSummary, activeFilters []models.ActiveFilter) []string {
+func FilterReposMulti(
+	paths []string, summaries map[string]models.RepoSummary, activeFilters []models.ActiveFilter,
+) []string {
 	enabledFilters := []models.ActiveFilter{}
 	for _, f := range activeFilters {
 		if f.Enabled && f.Mode != models.FilterModeAll {

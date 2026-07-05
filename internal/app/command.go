@@ -98,8 +98,12 @@ func namesMatching[T any](modes map[string]T, prefix string) []string {
 
 func DefaultRegistry() Registry {
 	return NewRegistry(
-		batchCommand("cleanup", "Delete merged branches in visible repos, optionally scoped: :cleanup [predicate]", "Cleanup Merged", batchCleanupMergedCmd),
-		batchCommand("fetch", "Fetch visible repos, optionally scoped: :fetch [predicate]", "Fetch All", batchFetchAllCmd),
+		batchCommand("cleanup",
+			"Delete merged branches in visible repos, optionally scoped: :cleanup [predicate]",
+			"Cleanup Merged", batchCleanupMergedCmd),
+		batchCommand("fetch",
+			"Fetch visible repos, optionally scoped: :fetch [predicate]",
+			"Fetch All", batchFetchAllCmd),
 		Command{
 			Name:        "filter",
 			Description: "Filter repos: :filter <mode|predicate> or :filter to open the modal",
@@ -149,7 +153,9 @@ func DefaultRegistry() Registry {
 				return m, nil
 			},
 		},
-		batchCommand("prune", "Prune remote refs in visible repos, optionally scoped: :prune [predicate]", "Prune Remote", batchPruneRemoteCmd),
+		batchCommand("prune",
+			"Prune remote refs in visible repos, optionally scoped: :prune [predicate]",
+			"Prune Remote", batchPruneRemoteCmd),
 		Command{
 			Name:        "quit",
 			Description: "Quit",

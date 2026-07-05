@@ -31,7 +31,8 @@ const jjCurrentBookmarkFormat = `self.local_bookmarks().map(|b| b.name()).join("
 // continuation line rather than inline with the bookmark name, so this
 // template sidesteps that text format entirely.
 const jjBookmarkListFormat = `if(self.remote() == "origin", ` +
-	`self.name() ++ "\torigin\t" ++ self.tracking_ahead_count().lower() ++ "\t" ++ self.tracking_behind_count().lower() ++ "\n", ` +
+	`self.name() ++ "\torigin\t" ++ self.tracking_ahead_count().lower() ++ ` +
+	`"\t" ++ self.tracking_behind_count().lower() ++ "\n", ` +
 	`if(self.remote(), "", self.name() ++ "\tlocal\n"))`
 
 // jjWorkspaceListFormat emits "name\tabsolute-path" per workspace. The default
@@ -120,7 +121,8 @@ func (j *JJOperations) GetRepoSummary(ctx context.Context, repoPath string) (mod
 		summary.Upstream = upstream
 
 		if upstream != "" {
-			ahead, behind, _ := j.GetAheadBehind(ctx, repoPath, bookmark, upstream) //nolint:errcheck // best-effort, see comment above
+			//nolint:errcheck // best-effort, see comment above
+			ahead, behind, _ := j.GetAheadBehind(ctx, repoPath, bookmark, upstream)
 			summary.Ahead = ahead
 			summary.Behind = behind
 		}
@@ -304,7 +306,8 @@ const jjRemoteListMinFields = 2
 
 // GetCommitLog implements Operations.
 func (j *JJOperations) GetCommitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error) {
-	format := `change_id.short() ++ "\t" ++ description.first_line() ++ "\t" ++ author.name() ++ "\t" ++ committer.timestamp().utc().format("%s")`
+	format := `change_id.short() ++ "\t" ++ description.first_line() ++ "\t" ++ ` +
+		`author.name() ++ "\t" ++ committer.timestamp().utc().format("%s")`
 	out, err := j.runJJ(ctx, repoPath, "log", "-r", fmt.Sprintf("@~%d..", count), "-T", format, "--no-graph")
 	if err != nil {
 		return nil, err

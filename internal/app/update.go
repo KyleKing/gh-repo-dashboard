@@ -1045,7 +1045,8 @@ func loadDetailCmd(path string) tea.Cmd {
 		summary, _ := ops.GetRepoSummary(ctx, path) //nolint:errcheck // best-effort, see comment above
 		var prs []models.PRInfo
 		if summary.Upstream != "" {
-			prs, _ = github.GetPRsForRepo(ctx, path, summary.Upstream) //nolint:errcheck // best-effort, see comment above
+			//nolint:errcheck // best-effort, see comment above
+			prs, _ = github.GetPRsForRepo(ctx, path, summary.Upstream)
 		}
 
 		return DetailLoadedMsg{
@@ -1074,9 +1075,11 @@ func loadBranchDetailCmd(repoPath, branchName string) tea.Cmd {
 			}
 		}
 
-		commits, _ := ops.GetCommitLog(ctx, repoPath, branchDetailLogLimit) //nolint:errcheck // best-effort, see comment above
+		//nolint:errcheck // best-effort, see comment above
+		commits, _ := ops.GetCommitLog(ctx, repoPath, branchDetailLogLimit)
 
-		summary, _ := ops.GetRepoSummary(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
+		//nolint:errcheck // best-effort, see comment above
+		summary, _ := ops.GetRepoSummary(ctx, repoPath)
 
 		detail := models.BranchDetail{
 			Branch:       selectedBranch,
@@ -1137,7 +1140,8 @@ func prefetchPRDetailCmd(repoPath string, prNumber int) tea.Cmd {
 		ctx := context.Background()
 		// Prefetch runs in background and populates cache
 		// No message sent to avoid UI updates during prefetch
-		_, _ = github.GetPRDetail(ctx, repoPath, prNumber) //nolint:errcheck // prefetch only warms the cache, no message is sent
+		//nolint:errcheck // prefetch only warms the cache, no message is sent
+		_, _ = github.GetPRDetail(ctx, repoPath, prNumber)
 
 		return nil
 	}
@@ -1161,7 +1165,10 @@ func copyToClipboardCmd(text string) tea.Cmd {
 		case "darwin":
 			cmd = exec.CommandContext(ctx, "pbcopy")
 		case "linux":
-			cmd = exec.CommandContext(ctx, "sh", "-c", "type xclip >/dev/null 2>&1 && xclip -selection clipboard || type xsel >/dev/null 2>&1 && xsel --clipboard --input || type wl-copy >/dev/null 2>&1 && wl-copy")
+			linuxClipboardCmd := "type xclip >/dev/null 2>&1 && xclip -selection clipboard || " +
+				"type xsel >/dev/null 2>&1 && xsel --clipboard --input || " +
+				"type wl-copy >/dev/null 2>&1 && wl-copy"
+			cmd = exec.CommandContext(ctx, "sh", "-c", linuxClipboardCmd)
 		case "windows":
 			cmd = exec.CommandContext(ctx, "clip")
 		default:

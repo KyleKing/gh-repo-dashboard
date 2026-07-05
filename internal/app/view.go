@@ -483,8 +483,8 @@ func (m Model) renderFooter() string {
 
 	if m.pendingOperator != "" {
 		hint := m.pendingOperator + m.pendingObject
-		pending := styles.FooterKeyStyle.Render(hint) +
-			styles.FooterDescStyle.Render(" pending (ar/br/dr/pr/sr, "+m.pendingOperator+m.pendingOperator+"=all, esc cancels)")
+		pendingHint := " pending (ar/br/dr/pr/sr, " + m.pendingOperator + m.pendingOperator + "=all, esc cancels)"
+		pending := styles.FooterKeyStyle.Render(hint) + styles.FooterDescStyle.Render(pendingHint)
 		footer = pending + "  " + footer
 	}
 
@@ -737,7 +737,10 @@ func (m Model) renderStashList() string {
 			Padding(emptyStateVPad, emptyStateHPad).
 			Foreground(styles.Subtext0)
 
-		return emptyStyle.Render("No stashes found\n\nStashes are only available for git repositories.\nJJ repositories use the working copy change instead.")
+		noStashesMsg := "No stashes found\n\nStashes are only available for git repositories.\n" +
+			"JJ repositories use the working copy change instead."
+
+		return emptyStyle.Render(noStashesMsg)
 	}
 
 	var rows []string
@@ -790,7 +793,8 @@ func (m Model) renderWorktreeList() string {
 
 		emptyMsg := "No worktrees found\n\nWorktrees allow working on multiple branches simultaneously."
 		if isJJ {
-			emptyMsg = "No workspaces found\n\nWorkspaces (jj's version of worktrees) allow working on multiple\nchanges simultaneously in separate working directories."
+			emptyMsg = "No workspaces found\n\nWorkspaces (jj's version of worktrees) allow working on multiple\n" +
+				"changes simultaneously in separate working directories."
 		}
 
 		return emptyStyle.Render(emptyMsg)

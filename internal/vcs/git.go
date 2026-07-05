@@ -66,7 +66,8 @@ func (g *GitOperations) GetRepoSummary(ctx context.Context, repoPath string) (mo
 	summary.Upstream = upstream
 
 	if upstream != "" {
-		ahead, behind, _ := g.GetAheadBehind(ctx, repoPath, branch, upstream) //nolint:errcheck // best-effort, see comment above
+		//nolint:errcheck // best-effort, see comment above
+		ahead, behind, _ := g.GetAheadBehind(ctx, repoPath, branch, upstream)
 		summary.Ahead = ahead
 		summary.Behind = behind
 	}

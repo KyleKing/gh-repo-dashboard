@@ -14,7 +14,8 @@ func jjKey(rest string) string {
 	return "jj -R " + testRepoPath + " " + rest
 }
 
-const jjCommitFormat = `change_id.short() ++ "\t" ++ description.first_line() ++ "\t" ++ author.name() ++ "\t" ++ committer.timestamp().utc().format("%s")`
+const jjCommitFormat = `change_id.short() ++ "\t" ++ description.first_line() ++ "\t" ++ ` +
+	`author.name() ++ "\t" ++ committer.timestamp().utc().format("%s")`
 
 const jjTimestampFormat = `committer.timestamp().utc().format("%s")`
 
@@ -442,8 +443,14 @@ func TestJJGetCommitLog(t *testing.T) {
 					"12345678\tfix: bug\tOther Dev\t1690000000",
 			},
 			expected: []models.CommitInfo{
-				{Hash: "abcdef12", ShortHash: "abcdef12", Subject: "feat: add thing", Author: "Kyle King", Date: time.Unix(1700000000, 0)},
-				{Hash: "12345678", ShortHash: "12345678", Subject: "fix: bug", Author: "Other Dev", Date: time.Unix(1690000000, 0)},
+				{
+					Hash: "abcdef12", ShortHash: "abcdef12", Subject: "feat: add thing",
+					Author: "Kyle King", Date: time.Unix(1700000000, 0),
+				},
+				{
+					Hash: "12345678", ShortHash: "12345678", Subject: "fix: bug",
+					Author: "Other Dev", Date: time.Unix(1690000000, 0),
+				},
 			},
 		},
 		{
@@ -532,8 +539,10 @@ func TestJJGetRemoteURL(t *testing.T) {
 		wantErr  bool
 	}{
 		{
-			name:     "origin present",
-			canned:   map[string]string{key: "origin git@github.com:owner/repo.git\nupstream https://example.com/x.git"},
+			name: "origin present",
+			canned: map[string]string{
+				key: "origin git@github.com:owner/repo.git\nupstream https://example.com/x.git",
+			},
 			expected: "git@github.com:owner/repo.git",
 		},
 		{
