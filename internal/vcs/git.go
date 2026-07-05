@@ -424,6 +424,7 @@ func (g *GitOperations) CleanupMergedBranches(ctx context.Context, repoPath stri
 	if _, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", defaultMainBranch); err != nil {
 		_, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", masterBranch)
 		if err != nil {
+			//nolint:nilerr // failure is reported through the message, not the error field
 			return false, "Could not find main or master branch", nil
 		}
 		mainBranch = masterBranch

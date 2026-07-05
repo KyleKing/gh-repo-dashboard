@@ -242,8 +242,8 @@ func TestModelDirtyCount(t *testing.T) {
 	m := New(nil, 1)
 	m.summaries = map[string]models.RepoSummary{
 		testRepo1Path: {Staged: 1},
-		"/repo2": {Ahead: 2},
-		"/repo3": {},
+		"/repo2":      {Ahead: 2},
+		"/repo3":      {},
 	}
 
 	if m.DirtyCount() != 2 {
@@ -256,8 +256,8 @@ func TestModelPRCount(t *testing.T) {
 	m := New(nil, 1)
 	m.summaries = map[string]models.RepoSummary{
 		testRepo1Path: {PRInfo: &models.PRInfo{Number: 1}},
-		"/repo2": {PRInfo: &models.PRInfo{Number: 2}},
-		"/repo3": {},
+		"/repo2":      {PRInfo: &models.PRInfo{Number: 2}},
+		"/repo3":      {},
 	}
 
 	if m.PRCount() != 2 {
@@ -271,7 +271,7 @@ func TestModelSelectedSummary(t *testing.T) {
 	m.filteredPaths = []string{testRepo1Path, "/repo2"}
 	m.summaries = map[string]models.RepoSummary{
 		testRepo1Path: {Branch: mainBranchName},
-		"/repo2": {Branch: "develop"},
+		"/repo2":      {Branch: "develop"},
 	}
 	m.cursor = 1
 
