@@ -68,9 +68,15 @@ func TestExtractRepoPath(t *testing.T) {
 	}
 }
 
-func TestParseStatusCounts(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
+func parseStatusCountsTestCases() []struct {
+	name       string
+	input      string
+	staged     int
+	unstaged   int
+	untracked  int
+	conflicted int
+} {
+	return []struct {
 		name       string
 		input      string
 		staged     int
@@ -154,8 +160,12 @@ func TestParseStatusCounts(t *testing.T) {
 			unstaged: 1,
 		},
 	}
+}
 
-	for _, tt := range tests {
+func TestParseStatusCounts(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range parseStatusCountsTestCases() {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			staged, unstaged, untracked, conflicted := parseStatusOutput(tt.input)

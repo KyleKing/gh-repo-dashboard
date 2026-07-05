@@ -42,6 +42,46 @@ type KeyMap struct {
 
 // DefaultKeyMap returns the built-in key bindings.
 func DefaultKeyMap() KeyMap {
+	km := navigationKeyMap()
+	km.FetchAll = key.NewBinding(
+		key.WithKeys("F"),
+		key.WithHelp("F+obj", "fetch"),
+	)
+	km.PruneRemote = key.NewBinding(
+		key.WithKeys("P"),
+		key.WithHelp("P+obj", "prune"),
+	)
+	km.CleanupMerged = key.NewBinding(
+		key.WithKeys("C"),
+		key.WithHelp("C+obj", "cleanup"),
+	)
+	km.OpenPR = key.NewBinding(
+		key.WithKeys("p"),
+		key.WithHelp("p", "open/create PR"),
+	)
+	km.CopyBranch = key.NewBinding(
+		key.WithKeys("b"),
+		key.WithHelp("b", "copy branch name"),
+	)
+	km.CopyURL = key.NewBinding(
+		key.WithKeys("u"),
+		key.WithHelp("u", "copy URL"),
+	)
+	km.CopyPRNumber = key.NewBinding(
+		key.WithKeys("n"),
+		key.WithHelp("n", "copy PR number"),
+	)
+	km.OpenURL = key.NewBinding(
+		key.WithKeys("o"),
+		key.WithHelp("o", "open URL"),
+	)
+
+	return km
+}
+
+// navigationKeyMap builds the movement, mode-switching, and command-line bindings;
+// DefaultKeyMap layers the batch-operation and clipboard/PR bindings on top.
+func navigationKeyMap() KeyMap {
 	return KeyMap{
 		Quit: key.NewBinding(
 			key.WithKeys("q", "ctrl+c"),
@@ -110,38 +150,6 @@ func DefaultKeyMap() KeyMap {
 		Reverse: key.NewBinding(
 			key.WithKeys("R"),
 			key.WithHelp("R", "reverse"),
-		),
-		FetchAll: key.NewBinding(
-			key.WithKeys("F"),
-			key.WithHelp("F+obj", "fetch"),
-		),
-		PruneRemote: key.NewBinding(
-			key.WithKeys("P"),
-			key.WithHelp("P+obj", "prune"),
-		),
-		CleanupMerged: key.NewBinding(
-			key.WithKeys("C"),
-			key.WithHelp("C+obj", "cleanup"),
-		),
-		OpenPR: key.NewBinding(
-			key.WithKeys("p"),
-			key.WithHelp("p", "open/create PR"),
-		),
-		CopyBranch: key.NewBinding(
-			key.WithKeys("b"),
-			key.WithHelp("b", "copy branch name"),
-		),
-		CopyURL: key.NewBinding(
-			key.WithKeys("u"),
-			key.WithHelp("u", "copy URL"),
-		),
-		CopyPRNumber: key.NewBinding(
-			key.WithKeys("n"),
-			key.WithHelp("n", "copy PR number"),
-		),
-		OpenURL: key.NewBinding(
-			key.WithKeys("o"),
-			key.WithHelp("o", "open URL"),
 		),
 	}
 }
