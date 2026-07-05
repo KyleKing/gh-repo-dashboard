@@ -80,6 +80,38 @@ func TestGoldenRepoDetail(t *testing.T) {
 	golden.RequireEqual(t, []byte(m.renderScreen()))
 }
 
+func TestGoldenBranchDetail(t *testing.T) {
+	m := goldenModel()
+	m.viewMode = ViewModeBranchDetail
+	m.selectedRepo = "/Users/dev/bravo"
+	m.branches = []models.BranchInfo{
+		{Name: mainBranchName, Upstream: "origin/main", LastCommit: time.Now().Add(-2 * time.Hour)},
+	}
+	m.branchDetail = models.BranchDetail{
+		Branch: models.BranchInfo{
+			Name:      "feature/login",
+			Upstream:  "origin/feature/login",
+			Ahead:     2,
+			IsCurrent: true,
+		},
+		Commits: []models.CommitInfo{
+			{Hash: "abc1234def", ShortHash: "abc1234", Subject: "Add login flow", Author: "dev", Date: time.Now().Add(-10 * time.Minute)},
+			{Hash: "9876543abc", ShortHash: "9876543", Subject: "Wire up session store", Author: "dev", Date: time.Now().Add(-1 * time.Hour)},
+		},
+		Staged:   1,
+		Unstaged: 2,
+		PRInfo: &models.PRInfo{
+			Number:  42,
+			Title:   "Add login flow",
+			State:   "OPEN",
+			URL:     "https://github.com/dev/bravo/pull/42",
+			HeadRef: "feature/login",
+			BaseRef: mainBranchName,
+		},
+	}
+	golden.RequireEqual(t, []byte(m.renderScreen()))
+}
+
 func TestGoldenBatchProgress(t *testing.T) {
 	m := goldenModel()
 	m.viewMode = ViewModeBatchProgress
