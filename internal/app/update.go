@@ -470,55 +470,16 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleRefresh()
 
 	case key.Matches(msg, m.keys.Tab), key.Matches(msg, m.keys.Right):
-		m.detailTab = DetailTab((int(m.detailTab) + 1) % detailTabCount)
-		m.detailCursor = 0
-
-		// Prefetch first PR when switching to PR tab
-		if m.detailTab == DetailTabPRs && len(m.prs) > 0 {
-			return m, prefetchPRDetailCmd(m.selectedRepo, m.prs[0].Number)
-		}
-
-		return m, nil
+		return m.setDetailTab(int(m.detailTab) + 1)
 
 	case key.Matches(msg, m.keys.Left):
-		newTab := int(m.detailTab) - 1
-		if newTab < 0 {
-			newTab = detailTabCount - 1
-		}
-		m.detailTab = DetailTab(newTab)
-		m.detailCursor = 0
-
-		// Prefetch first PR when switching to PR tab
-		if m.detailTab == DetailTabPRs && len(m.prs) > 0 {
-			return m, prefetchPRDetailCmd(m.selectedRepo, m.prs[0].Number)
-		}
-
-		return m, nil
+		return m.setDetailTab(int(m.detailTab) - 1)
 
 	case key.Matches(msg, m.keys.Up):
-		if m.detailCursor > 0 {
-			m.detailCursor--
-			// Prefetch PR detail for newly selected item
-			if m.detailTab == DetailTabPRs && m.detailCursor < len(m.prs) {
-				pr := m.prs[m.detailCursor]
-				return m, prefetchPRDetailCmd(m.selectedRepo, pr.Number)
-			}
-		}
-
-		return m, nil
+		return m.moveDetailCursor(-1)
 
 	case key.Matches(msg, m.keys.Down):
-		maxIdx := m.detailListLen() - 1
-		if m.detailCursor < maxIdx {
-			m.detailCursor++
-			// Prefetch PR detail for newly selected item
-			if m.detailTab == DetailTabPRs && m.detailCursor < len(m.prs) {
-				pr := m.prs[m.detailCursor]
-				return m, prefetchPRDetailCmd(m.selectedRepo, pr.Number)
-			}
-		}
-
-		return m, nil
+		return m.moveDetailCursor(1)
 
 	case key.Matches(msg, m.keys.Top):
 		m.detailCursor = 0
@@ -533,25 +494,7 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case key.Matches(msg, m.keys.Enter):
-		if m.detailTab == DetailTabBranches && m.detailCursor < len(m.branches) {
-			m.selectedBranch = m.branches[m.detailCursor]
-			m.branchDetail = models.BranchDetail{} // Clear previous detail
-			m.viewMode = ViewModeBranchDetail
-
-			return m, loadBranchDetailCmd(m.selectedRepo, m.selectedBranch.Name)
-		} else if m.detailTab == DetailTabPRs && m.detailCursor < len(m.prs) {
-			m.selectedPR = m.prs[m.detailCursor]
-			// Progressive loading: Show basic info from list immediately
-			m.prDetail = models.PRDetail{
-				PRInfo: m.selectedPR, // Use data already loaded from list
-				// Full details (author, assignees, etc.) will load async
-			}
-			m.viewMode = ViewModePRDetail
-
-			return m, loadPRDetailCmd(m.selectedRepo, m.selectedPR.Number)
-		}
-
-		return m, nil
+		return m.handleDetailEnterKey()
 
 	case key.Matches(msg, m.keys.Help):
 		m.viewMode = ViewModeHelp
@@ -559,6 +502,61 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// setDetailTab switches the repo-detail tab to tabIndex (wrapping around),
+// resets the row cursor, and prefetches the first PR if landing on the PR tab.
+func (m Model) setDetailTab(tabIndex int) (tea.Model, tea.Cmd) {
+	tabIndex = ((tabIndex % detailTabCount) + detailTabCount) % detailTabCount
+	m.detailTab = DetailTab(tabIndex)
+	m.detailCursor = 0
+
+	if m.detailTab == DetailTabPRs && len(m.prs) > 0 {
+		return m, prefetchPRDetailCmd(m.selectedRepo, m.prs[0].Number)
+	}
+
+	return m, nil
+}
+
+// moveDetailCursor moves the repo-detail row cursor by delta (clamped to the
+// current tab's list bounds) and prefetches the newly selected PR's detail.
+func (m Model) moveDetailCursor(delta int) (tea.Model, tea.Cmd) {
+	newIdx := m.detailCursor + delta
+	if newIdx < 0 || newIdx > m.detailListLen()-1 {
+		return m, nil
+	}
+
+	m.detailCursor = newIdx
+	if m.detailTab == DetailTabPRs && m.detailCursor < len(m.prs) {
+		return m, prefetchPRDetailCmd(m.selectedRepo, m.prs[m.detailCursor].Number)
+	}
+
+	return m, nil
+}
+
+// handleDetailEnterKey opens the branch-detail or PR-detail view for the
+// currently selected row.
+func (m Model) handleDetailEnterKey() (tea.Model, tea.Cmd) {
+	switch {
+	case m.detailTab == DetailTabBranches && m.detailCursor < len(m.branches):
+		m.selectedBranch = m.branches[m.detailCursor]
+		m.branchDetail = models.BranchDetail{} // Clear previous detail
+		m.viewMode = ViewModeBranchDetail
+
+		return m, loadBranchDetailCmd(m.selectedRepo, m.selectedBranch.Name)
+
+	case m.detailTab == DetailTabPRs && m.detailCursor < len(m.prs):
+		m.selectedPR = m.prs[m.detailCursor]
+		// Progressive loading: show basic info from the list immediately,
+		// full details (author, assignees, etc.) load async.
+		m.prDetail = models.PRDetail{PRInfo: m.selectedPR}
+		m.viewMode = ViewModePRDetail
+
+		return m, loadPRDetailCmd(m.selectedRepo, m.selectedPR.Number)
+
+	default:
+		return m, nil
+	}
 }
 
 func (m Model) handleBranchDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
