@@ -31,7 +31,7 @@ type TaskCompleteMsg struct {
 }
 
 // TaskFunc runs a batch operation against a single repo.
-type TaskFunc func(ctx context.Context, ops vcs.Operations, repoPath string) (success bool, message string, err error)
+type TaskFunc func(ctx context.Context, ops vcs.Mutator, repoPath string) (success bool, message string, err error)
 
 // RunTask returns a tea.Cmd that runs taskFn over paths sequentially and reports a TaskCompleteMsg.
 func RunTask(taskName string, paths []string, taskFn TaskFunc) tea.Cmd {

@@ -254,22 +254,24 @@ func (j *JJOperations) countUnstaged(ctx context.Context, repoPath string) int {
 	return unstaged
 }
 
-// GetStagedCount implements Operations.
+// GetStagedCount always returns 0: jj has no separate staging area.
 func (*JJOperations) GetStagedCount(_ context.Context, _ string) (int, error) {
 	return 0, nil
 }
 
-// GetUnstagedCount implements Operations.
+// GetUnstagedCount reports the number of modified files in the working copy.
+//
+//nolint:unparam // error kept for signature parity with the other count methods exec tests exercise directly
 func (j *JJOperations) GetUnstagedCount(ctx context.Context, repoPath string) (int, error) {
 	return j.countUnstaged(ctx, repoPath), nil
 }
 
-// GetUntrackedCount implements Operations.
+// GetUntrackedCount always returns 0: jj automatically tracks all files.
 func (*JJOperations) GetUntrackedCount(_ context.Context, _ string) (int, error) {
 	return 0, nil
 }
 
-// GetConflictedCount implements Operations.
+// GetConflictedCount always returns 0: conflict detection isn't implemented for jj.
 func (*JJOperations) GetConflictedCount(_ context.Context, _ string) (int, error) {
 	return 0, nil
 }

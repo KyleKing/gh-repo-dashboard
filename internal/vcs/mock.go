@@ -13,10 +13,6 @@ type MockOperations struct {
 	GetUpstreamFn           func(ctx context.Context, repoPath, branch string) (string, error)
 	GetAheadBehindFn        func(ctx context.Context, repoPath, branch, upstream string) (int, int, error)
 	CompareBranchesFn       func(ctx context.Context, repoPath, branch, target string) (int, int, error)
-	GetStagedCountFn        func(ctx context.Context, repoPath string) (int, error)
-	GetUnstagedCountFn      func(ctx context.Context, repoPath string) (int, error)
-	GetUntrackedCountFn     func(ctx context.Context, repoPath string) (int, error)
-	GetConflictedCountFn    func(ctx context.Context, repoPath string) (int, error)
 	GetBranchListFn         func(ctx context.Context, repoPath string) ([]models.BranchInfo, error)
 	GetStashListFn          func(ctx context.Context, repoPath string) ([]models.StashDetail, error)
 	GetWorktreeListFn       func(ctx context.Context, repoPath string) ([]models.WorktreeInfo, error)
@@ -76,42 +72,6 @@ func (m *MockOperations) CompareBranches(ctx context.Context, repoPath, branch, 
 	}
 
 	return 0, 0, nil
-}
-
-// GetStagedCount implements Operations.
-func (m *MockOperations) GetStagedCount(ctx context.Context, repoPath string) (int, error) {
-	if m.GetStagedCountFn != nil {
-		return m.GetStagedCountFn(ctx, repoPath)
-	}
-
-	return 0, nil
-}
-
-// GetUnstagedCount implements Operations.
-func (m *MockOperations) GetUnstagedCount(ctx context.Context, repoPath string) (int, error) {
-	if m.GetUnstagedCountFn != nil {
-		return m.GetUnstagedCountFn(ctx, repoPath)
-	}
-
-	return 0, nil
-}
-
-// GetUntrackedCount implements Operations.
-func (m *MockOperations) GetUntrackedCount(ctx context.Context, repoPath string) (int, error) {
-	if m.GetUntrackedCountFn != nil {
-		return m.GetUntrackedCountFn(ctx, repoPath)
-	}
-
-	return 0, nil
-}
-
-// GetConflictedCount implements Operations.
-func (m *MockOperations) GetConflictedCount(ctx context.Context, repoPath string) (int, error) {
-	if m.GetConflictedCountFn != nil {
-		return m.GetConflictedCountFn(ctx, repoPath)
-	}
-
-	return 0, nil
 }
 
 // GetBranchList implements Operations.

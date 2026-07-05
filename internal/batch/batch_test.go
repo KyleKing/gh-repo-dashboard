@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
@@ -44,73 +43,7 @@ type mockVCS struct {
 	cleanupResult func() (bool, string, error)
 }
 
-func (*mockVCS) GetRepoSummary(_ context.Context, _ string) (models.RepoSummary, error) {
-	return models.RepoSummary{}, nil
-}
-
-func (*mockVCS) GetCurrentBranch(_ context.Context, _ string) (string, error) {
-	return "main", nil
-}
-
-func (*mockVCS) GetUpstream(_ context.Context, _, _ string) (string, error) {
-	return "", nil
-}
-
-//nolint:gocritic // matches vcs.Operations.GetAheadBehind's (ahead, behind int, err error)
-func (*mockVCS) GetAheadBehind(_ context.Context, _, _, _ string) (int, int, error) {
-	return 0, 0, nil
-}
-
-//nolint:gocritic // matches vcs.Operations.CompareBranches's (ahead, behind int, err error)
-func (*mockVCS) CompareBranches(_ context.Context, _, _, _ string) (int, int, error) {
-	return 0, 0, nil
-}
-
-func (*mockVCS) GetStagedCount(_ context.Context, _ string) (int, error) {
-	return 0, nil
-}
-
-func (*mockVCS) GetUnstagedCount(_ context.Context, _ string) (int, error) {
-	return 0, nil
-}
-
-func (*mockVCS) GetUntrackedCount(_ context.Context, _ string) (int, error) {
-	return 0, nil
-}
-
-func (*mockVCS) GetConflictedCount(_ context.Context, _ string) (int, error) {
-	return 0, nil
-}
-
-func (*mockVCS) GetBranchList(_ context.Context, _ string) ([]models.BranchInfo, error) {
-	return nil, nil
-}
-
-func (*mockVCS) GetStashList(_ context.Context, _ string) ([]models.StashDetail, error) {
-	return nil, nil
-}
-
-func (*mockVCS) GetWorktreeList(_ context.Context, _ string) ([]models.WorktreeInfo, error) {
-	return nil, nil
-}
-
-func (*mockVCS) GetCommitLog(_ context.Context, _ string, _ int) ([]models.CommitInfo, error) {
-	return nil, nil
-}
-
-func (*mockVCS) GetLastModified(_ context.Context, _ string) (int64, error) {
-	return 0, nil
-}
-
-func (*mockVCS) GetRemoteURL(_ context.Context, _ string) (string, error) {
-	return "", nil
-}
-
-func (*mockVCS) VCSType() models.VCSType {
-	return models.VCSTypeGit
-}
-
-//nolint:gocritic // matches vcs.Operations.FetchAll's (ok bool, msg string, err error)
+//nolint:gocritic // matches vcs.Mutator.FetchAll's (ok bool, msg string, err error)
 func (m *mockVCS) FetchAll(_ context.Context, _ string) (bool, string, error) {
 	if m.fetchResult != nil {
 		return m.fetchResult()
@@ -119,7 +52,7 @@ func (m *mockVCS) FetchAll(_ context.Context, _ string) (bool, string, error) {
 	return true, testSuccessMsg, nil
 }
 
-//nolint:gocritic // matches vcs.Operations.PruneRemote's (ok bool, msg string, err error)
+//nolint:gocritic // matches vcs.Mutator.PruneRemote's (ok bool, msg string, err error)
 func (m *mockVCS) PruneRemote(_ context.Context, _ string) (bool, string, error) {
 	if m.pruneResult != nil {
 		return m.pruneResult()
@@ -128,7 +61,7 @@ func (m *mockVCS) PruneRemote(_ context.Context, _ string) (bool, string, error)
 	return true, testSuccessMsg, nil
 }
 
-//nolint:gocritic // matches vcs.Operations.CleanupMergedBranches's (ok bool, msg string, err error)
+//nolint:gocritic // matches vcs.Mutator.CleanupMergedBranches's (ok bool, msg string, err error)
 func (m *mockVCS) CleanupMergedBranches(_ context.Context, _ string) (bool, string, error) {
 	if m.cleanupResult != nil {
 		return m.cleanupResult()
@@ -137,7 +70,7 @@ func (m *mockVCS) CleanupMergedBranches(_ context.Context, _ string) (bool, stri
 	return true, testSuccessMsg, nil
 }
 
-var _ vcs.Operations = (*mockVCS)(nil)
+var _ vcs.Mutator = (*mockVCS)(nil)
 
 func TestFetchAll(t *testing.T) {
 	t.Parallel()

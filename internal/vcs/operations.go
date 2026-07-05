@@ -20,29 +20,39 @@ const (
 	masterBranch      = "master"
 )
 
-// Operations abstracts the git/jj commands used to inspect and mutate a repository.
-// See ROADMAP.md's "Deferred features" for the plan to split this into narrower interfaces.
-//
-//nolint:interfacebloat // single cohesive VCS abstraction, not accidental bloat
-type Operations interface {
-	GetRepoSummary(ctx context.Context, repoPath string) (models.RepoSummary, error)
-	GetCurrentBranch(ctx context.Context, repoPath string) (string, error)
-	GetUpstream(ctx context.Context, repoPath, branch string) (string, error)
-	GetAheadBehind(ctx context.Context, repoPath, branch, upstream string) (ahead, behind int, err error)
+// StatusReader answers summary-level queries about a repository's current state.
+type StatusReader interface {
 	CompareBranches(ctx context.Context, repoPath, branch, target string) (ahead, behind int, err error)
-	GetStagedCount(ctx context.Context, repoPath string) (int, error)
-	GetUnstagedCount(ctx context.Context, repoPath string) (int, error)
-	GetUntrackedCount(ctx context.Context, repoPath string) (int, error)
-	GetConflictedCount(ctx context.Context, repoPath string) (int, error)
-	GetBranchList(ctx context.Context, repoPath string) ([]models.BranchInfo, error)
-	GetStashList(ctx context.Context, repoPath string) ([]models.StashDetail, error)
-	GetWorktreeList(ctx context.Context, repoPath string) ([]models.WorktreeInfo, error)
-	GetCommitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error)
+	GetAheadBehind(ctx context.Context, repoPath, branch, upstream string) (ahead, behind int, err error)
+	GetCurrentBranch(ctx context.Context, repoPath string) (string, error)
 	GetLastModified(ctx context.Context, repoPath string) (int64, error)
 	GetRemoteURL(ctx context.Context, repoPath string) (string, error)
+	GetRepoSummary(ctx context.Context, repoPath string) (models.RepoSummary, error)
+	GetUpstream(ctx context.Context, repoPath, branch string) (string, error)
 	VCSType() models.VCSType
+}
 
+// DetailReader answers drill-down queries about a repository's branches, stashes,
+// worktrees, and commit history.
+type DetailReader interface {
+	GetBranchList(ctx context.Context, repoPath string) ([]models.BranchInfo, error)
+	GetCommitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error)
+	GetStashList(ctx context.Context, repoPath string) ([]models.StashDetail, error)
+	GetWorktreeList(ctx context.Context, repoPath string) ([]models.WorktreeInfo, error)
+}
+
+// Mutator performs write operations against a repository. Each method returns
+// (success, message) alongside an error so callers can surface per-repo feedback
+// in the UI even when the operation itself didn't error.
+type Mutator interface {
+	CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error)
 	FetchAll(ctx context.Context, repoPath string) (bool, string, error)
 	PruneRemote(ctx context.Context, repoPath string) (bool, string, error)
-	CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error)
+}
+
+// Operations abstracts the git/jj commands used to inspect and mutate a repository.
+type Operations interface {
+	StatusReader
+	DetailReader
+	Mutator
 }

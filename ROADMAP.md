@@ -92,7 +92,7 @@ Couples to command mode: fixtures script command sequences and generate usage do
 - Optional: extract `tui-commander` once a second TUI (for example jj-diff) shares it
 - Ship: fixtures cover the core workflows, docs regenerate from them
 
-### M7: vcs.Operations split
+### M7: vcs.Operations split (shipped)
 
 Small, low-risk refactor that keeps the interface from growing further when M9 adds
 mutator methods. Two independent simplifications:

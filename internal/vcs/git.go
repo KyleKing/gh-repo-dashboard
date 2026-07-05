@@ -201,22 +201,30 @@ func (g *GitOperations) getStatusCounts(ctx context.Context, repoPath string) st
 	return counts
 }
 
-// GetStagedCount implements Operations.
+// GetStagedCount reports the number of staged files.
+//
+//nolint:unparam // error kept for signature parity with the other count methods exec tests exercise directly
 func (g *GitOperations) GetStagedCount(ctx context.Context, repoPath string) (int, error) {
 	return g.getStatusCounts(ctx, repoPath).staged, nil
 }
 
-// GetUnstagedCount implements Operations.
+// GetUnstagedCount reports the number of unstaged, modified files.
+//
+//nolint:unparam // error kept for signature parity with the other count methods exec tests exercise directly
 func (g *GitOperations) GetUnstagedCount(ctx context.Context, repoPath string) (int, error) {
 	return g.getStatusCounts(ctx, repoPath).unstaged, nil
 }
 
-// GetUntrackedCount implements Operations.
+// GetUntrackedCount reports the number of untracked files.
+//
+//nolint:unparam // error kept for signature parity with the other count methods exec tests exercise directly
 func (g *GitOperations) GetUntrackedCount(ctx context.Context, repoPath string) (int, error) {
 	return g.getStatusCounts(ctx, repoPath).untracked, nil
 }
 
-// GetConflictedCount implements Operations.
+// GetConflictedCount reports the number of files with merge conflicts.
+//
+//nolint:unparam // error kept for signature parity with the other count methods exec tests exercise directly
 func (g *GitOperations) GetConflictedCount(ctx context.Context, repoPath string) (int, error) {
 	return g.getStatusCounts(ctx, repoPath).conflicted, nil
 }

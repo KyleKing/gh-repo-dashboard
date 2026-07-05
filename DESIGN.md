@@ -39,10 +39,12 @@ progressive loading, filtering, GitHub PR integration, and batch maintenance tas
 
 An interface-based abstraction supports multiple version control systems.
 
-- `VCSOperations` (in `vcs/operations.go`) defines the contract for both read and write operations
+- `Operations` (in `vcs/operations.go`) composes three narrower interfaces: `StatusReader`
+  (summary-level queries), `DetailReader` (branch/stash/worktree/commit drill-downs), and
+  `Mutator` (write operations)
 - `GitOperations` and `JJOperations` implement it
 - `DetectVCSType()` auto-detects by directory presence (`.git` or `.jj`)
-- `GetVCSOperations()` returns the appropriate implementation
+- `GetOperations()` returns the appropriate implementation
 - Colocated repos (both `.git` and `.jj`) prefer jj
 
 ### Git vs JJ concept mapping
@@ -59,9 +61,9 @@ An interface-based abstraction supports multiple version control systems.
 | Worktree | worktree | workspace | jj workspaces are more powerful |
 
 Read operations include `GetRepoSummary`, `GetCurrentBranch`, `GetBranchList`,
-`GetStashList` (git only), `GetWorktreeList`, `GetCommitLog`, `GetAheadBehind`, and
-the file-status counts (`GetStagedCount`, `GetUnstagedCount`, `GetUntrackedCount`,
-`GetConflictedCount`). Write operations used by batch tasks (`FetchAll`,
+`GetStashList` (git only), `GetWorktreeList`, `GetCommitLog`, and `GetAheadBehind`.
+File-status counts are computed internally by `GetRepoSummary` rather than exposed
+as separate interface methods. Write operations used by batch tasks (`FetchAll`,
 `PruneRemote`, `CleanupMergedBranches`) return `(success bool, message string)` for UI feedback.
 
 ### GitHub CLI integration
@@ -82,7 +84,7 @@ keybinding. Scope is always the filtered set, making the blast radius explicit.
 
 Adding a new batch task:
 
-1. Add the method to the `VCSOperations` interface (`vcs/operations.go`)
+1. Add the method to the `Mutator` interface (`vcs/operations.go`)
 2. Implement it in both `GitOperations` (`vcs/git.go`) and `JJOperations` (`vcs/jj.go`)
 3. Add a task function in `batch/tasks.go` wrapping the VCS call
 4. Handle it in `app/update.go` via `m.startBatchTask(...)`
