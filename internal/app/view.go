@@ -365,6 +365,36 @@ func (m Model) renderTable() string {
 	return strings.Join(rows, "\n")
 }
 
+// formatPRCell formats a repo's PR-column text: "#N" with a review-status
+// indicator and a CI/workflow failure indicator, or emDash if there's no PR.
+func formatPRCell(s models.RepoSummary) string {
+	if s.PRInfo == nil {
+		return emDash
+	}
+
+	prNum := fmt.Sprintf("#%d", s.PRInfo.Number)
+
+	switch s.PRInfo.ReviewStatus() {
+	case models.ReviewApproved:
+		prNum += " ✓"
+	case models.ReviewChangesRequested:
+		prNum += " ✗"
+	}
+
+	switch {
+	case s.PRInfo.Checks.Total > 0:
+		if s.PRInfo.Checks.Summary() == models.StatusFailing {
+			prNum += " ⚠"
+		}
+	case s.WorkflowInfo != nil:
+		if s.WorkflowInfo.StatusDisplay() == models.StatusFailing {
+			prNum += " ⚠"
+		}
+	}
+
+	return prNum
+}
+
 func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths struct {
 	name     int
 	branch   int
@@ -387,35 +417,7 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 	name := truncate(s.Name(), colWidths.name)
 	branch := truncate(s.Branch, colWidths.branch)
 	status := s.StatusSummary()
-	pr := emDash
-	if s.PRInfo != nil {
-		// Show PR number with review and CI indicators
-		prNum := fmt.Sprintf("#%d", s.PRInfo.Number)
-
-		// Add review status indicator
-		reviewStatus := s.PRInfo.ReviewStatus()
-		switch reviewStatus {
-		case models.ReviewApproved:
-			prNum += " ✓"
-		case models.ReviewChangesRequested:
-			prNum += " ✗"
-		}
-
-		// Add CI status indicator
-		if s.PRInfo.Checks.Total > 0 {
-			checkStatus := s.PRInfo.Checks.Summary()
-			if checkStatus == models.StatusFailing {
-				prNum += " ⚠"
-			}
-		} else if s.WorkflowInfo != nil {
-			wfStatus := s.WorkflowInfo.StatusDisplay()
-			if wfStatus == models.StatusFailing {
-				prNum += " ⚠"
-			}
-		}
-
-		pr = prNum
-	}
+	pr := formatPRCell(s)
 
 	prCountStr := emDash
 	if count, ok := m.prCount[s.Path]; ok && count > 0 {
@@ -692,61 +694,70 @@ func (m Model) renderBranchList() string {
 	rows = append(rows, styles.HeaderStyle.Render(header))
 
 	for i, branch := range m.branches {
-		cursor := "  "
-		if i == m.detailCursor {
-			cursor = "> "
-		}
-
-		name := truncate(branch.Name, branchNameTruncLen)
-		if branch.IsCurrent {
-			name = "* " + name
-		}
-		upstream := truncate(branch.Upstream, upstreamTruncLen)
-		status := ""
-		if branch.Ahead > 0 {
-			status += fmt.Sprintf("↑%d", branch.Ahead)
-		}
-		if branch.Behind > 0 {
-			if status != "" {
-				status += " "
-			}
-			status += fmt.Sprintf("↓%d", branch.Behind)
-		}
-		if status == "" {
-			status = "✓"
-		}
-		lastCommit := branch.RelativeLastCommit()
-
-		var style lipgloss.Style
-		if i == m.detailCursor {
-			style = styles.SelectedRowStyle
-		} else {
-			style = styles.TableRowStyle
-		}
-
-		nameStyle := styles.BranchStyle
-		if branch.IsCurrent {
-			nameStyle = styles.PROpenStyle
-		}
-		if i == m.detailCursor {
-			nameStyle = nameStyle.Background(styles.Surface0)
-		}
-
-		formattedName := fmt.Sprintf("%-20s", name)
-		formattedUpstream := fmt.Sprintf("%-20s", upstream)
-		formattedStatus := fmt.Sprintf("%-10s", status)
-
-		row := fmt.Sprintf("%s%s  %s  %s  %s",
-			cursor,
-			nameStyle.Render(formattedName),
-			style.Render(formattedUpstream),
-			style.Render(formattedStatus),
-			style.Render(lastCommit),
-		)
-		rows = append(rows, row)
+		rows = append(rows, renderBranchRow(branch, i == m.detailCursor))
 	}
 
 	return strings.Join(rows, "\n")
+}
+
+// branchAheadBehindStatus renders a branch's ahead/behind indicator, or a
+// checkmark if it's fully in sync with its upstream.
+func branchAheadBehindStatus(branch models.BranchInfo) string {
+	status := ""
+	if branch.Ahead > 0 {
+		status += fmt.Sprintf("↑%d", branch.Ahead)
+	}
+	if branch.Behind > 0 {
+		if status != "" {
+			status += " "
+		}
+		status += fmt.Sprintf("↓%d", branch.Behind)
+	}
+	if status == "" {
+		status = "✓"
+	}
+
+	return status
+}
+
+func renderBranchRow(branch models.BranchInfo, isSelected bool) string {
+	cursor := "  "
+	if isSelected {
+		cursor = "> "
+	}
+
+	name := truncate(branch.Name, branchNameTruncLen)
+	if branch.IsCurrent {
+		name = "* " + name
+	}
+	upstream := truncate(branch.Upstream, upstreamTruncLen)
+	status := branchAheadBehindStatus(branch)
+	lastCommit := branch.RelativeLastCommit()
+
+	style := styles.TableRowStyle
+	if isSelected {
+		style = styles.SelectedRowStyle
+	}
+
+	nameStyle := styles.BranchStyle
+	if branch.IsCurrent {
+		nameStyle = styles.PROpenStyle
+	}
+	if isSelected {
+		nameStyle = nameStyle.Background(styles.Surface0)
+	}
+
+	formattedName := fmt.Sprintf("%-20s", name)
+	formattedUpstream := fmt.Sprintf("%-20s", upstream)
+	formattedStatus := fmt.Sprintf("%-10s", status)
+
+	return fmt.Sprintf("%s%s  %s  %s  %s",
+		cursor,
+		nameStyle.Render(formattedName),
+		style.Render(formattedUpstream),
+		style.Render(formattedStatus),
+		style.Render(lastCommit),
+	)
 }
 
 func (m Model) renderStashList() string {
