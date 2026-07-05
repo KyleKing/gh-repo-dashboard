@@ -1,17 +1,19 @@
-package cache
+package cache_test
 
 import (
 	"testing"
 	"time"
+
+	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 )
 
 func TestTTLCacheSetGet(t *testing.T) {
 	t.Parallel()
-	cache := NewTTLCache[string](5 * time.Minute)
+	c := cache.NewTTLCache[string](5 * time.Minute)
 
-	cache.Set("key1", "value1")
+	c.Set("key1", "value1")
 
-	value, ok := cache.Get("key1")
+	value, ok := c.Get("key1")
 	if !ok {
 		t.Error("expected key to exist")
 	}
@@ -22,9 +24,9 @@ func TestTTLCacheSetGet(t *testing.T) {
 
 func TestTTLCacheGetMissing(t *testing.T) {
 	t.Parallel()
-	cache := NewTTLCache[string](5 * time.Minute)
+	c := cache.NewTTLCache[string](5 * time.Minute)
 
-	_, ok := cache.Get("nonexistent")
+	_, ok := c.Get("nonexistent")
 	if ok {
 		t.Error("expected key to not exist")
 	}
@@ -32,13 +34,13 @@ func TestTTLCacheGetMissing(t *testing.T) {
 
 func TestTTLCacheExpiration(t *testing.T) {
 	t.Parallel()
-	cache := NewTTLCache[string](10 * time.Millisecond)
+	c := cache.NewTTLCache[string](10 * time.Millisecond)
 
-	cache.Set("key1", "value1")
+	c.Set("key1", "value1")
 
 	time.Sleep(20 * time.Millisecond)
 
-	_, ok := cache.Get("key1")
+	_, ok := c.Get("key1")
 	if ok {
 		t.Error("expected key to be expired")
 	}
@@ -46,15 +48,15 @@ func TestTTLCacheExpiration(t *testing.T) {
 
 func TestTTLCacheClear(t *testing.T) {
 	t.Parallel()
-	cache := NewTTLCache[string](5 * time.Minute)
+	c := cache.NewTTLCache[string](5 * time.Minute)
 
-	cache.Set("key1", "value1")
-	cache.Set("key2", "value2")
+	c.Set("key1", "value1")
+	c.Set("key2", "value2")
 
-	cache.Clear()
+	c.Clear()
 
-	_, ok1 := cache.Get("key1")
-	_, ok2 := cache.Get("key2")
+	_, ok1 := c.Get("key1")
+	_, ok2 := c.Get("key2")
 
 	if ok1 || ok2 {
 		t.Error("expected all keys to be cleared")
@@ -63,15 +65,15 @@ func TestTTLCacheClear(t *testing.T) {
 
 func TestTTLCacheDelete(t *testing.T) {
 	t.Parallel()
-	cache := NewTTLCache[string](5 * time.Minute)
+	c := cache.NewTTLCache[string](5 * time.Minute)
 
-	cache.Set("key1", "value1")
-	cache.Set("key2", "value2")
+	c.Set("key1", "value1")
+	c.Set("key2", "value2")
 
-	cache.Delete("key1")
+	c.Delete("key1")
 
-	_, ok1 := cache.Get("key1")
-	_, ok2 := cache.Get("key2")
+	_, ok1 := c.Get("key1")
+	_, ok2 := c.Get("key2")
 
 	if ok1 {
 		t.Error("expected key1 to be deleted")
@@ -83,12 +85,12 @@ func TestTTLCacheDelete(t *testing.T) {
 
 func TestTTLCacheOverwrite(t *testing.T) {
 	t.Parallel()
-	cache := NewTTLCache[string](5 * time.Minute)
+	c := cache.NewTTLCache[string](5 * time.Minute)
 
-	cache.Set("key1", "value1")
-	cache.Set("key1", "value2")
+	c.Set("key1", "value1")
+	c.Set("key1", "value2")
 
-	value, ok := cache.Get("key1")
+	value, ok := c.Get("key1")
 	if !ok {
 		t.Error("expected key to exist")
 	}
@@ -99,11 +101,11 @@ func TestTTLCacheOverwrite(t *testing.T) {
 
 func TestTTLCacheWithInt(t *testing.T) {
 	t.Parallel()
-	cache := NewTTLCache[int](5 * time.Minute)
+	c := cache.NewTTLCache[int](5 * time.Minute)
 
-	cache.Set("count", 42)
+	c.Set("count", 42)
 
-	value, ok := cache.Get("count")
+	value, ok := c.Get("count")
 	if !ok {
 		t.Error("expected key to exist")
 	}
@@ -119,12 +121,12 @@ func TestTTLCacheWithStruct(t *testing.T) {
 		Count int
 	}
 
-	cache := NewTTLCache[TestData](5 * time.Minute)
+	c := cache.NewTTLCache[TestData](5 * time.Minute)
 
 	data := TestData{Name: "test", Count: 5}
-	cache.Set("data", data)
+	c.Set("data", data)
 
-	value, ok := cache.Get("data")
+	value, ok := c.Get("data")
 	if !ok {
 		t.Error("expected key to exist")
 	}
@@ -135,17 +137,17 @@ func TestTTLCacheWithStruct(t *testing.T) {
 
 func TestClearAllCaches(t *testing.T) {
 	t.Parallel()
-	PRCache.Set("test", nil)
-	BranchCache.Set("test", nil)
-	CommitCache.Set("test", nil)
-	WorkflowCache.Set("test", nil)
+	cache.PRCache.Set("test", nil)
+	cache.BranchCache.Set("test", nil)
+	cache.CommitCache.Set("test", nil)
+	cache.WorkflowCache.Set("test", nil)
 
-	ClearAll()
+	cache.ClearAll()
 
-	_, ok1 := PRCache.Get("test")
-	_, ok2 := BranchCache.Get("test")
-	_, ok3 := CommitCache.Get("test")
-	_, ok4 := WorkflowCache.Get("test")
+	_, ok1 := cache.PRCache.Get("test")
+	_, ok2 := cache.BranchCache.Get("test")
+	_, ok3 := cache.CommitCache.Get("test")
+	_, ok4 := cache.WorkflowCache.Get("test")
 
 	if ok1 || ok2 || ok3 || ok4 {
 		t.Error("expected all caches to be cleared")
