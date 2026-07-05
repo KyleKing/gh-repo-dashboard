@@ -52,14 +52,7 @@ func TestGetPRForBranch(t *testing.T) {
 		]
 	}`)
 
-	tests := []struct {
-		name      string
-		output    []byte
-		runErr    error
-		expected  *models.PRInfo
-		expectErr bool
-		cachesNil bool
-	}{
+	tests := []getPRForBranchCase{
 		{
 			name:   "success",
 			output: successJSON,
@@ -90,34 +83,50 @@ func TestGetPRForBranch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cache.ClearAll()
-			ctx, calls := stubRunGH(tt.output, tt.runErr)
-
-			pr, err := github.GetPRForBranch(ctx, "/repo", "feature-branch", "owner/repo")
-			if tt.expectErr {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-			} else if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if !reflect.DeepEqual(pr, tt.expected) {
-				t.Errorf("expected %+v, got %+v", tt.expected, pr)
-			}
-
-			if tt.expected != nil || tt.cachesNil {
-				cachedPR, cachedErr := github.GetPRForBranch(ctx, "/repo", "feature-branch", "owner/repo")
-				if cachedErr != nil {
-					t.Errorf("expected cached result without error, got %v", cachedErr)
-				}
-				if !reflect.DeepEqual(cachedPR, tt.expected) {
-					t.Errorf("expected cached %+v, got %+v", tt.expected, cachedPR)
-				}
-				if len(*calls) != 1 {
-					t.Errorf("expected 1 gh invocation, got %d", len(*calls))
-				}
-			}
+			runGetPRForBranchCase(t, tt)
 		})
+	}
+}
+
+type getPRForBranchCase struct {
+	name      string
+	output    []byte
+	runErr    error
+	expected  *models.PRInfo
+	expectErr bool
+	cachesNil bool
+}
+
+func runGetPRForBranchCase(t *testing.T, tt getPRForBranchCase) {
+	t.Helper()
+	cache.ClearAll()
+	ctx, calls := stubRunGH(tt.output, tt.runErr)
+
+	pr, err := github.GetPRForBranch(ctx, "/repo", "feature-branch", "owner/repo")
+	if tt.expectErr {
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	} else if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(pr, tt.expected) {
+		t.Errorf("expected %+v, got %+v", tt.expected, pr)
+	}
+
+	if tt.expected == nil && !tt.cachesNil {
+		return
+	}
+
+	cachedPR, cachedErr := github.GetPRForBranch(ctx, "/repo", "feature-branch", "owner/repo")
+	if cachedErr != nil {
+		t.Errorf("expected cached result without error, got %v", cachedErr)
+	}
+	if !reflect.DeepEqual(cachedPR, tt.expected) {
+		t.Errorf("expected cached %+v, got %+v", tt.expected, cachedPR)
+	}
+	if len(*calls) != 1 {
+		t.Errorf("expected 1 gh invocation, got %d", len(*calls))
 	}
 }
 
@@ -185,13 +194,7 @@ func TestGetPRDetail(t *testing.T) {
 		Comments:  2,
 	}
 
-	tests := []struct {
-		name      string
-		output    []byte
-		runErr    error
-		expected  *models.PRDetail
-		expectErr bool
-	}{
+	tests := []getPRDetailCase{
 		{name: "success", output: successJSON, expected: expectedDetail},
 		{name: "gh error", runErr: errGHFailed, expectErr: true},
 		{name: "malformed JSON", output: []byte(`not json`), expectErr: true},
@@ -199,35 +202,48 @@ func TestGetPRDetail(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cache.ClearAll()
-			ctx, calls := stubRunGH(tt.output, tt.runErr)
-
-			detail, err := github.GetPRDetail(ctx, "/repo", 7)
-			if tt.expectErr {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if !reflect.DeepEqual(detail, tt.expected) {
-				t.Errorf("expected %+v, got %+v", tt.expected, detail)
-			}
-
-			cachedDetail, err := github.GetPRDetail(ctx, "/repo", 7)
-			if err != nil {
-				t.Fatalf("unexpected error on cached call: %v", err)
-			}
-			if !reflect.DeepEqual(cachedDetail, tt.expected) {
-				t.Errorf("expected cached %+v, got %+v", tt.expected, cachedDetail)
-			}
-			if len(*calls) != 1 {
-				t.Errorf("expected 1 gh invocation, got %d", len(*calls))
-			}
+			runGetPRDetailCase(t, tt)
 		})
+	}
+}
+
+type getPRDetailCase struct {
+	name      string
+	output    []byte
+	runErr    error
+	expected  *models.PRDetail
+	expectErr bool
+}
+
+func runGetPRDetailCase(t *testing.T, tt getPRDetailCase) {
+	t.Helper()
+	cache.ClearAll()
+	ctx, calls := stubRunGH(tt.output, tt.runErr)
+
+	detail, err := github.GetPRDetail(ctx, "/repo", 7)
+	if tt.expectErr {
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+
+		return
+	}
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(detail, tt.expected) {
+		t.Errorf("expected %+v, got %+v", tt.expected, detail)
+	}
+
+	cachedDetail, err := github.GetPRDetail(ctx, "/repo", 7)
+	if err != nil {
+		t.Fatalf("unexpected error on cached call: %v", err)
+	}
+	if !reflect.DeepEqual(cachedDetail, tt.expected) {
+		t.Errorf("expected cached %+v, got %+v", tt.expected, cachedDetail)
+	}
+	if len(*calls) != 1 {
+		t.Errorf("expected 1 gh invocation, got %d", len(*calls))
 	}
 }
 
@@ -464,16 +480,7 @@ func TestGetWorkflowRunsForCommit(t *testing.T) {
 		InProgress: 2,
 	}
 
-	tests := []struct {
-		name      string
-		commitSHA string
-		output    []byte
-		runErr    error
-		expected  *models.WorkflowSummary
-		expectErr bool
-		expectGH  bool
-		cachesNil bool
-	}{
+	tests := []getWorkflowRunsCase{
 		{name: "empty commit SHA short-circuits", commitSHA: ""},
 		{name: "success", commitSHA: "abc123", output: successJSON, expected: expectedSummary, expectGH: true},
 		{
@@ -485,41 +492,59 @@ func TestGetWorkflowRunsForCommit(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cache.ClearAll()
-			ctx, calls := stubRunGH(tt.output, tt.runErr)
-
-			summary, err := github.GetWorkflowRunsForCommit(ctx, "/repo", tt.commitSHA)
-			if tt.expectErr {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-			} else if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if !reflect.DeepEqual(summary, tt.expected) {
-				t.Errorf("expected %+v, got %+v", tt.expected, summary)
-			}
-
-			expectedCalls := 0
-			if tt.expectGH {
-				expectedCalls = 1
-			}
-			if len(*calls) != expectedCalls {
-				t.Errorf("expected %d gh invocations, got %d", expectedCalls, len(*calls))
-			}
-
-			if tt.expected != nil || tt.cachesNil {
-				cachedSummary, cachedErr := github.GetWorkflowRunsForCommit(ctx, "/repo", tt.commitSHA)
-				if cachedErr != nil {
-					t.Errorf("expected cached result without error, got %v", cachedErr)
-				}
-				if !reflect.DeepEqual(cachedSummary, tt.expected) {
-					t.Errorf("expected cached %+v, got %+v", tt.expected, cachedSummary)
-				}
-				if len(*calls) != expectedCalls {
-					t.Errorf("expected still %d gh invocations after cache hit, got %d", expectedCalls, len(*calls))
-				}
-			}
+			runGetWorkflowRunsCase(t, &tt)
 		})
+	}
+}
+
+type getWorkflowRunsCase struct {
+	name      string
+	commitSHA string
+	output    []byte
+	runErr    error
+	expected  *models.WorkflowSummary
+	expectErr bool
+	expectGH  bool
+	cachesNil bool
+}
+
+func runGetWorkflowRunsCase(t *testing.T, tt *getWorkflowRunsCase) {
+	t.Helper()
+	cache.ClearAll()
+	ctx, calls := stubRunGH(tt.output, tt.runErr)
+
+	summary, err := github.GetWorkflowRunsForCommit(ctx, "/repo", tt.commitSHA)
+	if tt.expectErr {
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	} else if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(summary, tt.expected) {
+		t.Errorf("expected %+v, got %+v", tt.expected, summary)
+	}
+
+	expectedCalls := 0
+	if tt.expectGH {
+		expectedCalls = 1
+	}
+	if len(*calls) != expectedCalls {
+		t.Errorf("expected %d gh invocations, got %d", expectedCalls, len(*calls))
+	}
+
+	if tt.expected == nil && !tt.cachesNil {
+		return
+	}
+
+	cachedSummary, cachedErr := github.GetWorkflowRunsForCommit(ctx, "/repo", tt.commitSHA)
+	if cachedErr != nil {
+		t.Errorf("expected cached result without error, got %v", cachedErr)
+	}
+	if !reflect.DeepEqual(cachedSummary, tt.expected) {
+		t.Errorf("expected cached %+v, got %+v", tt.expected, cachedSummary)
+	}
+	if len(*calls) != expectedCalls {
+		t.Errorf("expected still %d gh invocations after cache hit, got %d", expectedCalls, len(*calls))
 	}
 }
