@@ -73,7 +73,7 @@ enable = [
   "ineffassign",
   "interfacebloat",
   "intrange",
-  "ireturn", # revisit: BubbleTea Init/Update methods return interfaces by design
+  "ireturn", # see linters.settings.ireturn: bubbletea.Model allowed by design
   "lll",
   "loggercheck",
   "maintidx",
@@ -171,7 +171,8 @@ enable-all = true
 disable = ["shadow", "fieldalignment"]
 
 [linters.settings.ireturn]
-allow = ["error", "empty", "stdlib"]
+# bubbletea's Elm architecture requires Update-family methods to return tea.Model
+allow = ["error", "empty", "stdlib", "charm\\.land/bubbletea/v2\\.Model"]
 
 [linters.settings.lll]
 line-length = 120
