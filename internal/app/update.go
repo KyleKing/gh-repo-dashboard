@@ -21,11 +21,15 @@ import (
 )
 
 const (
-	textObjectKeyLen     = 2
-	branchDetailLogLimit = 20
-	statusClearDelay     = 3 * time.Second
+	textObjectKeyLen      = 2
+	branchDetailLogLimit  = 20
+	statusClearDelay      = 3 * time.Second
+	prDetailPrefetchCount = 3
 )
 
+// Update dispatches an incoming tea.Msg to the handler for its message type.
+//
+//nolint:gocyclo // flat message-type dispatch; complexity is the case count, not nesting
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -36,80 +40,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.searching {
-			return m.handleSearchKey(msg)
-		}
-		if m.commandMode {
-			return m.handleCommandKey(msg)
-		}
-		if key.Matches(msg, m.keys.Command) {
-			m.commandMode = true
-			m.commandInput.Reset()
-			m.completionCandidates = nil
-			m.commandInput.Focus()
-
-			return m, nil
-		}
-		switch m.viewMode {
-		case ViewModeFilter:
-			return m.handleFilterKey(msg)
-		case ViewModeSort:
-			return m.handleSortKey(msg)
-		case ViewModeRepoDetail:
-			return m.handleDetailKey(msg)
-		case ViewModeBranchDetail:
-			return m.handleBranchDetailKey(msg)
-		case ViewModePRDetail:
-			return m.handlePRDetailKey(msg)
-		case ViewModeBatchProgress:
-			return m.handleBatchKey(msg)
-		default:
-			return m.handleKey(msg)
-		}
+		return m.routeKeyMsg(msg)
 
 	case ReposDiscoveredMsg:
-		m.repoPaths = msg.Paths
-		m.loadingCount = len(msg.Paths)
-		m.loadedCount = 0
-
-		if len(msg.Paths) == 0 {
-			m.loading = false
-		}
-
-		m.updateFilteredPaths()
-
-		var cmds []tea.Cmd
-		for _, path := range msg.Paths {
-			cmds = append(cmds, loadRepoSummaryCmd(path))
-		}
-
-		return m, tea.Batch(cmds...)
+		return m.handleReposDiscovered(msg)
 
 	case RepoSummaryLoadedMsg:
-		m.loadedCount++
-
-		var cmds []tea.Cmd
-		if msg.Error != nil {
-			summary := models.RepoSummary{
-				Path:    msg.Path,
-				VCSType: vcs.DetectVCSType(msg.Path),
-				Error:   msg.Error,
-			}
-			m.summaries[msg.Path] = summary
-		} else {
-			m.summaries[msg.Path] = msg.Summary
-			cmds = append(cmds,
-				loadPRCmd(msg.Path, msg.Summary.Branch, msg.Summary.Upstream),
-				loadPRCountCmd(msg.Path, msg.Summary.Upstream),
-			)
-		}
-
-		if m.loadedCount >= m.loadingCount {
-			m.loading = false
-			m.updateFilteredPaths()
-		}
-
-		return m, tea.Batch(cmds...)
+		return m.handleRepoSummaryLoaded(msg)
 
 	case PRLoadedMsg:
 		if summary, ok := m.summaries[msg.Path]; ok {
@@ -128,27 +65,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case DetailLoadedMsg:
-		if msg.Path == m.selectedRepo {
-			m.branches = msg.Branches
-			m.stashes = msg.Stashes
-			m.worktrees = msg.Worktrees
-			m.prs = msg.PRs
-
-			// Prefetch first few PR details in background
-			var cmds []tea.Cmd
-			prefetchCount := 3 // Prefetch first 3 PRs
-			if len(msg.PRs) < prefetchCount {
-				prefetchCount = len(msg.PRs)
-			}
-			for i := range prefetchCount {
-				cmds = append(cmds, prefetchPRDetailCmd(msg.Path, msg.PRs[i].Number))
-			}
-			if len(cmds) > 0 {
-				return m, tea.Batch(cmds...)
-			}
-		}
-
-		return m, nil
+		return m.handleDetailLoaded(msg)
 
 	case BranchDetailLoadedMsg:
 		if msg.Path == m.selectedRepo {
@@ -165,17 +82,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case PRDetailLoadedMsg:
-		if msg.Path == m.selectedRepo && msg.PRNumber == m.selectedPR.Number {
-			if msg.Error != nil {
-				// Don't clear basic info on error - preserve what we already have
-				// Show error status message
-				m.statusMessage = fmt.Sprintf("Failed to load PR details: %v", msg.Error)
-				return m, clearStatusAfterDelay()
-			}
-			m.prDetail = msg.Detail
-		}
-
-		return m, nil
+		return m.handlePRDetailLoaded(msg)
 
 	case PRCountLoadedMsg:
 		if m.prCount == nil {
@@ -237,6 +144,132 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ErrorMsg:
 		return m, nil
+	}
+
+	return m, nil
+}
+
+// routeKeyMsg dispatches a key press to the handler for the current mode
+// (search, command-bar, or one of the view modes).
+func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.searching {
+		return m.handleSearchKey(msg)
+	}
+	if m.commandMode {
+		return m.handleCommandKey(msg)
+	}
+	if key.Matches(msg, m.keys.Command) {
+		m.commandMode = true
+		m.commandInput.Reset()
+		m.completionCandidates = nil
+		m.commandInput.Focus()
+
+		return m, nil
+	}
+	switch m.viewMode {
+	case ViewModeFilter:
+		return m.handleFilterKey(msg)
+	case ViewModeSort:
+		return m.handleSortKey(msg)
+	case ViewModeRepoDetail:
+		return m.handleDetailKey(msg)
+	case ViewModeBranchDetail:
+		return m.handleBranchDetailKey(msg)
+	case ViewModePRDetail:
+		return m.handlePRDetailKey(msg)
+	case ViewModeBatchProgress:
+		return m.handleBatchKey(msg)
+	default:
+		return m.handleKey(msg)
+	}
+}
+
+// handleReposDiscovered records the discovered repo paths and kicks off a
+// summary load for each.
+func (m Model) handleReposDiscovered(msg ReposDiscoveredMsg) (tea.Model, tea.Cmd) {
+	m.repoPaths = msg.Paths
+	m.loadingCount = len(msg.Paths)
+	m.loadedCount = 0
+
+	if len(msg.Paths) == 0 {
+		m.loading = false
+	}
+
+	m.updateFilteredPaths()
+
+	cmds := make([]tea.Cmd, 0, len(msg.Paths))
+	for _, path := range msg.Paths {
+		cmds = append(cmds, loadRepoSummaryCmd(path))
+	}
+
+	return m, tea.Batch(cmds...)
+}
+
+// handleRepoSummaryLoaded merges a loaded repo summary and, once every repo
+// has reported in, ends the initial loading state.
+func (m Model) handleRepoSummaryLoaded(msg RepoSummaryLoadedMsg) (tea.Model, tea.Cmd) {
+	m.loadedCount++
+
+	var cmds []tea.Cmd
+	if msg.Error != nil {
+		m.summaries[msg.Path] = models.RepoSummary{
+			Path:    msg.Path,
+			VCSType: vcs.DetectVCSType(msg.Path),
+			Error:   msg.Error,
+		}
+	} else {
+		m.summaries[msg.Path] = msg.Summary
+		cmds = append(cmds,
+			loadPRCmd(msg.Path, msg.Summary.Branch, msg.Summary.Upstream),
+			loadPRCountCmd(msg.Path, msg.Summary.Upstream),
+		)
+	}
+
+	if m.loadedCount >= m.loadingCount {
+		m.loading = false
+		m.updateFilteredPaths()
+	}
+
+	return m, tea.Batch(cmds...)
+}
+
+// handlePRDetailLoaded stores a loaded PR detail if it's still for the
+// currently selected repo/PR, preserving prior info on error.
+func (m Model) handlePRDetailLoaded(msg PRDetailLoadedMsg) (tea.Model, tea.Cmd) {
+	if msg.Path != m.selectedRepo || msg.PRNumber != m.selectedPR.Number {
+		return m, nil
+	}
+	if msg.Error != nil {
+		// Don't clear basic info on error - preserve what we already have
+		m.statusMessage = fmt.Sprintf("Failed to load PR details: %v", msg.Error)
+		return m, clearStatusAfterDelay()
+	}
+	m.prDetail = msg.Detail
+
+	return m, nil
+}
+
+// handleDetailLoaded stores the loaded repo detail (branches/stashes/
+// worktrees/PRs) and kicks off background prefetch of the first few PR
+// details.
+func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
+	if msg.Path != m.selectedRepo {
+		return m, nil
+	}
+
+	m.branches = msg.Branches
+	m.stashes = msg.Stashes
+	m.worktrees = msg.Worktrees
+	m.prs = msg.PRs
+
+	prefetchCount := min(prDetailPrefetchCount, len(msg.PRs))
+
+	var cmds []tea.Cmd
+	for i := range prefetchCount {
+		cmds = append(cmds, prefetchPRDetailCmd(msg.Path, msg.PRs[i].Number))
+	}
+	if len(cmds) > 0 {
+		return m, tea.Batch(cmds...)
 	}
 
 	return m, nil
