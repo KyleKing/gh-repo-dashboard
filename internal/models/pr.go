@@ -14,18 +14,18 @@ const (
 
 // PRInfo summarizes a pull request for the repo list and detail views.
 type PRInfo struct {
-	Number          int
-	Title           string
-	State           string
-	URL             string
-	IsDraft         bool
-	Mergeable       string
-	HeadRef         string
-	BaseRef         string
-	Checks          ChecksStatus
-	ReviewDecision  string
-	ApprovedBy      []string
-	ChangesRequests int
+	Number          int          `json:"number"`
+	Title           string       `json:"title"`
+	State           string       `json:"state"`
+	URL             string       `json:"url"`
+	IsDraft         bool         `json:"is_draft"`
+	Mergeable       string       `json:"mergeable,omitempty"`
+	HeadRef         string       `json:"head_ref"`
+	BaseRef         string       `json:"base_ref"`
+	Checks          ChecksStatus `json:"checks"`
+	ReviewDecision  string       `json:"review_decision,omitempty"`
+	ApprovedBy      []string     `json:"approved_by,omitempty"`
+	ChangesRequests int          `json:"changes_requests,omitempty"`
 }
 
 // StatusDisplay returns the pull request's display status label.
@@ -65,11 +65,11 @@ func (p PRInfo) ReviewStatus() string {
 
 // ChecksStatus tallies a pull request's CI check outcomes.
 type ChecksStatus struct {
-	Total   int
-	Passing int
-	Failing int
-	Pending int
-	Skipped int
+	Total   int `json:"total"`
+	Passing int `json:"passing"`
+	Failing int `json:"failing"`
+	Pending int `json:"pending"`
+	Skipped int `json:"skipped"`
 }
 
 // Summary returns a one-word overall status for the checks.

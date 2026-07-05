@@ -98,8 +98,6 @@ Low priority; slot between milestones when convenient rather than blocking the l
 above.
 
 - Full Catppuccin themes replacing the current textual themes
-- `--cli` flag for non-interactive JSON output, cache-only by default (fresh retrieval
-  only on request) for performance
 - gh-poi integration to identify safe-to-delete branches
 - Split `vcs.Operations` (18 methods, `//nolint:interfacebloat` suppressed for now)
   into narrower interfaces, e.g. a query-only reader (`GetRepoSummary`,

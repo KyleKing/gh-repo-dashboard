@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -10,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/app"
+	"github.com/kyleking/gh-repo-dashboard/internal/cli"
 )
 
 var (
@@ -44,6 +46,8 @@ func findGitRoot(startPath string) (string, bool) {
 func main() {
 	showVersion := flag.Bool("version", false, "Show version information")
 	depth := flag.Int("depth", 1, "Maximum directory depth to scan")
+	cliMode := flag.Bool("cli", false, "Print repo summaries as JSON instead of the TUI (cached GitHub data only)")
+	fresh := flag.Bool("fresh", false, "With -cli, fetch fresh GitHub PR data instead of relying on the cache")
 	flag.Parse()
 
 	if *showVersion {
@@ -74,6 +78,15 @@ func main() {
 			os.Exit(1)
 		}
 		absPathList = append(absPathList, absPath)
+	}
+
+	if *cliMode {
+		if err := cli.Run(context.Background(), os.Stdout, absPathList, *depth, *fresh); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		return
 	}
 
 	model := app.New(absPathList, *depth)

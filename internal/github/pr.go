@@ -31,10 +31,20 @@ type statusCheck struct {
 	Conclusion string `json:"conclusion,omitempty"`
 }
 
+// CachedPRForBranch returns the cached pull request for branch, if any, without invoking gh.
+func CachedPRForBranch(branch, upstream string) (*models.PRInfo, bool) {
+	return cache.PRCache.Get(upstream + ":" + branch)
+}
+
+// CachedPRs returns the cached open pull request list for upstream without invoking gh.
+func CachedPRs(upstream string) ([]models.PRInfo, bool) {
+	return cache.PRListCache.Get(upstream + ":all_prs")
+}
+
 // GetPRForBranch returns the pull request associated with branch, if any, using the cache when fresh.
 func GetPRForBranch(ctx context.Context, repoPath, branch, upstream string) (*models.PRInfo, error) {
 	cacheKey := upstream + ":" + branch
-	if cached, ok := cache.PRCache.Get(cacheKey); ok {
+	if cached, ok := CachedPRForBranch(branch, upstream); ok {
 		return cached, nil
 	}
 
@@ -199,7 +209,7 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 	}
 
 	cacheKey := upstream + ":all_prs"
-	if cached, ok := cache.PRListCache.Get(cacheKey); ok {
+	if cached, ok := CachedPRs(upstream); ok {
 		return cached, nil
 	}
 

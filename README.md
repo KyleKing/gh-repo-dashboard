@@ -27,6 +27,13 @@ gh repo-dashboard ~/projects ~/work
 
 # Limit scan depth
 gh repo-dashboard -depth 2 ~/Developer
+
+# Print repo summaries as JSON instead of launching the TUI
+# (uses only cached GitHub data, so PR fields may be omitted)
+gh repo-dashboard --cli ~/projects
+
+# JSON output with fresh GitHub PR data (invokes gh per repo)
+gh repo-dashboard --cli --fresh ~/projects
 ```
 
 ## Supported Version Control Systems
