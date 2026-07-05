@@ -56,6 +56,7 @@ func (*mockVCS) GetUpstream(_ context.Context, _, _ string) (string, error) {
 	return "", nil
 }
 
+//nolint:gocritic // matches vcs.Operations.GetAheadBehind's (ahead, behind int, err error)
 func (*mockVCS) GetAheadBehind(_ context.Context, _, _, _ string) (int, int, error) {
 	return 0, 0, nil
 }
@@ -104,6 +105,7 @@ func (*mockVCS) VCSType() models.VCSType {
 	return models.VCSTypeGit
 }
 
+//nolint:gocritic // matches vcs.Operations.FetchAll's (ok bool, msg string, err error)
 func (m *mockVCS) FetchAll(_ context.Context, _ string) (bool, string, error) {
 	if m.fetchResult != nil {
 		return m.fetchResult()
@@ -112,6 +114,7 @@ func (m *mockVCS) FetchAll(_ context.Context, _ string) (bool, string, error) {
 	return true, testSuccessMsg, nil
 }
 
+//nolint:gocritic // matches vcs.Operations.PruneRemote's (ok bool, msg string, err error)
 func (m *mockVCS) PruneRemote(_ context.Context, _ string) (bool, string, error) {
 	if m.pruneResult != nil {
 		return m.pruneResult()
@@ -120,6 +123,7 @@ func (m *mockVCS) PruneRemote(_ context.Context, _ string) (bool, string, error)
 	return true, testSuccessMsg, nil
 }
 
+//nolint:gocritic // matches vcs.Operations.CleanupMergedBranches's (ok bool, msg string, err error)
 func (m *mockVCS) CleanupMergedBranches(_ context.Context, _ string) (bool, string, error) {
 	if m.cleanupResult != nil {
 		return m.cleanupResult()

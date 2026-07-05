@@ -8,6 +8,8 @@ import (
 )
 
 // FetchAll is a batch.TaskFunc that fetches all remotes for a repo.
+//
+//nolint:gocritic // matches vcs.Operations.FetchAll's (ok bool, msg string, err error)
 func FetchAll(ctx context.Context, ops vcs.Operations, repoPath string) (bool, string, error) {
 	ok, msg, err := ops.FetchAll(ctx, repoPath)
 	if err != nil {
@@ -18,6 +20,8 @@ func FetchAll(ctx context.Context, ops vcs.Operations, repoPath string) (bool, s
 }
 
 // PruneRemote is a batch.TaskFunc that prunes stale remote-tracking refs for a repo.
+//
+//nolint:gocritic // matches vcs.Operations.PruneRemote's (ok bool, msg string, err error)
 func PruneRemote(ctx context.Context, ops vcs.Operations, repoPath string) (bool, string, error) {
 	ok, msg, err := ops.PruneRemote(ctx, repoPath)
 	if err != nil {
@@ -28,6 +32,8 @@ func PruneRemote(ctx context.Context, ops vcs.Operations, repoPath string) (bool
 }
 
 // CleanupMerged is a batch.TaskFunc that deletes merged branches for a repo.
+//
+//nolint:gocritic // matches vcs.Operations.CleanupMergedBranches's (ok bool, msg string, err error)
 func CleanupMerged(ctx context.Context, ops vcs.Operations, repoPath string) (bool, string, error) {
 	ok, msg, err := ops.CleanupMergedBranches(ctx, repoPath)
 	if err != nil {

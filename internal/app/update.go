@@ -98,8 +98,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.summaries[msg.Path] = summary
 		} else {
 			m.summaries[msg.Path] = msg.Summary
-			cmds = append(cmds, loadPRCmd(msg.Path, msg.Summary.Branch, msg.Summary.Upstream))
-			cmds = append(cmds, loadPRCountCmd(msg.Path, msg.Summary.Upstream))
+			cmds = append(cmds,
+				loadPRCmd(msg.Path, msg.Summary.Branch, msg.Summary.Upstream),
+				loadPRCountCmd(msg.Path, msg.Summary.Upstream),
+			)
 		}
 
 		if m.loadedCount >= m.loadingCount {
@@ -632,8 +634,8 @@ func (m Model) handlePRDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Up), key.Matches(msg, m.keys.Down):
 		// Navigate to adjacent PR
 		currentIdx := -1
-		for i, pr := range m.prs {
-			if pr.Number == m.selectedPR.Number {
+		for i := range m.prs {
+			if m.prs[i].Number == m.selectedPR.Number {
 				currentIdx = i
 				break
 			}
@@ -641,11 +643,12 @@ func (m Model) handlePRDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		if currentIdx != -1 {
 			var newIdx int
-			if key.Matches(msg, m.keys.Up) && currentIdx > 0 {
+			switch {
+			case key.Matches(msg, m.keys.Up) && currentIdx > 0:
 				newIdx = currentIdx - 1
-			} else if key.Matches(msg, m.keys.Down) && currentIdx < len(m.prs)-1 {
+			case key.Matches(msg, m.keys.Down) && currentIdx < len(m.prs)-1:
 				newIdx = currentIdx + 1
-			} else {
+			default:
 				return m, nil
 			}
 
@@ -661,7 +664,7 @@ func (m Model) handlePRDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// Prefetch next adjacent PR
 			if key.Matches(msg, m.keys.Down) && newIdx+1 < len(m.prs) {
 				cmds = append(cmds, prefetchPRDetailCmd(m.selectedRepo, m.prs[newIdx+1].Number))
-			} else if key.Matches(msg, m.keys.Up) && newIdx-1 >= 0 {
+			} else if key.Matches(msg, m.keys.Up) && newIdx > 0 {
 				cmds = append(cmds, prefetchPRDetailCmd(m.selectedRepo, m.prs[newIdx-1].Number))
 			}
 

@@ -21,7 +21,7 @@ func SortPaths(paths []string, summaries map[string]models.RepoSummary, mode mod
 		si := summaries[sorted[i]]
 		sj := summaries[sorted[j]]
 
-		less := comparePaths(si, sj, mode)
+		less := comparePaths(&si, &sj, mode)
 		if reverse {
 			return !less
 		}
@@ -32,7 +32,7 @@ func SortPaths(paths []string, summaries map[string]models.RepoSummary, mode mod
 	return sorted
 }
 
-func comparePaths(a, b models.RepoSummary, mode models.SortMode) bool {
+func comparePaths(a, b *models.RepoSummary, mode models.SortMode) bool {
 	switch mode {
 	case models.SortModeName:
 		return compareByName(a, b)
@@ -47,11 +47,11 @@ func comparePaths(a, b models.RepoSummary, mode models.SortMode) bool {
 	}
 }
 
-func compareByName(a, b models.RepoSummary) bool {
+func compareByName(a, b *models.RepoSummary) bool {
 	return strings.ToLower(filepath.Base(a.Path)) < strings.ToLower(filepath.Base(b.Path))
 }
 
-func compareByModified(a, b models.RepoSummary) bool {
+func compareByModified(a, b *models.RepoSummary) bool {
 	if a.LastModified.Equal(b.LastModified) {
 		return compareByName(a, b)
 	}
@@ -59,7 +59,7 @@ func compareByModified(a, b models.RepoSummary) bool {
 	return a.LastModified.After(b.LastModified)
 }
 
-func compareByStatus(a, b models.RepoSummary) bool {
+func compareByStatus(a, b *models.RepoSummary) bool {
 	aDirty := a.IsDirty()
 	bDirty := b.IsDirty()
 
@@ -76,7 +76,7 @@ func compareByStatus(a, b models.RepoSummary) bool {
 	return compareByName(a, b)
 }
 
-func compareByBranch(a, b models.RepoSummary) bool {
+func compareByBranch(a, b *models.RepoSummary) bool {
 	if a.Branch != b.Branch {
 		return strings.ToLower(a.Branch) < strings.ToLower(b.Branch)
 	}
@@ -113,12 +113,12 @@ func SortPathsMulti(paths []string, summaries map[string]models.RepoSummary, act
 		sj := summaries[sorted[j]]
 
 		for _, activeSort := range enabledSorts {
-			less := comparePaths(si, sj, activeSort.Mode)
+			less := comparePaths(&si, &sj, activeSort.Mode)
 			if activeSort.Direction == models.SortDirectionDesc {
 				less = !less
 			}
 
-			greater := comparePaths(sj, si, activeSort.Mode)
+			greater := comparePaths(&sj, &si, activeSort.Mode)
 			if activeSort.Direction == models.SortDirectionDesc {
 				greater = !greater
 			}

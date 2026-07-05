@@ -261,6 +261,16 @@ case.rules.yaml = "kebab"
 path = "internal/github/(pr|workflow)\\.go"
 linters = ["tagliatelle"]
 
+[[linters.exclusions.rules]]
+# Model/KeyMap and the domain value types (RepoSummary, BranchInfo, PRInfo, etc.) are
+# passed/received by value throughout: Bubble Tea's Elm-style Update needs Model by value,
+# and the domain types are frequently read out of map[string]T values, which aren't
+# addressable in Go, so switching their methods to pointer receivers would break those
+# call sites. Not worth the ripple for structs under ~1.6KB.
+path = "internal/app/(app|keymap|command|state|textobject|view|update)(_test)?\\.go|internal/models/(branch|pr|repo)\\.go|internal/ui/styles/styles\\.go"
+linters = ["gocritic"]
+text = "hugeParam"
+
 [linters.settings.testifylint]
 enable-all = true
 

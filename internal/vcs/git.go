@@ -118,6 +118,8 @@ func (g *GitOperations) GetUpstream(ctx context.Context, repoPath, branch string
 }
 
 // GetAheadBehind implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ahead, behind int, err error)
 func (g *GitOperations) GetAheadBehind(ctx context.Context, repoPath, branch, upstream string) (int, int, error) {
 	out, err := g.runGit(ctx, repoPath, "rev-list", "--left-right", "--count", fmt.Sprintf("%s...%s", branch, upstream))
 	if err != nil {
@@ -402,6 +404,8 @@ func (g *GitOperations) GetRemoteURL(ctx context.Context, repoPath string) (stri
 }
 
 // FetchAll implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
 func (g *GitOperations) FetchAll(ctx context.Context, repoPath string) (bool, string, error) {
 	_, err := g.runGit(ctx, repoPath, "fetch", "--all", "--prune")
 	if err != nil {
@@ -413,6 +417,8 @@ func (g *GitOperations) FetchAll(ctx context.Context, repoPath string) (bool, st
 }
 
 // PruneRemote implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
 func (g *GitOperations) PruneRemote(ctx context.Context, repoPath string) (bool, string, error) {
 	_, err := g.runGit(ctx, repoPath, "remote", "prune", "origin")
 	if err != nil {
@@ -424,6 +430,8 @@ func (g *GitOperations) PruneRemote(ctx context.Context, repoPath string) (bool,
 }
 
 // CleanupMergedBranches implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
 func (g *GitOperations) CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error) {
 	mainBranch := defaultMainBranch
 	if _, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", defaultMainBranch); err != nil {

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -141,7 +142,7 @@ func fixtureKeyMsg(name string) tea.KeyPressMsg {
 	case "space":
 		return tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
 	default:
-		r := []rune(name)[0]
+		r, _ := utf8.DecodeRuneInString(name)
 		return tea.KeyPressMsg{Code: r, Text: string(r)}
 	}
 }

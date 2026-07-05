@@ -175,6 +175,8 @@ func (j *JJOperations) GetUpstream(ctx context.Context, repoPath, branch string)
 }
 
 // GetAheadBehind implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ahead, behind int, err error)
 func (j *JJOperations) GetAheadBehind(ctx context.Context, repoPath, branch, upstream string) (int, int, error) {
 	if branch == "@" || branch == "" || upstream == "" {
 		return 0, 0, nil
@@ -367,6 +369,8 @@ func (j *JJOperations) GetRemoteURL(ctx context.Context, repoPath string) (strin
 }
 
 // FetchAll implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
 func (j *JJOperations) FetchAll(ctx context.Context, repoPath string) (bool, string, error) {
 	_, err := j.runJJ(ctx, repoPath, "git", "fetch", "--all-remotes")
 	if err != nil {
@@ -378,11 +382,15 @@ func (j *JJOperations) FetchAll(ctx context.Context, repoPath string) (bool, str
 }
 
 // PruneRemote implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
 func (*JJOperations) PruneRemote(_ context.Context, _ string) (bool, string, error) {
 	return true, "JJ doesn't require explicit pruning", nil
 }
 
 // CleanupMergedBranches implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
 func (j *JJOperations) CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error) {
 	out, err := j.runJJ(ctx, repoPath, "bookmark", "list", "--all-remotes", "-T", jjBookmarkListFormat)
 	if err != nil {

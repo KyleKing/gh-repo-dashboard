@@ -190,12 +190,13 @@ func (m *Model) CycleFilterState(mode models.FilterMode) {
 
 	for i := range m.activeFilters {
 		if m.activeFilters[i].Mode == mode {
-			if !m.activeFilters[i].Enabled {
+			switch {
+			case !m.activeFilters[i].Enabled:
 				m.activeFilters[i].Enabled = true
 				m.activeFilters[i].Inverted = false
-			} else if !m.activeFilters[i].Inverted {
+			case !m.activeFilters[i].Inverted:
 				m.activeFilters[i].Inverted = true
-			} else {
+			default:
 				m.activeFilters[i].Enabled = false
 				m.activeFilters[i].Inverted = false
 			}
@@ -331,8 +332,8 @@ func (m *Model) ResetSorts() {
 // DirtyCount returns the number of repos with uncommitted changes.
 func (m Model) DirtyCount() int {
 	count := 0
-	for _, s := range m.summaries {
-		if s.IsDirty() {
+	for path := range m.summaries {
+		if m.summaries[path].IsDirty() {
 			count++
 		}
 	}
@@ -343,8 +344,8 @@ func (m Model) DirtyCount() int {
 // PRCount returns the number of repos with an associated pull request.
 func (m Model) PRCount() int {
 	count := 0
-	for _, s := range m.summaries {
-		if s.PRInfo != nil {
+	for path := range m.summaries {
+		if m.summaries[path].PRInfo != nil {
 			count++
 		}
 	}

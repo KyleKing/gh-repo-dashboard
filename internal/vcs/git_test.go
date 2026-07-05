@@ -260,6 +260,9 @@ func TestParseBranchTrackingInfo(t *testing.T) {
 	}
 }
 
+// parseBranchTracking returns (ahead, behind) parsed from a git branch tracking annotation.
+//
+//nolint:gocritic // see doc comment for result order
 func parseBranchTracking(s string) (int, int) {
 	if s == "" || s == "[gone]" {
 		return 0, 0
@@ -489,6 +492,9 @@ func TestParseRevListOutput(t *testing.T) {
 	}
 }
 
+// parseRevListOutput returns (ahead, behind) parsed from `git rev-list --left-right --count` output.
+//
+//nolint:gocritic // see doc comment for result order
 func parseRevListOutput(out string) (int, int) {
 	parts := strings.Fields(out)
 	if len(parts) != 2 {

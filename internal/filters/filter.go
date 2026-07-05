@@ -16,7 +16,7 @@ func FilterRepos(paths []string, summaries map[string]models.RepoSummary, mode m
 			continue
 		}
 
-		if passesFilter(summary, mode) {
+		if passesFilter(&summary, mode) {
 			filtered = append(filtered, path)
 		}
 	}
@@ -46,7 +46,7 @@ func FilterReposMulti(paths []string, summaries map[string]models.RepoSummary, a
 
 		passesAll := true
 		for _, f := range enabledFilters {
-			passes := passesFilter(summary, f.Mode)
+			passes := passesFilter(&summary, f.Mode)
 			if f.Inverted {
 				passes = !passes
 			}
@@ -64,7 +64,7 @@ func FilterReposMulti(paths []string, summaries map[string]models.RepoSummary, a
 	return filtered
 }
 
-func passesFilter(s models.RepoSummary, mode models.FilterMode) bool {
+func passesFilter(s *models.RepoSummary, mode models.FilterMode) bool {
 	switch mode {
 	case models.FilterModeAll:
 		return true

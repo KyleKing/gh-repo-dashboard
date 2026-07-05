@@ -866,7 +866,8 @@ func (m Model) renderPRList() string {
 		"NUMBER", "TITLE", "STATE", "REVIEW", "BRANCH")
 	rows = append(rows, styles.HeaderStyle.Render(header))
 
-	for i, pr := range m.prs {
+	for i := range m.prs {
+		pr := &m.prs[i]
 		cursor := "  "
 		if i == m.detailCursor {
 			cursor = "> "
@@ -886,11 +887,12 @@ func (m Model) renderPRList() string {
 		}
 
 		stateStyle := styles.PROpenStyle
-		if pr.IsDraft {
+		switch {
+		case pr.IsDraft:
 			stateStyle = styles.PRDraftStyle
-		} else if state == models.PRStatusMerged {
+		case state == models.PRStatusMerged:
 			stateStyle = styles.PRMergedStyle
-		} else if state == models.PRStatusClosed {
+		case state == models.PRStatusClosed:
 			stateStyle = styles.ErrorStyle
 		}
 		if i == m.detailCursor {
@@ -1016,7 +1018,8 @@ func (m Model) renderFilterModal() string {
 
 func (m Model) countForFilter(mode models.FilterMode) int {
 	count := 0
-	for _, s := range m.summaries {
+	for path := range m.summaries {
+		s := m.summaries[path]
 		switch mode {
 		case models.FilterModeAll:
 			count++
@@ -1081,7 +1084,9 @@ func (m Model) renderSortModal() string {
 		}
 	}
 
-	displaySorts := append(sortsByPriority, inactiveSorts...)
+	displaySorts := make([]models.ActiveSort, 0, len(sortsByPriority)+len(inactiveSorts))
+	displaySorts = append(displaySorts, sortsByPriority...)
+	displaySorts = append(displaySorts, inactiveSorts...)
 
 	headerStyle := lipgloss.NewStyle().
 		Foreground(styles.Subtext0).
@@ -1568,11 +1573,12 @@ func (m Model) renderPRDetail() string {
 	b.WriteString("\n")
 
 	stateStyle := styles.PROpenStyle
-	if m.prDetail.IsDraft {
+	switch {
+	case m.prDetail.IsDraft:
 		stateStyle = styles.PRDraftStyle
-	} else if m.prDetail.State == models.PRStatusMerged {
+	case m.prDetail.State == models.PRStatusMerged:
 		stateStyle = styles.PRMergedStyle
-	} else if m.prDetail.State == models.PRStatusClosed {
+	case m.prDetail.State == models.PRStatusClosed:
 		stateStyle = styles.ErrorStyle
 	}
 

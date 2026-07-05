@@ -56,6 +56,8 @@ func (m *MockOperations) GetUpstream(ctx context.Context, repoPath, branch strin
 }
 
 // GetAheadBehind implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ahead, behind int, err error)
 func (m *MockOperations) GetAheadBehind(ctx context.Context, repoPath, branch, upstream string) (int, int, error) {
 	if m.GetAheadBehindFn != nil {
 		return m.GetAheadBehindFn(ctx, repoPath, branch, upstream)
@@ -164,6 +166,8 @@ func (m *MockOperations) VCSType() models.VCSType {
 }
 
 // FetchAll implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
 func (m *MockOperations) FetchAll(ctx context.Context, repoPath string) (bool, string, error) {
 	if m.FetchAllFn != nil {
 		return m.FetchAllFn(ctx, repoPath)
@@ -173,6 +177,8 @@ func (m *MockOperations) FetchAll(ctx context.Context, repoPath string) (bool, s
 }
 
 // PruneRemote implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
 func (m *MockOperations) PruneRemote(ctx context.Context, repoPath string) (bool, string, error) {
 	if m.PruneRemoteFn != nil {
 		return m.PruneRemoteFn(ctx, repoPath)
@@ -182,6 +188,8 @@ func (m *MockOperations) PruneRemote(ctx context.Context, repoPath string) (bool
 }
 
 // CleanupMergedBranches implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
 func (m *MockOperations) CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error) {
 	if m.CleanupMergedBranchesFn != nil {
 		return m.CleanupMergedBranchesFn(ctx, repoPath)
