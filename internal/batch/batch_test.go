@@ -1,11 +1,11 @@
-// Package batch runs repo operations (fetch, prune, cleanup) over multiple repos concurrently.
-package batch
+package batch_test
 
 import (
 	"context"
 	"errors"
 	"testing"
 
+	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
@@ -30,7 +30,7 @@ func TestRepoName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
 			t.Parallel()
-			result := repoName(tt.path)
+			result := batch.RepoName(tt.path)
 			if result != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
@@ -167,7 +167,7 @@ func TestFetchAll(t *testing.T) {
 			t.Parallel()
 			mock := &mockVCS{fetchResult: tt.result}
 			ctx := context.Background()
-			success, _, err := FetchAll(ctx, mock, "/repo")
+			success, _, err := batch.FetchAll(ctx, mock, "/repo")
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("unexpected error: %v", err)
@@ -203,7 +203,7 @@ func TestPruneRemote(t *testing.T) {
 			t.Parallel()
 			mock := &mockVCS{pruneResult: tt.result}
 			ctx := context.Background()
-			success, _, err := PruneRemote(ctx, mock, "/repo")
+			success, _, err := batch.PruneRemote(ctx, mock, "/repo")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -238,7 +238,7 @@ func TestCleanupMerged(t *testing.T) {
 			t.Parallel()
 			mock := &mockVCS{cleanupResult: tt.result}
 			ctx := context.Background()
-			_, msg, err := CleanupMerged(ctx, mock, "/repo")
+			_, msg, err := batch.CleanupMerged(ctx, mock, "/repo")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -251,8 +251,8 @@ func TestCleanupMerged(t *testing.T) {
 
 func TestTaskResultTracksRepoName(t *testing.T) {
 	t.Parallel()
-	result := TaskResult{
-		RepoName: repoName("/home/user/projects/my-app"),
+	result := batch.TaskResult{
+		RepoName: batch.RepoName("/home/user/projects/my-app"),
 	}
 
 	if result.RepoName != "my-app" {

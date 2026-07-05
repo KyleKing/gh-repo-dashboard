@@ -1,3 +1,4 @@
+// Package batch runs repo operations (fetch, prune, cleanup) over multiple repos concurrently.
 package batch
 
 import (
