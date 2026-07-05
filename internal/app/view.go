@@ -1344,21 +1344,16 @@ func (m Model) writeBranchInfoSection(b *strings.Builder, s branchDetailStyles) 
 }
 
 func (m Model) writeDefaultBranchComparison(b *strings.Builder, s branchDetailStyles) {
-	defaultBranch := m.findDefaultBranch()
-	if defaultBranch == "" || m.branchDetail.Branch.Name == defaultBranch {
+	detail := m.branchDetail
+	if detail.DefaultBranch == "" || detail.Branch.Name == detail.DefaultBranch {
 		return
 	}
 
-	ahead, behind := m.compareToDefaultBranch(defaultBranch)
-	if ahead < 0 || behind < 0 {
-		return
-	}
-
-	status := aheadBehindStatus(ahead, behind)
+	status := aheadBehindStatus(detail.DefaultAhead, detail.DefaultBehind)
 	if status == "" {
 		status = styles.CleanStyle.Render("up to date")
 	}
-	s.writeInfoLine(b, "vs "+defaultBranch+":", status)
+	s.writeInfoLine(b, "vs "+detail.DefaultBranch+":", status)
 }
 
 func (m Model) writeBranchPRSection(b *strings.Builder, s branchDetailStyles) {
@@ -1708,39 +1703,6 @@ func (m Model) renderPRDetail() string {
 	b.WriteString(styles.FooterStyle.Render(footer))
 
 	return b.String()
-}
-
-func (m Model) findDefaultBranch() string {
-	for _, branch := range m.branches {
-		if branch.Name == mainBranchName || branch.Name == "master" {
-			return branch.Name
-		}
-	}
-
-	return ""
-}
-
-//nolint:gocritic // named results trip nonamedreturns instead; returns (ahead, behind)
-func (m Model) compareToDefaultBranch(defaultBranch string) (int, int) {
-	if defaultBranch == "" || m.branchDetail.Branch.Name == defaultBranch {
-		return -1, -1
-	}
-
-	if !slices.ContainsFunc(m.branches, func(b models.BranchInfo) bool { return b.Name == defaultBranch }) {
-		return -1, -1
-	}
-
-	ahead := 0
-	for _, commit := range m.branchDetail.Commits {
-		inDefault := slices.ContainsFunc(m.branchDetail.Commits, func(defCommit models.CommitInfo) bool {
-			return commit.Hash == defCommit.Hash
-		})
-		if !inDefault {
-			ahead++
-		}
-	}
-
-	return ahead, 0
 }
 
 func truncate(s string, maxLen int) string {

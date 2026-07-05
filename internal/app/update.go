@@ -1113,6 +1113,16 @@ func loadDetailCmd(path string) tea.Cmd {
 	}
 }
 
+func findDefaultBranch(branches []models.BranchInfo) string {
+	for _, branch := range branches {
+		if branch.Name == mainBranchName || branch.Name == "master" {
+			return branch.Name
+		}
+	}
+
+	return ""
+}
+
 func loadBranchDetailCmd(repoPath, branchName string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
@@ -1144,6 +1154,14 @@ func loadBranchDetailCmd(repoPath, branchName string) tea.Cmd {
 			Conflicted:   summary.Conflicted,
 			PRInfo:       summary.PRInfo,
 			WorkflowInfo: summary.WorkflowInfo,
+		}
+
+		if defaultBranch := findDefaultBranch(branches); defaultBranch != "" && defaultBranch != branchName {
+			if ahead, behind, err := ops.CompareBranches(ctx, repoPath, branchName, defaultBranch); err == nil {
+				detail.DefaultBranch = defaultBranch
+				detail.DefaultAhead = ahead
+				detail.DefaultBehind = behind
+			}
 		}
 
 		return BranchDetailLoadedMsg{

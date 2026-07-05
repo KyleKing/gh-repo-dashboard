@@ -204,6 +204,36 @@ func TestJJGetAheadBehind(t *testing.T) {
 	}
 }
 
+func TestJJCompareBranches(t *testing.T) {
+	t.Parallel()
+	aheadKey := jjKey(`log --no-graph -r ::"feature/login" ~ ::"main" -T ` + vcs.JJCommitLineFormat)
+	behindKey := jjKey(`log --no-graph -r ::"main" ~ ::"feature/login" -T ` + vcs.JJCommitLineFormat)
+
+	runCompareBranchesTests(t, vcs.NewJJOperations(), []compareBranchesTest{
+		{
+			name: "ahead and behind",
+			canned: map[string]string{
+				aheadKey:  "abc123\ndef456\n",
+				behindKey: "fed987\n",
+			},
+			ahead:  2,
+			behind: 1,
+		},
+		{
+			name: "up to date",
+			canned: map[string]string{
+				aheadKey:  "",
+				behindKey: "",
+			},
+		},
+		{
+			name:     "unknown revision surfaces error",
+			failures: map[string]error{aheadKey: errUnknownRevision},
+			wantErr:  true,
+		},
+	})
+}
+
 func TestJJCountMethods(t *testing.T) {
 	t.Parallel()
 	ctx := stubCommands(t, map[string]string{

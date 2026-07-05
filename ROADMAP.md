@@ -92,17 +92,6 @@ Couples to command mode: fixtures script command sequences and generate usage do
 - Optional: extract `tui-commander` once a second TUI (for example jj-diff) shares it
 - Ship: fixtures cover the core workflows, docs regenerate from them
 
-## Known issues (found during the M2 test audit)
-
-Real bugs surfaced while writing tests; tests currently assert the existing
-behavior so fixes are visible diffs. Fix opportunistically between milestones.
-
-- `Model.compareToDefaultBranch` (view.go) diffs `m.branchDetail.Commits` against
-  itself instead of the default branch's commit log, so `ahead` is always 0 and
-  `behind` is hardcoded to 0; the branch detail's ahead/behind-of-default display
-  is meaningless. Found during the 2026-07 lint cleanup's complexity refactor;
-  preserved as-is since fixing it was out of scope for that pass
-
 ## Deferred features
 
 Low priority; slot between milestones when convenient rather than blocking the line

@@ -140,6 +140,15 @@ func (g *GitOperations) GetAheadBehind(ctx context.Context, repoPath, branch, up
 	return ahead, behind, nil
 }
 
+// CompareBranches implements Operations. Git's rev-list comparison works for
+// any two local refs, so this reuses GetAheadBehind with the default branch as
+// the right-hand side.
+//
+//nolint:gocritic // matches the Operations interface's (ahead, behind int, err error)
+func (g *GitOperations) CompareBranches(ctx context.Context, repoPath, branch, target string) (int, int, error) {
+	return g.GetAheadBehind(ctx, repoPath, branch, target)
+}
+
 type statusCounts struct {
 	staged     int
 	unstaged   int

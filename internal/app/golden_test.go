@@ -98,8 +98,11 @@ func TestGoldenBranchDetail(t *testing.T) {
 			{Hash: "abc1234def", ShortHash: "abc1234", Subject: "Add login flow", Author: "dev", Date: time.Now().Add(-10 * time.Minute)},
 			{Hash: "9876543abc", ShortHash: "9876543", Subject: "Wire up session store", Author: "dev", Date: time.Now().Add(-1 * time.Hour)},
 		},
-		Staged:   1,
-		Unstaged: 2,
+		DefaultBranch: mainBranchName,
+		DefaultAhead:  2,
+		DefaultBehind: 1,
+		Staged:        1,
+		Unstaged:      2,
 		PRInfo: &models.PRInfo{
 			Number:  42,
 			Title:   "Add login flow",

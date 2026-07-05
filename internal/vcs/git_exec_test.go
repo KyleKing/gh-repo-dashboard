@@ -259,6 +259,56 @@ func TestGitGetAheadBehind(t *testing.T) {
 	}
 }
 
+// compareBranchesTest is shared by the git and jj CompareBranches exec tests.
+type compareBranchesTest struct {
+	name     string
+	canned   map[string]string
+	failures map[string]error
+	ahead    int
+	behind   int
+	wantErr  bool
+}
+
+func runCompareBranchesTests(t *testing.T, ops vcs.Operations, tests []compareBranchesTest) {
+	t.Helper()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := stubCommands(t, tt.canned, tt.failures)
+
+			ahead, behind, err := ops.CompareBranches(ctx, testRepoPath, "feature/login", "main")
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("unexpected error state: %v", err)
+			}
+			if ahead != tt.ahead || behind != tt.behind {
+				t.Errorf("expected %d/%d, got %d/%d", tt.ahead, tt.behind, ahead, behind)
+			}
+		})
+	}
+}
+
+func TestGitCompareBranches(t *testing.T) {
+	t.Parallel()
+	runCompareBranchesTests(t, vcs.NewGitOperations(), []compareBranchesTest{
+		{
+			name:   "ahead and behind",
+			canned: map[string]string{"git rev-list --left-right --count feature/login...main": "2\t1"},
+			ahead:  2,
+			behind: 1,
+		},
+		{
+			name:   "up to date",
+			canned: map[string]string{"git rev-list --left-right --count feature/login...main": "0\t0"},
+		},
+		{
+			name:     "command failure",
+			failures: map[string]error{"git rev-list --left-right --count feature/login...main": errBoom},
+			wantErr:  true,
+		},
+	})
+}
+
 func TestGitStatusCountMethods(t *testing.T) {
 	t.Parallel()
 	ctx := stubCommands(t, map[string]string{

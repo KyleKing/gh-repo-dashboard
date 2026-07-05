@@ -12,6 +12,7 @@ type MockOperations struct {
 	GetCurrentBranchFn      func(ctx context.Context, repoPath string) (string, error)
 	GetUpstreamFn           func(ctx context.Context, repoPath, branch string) (string, error)
 	GetAheadBehindFn        func(ctx context.Context, repoPath, branch, upstream string) (int, int, error)
+	CompareBranchesFn       func(ctx context.Context, repoPath, branch, target string) (int, int, error)
 	GetStagedCountFn        func(ctx context.Context, repoPath string) (int, error)
 	GetUnstagedCountFn      func(ctx context.Context, repoPath string) (int, error)
 	GetUntrackedCountFn     func(ctx context.Context, repoPath string) (int, error)
@@ -61,6 +62,17 @@ func (m *MockOperations) GetUpstream(ctx context.Context, repoPath, branch strin
 func (m *MockOperations) GetAheadBehind(ctx context.Context, repoPath, branch, upstream string) (int, int, error) {
 	if m.GetAheadBehindFn != nil {
 		return m.GetAheadBehindFn(ctx, repoPath, branch, upstream)
+	}
+
+	return 0, 0, nil
+}
+
+// CompareBranches implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ahead, behind int, err error)
+func (m *MockOperations) CompareBranches(ctx context.Context, repoPath, branch, target string) (int, int, error) {
+	if m.CompareBranchesFn != nil {
+		return m.CompareBranchesFn(ctx, repoPath, branch, target)
 	}
 
 	return 0, 0, nil

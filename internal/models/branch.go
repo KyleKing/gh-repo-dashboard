@@ -32,17 +32,22 @@ func (b BranchInfo) RelativeLastCommit() string {
 }
 
 // BranchDetail holds the full detail view state for a single branch.
+// DefaultBranch is empty when no default-branch comparison is available;
+// DefaultAhead/DefaultBehind are only meaningful when it is set.
 type BranchDetail struct {
-	Branch       BranchInfo
-	Commits      []CommitInfo
-	Staged       int
-	Unstaged     int
-	Untracked    int
-	Conflicted   int
-	PRInfo       *PRInfo
-	WorkflowInfo *WorkflowSummary
-	ChangeID     string
-	Description  string
+	Branch        BranchInfo
+	Commits       []CommitInfo
+	DefaultBranch string
+	DefaultAhead  int
+	DefaultBehind int
+	Staged        int
+	Unstaged      int
+	Untracked     int
+	Conflicted    int
+	PRInfo        *PRInfo
+	WorkflowInfo  *WorkflowSummary
+	ChangeID      string
+	Description   string
 }
 
 // UncommittedCount returns the total number of staged, unstaged, untracked, and conflicted files.

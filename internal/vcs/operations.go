@@ -29,6 +29,7 @@ type Operations interface {
 	GetCurrentBranch(ctx context.Context, repoPath string) (string, error)
 	GetUpstream(ctx context.Context, repoPath, branch string) (string, error)
 	GetAheadBehind(ctx context.Context, repoPath, branch, upstream string) (ahead, behind int, err error)
+	CompareBranches(ctx context.Context, repoPath, branch, target string) (ahead, behind int, err error)
 	GetStagedCount(ctx context.Context, repoPath string) (int, error)
 	GetUnstagedCount(ctx context.Context, repoPath string) (int, error)
 	GetUntrackedCount(ctx context.Context, repoPath string) (int, error)

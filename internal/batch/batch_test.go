@@ -61,6 +61,11 @@ func (*mockVCS) GetAheadBehind(_ context.Context, _, _, _ string) (int, int, err
 	return 0, 0, nil
 }
 
+//nolint:gocritic // matches vcs.Operations.CompareBranches's (ahead, behind int, err error)
+func (*mockVCS) CompareBranches(_ context.Context, _, _, _ string) (int, int, error) {
+	return 0, 0, nil
+}
+
 func (*mockVCS) GetStagedCount(_ context.Context, _ string) (int, error) {
 	return 0, nil
 }

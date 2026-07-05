@@ -36,6 +36,7 @@ var ParseJJBookmarkList = parseJJBookmarkList
 // JJ CLI template format strings, exposed for black-box exec tests that assert
 // on the exact template argument passed to the jj command.
 const (
+	JJCommitLineFormat      = jjCommitLineFormat
 	JJCurrentBookmarkFormat = jjCurrentBookmarkFormat
 	JJBookmarkListFormat    = jjBookmarkListFormat
 	JJWorkspaceListFormat   = jjWorkspaceListFormat

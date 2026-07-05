@@ -199,6 +199,41 @@ func (j *JJOperations) GetAheadBehind(ctx context.Context, repoPath, branch, ups
 	return 0, 0, nil
 }
 
+// jjCommitLineFormat emits one line per commit so callers can count revset members.
+const jjCommitLineFormat = `commit_id.short() ++ "\n"`
+
+// CompareBranches implements Operations. There is no rev-list equivalent in
+// jj, so ahead/behind are the sizes of the `::branch ~ ::target` and
+// `::target ~ ::branch` revsets. Bookmark names are quoted so names with
+// slashes resolve.
+//
+//nolint:gocritic // matches the Operations interface's (ahead, behind int, err error)
+func (j *JJOperations) CompareBranches(ctx context.Context, repoPath, branch, target string) (int, int, error) {
+	ahead, err := j.countRevset(ctx, repoPath, fmt.Sprintf("::%q ~ ::%q", branch, target))
+	if err != nil {
+		return 0, 0, err
+	}
+
+	behind, err := j.countRevset(ctx, repoPath, fmt.Sprintf("::%q ~ ::%q", target, branch))
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return ahead, behind, nil
+}
+
+func (j *JJOperations) countRevset(ctx context.Context, repoPath, revset string) (int, error) {
+	out, err := j.runJJ(ctx, repoPath, "log", "--no-graph", "-r", revset, "-T", jjCommitLineFormat)
+	if err != nil {
+		return 0, err
+	}
+	if strings.TrimSpace(out) == "" {
+		return 0, nil
+	}
+
+	return len(strings.Split(strings.TrimSpace(out), "\n")), nil
+}
+
 // countUnstaged returns jj's uncommitted-change count. There is no
 // separate staged/untracked/conflicted state, so those always report zero.
 func (j *JJOperations) countUnstaged(ctx context.Context, repoPath string) int {

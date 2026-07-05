@@ -2,6 +2,7 @@
 package app
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
@@ -405,5 +406,68 @@ func TestDetailTabConstants(t *testing.T) {
 		if int(tab) != i {
 			t.Errorf("expected DetailTab %d to have value %d", tab, i)
 		}
+	}
+}
+
+func TestBranchDetailDefaultComparison(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		detail   models.BranchDetail
+		contains []string
+		excludes []string
+	}{
+		{
+			name: "shows ahead and behind vs default",
+			detail: models.BranchDetail{
+				Branch:        models.BranchInfo{Name: featureBranchName},
+				DefaultBranch: mainBranchName,
+				DefaultAhead:  2,
+				DefaultBehind: 1,
+			},
+			contains: []string{"vs main:", "↑2 ahead", "↓1 behind"},
+		},
+		{
+			name: "up to date vs default",
+			detail: models.BranchDetail{
+				Branch:        models.BranchInfo{Name: featureBranchName},
+				DefaultBranch: mainBranchName,
+			},
+			contains: []string{"vs main:", "up to date"},
+		},
+		{
+			name:     "hidden without comparison data",
+			detail:   models.BranchDetail{Branch: models.BranchInfo{Name: featureBranchName}},
+			excludes: []string{"vs main:"},
+		},
+		{
+			name: "hidden on the default branch itself",
+			detail: models.BranchDetail{
+				Branch:        models.BranchInfo{Name: mainBranchName},
+				DefaultBranch: mainBranchName,
+			},
+			excludes: []string{"vs main:"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			m := New(nil, 1)
+			m.viewMode = ViewModeBranchDetail
+			m.branchDetail = tt.detail
+
+			out := m.renderBranchDetail()
+			for _, want := range tt.contains {
+				if !strings.Contains(out, want) {
+					t.Errorf("expected output to contain %q", want)
+				}
+			}
+			for _, unwanted := range tt.excludes {
+				if strings.Contains(out, unwanted) {
+					t.Errorf("expected output to omit %q", unwanted)
+				}
+			}
+		})
 	}
 }
