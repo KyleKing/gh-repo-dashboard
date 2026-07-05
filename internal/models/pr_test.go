@@ -1,37 +1,41 @@
-package models
+package models_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/kyleking/gh-repo-dashboard/internal/models"
+)
 
 func TestPRInfoStatusDisplay(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
-		pr       PRInfo
+		pr       models.PRInfo
 		expected string
 	}{
 		{
 			name:     "draft pr",
-			pr:       PRInfo{IsDraft: true, State: "OPEN"},
+			pr:       models.PRInfo{IsDraft: true, State: "OPEN"},
 			expected: "DRAFT",
 		},
 		{
 			name:     "open pr",
-			pr:       PRInfo{State: "OPEN"},
+			pr:       models.PRInfo{State: "OPEN"},
 			expected: "OPEN",
 		},
 		{
 			name:     "merged pr",
-			pr:       PRInfo{State: "MERGED"},
+			pr:       models.PRInfo{State: "MERGED"},
 			expected: "MERGED",
 		},
 		{
 			name:     "closed pr",
-			pr:       PRInfo{State: "CLOSED"},
+			pr:       models.PRInfo{State: "CLOSED"},
 			expected: "CLOSED",
 		},
 		{
 			name:     "unknown state passed through",
-			pr:       PRInfo{State: "UNKNOWN"},
+			pr:       models.PRInfo{State: "UNKNOWN"},
 			expected: "UNKNOWN",
 		},
 	}
@@ -51,33 +55,33 @@ func TestPRInfoReviewStatus(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
-		pr       PRInfo
+		pr       models.PRInfo
 		expected string
 	}{
 		{
 			name:     "approved via decision",
-			pr:       PRInfo{ReviewDecision: "APPROVED"},
+			pr:       models.PRInfo{ReviewDecision: "APPROVED"},
 			expected: "approved",
 		},
 		{
 			name:     "changes requested",
-			pr:       PRInfo{ReviewDecision: "CHANGES_REQUESTED"},
+			pr:       models.PRInfo{ReviewDecision: "CHANGES_REQUESTED"},
 			expected: "changes requested",
 		},
 		{
 			name:     "review required",
-			pr:       PRInfo{ReviewDecision: "REVIEW_REQUIRED"},
+			pr:       models.PRInfo{ReviewDecision: "REVIEW_REQUIRED"},
 			expected: "review required",
 		},
 		{
 			name:     "approved via approvers list",
-			pr:       PRInfo{ApprovedBy: []string{"user1"}},
+			pr:       models.PRInfo{ApprovedBy: []string{"user1"}},
 			expected: "approved",
 		},
 		{
 			name:     "no review info",
-			pr:       PRInfo{},
-			expected: emDash,
+			pr:       models.PRInfo{},
+			expected: models.EmDash,
 		},
 	}
 
@@ -96,37 +100,37 @@ func TestChecksStatusSummary(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
-		checks   ChecksStatus
+		checks   models.ChecksStatus
 		expected string
 	}{
 		{
 			name:     "no checks",
-			checks:   ChecksStatus{Total: 0},
-			expected: emDash,
+			checks:   models.ChecksStatus{Total: 0},
+			expected: models.EmDash,
 		},
 		{
 			name:     "all passing",
-			checks:   ChecksStatus{Total: 3, Passing: 3},
+			checks:   models.ChecksStatus{Total: 3, Passing: 3},
 			expected: "passing",
 		},
 		{
 			name:     "has failures",
-			checks:   ChecksStatus{Total: 3, Passing: 2, Failing: 1},
+			checks:   models.ChecksStatus{Total: 3, Passing: 2, Failing: 1},
 			expected: "failing",
 		},
 		{
 			name:     "has pending",
-			checks:   ChecksStatus{Total: 3, Passing: 2, Pending: 1},
+			checks:   models.ChecksStatus{Total: 3, Passing: 2, Pending: 1},
 			expected: "pending",
 		},
 		{
 			name:     "mixed (skipped)",
-			checks:   ChecksStatus{Total: 3, Passing: 2, Skipped: 1},
+			checks:   models.ChecksStatus{Total: 3, Passing: 2, Skipped: 1},
 			expected: "mixed",
 		},
 		{
 			name:     "failing takes priority over pending",
-			checks:   ChecksStatus{Total: 3, Failing: 1, Pending: 2},
+			checks:   models.ChecksStatus{Total: 3, Failing: 1, Pending: 2},
 			expected: "failing",
 		},
 	}
@@ -146,22 +150,22 @@ func TestWorkflowRunStatusDisplay(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
-		run      WorkflowRun
+		run      models.WorkflowRun
 		expected string
 	}{
 		{
 			name:     "completed shows conclusion",
-			run:      WorkflowRun{Status: "completed", Conclusion: "success"},
+			run:      models.WorkflowRun{Status: "completed", Conclusion: "success"},
 			expected: "success",
 		},
 		{
 			name:     "in progress shows status",
-			run:      WorkflowRun{Status: "in_progress"},
+			run:      models.WorkflowRun{Status: "in_progress"},
 			expected: "in_progress",
 		},
 		{
 			name:     "queued shows status",
-			run:      WorkflowRun{Status: "queued"},
+			run:      models.WorkflowRun{Status: "queued"},
 			expected: "queued",
 		},
 	}
@@ -181,37 +185,37 @@ func TestWorkflowSummaryStatusDisplay(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
-		summary  WorkflowSummary
+		summary  models.WorkflowSummary
 		expected string
 	}{
 		{
 			name:     "no runs",
-			summary:  WorkflowSummary{Total: 0},
-			expected: emDash,
+			summary:  models.WorkflowSummary{Total: 0},
+			expected: models.EmDash,
 		},
 		{
 			name:     "all passing",
-			summary:  WorkflowSummary{Total: 2, Passing: 2},
+			summary:  models.WorkflowSummary{Total: 2, Passing: 2},
 			expected: "passing",
 		},
 		{
 			name:     "has failures",
-			summary:  WorkflowSummary{Total: 2, Passing: 1, Failing: 1},
+			summary:  models.WorkflowSummary{Total: 2, Passing: 1, Failing: 1},
 			expected: "failing",
 		},
 		{
 			name:     "in progress",
-			summary:  WorkflowSummary{Total: 2, Passing: 1, InProgress: 1},
+			summary:  models.WorkflowSummary{Total: 2, Passing: 1, InProgress: 1},
 			expected: "running",
 		},
 		{
 			name:     "mixed",
-			summary:  WorkflowSummary{Total: 3, Passing: 2},
+			summary:  models.WorkflowSummary{Total: 3, Passing: 2},
 			expected: "mixed",
 		},
 		{
 			name:     "failing takes priority",
-			summary:  WorkflowSummary{Total: 3, Failing: 1, InProgress: 2},
+			summary:  models.WorkflowSummary{Total: 3, Failing: 1, InProgress: 2},
 			expected: "failing",
 		},
 	}

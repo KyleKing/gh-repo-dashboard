@@ -1,13 +1,15 @@
-package models
+package models_test
 
 import (
 	"testing"
 	"time"
+
+	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 func TestRepoSummaryName(t *testing.T) {
 	t.Parallel()
-	s := RepoSummary{Path: "/home/user/projects/my-repo"}
+	s := models.RepoSummary{Path: "/home/user/projects/my-repo"}
 	if s.Name() != "my-repo" {
 		t.Errorf("expected 'my-repo', got '%s'", s.Name())
 	}
@@ -15,7 +17,7 @@ func TestRepoSummaryName(t *testing.T) {
 
 func TestRepoSummaryUncommittedCount(t *testing.T) {
 	t.Parallel()
-	s := RepoSummary{
+	s := models.RepoSummary{
 		Staged:     2,
 		Unstaged:   3,
 		Untracked:  1,
@@ -30,37 +32,37 @@ func TestRepoSummaryIsDirty(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
-		summary  RepoSummary
+		summary  models.RepoSummary
 		expected bool
 	}{
 		{
 			name:     "clean repo",
-			summary:  RepoSummary{},
+			summary:  models.RepoSummary{},
 			expected: false,
 		},
 		{
 			name:     "has staged",
-			summary:  RepoSummary{Staged: 1},
+			summary:  models.RepoSummary{Staged: 1},
 			expected: true,
 		},
 		{
 			name:     "has unstaged",
-			summary:  RepoSummary{Unstaged: 1},
+			summary:  models.RepoSummary{Unstaged: 1},
 			expected: true,
 		},
 		{
 			name:     "has untracked",
-			summary:  RepoSummary{Untracked: 1},
+			summary:  models.RepoSummary{Untracked: 1},
 			expected: true,
 		},
 		{
 			name:     "has ahead",
-			summary:  RepoSummary{Ahead: 1},
+			summary:  models.RepoSummary{Ahead: 1},
 			expected: true,
 		},
 		{
 			name:     "only behind is not dirty",
-			summary:  RepoSummary{Behind: 1},
+			summary:  models.RepoSummary{Behind: 1},
 			expected: false,
 		},
 	}
@@ -79,33 +81,33 @@ func TestRepoSummaryStatus(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
-		summary  RepoSummary
-		expected RepoStatus
+		summary  models.RepoSummary
+		expected models.RepoStatus
 	}{
 		{
 			name:     "clean",
-			summary:  RepoSummary{},
-			expected: RepoStatusClean,
+			summary:  models.RepoSummary{},
+			expected: models.RepoStatusClean,
 		},
 		{
 			name:     "dirty",
-			summary:  RepoSummary{Unstaged: 1},
-			expected: RepoStatusDirty,
+			summary:  models.RepoSummary{Unstaged: 1},
+			expected: models.RepoStatusDirty,
 		},
 		{
 			name:     "ahead",
-			summary:  RepoSummary{Ahead: 1},
-			expected: RepoStatusAhead,
+			summary:  models.RepoSummary{Ahead: 1},
+			expected: models.RepoStatusAhead,
 		},
 		{
 			name:     "behind",
-			summary:  RepoSummary{Behind: 1},
-			expected: RepoStatusBehind,
+			summary:  models.RepoSummary{Behind: 1},
+			expected: models.RepoStatusBehind,
 		},
 		{
 			name:     "diverged",
-			summary:  RepoSummary{Ahead: 1, Behind: 1},
-			expected: RepoStatusDiverged,
+			summary:  models.RepoSummary{Ahead: 1, Behind: 1},
+			expected: models.RepoStatusDiverged,
 		},
 	}
 
@@ -123,42 +125,42 @@ func TestRepoSummaryStatusSummary(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
-		summary  RepoSummary
+		summary  models.RepoSummary
 		expected string
 	}{
 		{
 			name:     "clean",
-			summary:  RepoSummary{},
+			summary:  models.RepoSummary{},
 			expected: "✓",
 		},
 		{
 			name:     "staged only",
-			summary:  RepoSummary{Staged: 2},
+			summary:  models.RepoSummary{Staged: 2},
 			expected: "+2",
 		},
 		{
 			name:     "unstaged only",
-			summary:  RepoSummary{Unstaged: 3},
+			summary:  models.RepoSummary{Unstaged: 3},
 			expected: "~3",
 		},
 		{
 			name:     "untracked only",
-			summary:  RepoSummary{Untracked: 1},
+			summary:  models.RepoSummary{Untracked: 1},
 			expected: "?1",
 		},
 		{
 			name:     "ahead only",
-			summary:  RepoSummary{Ahead: 5},
+			summary:  models.RepoSummary{Ahead: 5},
 			expected: "↑5",
 		},
 		{
 			name:     "behind only",
-			summary:  RepoSummary{Behind: 3},
+			summary:  models.RepoSummary{Behind: 3},
 			expected: "↓3",
 		},
 		{
 			name:     "mixed",
-			summary:  RepoSummary{Staged: 1, Unstaged: 2, Ahead: 3},
+			summary:  models.RepoSummary{Staged: 1, Unstaged: 2, Ahead: 3},
 			expected: "+1 ~2 ↑3",
 		},
 	}
@@ -175,13 +177,13 @@ func TestRepoSummaryStatusSummary(t *testing.T) {
 
 func TestRepoSummaryRelativeModified(t *testing.T) {
 	t.Parallel()
-	s := RepoSummary{}
-	if s.RelativeModified() != emDash {
+	s := models.RepoSummary{}
+	if s.RelativeModified() != models.EmDash {
 		t.Errorf("expected '—' for zero time, got '%s'", s.RelativeModified())
 	}
 
 	s.LastModified = time.Now()
-	if s.RelativeModified() == emDash {
+	if s.RelativeModified() == models.EmDash {
 		t.Error("expected non-empty relative time")
 	}
 }

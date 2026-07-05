@@ -1,15 +1,19 @@
-package models
+package models_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/kyleking/gh-repo-dashboard/internal/models"
+)
 
 func TestVCSTypeString(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		vcs      VCSType
+		vcs      models.VCSType
 		expected string
 	}{
-		{VCSTypeGit, "git"},
-		{VCSTypeJJ, "jj"},
+		{models.VCSTypeGit, "git"},
+		{models.VCSTypeJJ, "jj"},
 	}
 
 	for _, tt := range tests {
@@ -22,15 +26,15 @@ func TestVCSTypeString(t *testing.T) {
 func TestFilterModeString(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		mode     FilterMode
+		mode     models.FilterMode
 		expected string
 	}{
-		{FilterModeAll, "All"},
-		{FilterModeAhead, "Ahead"},
-		{FilterModeBehind, "Behind"},
-		{FilterModeDirty, "Dirty"},
-		{FilterModeHasPR, "Has PR"},
-		{FilterModeHasStash, "Has Stash"},
+		{models.FilterModeAll, "All"},
+		{models.FilterModeAhead, "Ahead"},
+		{models.FilterModeBehind, "Behind"},
+		{models.FilterModeDirty, "Dirty"},
+		{models.FilterModeHasPR, "Has PR"},
+		{models.FilterModeHasStash, "Has Stash"},
 	}
 
 	for _, tt := range tests {
@@ -43,15 +47,15 @@ func TestFilterModeString(t *testing.T) {
 func TestFilterModeShortKey(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		mode     FilterMode
+		mode     models.FilterMode
 		expected string
 	}{
-		{FilterModeAll, "a"},
-		{FilterModeAhead, ">"},
-		{FilterModeBehind, "<"},
-		{FilterModeDirty, "d"},
-		{FilterModeHasPR, "p"},
-		{FilterModeHasStash, "s"},
+		{models.FilterModeAll, "a"},
+		{models.FilterModeAhead, ">"},
+		{models.FilterModeBehind, "<"},
+		{models.FilterModeDirty, "d"},
+		{models.FilterModeHasPR, "p"},
+		{models.FilterModeHasStash, "s"},
 	}
 
 	for _, tt := range tests {
@@ -63,7 +67,7 @@ func TestFilterModeShortKey(t *testing.T) {
 
 func TestAllFilterModes(t *testing.T) {
 	t.Parallel()
-	modes := AllFilterModes()
+	modes := models.AllFilterModes()
 	if len(modes) != 6 {
 		t.Errorf("expected 6 filter modes, got %d", len(modes))
 	}
@@ -72,13 +76,13 @@ func TestAllFilterModes(t *testing.T) {
 func TestSortModeString(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		mode     SortMode
+		mode     models.SortMode
 		expected string
 	}{
-		{SortModeName, "Name"},
-		{SortModeModified, "Modified"},
-		{SortModeStatus, "Status"},
-		{SortModeBranch, "Branch"},
+		{models.SortModeName, "Name"},
+		{models.SortModeModified, "Modified"},
+		{models.SortModeStatus, "Status"},
+		{models.SortModeBranch, "Branch"},
 	}
 
 	for _, tt := range tests {
@@ -91,13 +95,13 @@ func TestSortModeString(t *testing.T) {
 func TestSortModeNext(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		mode     SortMode
-		expected SortMode
+		mode     models.SortMode
+		expected models.SortMode
 	}{
-		{SortModeName, SortModeModified},
-		{SortModeModified, SortModeStatus},
-		{SortModeStatus, SortModeBranch},
-		{SortModeBranch, SortModeName},
+		{models.SortModeName, models.SortModeModified},
+		{models.SortModeModified, models.SortModeStatus},
+		{models.SortModeStatus, models.SortModeBranch},
+		{models.SortModeBranch, models.SortModeName},
 	}
 
 	for _, tt := range tests {
@@ -110,14 +114,14 @@ func TestSortModeNext(t *testing.T) {
 func TestRepoStatusString(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		status   RepoStatus
+		status   models.RepoStatus
 		expected string
 	}{
-		{RepoStatusClean, "clean"},
-		{RepoStatusDirty, "dirty"},
-		{RepoStatusAhead, "ahead"},
-		{RepoStatusBehind, "behind"},
-		{RepoStatusDiverged, "diverged"},
+		{models.RepoStatusClean, "clean"},
+		{models.RepoStatusDirty, "dirty"},
+		{models.RepoStatusAhead, "ahead"},
+		{models.RepoStatusBehind, "behind"},
+		{models.RepoStatusDiverged, "diverged"},
 	}
 
 	for _, tt := range tests {
@@ -130,12 +134,12 @@ func TestRepoStatusString(t *testing.T) {
 func TestItemKindString(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		kind     ItemKind
+		kind     models.ItemKind
 		expected string
 	}{
-		{ItemKindBranch, "branch"},
-		{ItemKindStash, "stash"},
-		{ItemKindWorktree, "worktree"},
+		{models.ItemKindBranch, "branch"},
+		{models.ItemKindStash, "stash"},
+		{models.ItemKindWorktree, "worktree"},
 	}
 
 	for _, tt := range tests {

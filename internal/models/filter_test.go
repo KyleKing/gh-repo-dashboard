@@ -1,25 +1,29 @@
-package models
+package models_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/kyleking/gh-repo-dashboard/internal/models"
+)
 
 func TestActiveFilterNewActiveFilter(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		mode        FilterMode
+		mode        models.FilterMode
 		wantEnabled bool
 	}{
-		{FilterModeAll, true},
-		{FilterModeAhead, false},
-		{FilterModeBehind, false},
-		{FilterModeDirty, false},
-		{FilterModeHasPR, false},
-		{FilterModeHasStash, false},
+		{models.FilterModeAll, true},
+		{models.FilterModeAhead, false},
+		{models.FilterModeBehind, false},
+		{models.FilterModeDirty, false},
+		{models.FilterModeHasPR, false},
+		{models.FilterModeHasStash, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.mode.String(), func(t *testing.T) {
 			t.Parallel()
-			f := NewActiveFilter(tt.mode)
+			f := models.NewActiveFilter(tt.mode)
 			if f.Enabled != tt.wantEnabled {
 				t.Errorf("mode %s: expected enabled=%v, got %v", tt.mode, tt.wantEnabled, f.Enabled)
 			}
@@ -35,7 +39,7 @@ func TestActiveFilterNewActiveFilter(t *testing.T) {
 
 func TestActiveFilterDisplayName(t *testing.T) {
 	t.Parallel()
-	f := NewActiveFilter(FilterModeAhead)
+	f := models.NewActiveFilter(models.FilterModeAhead)
 	if f.DisplayName() != "Ahead" {
 		t.Errorf("expected 'Ahead', got %q", f.DisplayName())
 	}
@@ -43,7 +47,7 @@ func TestActiveFilterDisplayName(t *testing.T) {
 
 func TestActiveFilterShortKey(t *testing.T) {
 	t.Parallel()
-	f := NewActiveFilter(FilterModeAhead)
+	f := models.NewActiveFilter(models.FilterModeAhead)
 	if f.ShortKey() != ">" {
 		t.Errorf("expected '>', got %q", f.ShortKey())
 	}
@@ -52,12 +56,12 @@ func TestActiveFilterShortKey(t *testing.T) {
 func TestSortDirectionString(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		dir      SortDirection
+		dir      models.SortDirection
 		expected string
 	}{
-		{SortDirectionOff, ""},
-		{SortDirectionAsc, "ASC"},
-		{SortDirectionDesc, "DESC"},
+		{models.SortDirectionOff, ""},
+		{models.SortDirectionAsc, "ASC"},
+		{models.SortDirectionDesc, "DESC"},
 	}
 
 	for _, tt := range tests {
@@ -70,11 +74,11 @@ func TestSortDirectionString(t *testing.T) {
 
 func TestActiveSortNewActiveSort(t *testing.T) {
 	t.Parallel()
-	s := NewActiveSort(SortModeName, 0)
-	if s.Mode != SortModeName {
+	s := models.NewActiveSort(models.SortModeName, 0)
+	if s.Mode != models.SortModeName {
 		t.Errorf("expected SortModeName, got %v", s.Mode)
 	}
-	if s.Direction != SortDirectionOff {
+	if s.Direction != models.SortDirectionOff {
 		t.Error("new sort should have direction Off")
 	}
 	if s.Priority != 0 {
@@ -85,16 +89,16 @@ func TestActiveSortNewActiveSort(t *testing.T) {
 func TestActiveSortIsEnabled(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		dir      SortDirection
+		dir      models.SortDirection
 		expected bool
 	}{
-		{SortDirectionOff, false},
-		{SortDirectionAsc, true},
-		{SortDirectionDesc, true},
+		{models.SortDirectionOff, false},
+		{models.SortDirectionAsc, true},
+		{models.SortDirectionDesc, true},
 	}
 
 	for _, tt := range tests {
-		s := ActiveSort{Direction: tt.dir}
+		s := models.ActiveSort{Direction: tt.dir}
 		if s.IsEnabled() != tt.expected {
 			t.Errorf("direction %v: expected IsEnabled()=%v, got %v", tt.dir, tt.expected, s.IsEnabled())
 		}
@@ -104,19 +108,19 @@ func TestActiveSortIsEnabled(t *testing.T) {
 func TestActiveSortDisplayName(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		sort     ActiveSort
+		sort     models.ActiveSort
 		expected string
 	}{
 		{
-			sort:     ActiveSort{Mode: SortModeName, Direction: SortDirectionOff},
+			sort:     models.ActiveSort{Mode: models.SortModeName, Direction: models.SortDirectionOff},
 			expected: "Name",
 		},
 		{
-			sort:     ActiveSort{Mode: SortModeName, Direction: SortDirectionAsc},
+			sort:     models.ActiveSort{Mode: models.SortModeName, Direction: models.SortDirectionAsc},
 			expected: "Name (ASC)",
 		},
 		{
-			sort:     ActiveSort{Mode: SortModeModified, Direction: SortDirectionDesc},
+			sort:     models.ActiveSort{Mode: models.SortModeModified, Direction: models.SortDirectionDesc},
 			expected: "Modified (DESC)",
 		},
 	}
@@ -131,7 +135,7 @@ func TestActiveSortDisplayName(t *testing.T) {
 
 func TestActiveSortShortKey(t *testing.T) {
 	t.Parallel()
-	s := ActiveSort{Mode: SortModeName}
+	s := models.ActiveSort{Mode: models.SortModeName}
 	if s.ShortKey() != "n" {
 		t.Errorf("expected 'n', got %q", s.ShortKey())
 	}
