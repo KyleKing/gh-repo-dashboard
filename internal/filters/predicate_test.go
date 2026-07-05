@@ -16,6 +16,7 @@ func TestParsePredicate(t *testing.T) {
 	ahead := models.RepoSummary{Ahead: 1}
 	clean := models.RepoSummary{}
 	jjRepo := models.RepoSummary{VCSType: models.VCSTypeJJ}
+	withNotes := models.RepoSummary{NotesFile: "doing.md"}
 
 	tests := []struct {
 		name     string
@@ -40,6 +41,8 @@ func TestParsePredicate(t *testing.T) {
 		{"vcs atom", "jj", jjRepo, true},
 		{"clean is not dirty", "clean", dirty, false},
 		{"ahead counts as dirty", "dirty", ahead, true},
+		{"has_notes match", "has_notes", withNotes, true},
+		{"has_notes no match", "has_notes", clean, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

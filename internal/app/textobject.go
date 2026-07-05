@@ -5,7 +5,7 @@ import (
 )
 
 // TextObject names a scope of repos an operator can act on, vim-style:
-// the two-key sequences ar, br, dr, pr, sr.
+// the two-key sequences ar, br, dr, nr, pr, sr.
 type TextObject struct {
 	Key     string
 	Name    string
@@ -22,6 +22,9 @@ func textObjects() []TextObject {
 		}},
 		{Key: "dr", Name: "dirty", Matches: func(m Model, path string) bool {
 			return m.summaries[path].IsDirty()
+		}},
+		{Key: "nr", Name: "with notes", Matches: func(m Model, path string) bool {
+			return m.summaries[path].NotesFile != ""
 		}},
 		{Key: "pr", Name: "with PRs", Matches: func(m Model, path string) bool {
 			return m.summaries[path].PRInfo != nil

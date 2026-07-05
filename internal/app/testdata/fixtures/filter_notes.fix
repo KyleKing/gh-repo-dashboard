@@ -1,0 +1,8 @@
+doc: Filter repos that have a notes file
+given standard
+when :filter has_notes
+then filtered = dirty-pr
+when :filter dirty and has_notes
+then filtered = dirty-pr
+when :filter all
+then filtered = behind clean dirty dirty-pr

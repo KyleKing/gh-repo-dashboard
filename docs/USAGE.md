@@ -26,6 +26,14 @@ pressing `:`; bare keys act on the repo list.
 | `:filter dirty` | shows dirty, dirty-pr |
 | `:filter all` | shows behind, clean, dirty, dirty-pr |
 
+## Filter repos that have a notes file
+
+| Input | Result |
+|---|---|
+| `:filter has_notes` | shows dirty-pr |
+| `:filter dirty and has_notes` | shows dirty-pr |
+| `:filter all` | shows behind, clean, dirty, dirty-pr |
+
 ## Filter by predicate expression
 
 | Input | Result |

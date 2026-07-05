@@ -80,6 +80,8 @@ func passesFilter(s *models.RepoSummary, mode models.FilterMode) bool {
 		return s.PRInfo != nil
 	case models.FilterModeHasStash:
 		return s.StashCount > 0
+	case models.FilterModeHasNotes:
+		return s.NotesFile != ""
 	default:
 		return true
 	}

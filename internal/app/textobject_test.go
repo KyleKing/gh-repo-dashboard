@@ -15,10 +15,13 @@ func operatorModel() Model {
 	m.loading = false
 	m.repoPaths = []string{"/test/behind", "/test/clean", "/test/dirty", "/test/dirty-pr"}
 	m.summaries = map[string]models.RepoSummary{
-		"/test/behind":   {Path: "/test/behind", Branch: mainBranchName, Behind: 2},
-		"/test/clean":    {Path: "/test/clean", Branch: mainBranchName},
-		"/test/dirty":    {Path: "/test/dirty", Branch: mainBranchName, Unstaged: 2},
-		"/test/dirty-pr": {Path: "/test/dirty-pr", Branch: "feat", Unstaged: 1, PRInfo: &models.PRInfo{Number: 7}},
+		"/test/behind": {Path: "/test/behind", Branch: mainBranchName, Behind: 2},
+		"/test/clean":  {Path: "/test/clean", Branch: mainBranchName},
+		"/test/dirty":  {Path: "/test/dirty", Branch: mainBranchName, Unstaged: 2},
+		"/test/dirty-pr": {
+			Path: "/test/dirty-pr", Branch: "feat", Unstaged: 1,
+			PRInfo: &models.PRInfo{Number: 7}, NotesFile: "doing.md",
+		},
 	}
 	m.updateFilteredPaths()
 
@@ -48,6 +51,7 @@ func TestResolveTextObjects(t *testing.T) {
 		{"ar", []string{"/test/behind", "/test/clean", "/test/dirty", "/test/dirty-pr"}},
 		{"br", []string{"/test/behind"}},
 		{"dr", []string{"/test/dirty", "/test/dirty-pr"}},
+		{"nr", []string{"/test/dirty-pr"}},
 		{"pr", []string{"/test/dirty-pr"}},
 	}
 	for _, tt := range tests {

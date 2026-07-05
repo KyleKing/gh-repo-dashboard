@@ -149,10 +149,13 @@ func fixtureDataset(t *testing.T, name string) Model {
 	m.loading = false
 	m.repoPaths = []string{"/repos/behind", "/repos/clean", "/repos/dirty", "/repos/dirty-pr"}
 	m.summaries = map[string]models.RepoSummary{
-		"/repos/behind":   {Path: "/repos/behind", Branch: mainBranchName, Behind: 2},
-		"/repos/clean":    {Path: "/repos/clean", Branch: mainBranchName},
-		"/repos/dirty":    {Path: "/repos/dirty", Branch: mainBranchName, Unstaged: 2},
-		"/repos/dirty-pr": {Path: "/repos/dirty-pr", Branch: "feat", Unstaged: 1, PRInfo: &models.PRInfo{Number: 7}},
+		"/repos/behind": {Path: "/repos/behind", Branch: mainBranchName, Behind: 2},
+		"/repos/clean":  {Path: "/repos/clean", Branch: mainBranchName},
+		"/repos/dirty":  {Path: "/repos/dirty", Branch: mainBranchName, Unstaged: 2},
+		"/repos/dirty-pr": {
+			Path: "/repos/dirty-pr", Branch: "feat", Unstaged: 1,
+			PRInfo: &models.PRInfo{Number: 7}, NotesFile: "doing.md",
+		},
 	}
 	m.updateFilteredPaths()
 

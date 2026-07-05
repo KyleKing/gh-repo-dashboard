@@ -235,7 +235,7 @@ func (g *GitOperations) getStashCount(ctx context.Context, repoPath string) (int
 
 // branchListFieldCount is the number of tab-separated fields in the
 // for-each-ref format below (refname, upstream, track, date, HEAD marker).
-// runCommand trims trailing whitespace from the output, so the final line can
+// RunCommand trims trailing whitespace from the output, so the final line can
 // lose empty trailing fields (e.g. a last branch with no upstream); the parser
 // pads missing fields back to this count.
 const branchListFieldCount = 5

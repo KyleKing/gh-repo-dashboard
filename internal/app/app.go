@@ -34,10 +34,11 @@ const (
 	DetailTabStashes
 	DetailTabWorktrees
 	DetailTabPRs
+	DetailTabNotes
 )
 
 // detailTabCount is the number of DetailTab values, used to cycle tabs.
-const detailTabCount = 4
+const detailTabCount = 5
 
 // Model is the root Bubble Tea model holding all TUI state.
 type Model struct {
@@ -82,6 +83,8 @@ type Model struct {
 	branches     []models.BranchInfo
 	stashes      []models.StashDetail
 	worktrees    []models.WorktreeInfo
+	notesFile    string
+	notesContent string
 
 	selectedBranch models.BranchInfo
 	branchDetail   models.BranchDetail

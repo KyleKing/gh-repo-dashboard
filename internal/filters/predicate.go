@@ -29,6 +29,7 @@ func atoms() map[string]Predicate {
 		"dirty":        models.RepoSummary.IsDirty,
 		"error":        func(s models.RepoSummary) bool { return s.Error != nil },
 		"git":          func(s models.RepoSummary) bool { return s.VCSType == models.VCSTypeGit },
+		"has_notes":    func(s models.RepoSummary) bool { return s.NotesFile != "" },
 		"has_pr":       func(s models.RepoSummary) bool { return s.PRInfo != nil },
 		"has_stash":    func(s models.RepoSummary) bool { return s.StashCount > 0 },
 		"has_upstream": func(s models.RepoSummary) bool { return s.Upstream != "" },

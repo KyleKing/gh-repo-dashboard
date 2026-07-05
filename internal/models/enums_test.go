@@ -35,6 +35,7 @@ func TestFilterModeString(t *testing.T) {
 		{models.FilterModeDirty, "Dirty"},
 		{models.FilterModeHasPR, "Has PR"},
 		{models.FilterModeHasStash, "Has Stash"},
+		{models.FilterModeHasNotes, "Has Notes"},
 	}
 
 	for _, tt := range tests {
@@ -56,6 +57,7 @@ func TestFilterModeShortKey(t *testing.T) {
 		{models.FilterModeDirty, "d"},
 		{models.FilterModeHasPR, "p"},
 		{models.FilterModeHasStash, "s"},
+		{models.FilterModeHasNotes, "n"},
 	}
 
 	for _, tt := range tests {
@@ -68,8 +70,8 @@ func TestFilterModeShortKey(t *testing.T) {
 func TestAllFilterModes(t *testing.T) {
 	t.Parallel()
 	modes := models.AllFilterModes()
-	if len(modes) != 6 {
-		t.Errorf("expected 6 filter modes, got %d", len(modes))
+	if len(modes) != 7 {
+		t.Errorf("expected 7 filter modes, got %d", len(modes))
 	}
 }
 

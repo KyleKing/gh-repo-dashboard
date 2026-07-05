@@ -25,6 +25,9 @@ type RepoSummary struct {
 	WorkflowInfo *WorkflowSummary
 	Loading      bool
 	Error        error
+
+	NotesFile      string
+	NotesFirstLine string
 }
 
 // Name returns the repo's directory name.

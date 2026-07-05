@@ -209,7 +209,7 @@ func TestDetailTabCycling(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 
-	expected := []DetailTab{DetailTabStashes, DetailTabWorktrees, DetailTabPRs, DetailTabBranches}
+	expected := []DetailTab{DetailTabStashes, DetailTabWorktrees, DetailTabPRs, DetailTabNotes, DetailTabBranches}
 	for i, want := range expected {
 		updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 		m = mustModel(t, updatedModel)
@@ -229,8 +229,8 @@ func TestDetailTabLeftWrapsBackward(t *testing.T) {
 	updatedModel, _ := m.Update(keyPress('h'))
 	m = mustModel(t, updatedModel)
 
-	if m.detailTab != DetailTabPRs {
-		t.Errorf("left from first tab should wrap to PRs, got %v", m.detailTab)
+	if m.detailTab != DetailTabNotes {
+		t.Errorf("left from first tab should wrap to Notes, got %v", m.detailTab)
 	}
 	if m.detailCursor != 0 {
 		t.Errorf("tab switch should reset detail cursor, got %d", m.detailCursor)

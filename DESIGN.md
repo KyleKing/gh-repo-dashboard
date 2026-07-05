@@ -94,7 +94,7 @@ Adding a new batch task:
 Filtering is compositional: `FilterMode -> SearchText -> SortMode -> Display`. For
 example, the `DIRTY` filter plus an `api` search yields dirty repos containing "api".
 
-- Filter modes: `ALL`, `DIRTY`, `AHEAD`, `BEHIND`, `HAS_PR`, `HAS_STASH` (multi-filter with AND logic)
+- Filter modes: `ALL`, `DIRTY`, `AHEAD`, `BEHIND`, `HAS_PR`, `HAS_STASH`, `HAS_NOTES` (multi-filter with AND logic)
 - Sort modes: `NAME`, `MODIFIED`, `STATUS`, `BRANCH`, with multi-field priority and ASC/DESC direction
 - Search: case-insensitive fuzzy matching via `sahilm/fuzzy`, applied after filter mode and before sort, updating in real time
 
@@ -122,8 +122,8 @@ the cursor uses Surface0.
 ### View hierarchy
 
 `ViewModeRepoList` (initial) lists repositories with Name/Branch/Status/PR/Modified
-columns. `ViewModeRepoDetail` (Enter) drills into branches, stashes, worktrees, and
-PRs with tab switching. `ViewModeFilter` (f), `ViewModeSort` (s), and `ViewModeHelp`
+columns. `ViewModeRepoDetail` (Enter) drills into branches, stashes, worktrees,
+PRs, and notes with tab switching. `ViewModeFilter` (f), `ViewModeSort` (s), and `ViewModeHelp`
 (?) are modals, and `ViewModeBatchProgress` shows a progress bar during batch runs.
 
 Adding a view mode: add the const in `app/app.go`, rendering in `view.go`, update
@@ -145,6 +145,7 @@ Adding a keybinding: register it in `keymap.go`, handle it in `handleKey()`
 
 - Progressive loading: the repo list appears immediately with placeholder data while goroutines load each `RepoSummary` concurrently and the table updates incrementally via Tea messages, never blocking on slow git operations
 - Caching: a generic TTL cache with mutex protection backs `prCache`, `branchCache`, and `summaryCache`; refresh clears all caches
+- Notes detection: a per-repo notes file (`.doing`, `doing.md`, `doing.txt`, or `TODO.md` at the repo root, first match wins) surfaces as a badge in the Status column, a Notes tab in repo detail, and the `has_notes` filter/predicate with the `nr` text object; detection is a plain file check outside the VCS abstraction
 - Cancellation: use `context.Context` and cancel when leaving views or quitting to avoid goroutine leaks
 
 ## Testing

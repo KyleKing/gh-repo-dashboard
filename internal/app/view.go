@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
@@ -28,6 +29,7 @@ const (
 	repoNameColWidth       = 20
 	branchColWidth         = 15
 	statusColWidth         = 12
+	notesMarkerWidth       = 2
 	prColWidth             = 12
 	prsColWidth            = 6
 	modifiedColWidth       = 12
@@ -397,6 +399,19 @@ func formatPRCell(s models.RepoSummary) string {
 	return prNum
 }
 
+func notesMarker(s models.RepoSummary, base lipgloss.Style, selected bool) (string, lipgloss.Style) {
+	if s.NotesFile == "" {
+		return " ", base
+	}
+
+	style := styles.NotesBadgeStyle
+	if selected {
+		style = style.Background(styles.Surface0)
+	}
+
+	return "N", style
+}
+
 func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths struct {
 	name     int
 	branch   int
@@ -462,17 +477,24 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 		}
 	}
 
+	notesText, notesStyle := notesMarker(s, style, selected)
+
+	statusTextWidth := colWidths.status - notesMarkerWidth
+
 	formattedName := fmt.Sprintf("%-*s", colWidths.name, name)
 	formattedBranch := fmt.Sprintf("%-*s", colWidths.branch, branch)
-	formattedStatus := fmt.Sprintf("%-*s", colWidths.status, status)
+	formattedStatus := fmt.Sprintf("%-*s", statusTextWidth, status)
+	formattedNotes := fmt.Sprintf("%-*s", notesMarkerWidth, notesText)
 	formattedPR := fmt.Sprintf("%-*s", colWidths.pr, pr)
 	formattedPRCount := fmt.Sprintf("%-*s", colWidths.prs, prCountStr)
+
+	statusCell := statusStyle.Render(formattedStatus) + notesStyle.Render(formattedNotes)
 
 	row := fmt.Sprintf("%s%s  %s  %s  %s  %s  %s",
 		cursor,
 		nameStyle.Render(formattedName),
 		branchStyle.Render(formattedBranch),
-		statusStyle.Render(formattedStatus),
+		statusCell,
 		prStyle.Render(formattedPR),
 		style.Render(formattedPRCount),
 		style.Render(modified),
@@ -616,6 +638,8 @@ func (m Model) renderRepoDetail() string {
 		b.WriteString(m.renderWorktreeList())
 	case DetailTabPRs:
 		b.WriteString(m.renderPRList())
+	case DetailTabNotes:
+		b.WriteString(m.renderNotesTab())
 	}
 
 	footer := "tab: switch tabs  j/k: navigate  esc: back"
@@ -650,6 +674,11 @@ func (m Model) renderDetailTabs() string {
 		worktreeLabel = "Workspaces"
 	}
 
+	notesCount := 0
+	if m.notesFile != "" {
+		notesCount = 1
+	}
+
 	tabs := []struct {
 		name  string
 		tab   DetailTab
@@ -659,6 +688,7 @@ func (m Model) renderDetailTabs() string {
 		{"Stashes", DetailTabStashes, len(m.stashes)},
 		{worktreeLabel, DetailTabWorktrees, len(m.worktrees)},
 		{"PRs", DetailTabPRs, len(m.prs)},
+		{"Notes", DetailTabNotes, notesCount},
 	}
 
 	var parts []string
@@ -811,6 +841,35 @@ func (m Model) renderStashList() string {
 	}
 
 	return strings.Join(rows, "\n")
+}
+
+// renderNotesTab shows the full content of the repo's detected notes file, or
+// an empty state naming the filenames that are detected.
+func (m Model) renderNotesTab() string {
+	if m.notesFile == "" {
+		emptyStyle := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(styles.Surface1).
+			Padding(emptyStateVPad, emptyStateHPad).
+			Foreground(styles.Subtext0)
+
+		noNotesMsg := "No notes file found\n\n" +
+			"Add a .doing, doing.md, doing.txt, or TODO.md file to the repo root."
+
+		return emptyStyle.Render(noNotesMsg)
+	}
+
+	var b strings.Builder
+	b.WriteString(styles.HeaderStyle.Render(m.notesFile))
+	b.WriteString("\n\n")
+
+	content := m.notesContent
+	if content == "" {
+		content = "(empty file)"
+	}
+	b.WriteString(styles.TableRowStyle.Render(content))
+
+	return b.String()
 }
 
 func (m Model) renderWorktreeList() string {
@@ -1054,36 +1113,7 @@ func (m Model) renderFilterModal() string {
 }
 
 func (m Model) countForFilter(mode models.FilterMode) int {
-	count := 0
-	for path := range m.summaries {
-		s := m.summaries[path]
-		switch mode {
-		case models.FilterModeAll:
-			count++
-		case models.FilterModeAhead:
-			if s.Ahead > 0 {
-				count++
-			}
-		case models.FilterModeBehind:
-			if s.Behind > 0 {
-				count++
-			}
-		case models.FilterModeDirty:
-			if s.IsDirty() {
-				count++
-			}
-		case models.FilterModeHasPR:
-			if s.PRInfo != nil {
-				count++
-			}
-		case models.FilterModeHasStash:
-			if s.StashCount > 0 {
-				count++
-			}
-		}
-	}
-
-	return count
+	return len(filters.FilterRepos(m.repoPaths, m.summaries, mode))
 }
 
 // buildSortModalRows orders activeSorts for display: enabled sorts first (with

@@ -42,13 +42,15 @@ type WindowSizeMsg struct {
 	Height int
 }
 
-// DetailLoadedMsg reports the branches, stashes, worktrees, and PRs loaded for a repo's detail view.
+// DetailLoadedMsg reports the branches, stashes, worktrees, PRs, and notes file loaded for a repo's detail view.
 type DetailLoadedMsg struct {
-	Path      string
-	Branches  []models.BranchInfo
-	Stashes   []models.StashDetail
-	Worktrees []models.WorktreeInfo
-	PRs       []models.PRInfo
+	Path         string
+	Branches     []models.BranchInfo
+	Stashes      []models.StashDetail
+	Worktrees    []models.WorktreeInfo
+	PRs          []models.PRInfo
+	NotesFile    string
+	NotesContent string
 }
 
 // BranchDetailLoadedMsg reports the loaded detail for a single branch.

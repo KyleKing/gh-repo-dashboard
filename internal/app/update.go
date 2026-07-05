@@ -262,6 +262,8 @@ func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
 	m.stashes = msg.Stashes
 	m.worktrees = msg.Worktrees
 	m.prs = msg.PRs
+	m.notesFile = msg.NotesFile
+	m.notesContent = msg.NotesContent
 
 	prefetchCount := min(prDetailPrefetchCount, len(msg.PRs))
 
@@ -603,6 +605,8 @@ func (m Model) detailListLen() int {
 		return len(m.worktrees)
 	case DetailTabPRs:
 		return len(m.prs)
+	case DetailTabNotes:
+		return 0
 	}
 
 	return 0
@@ -636,6 +640,8 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		m.stashes = nil
 		m.worktrees = nil
 		m.prs = nil
+		m.notesFile = ""
+		m.notesContent = ""
 		m.branchDetail = models.BranchDetail{}
 		m.prDetail = models.PRDetail{}
 
@@ -1066,6 +1072,9 @@ func loadRepoSummaryCmd(path string) tea.Cmd {
 	return func() tea.Msg {
 		ops := vcs.GetOperations(path)
 		summary, err := ops.GetRepoSummary(context.Background(), path)
+		if err == nil {
+			summary.NotesFile, summary.NotesFirstLine = models.DetectNotes(path)
+		}
 
 		return RepoSummaryLoadedMsg{
 			Path:    path,
@@ -1103,12 +1112,17 @@ func loadDetailCmd(path string) tea.Cmd {
 			prs, _ = github.GetPRsForRepo(ctx, path, summary.Upstream)
 		}
 
+		notesFile, _ := models.DetectNotes(path)
+		notesContent := models.ReadNotesFile(path, notesFile)
+
 		return DetailLoadedMsg{
-			Path:      path,
-			Branches:  branches,
-			Stashes:   stashes,
-			Worktrees: worktrees,
-			PRs:       prs,
+			Path:         path,
+			Branches:     branches,
+			Stashes:      stashes,
+			Worktrees:    worktrees,
+			PRs:          prs,
+			NotesFile:    notesFile,
+			NotesContent: notesContent,
 		}
 	}
 }

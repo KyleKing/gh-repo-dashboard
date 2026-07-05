@@ -103,6 +103,10 @@ var (
 			Background(Surface1).
 			Foreground(Text)
 
+	NotesBadgeStyle = lipgloss.NewStyle().
+			Foreground(Teal).
+			Bold(true)
+
 	FooterStyle = lipgloss.NewStyle().
 			Foreground(Subtext0)
 

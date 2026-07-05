@@ -29,25 +29,27 @@ type Output struct {
 // Repo is the stable JSON shape of one repo summary, mirroring the columns of
 // the TUI's repo list view.
 type Repo struct {
-	Path          string         `json:"path"`
-	Name          string         `json:"name"`
-	VCS           string         `json:"vcs"`
-	Branch        string         `json:"branch"`
-	Upstream      string         `json:"upstream,omitempty"`
-	Ahead         int            `json:"ahead"`
-	Behind        int            `json:"behind"`
-	Staged        int            `json:"staged"`
-	Unstaged      int            `json:"unstaged"`
-	Untracked     int            `json:"untracked"`
-	Conflicted    int            `json:"conflicted"`
-	Dirty         bool           `json:"dirty"`
-	Status        string         `json:"status"`
-	StashCount    int            `json:"stash_count"`
-	WorktreeCount int            `json:"worktree_count"`
-	LastModified  *time.Time     `json:"last_modified,omitempty"`
-	PR            *models.PRInfo `json:"pr,omitempty"`
-	PRCount       *int           `json:"pr_count,omitempty"`
-	Error         string         `json:"error,omitempty"`
+	Path           string         `json:"path"`
+	Name           string         `json:"name"`
+	VCS            string         `json:"vcs"`
+	Branch         string         `json:"branch"`
+	Upstream       string         `json:"upstream,omitempty"`
+	Ahead          int            `json:"ahead"`
+	Behind         int            `json:"behind"`
+	Staged         int            `json:"staged"`
+	Unstaged       int            `json:"unstaged"`
+	Untracked      int            `json:"untracked"`
+	Conflicted     int            `json:"conflicted"`
+	Dirty          bool           `json:"dirty"`
+	Status         string         `json:"status"`
+	StashCount     int            `json:"stash_count"`
+	WorktreeCount  int            `json:"worktree_count"`
+	NotesFile      string         `json:"notes_file,omitempty"`
+	NotesFirstLine string         `json:"notes_first_line,omitempty"`
+	LastModified   *time.Time     `json:"last_modified,omitempty"`
+	PR             *models.PRInfo `json:"pr,omitempty"`
+	PRCount        *int           `json:"pr_count,omitempty"`
+	Error          string         `json:"error,omitempty"`
 }
 
 // githubClient holds the gh-backed fetchers used only when fresh retrieval is
@@ -110,6 +112,7 @@ func loadRepo(ctx context.Context, client githubClient, path string, fresh bool)
 
 	// Worktrees are a best-effort extra column: a failure just reports zero.
 	worktrees, _ := ops.GetWorktreeList(ctx, path) //nolint:errcheck // best-effort, see comment above
+	summary.NotesFile, summary.NotesFirstLine = models.DetectNotes(path)
 	pr := lookupPR(ctx, client, path, summary.Branch, summary.Upstream, fresh)
 	prCount := lookupPRCount(ctx, client, path, summary.Upstream, fresh)
 
@@ -118,23 +121,25 @@ func loadRepo(ctx context.Context, client githubClient, path string, fresh bool)
 
 func newRepo(summary *models.RepoSummary, worktreeCount int, pr *models.PRInfo, prCount *int) Repo {
 	repo := Repo{
-		Path:          summary.Path,
-		Name:          summary.Name(),
-		VCS:           summary.VCSType.String(),
-		Branch:        summary.Branch,
-		Upstream:      summary.Upstream,
-		Ahead:         summary.Ahead,
-		Behind:        summary.Behind,
-		Staged:        summary.Staged,
-		Unstaged:      summary.Unstaged,
-		Untracked:     summary.Untracked,
-		Conflicted:    summary.Conflicted,
-		Dirty:         summary.IsDirty(),
-		Status:        summary.Status().String(),
-		StashCount:    summary.StashCount,
-		WorktreeCount: worktreeCount,
-		PR:            pr,
-		PRCount:       prCount,
+		Path:           summary.Path,
+		Name:           summary.Name(),
+		VCS:            summary.VCSType.String(),
+		Branch:         summary.Branch,
+		Upstream:       summary.Upstream,
+		Ahead:          summary.Ahead,
+		Behind:         summary.Behind,
+		Staged:         summary.Staged,
+		Unstaged:       summary.Unstaged,
+		Untracked:      summary.Untracked,
+		Conflicted:     summary.Conflicted,
+		Dirty:          summary.IsDirty(),
+		Status:         summary.Status().String(),
+		StashCount:     summary.StashCount,
+		WorktreeCount:  worktreeCount,
+		NotesFile:      summary.NotesFile,
+		NotesFirstLine: summary.NotesFirstLine,
+		PR:             pr,
+		PRCount:        prCount,
 	}
 
 	if !summary.LastModified.IsZero() {
