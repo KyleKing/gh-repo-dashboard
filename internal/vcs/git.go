@@ -147,6 +147,27 @@ type statusCounts struct {
 	conflicted int
 }
 
+// classifyPorcelainEntry categorizes one `git status --porcelain` entry by its
+// two-character XY status code.
+func classifyPorcelainEntry(x, y byte) statusCounts {
+	switch {
+	case x == 'U' || y == 'U' || (x == 'D' && y == 'D') || (x == 'A' && y == 'A'):
+		return statusCounts{conflicted: 1}
+	case x == '?':
+		return statusCounts{untracked: 1}
+	default:
+		var counts statusCounts
+		if x != ' ' && x != '?' {
+			counts.staged = 1
+		}
+		if y != ' ' && y != '?' {
+			counts.unstaged = 1
+		}
+
+		return counts
+	}
+}
+
 func (g *GitOperations) getStatusCounts(ctx context.Context, repoPath string) statusCounts {
 	var counts statusCounts
 
@@ -160,22 +181,12 @@ func (g *GitOperations) getStatusCounts(ctx context.Context, repoPath string) st
 		if len(entry) < porcelainStatusCodeLen {
 			continue
 		}
-		x := entry[0]
-		y := entry[1]
 
-		switch {
-		case x == 'U' || y == 'U' || (x == 'D' && y == 'D') || (x == 'A' && y == 'A'):
-			counts.conflicted++
-		case x == '?':
-			counts.untracked++
-		default:
-			if x != ' ' && x != '?' {
-				counts.staged++
-			}
-			if y != ' ' && y != '?' {
-				counts.unstaged++
-			}
-		}
+		entryCounts := classifyPorcelainEntry(entry[0], entry[1])
+		counts.staged += entryCounts.staged
+		counts.unstaged += entryCounts.unstaged
+		counts.untracked += entryCounts.untracked
+		counts.conflicted += entryCounts.conflicted
 	}
 
 	return counts

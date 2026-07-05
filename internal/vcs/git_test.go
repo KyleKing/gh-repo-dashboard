@@ -187,32 +187,44 @@ func TestParseStatusCounts(t *testing.T) {
 	}
 }
 
-func parseStatusOutput(out string) (staged, unstaged, untracked, conflicted int) {
-	if out == "" {
-		return staged, unstaged, untracked, conflicted
+// classifyStatusEntry mirrors GitOperations.classifyPorcelainEntry for testing
+// the porcelain XY status code classification without shelling out to git.
+//
+//nolint:gocritic // named results trip nonamedreturns instead; (staged, unstaged, untracked, conflicted) by position
+func classifyStatusEntry(x, y byte) (int, int, int, int) {
+	switch {
+	case x == 'U' || y == 'U' || (x == 'D' && y == 'D') || (x == 'A' && y == 'A'):
+		return 0, 0, 0, 1
+	case x == '?':
+		return 0, 0, 1, 0
+	default:
+		var staged, unstaged int
+		if x != ' ' && x != '?' {
+			staged = 1
+		}
+		if y != ' ' && y != '?' {
+			unstaged = 1
+		}
+
+		return staged, unstaged, 0, 0
 	}
+}
+
+//nolint:gocritic // named results trip nonamedreturns instead; (staged, unstaged, untracked, conflicted) by position
+func parseStatusOutput(out string) (int, int, int, int) {
+	var staged, unstaged, untracked, conflicted int
 
 	entries := strings.Split(out, "\x00")
 	for _, entry := range entries {
 		if len(entry) < 2 {
 			continue
 		}
-		x := entry[0]
-		y := entry[1]
 
-		switch {
-		case x == 'U' || y == 'U' || (x == 'D' && y == 'D') || (x == 'A' && y == 'A'):
-			conflicted++
-		case x == '?':
-			untracked++
-		default:
-			if x != ' ' && x != '?' {
-				staged++
-			}
-			if y != ' ' && y != '?' {
-				unstaged++
-			}
-		}
+		s, u, ut, c := classifyStatusEntry(entry[0], entry[1])
+		staged += s
+		unstaged += u
+		untracked += ut
+		conflicted += c
 	}
 
 	return staged, unstaged, untracked, conflicted
