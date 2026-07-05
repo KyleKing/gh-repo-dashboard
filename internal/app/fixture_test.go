@@ -1,3 +1,4 @@
+//nolint:testpackage // Model internals are tested directly by design; see ROADMAP.md
 package app
 
 import (

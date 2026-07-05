@@ -121,6 +121,14 @@ above.
   mutator (`FetchAll`, `PruneRemote`, `CleanupMergedBranches`). Deferred because it
   would ripple through every caller (`app`, `vcs/git.go`, `vcs/jj.go`, tests) for a
   cosmetic lint fix rather than a real consumer boundary need
+- `internal/app`'s 11 test files stay whitebox (`package app`, `//nolint:testpackage`)
+  rather than converting to `app_test`. `Model` has 35+ unexported fields that tests
+  construct and inspect directly across hundreds of call sites (`app_test.go`,
+  `command_test.go`, `update_test.go`, etc.); a blackbox conversion would mean
+  exporting most of `Model`'s internals via `export_test.go`, eroding encapsulation
+  for state that's intentionally private. Revisit only if these tests are rewritten
+  to drive `Model` through its exported `Update`/command-mode surface instead of
+  direct field access
 
 ## Parked ideas
 
