@@ -105,6 +105,11 @@ behavior so fixes are visible diffs. Fix opportunistically between milestones.
   and the error is swallowed on cache hits
 - git `GetBranchList` silently drops the last branch when it has no upstream
   (output trimming eats the trailing tab, leaving too few fields)
+- `Model.compareToDefaultBranch` (view.go) diffs `m.branchDetail.Commits` against
+  itself instead of the default branch's commit log, so `ahead` is always 0 and
+  `behind` is hardcoded to 0; the branch detail's ahead/behind-of-default display
+  is meaningless. Found during the 2026-07 lint cleanup's complexity refactor;
+  preserved as-is since fixing it was out of scope for that pass
 
 ## Deferred features
 
