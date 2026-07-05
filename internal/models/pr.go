@@ -59,7 +59,7 @@ func (p PRInfo) ReviewStatus() string {
 			return ReviewApproved
 		}
 
-		return "—"
+		return emDash
 	}
 }
 
@@ -75,7 +75,7 @@ type ChecksStatus struct {
 // Summary returns a one-word overall status for the checks.
 func (c ChecksStatus) Summary() string {
 	if c.Total == 0 {
-		return "—"
+		return emDash
 	}
 	if c.Failing > 0 {
 		return StatusFailing
@@ -147,7 +147,7 @@ type WorkflowSummary struct {
 // StatusDisplay returns a one-word overall status for the workflow runs.
 func (w WorkflowSummary) StatusDisplay() string {
 	if w.Total == 0 {
-		return "—"
+		return emDash
 	}
 	if w.Failing > 0 {
 		return StatusFailing

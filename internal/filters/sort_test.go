@@ -89,16 +89,16 @@ func TestSortPathsByStatus(t *testing.T) {
 
 func TestSortPathsByBranch(t *testing.T) {
 	t.Parallel()
-	paths := []string{"/repo1", "/repo2", "/repo3"}
+	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		"/repo1": {Path: "/repo1", Branch: "main"},
-		"/repo2": {Path: "/repo2", Branch: "develop"},
-		"/repo3": {Path: "/repo3", Branch: "feature"},
+		testRepo1Path: {Path: testRepo1Path, Branch: "main"},
+		"/repo2":      {Path: "/repo2", Branch: "develop"},
+		"/repo3":      {Path: "/repo3", Branch: "feature"},
 	}
 
 	result := SortPaths(paths, summaries, models.SortModeBranch, false)
 
-	expected := []string{"/repo2", "/repo3", "/repo1"}
+	expected := []string{"/repo2", "/repo3", testRepo1Path}
 	for i, p := range result {
 		if p != expected[i] {
 			t.Errorf("position %d: expected %s, got %s", i, expected[i], p)

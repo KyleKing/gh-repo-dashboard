@@ -13,6 +13,15 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
+// emDash is the placeholder rendered for empty/unknown values.
+const emDash = "—"
+
+// mainBranchName and featureBranchName are the conventional branch names used in test fixtures.
+const (
+	mainBranchName    = "main"
+	featureBranchName = "feature"
+)
+
 // View renders the TUI for the current model state.
 func (m Model) View() tea.View {
 	v := tea.NewView(m.renderScreen())
@@ -329,7 +338,7 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 	name := truncate(s.Name(), colWidths.name)
 	branch := truncate(s.Branch, colWidths.branch)
 	status := s.StatusSummary()
-	pr := "—"
+	pr := emDash
 	if s.PRInfo != nil {
 		// Show PR number with review and CI indicators
 		prNum := fmt.Sprintf("#%d", s.PRInfo.Number)
@@ -359,7 +368,7 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 		pr = prNum
 	}
 
-	prCountStr := "—"
+	prCountStr := emDash
 	if count, ok := m.prCount[s.Path]; ok && count > 0 {
 		prCountStr = strconv.Itoa(count)
 	}
@@ -425,7 +434,7 @@ func (m Model) renderFooter() string {
 		desc string
 	}{
 		{"j/k", "nav"},
-		{"enter", "select"},
+		{keyEnter, "select"},
 		{"f", "filter"},
 		{"s", "sort"},
 		{"/", "search"},
@@ -434,7 +443,7 @@ func (m Model) renderFooter() string {
 		{"q", "quit"},
 	}
 
-	var parts []string
+	parts := make([]string, 0, len(bindings))
 	for _, b := range bindings {
 		parts = append(parts,
 			styles.FooterKeyStyle.Render(b.key)+
@@ -967,7 +976,7 @@ func (m Model) renderFilterModal() string {
 	helpLines := []string{
 		styles.FooterKeyStyle.Render("enter/key") + styles.FooterDescStyle.Render(" cycle (off/on/NOT)"),
 		styles.FooterKeyStyle.Render("*") + styles.FooterDescStyle.Render(" reset"),
-		styles.FooterKeyStyle.Render("esc") + styles.FooterDescStyle.Render(" close"),
+		styles.FooterKeyStyle.Render(keyEsc) + styles.FooterDescStyle.Render(" close"),
 	}
 	b.WriteString(strings.Join(helpLines, "  "))
 
@@ -1109,7 +1118,7 @@ func (m Model) renderSortModal() string {
 		styles.FooterKeyStyle.Render("enter/key") + styles.FooterDescStyle.Render(" cycle (off/ASC/DESC)"),
 		styles.FooterKeyStyle.Render("[/]") + styles.FooterDescStyle.Render(" reorder"),
 		styles.FooterKeyStyle.Render("*") + styles.FooterDescStyle.Render(" reset"),
-		styles.FooterKeyStyle.Render("esc") + styles.FooterDescStyle.Render(" close"),
+		styles.FooterKeyStyle.Render(keyEsc) + styles.FooterDescStyle.Render(" close"),
 	}
 	b.WriteString(strings.Join(helpLines, "  "))
 
@@ -1460,7 +1469,7 @@ func (m Model) renderPRDetail() string {
 		b.WriteString(loadingStyle.Render("Loading PR details..."))
 		b.WriteString("\n\n")
 
-		footer := styles.FooterKeyStyle.Render("esc") + styles.FooterDescStyle.Render(" back  ") +
+		footer := styles.FooterKeyStyle.Render(keyEsc) + styles.FooterDescStyle.Render(" back  ") +
 			styles.FooterKeyStyle.Render("?") + styles.FooterDescStyle.Render(" help")
 		b.WriteString(styles.FooterStyle.Render(footer))
 
@@ -1635,7 +1644,7 @@ func (m Model) renderPRDetail() string {
 		b.WriteString("\n")
 	}
 
-	footer := styles.FooterKeyStyle.Render("esc") + styles.FooterDescStyle.Render(" back  ") +
+	footer := styles.FooterKeyStyle.Render(keyEsc) + styles.FooterDescStyle.Render(" back  ") +
 		styles.FooterKeyStyle.Render("?") + styles.FooterDescStyle.Render(" help")
 	b.WriteString(styles.FooterStyle.Render(footer))
 
@@ -1644,7 +1653,7 @@ func (m Model) renderPRDetail() string {
 
 func (m Model) findDefaultBranch() string {
 	for _, branch := range m.branches {
-		if branch.Name == "main" || branch.Name == "master" {
+		if branch.Name == mainBranchName || branch.Name == "master" {
 			return branch.Name
 		}
 	}

@@ -349,7 +349,7 @@ func (m Model) handleOperatorPendingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	keyStr := msg.String()
 	switch {
-	case keyStr == "esc":
+	case keyStr == keyEsc:
 		m.pendingOperator = ""
 		m.pendingObject = ""
 
@@ -838,13 +838,13 @@ func (m Model) handleBatchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "esc":
+	case keyEsc:
 		m.searching = false
 		m.searchInput.Blur()
 
 		return m, nil
 
-	case "enter":
+	case keyEnter:
 		m.searching = false
 		m.searchText = m.searchInput.Value()
 		m.searchInput.Blur()
@@ -868,13 +868,13 @@ func (m Model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "esc":
+	case keyEsc:
 		m.commandMode = false
 		m.commandInput.Blur()
 
 		return m, nil
 
-	case "enter":
+	case keyEnter:
 		line := m.commandInput.Value()
 		m.commandMode = false
 		m.commandInput.Blur()

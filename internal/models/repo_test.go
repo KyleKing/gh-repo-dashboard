@@ -176,12 +176,12 @@ func TestRepoSummaryStatusSummary(t *testing.T) {
 func TestRepoSummaryRelativeModified(t *testing.T) {
 	t.Parallel()
 	s := RepoSummary{}
-	if s.RelativeModified() != "—" {
+	if s.RelativeModified() != emDash {
 		t.Errorf("expected '—' for zero time, got '%s'", s.RelativeModified())
 	}
 
 	s.LastModified = time.Now()
-	if s.RelativeModified() == "—" {
+	if s.RelativeModified() == emDash {
 		t.Error("expected non-empty relative time")
 	}
 }

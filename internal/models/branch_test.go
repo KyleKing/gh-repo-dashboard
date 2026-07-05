@@ -84,7 +84,7 @@ func TestRelativeTimeYears(t *testing.T) {
 func TestRelativeTimeZero(t *testing.T) {
 	t.Parallel()
 	result := RelativeTime(time.Time{})
-	if result != "—" {
+	if result != emDash {
 		t.Errorf("expected '—', got '%s'", result)
 	}
 }
@@ -92,12 +92,12 @@ func TestRelativeTimeZero(t *testing.T) {
 func TestBranchInfoRelativeLastCommit(t *testing.T) {
 	t.Parallel()
 	b := BranchInfo{}
-	if b.RelativeLastCommit() != "—" {
+	if b.RelativeLastCommit() != emDash {
 		t.Errorf("expected '—' for zero time, got '%s'", b.RelativeLastCommit())
 	}
 
 	b.LastCommit = time.Now()
-	if b.RelativeLastCommit() == "—" {
+	if b.RelativeLastCommit() == emDash {
 		t.Error("expected non-empty relative time")
 	}
 }
@@ -105,7 +105,7 @@ func TestBranchInfoRelativeLastCommit(t *testing.T) {
 func TestCommitInfoRelativeDate(t *testing.T) {
 	t.Parallel()
 	c := CommitInfo{Date: time.Now()}
-	if c.RelativeDate() == "—" {
+	if c.RelativeDate() == emDash {
 		t.Error("expected non-empty relative date")
 	}
 }
@@ -113,7 +113,7 @@ func TestCommitInfoRelativeDate(t *testing.T) {
 func TestStashDetailRelativeDate(t *testing.T) {
 	t.Parallel()
 	s := StashDetail{Date: time.Now()}
-	if s.RelativeDate() == "—" {
+	if s.RelativeDate() == emDash {
 		t.Error("expected non-empty relative date")
 	}
 }

@@ -12,8 +12,8 @@ func predicateModel() Model {
 	m.loading = false
 	m.repoPaths = []string{"/test/clean", "/test/dirty", "/test/dirty-pr"}
 	m.summaries = map[string]models.RepoSummary{
-		"/test/clean":    {Path: "/test/clean", Branch: "main"},
-		"/test/dirty":    {Path: "/test/dirty", Branch: "main", Unstaged: 2},
+		"/test/clean":    {Path: "/test/clean", Branch: mainBranchName},
+		"/test/dirty":    {Path: "/test/dirty", Branch: mainBranchName, Unstaged: 2},
 		"/test/dirty-pr": {Path: "/test/dirty-pr", Branch: "feat", Unstaged: 1, PRInfo: &models.PRInfo{Number: 7}},
 	}
 	m.updateFilteredPaths()

@@ -21,7 +21,7 @@ func goldenModel() Model {
 		"/Users/dev/alpha": {
 			Path:         "/Users/dev/alpha",
 			VCSType:      models.VCSTypeGit,
-			Branch:       "main",
+			Branch:       mainBranchName,
 			Upstream:     "origin/main",
 			LastModified: time.Now().Add(-5 * time.Minute),
 		},
@@ -40,7 +40,7 @@ func goldenModel() Model {
 				State:   "OPEN",
 				URL:     "https://github.com/dev/bravo/pull/42",
 				HeadRef: "feature/login",
-				BaseRef: "main",
+				BaseRef: mainBranchName,
 			},
 		},
 		"/Users/dev/charlie": {
@@ -74,7 +74,7 @@ func TestGoldenRepoDetail(t *testing.T) {
 	m.selectedRepo = "/Users/dev/bravo"
 	m.detailTab = DetailTabBranches
 	m.branches = []models.BranchInfo{
-		{Name: "main", Upstream: "origin/main", LastCommit: time.Now().Add(-2 * time.Hour)},
+		{Name: mainBranchName, Upstream: "origin/main", LastCommit: time.Now().Add(-2 * time.Hour)},
 		{Name: "feature/login", Upstream: "origin/feature/login", Ahead: 2, LastCommit: time.Now().Add(-10 * time.Minute), IsCurrent: true},
 	}
 	golden.RequireEqual(t, []byte(m.renderScreen()))

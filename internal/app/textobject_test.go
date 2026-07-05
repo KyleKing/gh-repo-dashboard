@@ -14,9 +14,9 @@ func operatorModel() Model {
 	m.loading = false
 	m.repoPaths = []string{"/test/behind", "/test/clean", "/test/dirty", "/test/dirty-pr"}
 	m.summaries = map[string]models.RepoSummary{
-		"/test/behind":   {Path: "/test/behind", Branch: "main", Behind: 2},
-		"/test/clean":    {Path: "/test/clean", Branch: "main"},
-		"/test/dirty":    {Path: "/test/dirty", Branch: "main", Unstaged: 2},
+		"/test/behind":   {Path: "/test/behind", Branch: mainBranchName, Behind: 2},
+		"/test/clean":    {Path: "/test/clean", Branch: mainBranchName},
+		"/test/dirty":    {Path: "/test/dirty", Branch: mainBranchName, Unstaged: 2},
 		"/test/dirty-pr": {Path: "/test/dirty-pr", Branch: "feat", Unstaged: 1, PRInfo: &models.PRInfo{Number: 7}},
 	}
 	m.updateFilteredPaths()
@@ -168,7 +168,7 @@ func TestOperatorUnknownObjectCancels(t *testing.T) {
 func TestOperatorEmptyScope(t *testing.T) {
 	t.Parallel()
 	m := operatorModel()
-	m.summaries["/test/behind"] = models.RepoSummary{Path: "/test/behind", Branch: "main"}
+	m.summaries["/test/behind"] = models.RepoSummary{Path: "/test/behind", Branch: mainBranchName}
 	m.updateFilteredPaths()
 
 	m2, cmd := pressKeys(t, m, "Fbr")

@@ -62,13 +62,13 @@ func generateUsageDocs(fixtures []fixture) string {
 		b.WriteString("\n## " + f.Doc + "\n\n")
 		b.WriteString("| Input | Result |\n|---|---|\n")
 		for _, step := range f.Steps {
-			var results []string
+			results := make([]string, 0, len(step.Assertions))
 			for _, a := range step.Assertions {
 				results = append(results, describeAssertion(a))
 			}
 			result := strings.Join(results, "; ")
 			if result == "" {
-				result = "—"
+				result = emDash
 			}
 			fmt.Fprintf(&b, "| %s | %s |\n", describeInput(step), result)
 		}

@@ -8,6 +8,9 @@ import (
 	"time"
 )
 
+// emDash is the placeholder rendered for empty/unknown values.
+const emDash = "—"
+
 // BranchInfo summarizes a single branch's tracking state.
 type BranchInfo struct {
 	Name       string
@@ -22,7 +25,7 @@ type BranchInfo struct {
 // RelativeLastCommit returns a human-readable relative time for the branch's last commit.
 func (b BranchInfo) RelativeLastCommit() string {
 	if b.LastCommit.IsZero() {
-		return "—"
+		return emDash
 	}
 
 	return RelativeTime(b.LastCommit)
@@ -106,7 +109,7 @@ const (
 // RelativeTime renders t as a human-readable duration relative to now (e.g. "3 days ago").
 func RelativeTime(t time.Time) string {
 	if t.IsZero() {
-		return "—"
+		return emDash
 	}
 
 	now := time.Now()

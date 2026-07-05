@@ -6,13 +6,15 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+const testRepo1Path = "/repo1"
+
 func TestFilterReposAll(t *testing.T) {
 	t.Parallel()
-	paths := []string{"/repo1", "/repo2", "/repo3"}
+	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		"/repo1": {Path: "/repo1", Ahead: 1},
-		"/repo2": {Path: "/repo2", Behind: 2},
-		"/repo3": {Path: "/repo3"},
+		testRepo1Path: {Path: testRepo1Path, Ahead: 1},
+		"/repo2":      {Path: "/repo2", Behind: 2},
+		"/repo3":      {Path: "/repo3"},
 	}
 
 	result := FilterRepos(paths, summaries, models.FilterModeAll)
@@ -23,29 +25,29 @@ func TestFilterReposAll(t *testing.T) {
 
 func TestFilterReposAhead(t *testing.T) {
 	t.Parallel()
-	paths := []string{"/repo1", "/repo2", "/repo3"}
+	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		"/repo1": {Path: "/repo1", Ahead: 1},
-		"/repo2": {Path: "/repo2", Behind: 2},
-		"/repo3": {Path: "/repo3"},
+		testRepo1Path: {Path: testRepo1Path, Ahead: 1},
+		"/repo2":      {Path: "/repo2", Behind: 2},
+		"/repo3":      {Path: "/repo3"},
 	}
 
 	result := FilterRepos(paths, summaries, models.FilterModeAhead)
 	if len(result) != 1 {
 		t.Errorf("expected 1 repo, got %d", len(result))
 	}
-	if result[0] != "/repo1" {
+	if result[0] != testRepo1Path {
 		t.Errorf("expected /repo1, got %s", result[0])
 	}
 }
 
 func TestFilterReposBehind(t *testing.T) {
 	t.Parallel()
-	paths := []string{"/repo1", "/repo2", "/repo3"}
+	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		"/repo1": {Path: "/repo1", Ahead: 1},
-		"/repo2": {Path: "/repo2", Behind: 2},
-		"/repo3": {Path: "/repo3"},
+		testRepo1Path: {Path: testRepo1Path, Ahead: 1},
+		"/repo2":      {Path: "/repo2", Behind: 2},
+		"/repo3":      {Path: "/repo3"},
 	}
 
 	result := FilterRepos(paths, summaries, models.FilterModeBehind)
@@ -59,11 +61,11 @@ func TestFilterReposBehind(t *testing.T) {
 
 func TestFilterReposDirty(t *testing.T) {
 	t.Parallel()
-	paths := []string{"/repo1", "/repo2", "/repo3"}
+	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		"/repo1": {Path: "/repo1", Staged: 2},
-		"/repo2": {Path: "/repo2", Unstaged: 1},
-		"/repo3": {Path: "/repo3"},
+		testRepo1Path: {Path: testRepo1Path, Staged: 2},
+		"/repo2":      {Path: "/repo2", Unstaged: 1},
+		"/repo3":      {Path: "/repo3"},
 	}
 
 	result := FilterRepos(paths, summaries, models.FilterModeDirty)
@@ -74,45 +76,45 @@ func TestFilterReposDirty(t *testing.T) {
 
 func TestFilterReposHasPR(t *testing.T) {
 	t.Parallel()
-	paths := []string{"/repo1", "/repo2"}
+	paths := []string{testRepo1Path, "/repo2"}
 	summaries := map[string]models.RepoSummary{
-		"/repo1": {Path: "/repo1", PRInfo: &models.PRInfo{Number: 123}},
-		"/repo2": {Path: "/repo2"},
+		testRepo1Path: {Path: testRepo1Path, PRInfo: &models.PRInfo{Number: 123}},
+		"/repo2":      {Path: "/repo2"},
 	}
 
 	result := FilterRepos(paths, summaries, models.FilterModeHasPR)
 	if len(result) != 1 {
 		t.Errorf("expected 1 repo, got %d", len(result))
 	}
-	if result[0] != "/repo1" {
+	if result[0] != testRepo1Path {
 		t.Errorf("expected /repo1, got %s", result[0])
 	}
 }
 
 func TestFilterReposHasStash(t *testing.T) {
 	t.Parallel()
-	paths := []string{"/repo1", "/repo2"}
+	paths := []string{testRepo1Path, "/repo2"}
 	summaries := map[string]models.RepoSummary{
-		"/repo1": {Path: "/repo1", StashCount: 3},
-		"/repo2": {Path: "/repo2"},
+		testRepo1Path: {Path: testRepo1Path, StashCount: 3},
+		"/repo2":      {Path: "/repo2"},
 	}
 
 	result := FilterRepos(paths, summaries, models.FilterModeHasStash)
 	if len(result) != 1 {
 		t.Errorf("expected 1 repo, got %d", len(result))
 	}
-	if result[0] != "/repo1" {
+	if result[0] != testRepo1Path {
 		t.Errorf("expected /repo1, got %s", result[0])
 	}
 }
 
 func TestFilterReposMultiNoFilters(t *testing.T) {
 	t.Parallel()
-	paths := []string{"/repo1", "/repo2", "/repo3"}
+	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		"/repo1": {Path: "/repo1", Ahead: 1},
-		"/repo2": {Path: "/repo2", Behind: 2},
-		"/repo3": {Path: "/repo3"},
+		testRepo1Path: {Path: testRepo1Path, Ahead: 1},
+		"/repo2":      {Path: "/repo2", Behind: 2},
+		"/repo3":      {Path: "/repo3"},
 	}
 
 	activeFilters := []models.ActiveFilter{
@@ -127,11 +129,11 @@ func TestFilterReposMultiNoFilters(t *testing.T) {
 
 func TestFilterReposMultiSingleFilter(t *testing.T) {
 	t.Parallel()
-	paths := []string{"/repo1", "/repo2", "/repo3"}
+	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		"/repo1": {Path: "/repo1", Ahead: 1},
-		"/repo2": {Path: "/repo2", Behind: 2},
-		"/repo3": {Path: "/repo3"},
+		testRepo1Path: {Path: testRepo1Path, Ahead: 1},
+		"/repo2":      {Path: "/repo2", Behind: 2},
+		"/repo3":      {Path: "/repo3"},
 	}
 
 	activeFilters := []models.ActiveFilter{
@@ -143,19 +145,19 @@ func TestFilterReposMultiSingleFilter(t *testing.T) {
 	if len(result) != 1 {
 		t.Errorf("expected 1 repo, got %d", len(result))
 	}
-	if result[0] != "/repo1" {
+	if result[0] != testRepo1Path {
 		t.Errorf("expected /repo1, got %s", result[0])
 	}
 }
 
 func TestFilterReposMultipleFilters(t *testing.T) {
 	t.Parallel()
-	paths := []string{"/repo1", "/repo2", "/repo3", "/repo4"}
+	paths := []string{testRepo1Path, "/repo2", "/repo3", "/repo4"}
 	summaries := map[string]models.RepoSummary{
-		"/repo1": {Path: "/repo1", Ahead: 1, Staged: 2},
-		"/repo2": {Path: "/repo2", Ahead: 1},
-		"/repo3": {Path: "/repo3", Staged: 1},
-		"/repo4": {Path: "/repo4"},
+		testRepo1Path: {Path: testRepo1Path, Ahead: 1, Staged: 2},
+		"/repo2":      {Path: "/repo2", Ahead: 1},
+		"/repo3":      {Path: "/repo3", Staged: 1},
+		"/repo4":      {Path: "/repo4"},
 	}
 
 	activeFilters := []models.ActiveFilter{
@@ -172,11 +174,11 @@ func TestFilterReposMultipleFilters(t *testing.T) {
 
 func TestFilterReposMultiWithPRAndDirty(t *testing.T) {
 	t.Parallel()
-	paths := []string{"/repo1", "/repo2", "/repo3"}
+	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		"/repo1": {Path: "/repo1", Staged: 2, PRInfo: &models.PRInfo{Number: 123}},
-		"/repo2": {Path: "/repo2", PRInfo: &models.PRInfo{Number: 456}},
-		"/repo3": {Path: "/repo3", Staged: 1},
+		testRepo1Path: {Path: testRepo1Path, Staged: 2, PRInfo: &models.PRInfo{Number: 123}},
+		"/repo2":      {Path: "/repo2", PRInfo: &models.PRInfo{Number: 456}},
+		"/repo3":      {Path: "/repo3", Staged: 1},
 	}
 
 	activeFilters := []models.ActiveFilter{
@@ -189,19 +191,19 @@ func TestFilterReposMultiWithPRAndDirty(t *testing.T) {
 	if len(result) != 1 {
 		t.Errorf("expected 1 repo (both dirty AND has PR), got %d", len(result))
 	}
-	if len(result) > 0 && result[0] != "/repo1" {
+	if len(result) > 0 && result[0] != testRepo1Path {
 		t.Errorf("expected /repo1, got %s", result[0])
 	}
 }
 
 func TestFilterReposMultiWithInverted(t *testing.T) {
 	t.Parallel()
-	paths := []string{"/repo1", "/repo2", "/repo3", "/repo4"}
+	paths := []string{testRepo1Path, "/repo2", "/repo3", "/repo4"}
 	summaries := map[string]models.RepoSummary{
-		"/repo1": {Path: "/repo1", Staged: 2},
-		"/repo2": {Path: "/repo2", Unstaged: 1},
-		"/repo3": {Path: "/repo3"},
-		"/repo4": {Path: "/repo4"},
+		testRepo1Path: {Path: testRepo1Path, Staged: 2},
+		"/repo2":      {Path: "/repo2", Unstaged: 1},
+		"/repo3":      {Path: "/repo3"},
+		"/repo4":      {Path: "/repo4"},
 	}
 
 	activeFilters := []models.ActiveFilter{
@@ -217,12 +219,12 @@ func TestFilterReposMultiWithInverted(t *testing.T) {
 
 func TestFilterReposMultiMixedInverted(t *testing.T) {
 	t.Parallel()
-	paths := []string{"/repo1", "/repo2", "/repo3", "/repo4"}
+	paths := []string{testRepo1Path, "/repo2", "/repo3", "/repo4"}
 	summaries := map[string]models.RepoSummary{
-		"/repo1": {Path: "/repo1", Ahead: 1, PRInfo: &models.PRInfo{Number: 123}},
-		"/repo2": {Path: "/repo2", Ahead: 1},
-		"/repo3": {Path: "/repo3", PRInfo: &models.PRInfo{Number: 456}},
-		"/repo4": {Path: "/repo4"},
+		testRepo1Path: {Path: testRepo1Path, Ahead: 1, PRInfo: &models.PRInfo{Number: 123}},
+		"/repo2":      {Path: "/repo2", Ahead: 1},
+		"/repo3":      {Path: "/repo3", PRInfo: &models.PRInfo{Number: 456}},
+		"/repo4":      {Path: "/repo4"},
 	}
 
 	activeFilters := []models.ActiveFilter{

@@ -8,6 +8,12 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+// Repo paths used as fixtures across this package's tests.
+const (
+	testRepo1Path = "/repo1"
+	testRepoPath  = "/test/repo"
+)
+
 func keyPress(r rune) tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: r, Text: string(r)}
 }
@@ -286,10 +292,10 @@ func TestDetailEnterOpensBranchDetail(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
-	m.selectedRepo = "/repo1"
+	m.selectedRepo = testRepo1Path
 	m.detailTab = DetailTabBranches
 	m.detailCursor = 1
-	m.branches = []models.BranchInfo{{Name: "main"}, {Name: "feature"}}
+	m.branches = []models.BranchInfo{{Name: mainBranchName}, {Name: featureBranchName}}
 	m.branchDetail = models.BranchDetail{Branch: models.BranchInfo{Name: "stale"}}
 
 	updatedModel, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -298,7 +304,7 @@ func TestDetailEnterOpensBranchDetail(t *testing.T) {
 	if m.viewMode != ViewModeBranchDetail {
 		t.Errorf("expected ViewModeBranchDetail, got %v", m.viewMode)
 	}
-	if m.selectedBranch.Name != "feature" {
+	if m.selectedBranch.Name != featureBranchName {
 		t.Errorf("expected selected branch 'feature', got %q", m.selectedBranch.Name)
 	}
 	if m.branchDetail.Branch.Name != "" {

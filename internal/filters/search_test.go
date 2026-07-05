@@ -8,7 +8,7 @@ import (
 
 func TestSearchReposEmpty(t *testing.T) {
 	t.Parallel()
-	paths := []string{"/repo1", "/repo2", "/repo3"}
+	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{}
 
 	result := SearchRepos(paths, summaries, "")

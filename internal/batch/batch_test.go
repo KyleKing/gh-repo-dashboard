@@ -12,6 +12,8 @@ import (
 
 var errNetwork = errors.New("network error")
 
+const testSuccessMsg = "success"
+
 func TestRepoName(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -107,7 +109,7 @@ func (m *mockVCS) FetchAll(_ context.Context, _ string) (bool, string, error) {
 		return m.fetchResult()
 	}
 
-	return true, "success", nil
+	return true, testSuccessMsg, nil
 }
 
 func (m *mockVCS) PruneRemote(_ context.Context, _ string) (bool, string, error) {
@@ -115,7 +117,7 @@ func (m *mockVCS) PruneRemote(_ context.Context, _ string) (bool, string, error)
 		return m.pruneResult()
 	}
 
-	return true, "success", nil
+	return true, testSuccessMsg, nil
 }
 
 func (m *mockVCS) CleanupMergedBranches(_ context.Context, _ string) (bool, string, error) {
@@ -123,7 +125,7 @@ func (m *mockVCS) CleanupMergedBranches(_ context.Context, _ string) (bool, stri
 		return m.cleanupResult()
 	}
 
-	return true, "success", nil
+	return true, testSuccessMsg, nil
 }
 
 var _ vcs.Operations = (*mockVCS)(nil)
@@ -137,7 +139,7 @@ func TestFetchAll(t *testing.T) {
 		wantErr     bool
 	}{
 		{
-			name:        "success",
+			name:        testSuccessMsg,
 			result:      func() (bool, string, error) { return true, "ok", nil },
 			wantSuccess: true,
 			wantErr:     false,
@@ -181,7 +183,7 @@ func TestPruneRemote(t *testing.T) {
 		wantSuccess bool
 	}{
 		{
-			name:        "success",
+			name:        testSuccessMsg,
 			result:      func() (bool, string, error) { return true, "pruned", nil },
 			wantSuccess: true,
 		},

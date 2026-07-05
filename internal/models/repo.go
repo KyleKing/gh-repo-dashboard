@@ -93,7 +93,7 @@ func (r RepoSummary) StatusSummary() string {
 // RelativeModified returns a human-readable relative time for the repo's last modification.
 func (r RepoSummary) RelativeModified() string {
 	if r.LastModified.IsZero() {
-		return "—"
+		return emDash
 	}
 
 	return RelativeTime(r.LastModified)

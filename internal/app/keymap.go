@@ -2,6 +2,12 @@ package app
 
 import "charm.land/bubbles/v2/key"
 
+// Key name strings shared across key bindings, key handling, footers, and fixture tests.
+const (
+	keyEnter = "enter"
+	keyEsc   = "esc"
+)
+
 // KeyMap holds the key bindings used across the TUI.
 type KeyMap struct {
 	Quit   key.Binding
@@ -70,12 +76,12 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("G", "bottom"),
 		),
 		Enter: key.NewBinding(
-			key.WithKeys("enter", "space"),
-			key.WithHelp("enter", "select"),
+			key.WithKeys(keyEnter, "space"),
+			key.WithHelp(keyEnter, "select"),
 		),
 		Back: key.NewBinding(
-			key.WithKeys("esc", "backspace"),
-			key.WithHelp("esc", "back"),
+			key.WithKeys(keyEsc, "backspace"),
+			key.WithHelp(keyEsc, "back"),
 		),
 		Tab: key.NewBinding(
 			key.WithKeys("tab"),

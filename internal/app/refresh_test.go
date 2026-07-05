@@ -13,8 +13,8 @@ func TestRefreshFromRepoList(t *testing.T) {
 	t.Parallel()
 	m := New([]string{"/test"}, 1)
 	m.viewMode = ViewModeRepoList
-	m.summaries["/repo1"] = models.RepoSummary{Path: "/repo1"}
-	m.prCount["/repo1"] = 5
+	m.summaries[testRepo1Path] = models.RepoSummary{Path: testRepo1Path}
+	m.prCount[testRepo1Path] = 5
 
 	msg := tea.KeyPressMsg{Code: 'r', Text: "r"}
 	if !key.Matches(msg, m.keys.Refresh) {
@@ -43,14 +43,14 @@ func TestRefreshFromRepoDetail(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
-	m.selectedRepo = "/test/repo"
-	m.summaries["/test/repo"] = models.RepoSummary{
-		Path:     "/test/repo",
+	m.selectedRepo = testRepoPath
+	m.summaries[testRepoPath] = models.RepoSummary{
+		Path:     testRepoPath,
 		Upstream: "origin",
 	}
 	m.branches = []models.BranchInfo{
-		{Name: "main"},
-		{Name: "feature"},
+		{Name: mainBranchName},
+		{Name: featureBranchName},
 	}
 
 	msg := tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl}
@@ -70,10 +70,10 @@ func TestRefreshFromBranchDetail(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeBranchDetail
-	m.selectedRepo = "/test/repo"
-	m.selectedBranch = models.BranchInfo{Name: "feature"}
+	m.selectedRepo = testRepoPath
+	m.selectedBranch = models.BranchInfo{Name: featureBranchName}
 	m.branchDetail = models.BranchDetail{
-		Branch: models.BranchInfo{Name: "feature"},
+		Branch: models.BranchInfo{Name: featureBranchName},
 	}
 
 	msg := tea.KeyPressMsg{Code: 'r', Text: "r"}
@@ -89,7 +89,7 @@ func TestRefreshFromPRDetail(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
-	m.selectedRepo = "/test/repo"
+	m.selectedRepo = testRepoPath
 	m.selectedPR = models.PRInfo{Number: 123}
 	m.prDetail = models.PRDetail{
 		PRInfo: models.PRInfo{Number: 123},
@@ -141,7 +141,7 @@ func TestRefreshClearsCache(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoList
-	m.summaries["/repo1"] = models.RepoSummary{Path: "/repo1"}
+	m.summaries[testRepo1Path] = models.RepoSummary{Path: testRepo1Path}
 
 	m, _ = m.handleRefresh()
 
@@ -182,8 +182,8 @@ func TestRefreshPreservesViewMode(t *testing.T) {
 			t.Parallel()
 			m := New(nil, 1)
 			m.viewMode = tc.viewMode
-			m.selectedRepo = "/test/repo"
-			m.selectedBranch = models.BranchInfo{Name: "main"}
+			m.selectedRepo = testRepoPath
+			m.selectedBranch = models.BranchInfo{Name: mainBranchName}
 			m.selectedPR = models.PRInfo{Number: 1}
 
 			m, _ = m.handleRefresh()
@@ -199,12 +199,12 @@ func TestRefreshClearsDownstreamFromRepoList(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoList
-	m.branches = []models.BranchInfo{{Name: "main"}}
+	m.branches = []models.BranchInfo{{Name: mainBranchName}}
 	m.stashes = []models.StashDetail{{Index: 0}}
 	m.worktrees = []models.WorktreeInfo{{Path: "/test"}}
 	m.prs = []models.PRInfo{{Number: 1}}
 	m.branchDetail = models.BranchDetail{
-		Branch: models.BranchInfo{Name: "feature"},
+		Branch: models.BranchInfo{Name: featureBranchName},
 	}
 	m.prDetail = models.PRDetail{
 		PRInfo: models.PRInfo{Number: 123},
@@ -236,12 +236,12 @@ func TestRefreshClearsDownstreamFromRepoDetail(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
-	m.selectedRepo = "/test/repo"
-	m.summaries["/test/repo"] = models.RepoSummary{Path: "/test/repo"}
-	m.branches = []models.BranchInfo{{Name: "main"}}
+	m.selectedRepo = testRepoPath
+	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
+	m.branches = []models.BranchInfo{{Name: mainBranchName}}
 	m.prs = []models.PRInfo{{Number: 1}}
 	m.branchDetail = models.BranchDetail{
-		Branch: models.BranchInfo{Name: "feature"},
+		Branch: models.BranchInfo{Name: featureBranchName},
 	}
 	m.prDetail = models.PRDetail{
 		PRInfo: models.PRInfo{Number: 123},
@@ -267,10 +267,10 @@ func TestRefreshClearsBranchDetail(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeBranchDetail
-	m.selectedRepo = "/test/repo"
-	m.selectedBranch = models.BranchInfo{Name: "feature"}
+	m.selectedRepo = testRepoPath
+	m.selectedBranch = models.BranchInfo{Name: featureBranchName}
 	m.branchDetail = models.BranchDetail{
-		Branch: models.BranchInfo{Name: "feature"},
+		Branch: models.BranchInfo{Name: featureBranchName},
 		Commits: []models.CommitInfo{
 			{Hash: "abc123"},
 		},
@@ -290,7 +290,7 @@ func TestRefreshClearsPRDetail(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
-	m.selectedRepo = "/test/repo"
+	m.selectedRepo = testRepoPath
 	m.selectedPR = models.PRInfo{Number: 123}
 	m.prDetail = models.PRDetail{
 		PRInfo: models.PRInfo{

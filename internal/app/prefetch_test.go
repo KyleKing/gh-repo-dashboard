@@ -13,7 +13,7 @@ func TestPrefetchOnCursorMovement(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabPRs
-	m.selectedRepo = "/test/repo"
+	m.selectedRepo = testRepoPath
 	m.prs = []models.PRInfo{
 		{Number: 1, Title: "PR 1"},
 		{Number: 2, Title: "PR 2"},
@@ -53,7 +53,7 @@ func TestPrefetchOnTabSwitch(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabBranches
-	m.selectedRepo = "/test/repo"
+	m.selectedRepo = testRepoPath
 	m.prs = []models.PRInfo{
 		{Number: 10, Title: "First PR"},
 		{Number: 20, Title: "Second PR"},
@@ -88,7 +88,7 @@ func TestPrefetchOnTabSwitch(t *testing.T) {
 func TestPrefetchOnDetailLoad(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
-	m.selectedRepo = "/test/repo"
+	m.selectedRepo = testRepoPath
 
 	prs := []models.PRInfo{
 		{Number: 100, Title: "PR 100"},
@@ -98,7 +98,7 @@ func TestPrefetchOnDetailLoad(t *testing.T) {
 	}
 
 	msg := DetailLoadedMsg{
-		Path:     "/test/repo",
+		Path:     testRepoPath,
 		Branches: []models.BranchInfo{},
 		PRs:      prs,
 	}
@@ -119,8 +119,8 @@ func TestNavigateBetweenPRsInDetailView(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
-	m.selectedRepo = "/test/repo"
-	m.summaries["/test/repo"] = models.RepoSummary{Path: "/test/repo"}
+	m.selectedRepo = testRepoPath
+	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
 	m.prs = []models.PRInfo{
 		{Number: 1, Title: "First PR", State: "OPEN"},
 		{Number: 2, Title: "Second PR", State: "OPEN"},
@@ -167,8 +167,8 @@ func TestNavigatePRDetailAtBoundaries(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
-	m.selectedRepo = "/test/repo"
-	m.summaries["/test/repo"] = models.RepoSummary{Path: "/test/repo"}
+	m.selectedRepo = testRepoPath
+	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
 	m.prs = []models.PRInfo{
 		{Number: 1, Title: "Only PR", State: "OPEN"},
 	}
@@ -207,10 +207,10 @@ func TestPrefetchNotTriggeredOnNonPRTabs(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabBranches
-	m.selectedRepo = "/test/repo"
+	m.selectedRepo = testRepoPath
 	m.branches = []models.BranchInfo{
-		{Name: "main"},
-		{Name: "feature"},
+		{Name: mainBranchName},
+		{Name: featureBranchName},
 	}
 	m.detailCursor = 0
 
@@ -233,7 +233,7 @@ func TestPrefetchCacheHit(t *testing.T) {
 	// This is more of an integration test concept
 	// The actual caching happens in github.GetPRDetail
 	// We're testing that prefetchPRDetailCmd doesn't send a message
-	cmd := prefetchPRDetailCmd("/test/repo", 123)
+	cmd := prefetchPRDetailCmd(testRepoPath, 123)
 
 	if cmd == nil {
 		t.Fatal("prefetch command should be created")

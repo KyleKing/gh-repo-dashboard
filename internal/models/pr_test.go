@@ -77,7 +77,7 @@ func TestPRInfoReviewStatus(t *testing.T) {
 		{
 			name:     "no review info",
 			pr:       PRInfo{},
-			expected: "—",
+			expected: emDash,
 		},
 	}
 
@@ -102,7 +102,7 @@ func TestChecksStatusSummary(t *testing.T) {
 		{
 			name:     "no checks",
 			checks:   ChecksStatus{Total: 0},
-			expected: "—",
+			expected: emDash,
 		},
 		{
 			name:     "all passing",
@@ -187,7 +187,7 @@ func TestWorkflowSummaryStatusDisplay(t *testing.T) {
 		{
 			name:     "no runs",
 			summary:  WorkflowSummary{Total: 0},
-			expected: "—",
+			expected: emDash,
 		},
 		{
 			name:     "all passing",

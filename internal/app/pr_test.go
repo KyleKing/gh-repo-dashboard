@@ -91,11 +91,11 @@ func TestPRCountInModel(t *testing.T) {
 		t.Error("prCount should be initialized")
 	}
 
-	m.prCount["/repo1"] = 5
+	m.prCount[testRepo1Path] = 5
 	m.prCount["/repo2"] = 3
 
-	if m.prCount["/repo1"] != 5 {
-		t.Errorf("expected 5 PRs for repo1, got %d", m.prCount["/repo1"])
+	if m.prCount[testRepo1Path] != 5 {
+		t.Errorf("expected 5 PRs for repo1, got %d", m.prCount[testRepo1Path])
 	}
 
 	if m.prCount["/repo2"] != 3 {
@@ -145,7 +145,7 @@ func TestPRDetailViewMode(t *testing.T) {
 			Title:   "Test PR",
 			State:   "OPEN",
 			HeadRef: "feature-branch",
-			BaseRef: "main",
+			BaseRef: mainBranchName,
 		},
 		Author:    "testuser",
 		Assignees: []string{"reviewer1", "reviewer2"},
@@ -233,7 +233,7 @@ func TestPRInfoReviewStatus(t *testing.T) {
 		{
 			name:     "no review",
 			pr:       models.PRInfo{},
-			expected: "—",
+			expected: emDash,
 		},
 	}
 
@@ -255,7 +255,7 @@ func TestPRDetailMetadata(t *testing.T) {
 			Number:  100,
 			Title:   "Add new feature",
 			HeadRef: "feature/new-thing",
-			BaseRef: "main",
+			BaseRef: mainBranchName,
 		},
 		Author:    "alice",
 		Assignees: []string{"bob", "charlie"},
@@ -329,11 +329,11 @@ func TestRenderPRListWithPRs(t *testing.T) {
 func TestPRCountMessages(t *testing.T) {
 	t.Parallel()
 	msg := PRCountLoadedMsg{
-		Path:  "/test/repo",
+		Path:  testRepoPath,
 		Count: 5,
 	}
 
-	if msg.Path != "/test/repo" {
+	if msg.Path != testRepoPath {
 		t.Errorf("expected path '/test/repo', got %q", msg.Path)
 	}
 	if msg.Count != 5 {
@@ -349,11 +349,11 @@ func TestPRListLoadedMessage(t *testing.T) {
 	}
 
 	msg := PRListLoadedMsg{
-		Path: "/test/repo",
+		Path: testRepoPath,
 		PRs:  prs,
 	}
 
-	if msg.Path != "/test/repo" {
+	if msg.Path != testRepoPath {
 		t.Errorf("expected path '/test/repo', got %q", msg.Path)
 	}
 	if len(msg.PRs) != 2 {
@@ -372,12 +372,12 @@ func TestPRDetailLoadedMessage(t *testing.T) {
 	}
 
 	msg := PRDetailLoadedMsg{
-		Path:     "/test/repo",
+		Path:     testRepoPath,
 		PRNumber: 123,
 		Detail:   detail,
 	}
 
-	if msg.Path != "/test/repo" {
+	if msg.Path != testRepoPath {
 		t.Errorf("expected path '/test/repo', got %q", msg.Path)
 	}
 	if msg.PRNumber != 123 {
@@ -391,7 +391,7 @@ func TestPRDetailLoadedMessage(t *testing.T) {
 func TestPRDetailUpdateWithMessage(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
-	m.selectedRepo = "/test/repo"
+	m.selectedRepo = testRepoPath
 	m.selectedPR = models.PRInfo{Number: 123}
 
 	detail := models.PRDetail{
@@ -399,7 +399,7 @@ func TestPRDetailUpdateWithMessage(t *testing.T) {
 			Number:  123,
 			Title:   "Test PR",
 			HeadRef: "feature-branch",
-			BaseRef: "main",
+			BaseRef: mainBranchName,
 			State:   "OPEN",
 		},
 		Author:    "alice",
@@ -411,7 +411,7 @@ func TestPRDetailUpdateWithMessage(t *testing.T) {
 	}
 
 	msg := PRDetailLoadedMsg{
-		Path:     "/test/repo",
+		Path:     testRepoPath,
 		PRNumber: 123,
 		Detail:   detail,
 	}
@@ -442,16 +442,16 @@ func TestPRDetailViewRender(t *testing.T) {
 	m.width = 120
 	m.height = 40
 	m.viewMode = ViewModePRDetail
-	m.selectedRepo = "/test/repo"
-	m.summaries["/test/repo"] = models.RepoSummary{
-		Path: "/test/repo",
+	m.selectedRepo = testRepoPath
+	m.summaries[testRepoPath] = models.RepoSummary{
+		Path: testRepoPath,
 	}
 	m.prDetail = models.PRDetail{
 		PRInfo: models.PRInfo{
 			Number:         456,
 			Title:          "Add amazing feature",
 			HeadRef:        "feature/amazing",
-			BaseRef:        "main",
+			BaseRef:        mainBranchName,
 			State:          "OPEN",
 			ReviewDecision: "APPROVED",
 		},
@@ -484,7 +484,7 @@ func TestPRDetailViewRender(t *testing.T) {
 	if !strings.Contains(output, "feature/amazing") {
 		t.Error("output should contain head branch")
 	}
-	if !strings.Contains(output, "main") {
+	if !strings.Contains(output, mainBranchName) {
 		t.Error("output should contain base branch")
 	}
 	if !strings.Contains(output, "+250") {
@@ -569,16 +569,16 @@ func TestPRDetailViewWithStatusMessage(t *testing.T) {
 	m.width = 120
 	m.height = 40
 	m.viewMode = ViewModePRDetail
-	m.selectedRepo = "/test/repo"
-	m.summaries["/test/repo"] = models.RepoSummary{
-		Path: "/test/repo",
+	m.selectedRepo = testRepoPath
+	m.summaries[testRepoPath] = models.RepoSummary{
+		Path: testRepoPath,
 	}
 	m.prDetail = models.PRDetail{
 		PRInfo: models.PRInfo{
 			Number:  123,
 			Title:   "Test PR",
-			HeadRef: "feature",
-			BaseRef: "main",
+			HeadRef: featureBranchName,
+			BaseRef: mainBranchName,
 		},
 		Author: "user1",
 	}
@@ -594,11 +594,11 @@ func TestPRDetailViewWithStatusMessage(t *testing.T) {
 func TestPRDetailErrorHandling(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
-	m.selectedRepo = "/test/repo"
+	m.selectedRepo = testRepoPath
 	m.selectedPR = models.PRInfo{Number: 999}
 
 	msg := PRDetailLoadedMsg{
-		Path:     "/test/repo",
+		Path:     testRepoPath,
 		PRNumber: 999,
 		Error:    nil,
 		Detail: models.PRDetail{
@@ -650,12 +650,12 @@ func TestPRCountLoading(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 
-	msg1 := PRCountLoadedMsg{Path: "/repo1", Count: 5}
+	msg1 := PRCountLoadedMsg{Path: testRepo1Path, Count: 5}
 	updatedModel, _ := m.Update(msg1)
 	m = mustModel(t, updatedModel)
 
-	if m.prCount["/repo1"] != 5 {
-		t.Errorf("expected 5 PRs for /repo1, got %d", m.prCount["/repo1"])
+	if m.prCount[testRepo1Path] != 5 {
+		t.Errorf("expected 5 PRs for /repo1, got %d", m.prCount[testRepo1Path])
 	}
 
 	msg2 := PRCountLoadedMsg{Path: "/repo2", Count: 3}
@@ -666,7 +666,7 @@ func TestPRCountLoading(t *testing.T) {
 		t.Errorf("expected 3 PRs for /repo2, got %d", m.prCount["/repo2"])
 	}
 
-	if m.prCount["/repo1"] != 5 {
+	if m.prCount[testRepo1Path] != 5 {
 		t.Error("first repo PR count should be preserved")
 	}
 }
@@ -677,14 +677,14 @@ func TestEmptyPRDetailFields(t *testing.T) {
 	m.width = 120
 	m.height = 40
 	m.viewMode = ViewModePRDetail
-	m.selectedRepo = "/test/repo"
-	m.summaries["/test/repo"] = models.RepoSummary{Path: "/test/repo"}
+	m.selectedRepo = testRepoPath
+	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
 	m.prDetail = models.PRDetail{
 		PRInfo: models.PRInfo{
 			Number:  100,
 			Title:   "Minimal PR",
-			HeadRef: "feature",
-			BaseRef: "main",
+			HeadRef: featureBranchName,
+			BaseRef: mainBranchName,
 		},
 		Author:    "user1",
 		Assignees: []string{},
@@ -720,8 +720,8 @@ func TestPRDetailLoadingState(t *testing.T) {
 	m.width = 120
 	m.height = 40
 	m.viewMode = ViewModePRDetail
-	m.selectedRepo = "/test/repo"
-	m.summaries["/test/repo"] = models.RepoSummary{Path: "/test/repo"}
+	m.selectedRepo = testRepoPath
+	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
 	// prDetail.Number is 0 (not loaded yet)
 	m.prDetail = models.PRDetail{}
 
@@ -737,9 +737,9 @@ func TestPRDetailClearedOnNavigation(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabPRs
-	m.selectedRepo = "/test/repo"
+	m.selectedRepo = testRepoPath
 	m.prs = []models.PRInfo{
-		{Number: 123, Title: "Test PR", State: "OPEN", HeadRef: "feature", BaseRef: "main"},
+		{Number: 123, Title: "Test PR", State: "OPEN", HeadRef: featureBranchName, BaseRef: mainBranchName},
 	}
 	m.detailCursor = 0
 	m.prDetail = models.PRDetail{
@@ -766,15 +766,15 @@ func TestPRDetailErrorPreservesBasicInfo(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
-	m.selectedRepo = "/test/repo"
+	m.selectedRepo = testRepoPath
 	m.selectedPR = models.PRInfo{
 		Number:  456,
 		Title:   "Feature PR",
 		State:   "OPEN",
-		HeadRef: "feature",
-		BaseRef: "main",
+		HeadRef: featureBranchName,
+		BaseRef: mainBranchName,
 	}
-	m.summaries["/test/repo"] = models.RepoSummary{Path: "/test/repo"}
+	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
 
 	// Populate prDetail with basic info (simulating progressive loading)
 	m.prDetail = models.PRDetail{
@@ -788,7 +788,7 @@ func TestPRDetailErrorPreservesBasicInfo(t *testing.T) {
 
 	// Simulate error response from loadPRDetailCmd
 	errorMsg := PRDetailLoadedMsg{
-		Path:     "/test/repo",
+		Path:     testRepoPath,
 		PRNumber: 456,
 		Detail:   models.PRDetail{}, // Empty detail due to error
 		Error:    errPRDetailLoad,
@@ -815,8 +815,8 @@ func TestPRDetailProgressiveLoading(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabPRs
-	m.selectedRepo = "/test/repo"
-	m.summaries["/test/repo"] = models.RepoSummary{Path: "/test/repo"}
+	m.selectedRepo = testRepoPath
+	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
 
 	// PR list data (what we have immediately)
 	m.prs = []models.PRInfo{
@@ -826,7 +826,7 @@ func TestPRDetailProgressiveLoading(t *testing.T) {
 			State:          "OPEN",
 			URL:            "https://github.com/test/pr/456",
 			HeadRef:        "feature-branch",
-			BaseRef:        "main",
+			BaseRef:        mainBranchName,
 			ReviewDecision: "APPROVED",
 		},
 	}
@@ -853,7 +853,7 @@ func TestPRDetailProgressiveLoading(t *testing.T) {
 	if m.prDetail.HeadRef != "feature-branch" {
 		t.Error("expected HeadRef to be set immediately")
 	}
-	if m.prDetail.BaseRef != "main" {
+	if m.prDetail.BaseRef != mainBranchName {
 		t.Error("expected BaseRef to be set immediately")
 	}
 
@@ -875,8 +875,8 @@ func TestPRDetailProgressiveView(t *testing.T) {
 	m.width = 120
 	m.height = 40
 	m.viewMode = ViewModePRDetail
-	m.selectedRepo = "/test/repo"
-	m.summaries["/test/repo"] = models.RepoSummary{Path: "/test/repo"}
+	m.selectedRepo = testRepoPath
+	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
 
 	// Partial data (from list)
 	m.prDetail = models.PRDetail{
@@ -884,8 +884,8 @@ func TestPRDetailProgressiveView(t *testing.T) {
 			Number:         100,
 			Title:          "Test PR",
 			State:          "OPEN",
-			HeadRef:        "feature",
-			BaseRef:        "main",
+			HeadRef:        featureBranchName,
+			BaseRef:        mainBranchName,
 			ReviewDecision: "APPROVED",
 		},
 		// Author and other fields empty (not loaded yet)
@@ -900,10 +900,10 @@ func TestPRDetailProgressiveView(t *testing.T) {
 	if !strings.Contains(output, "Test PR") {
 		t.Error("should show title immediately")
 	}
-	if !strings.Contains(output, "feature") {
+	if !strings.Contains(output, featureBranchName) {
 		t.Error("should show head branch immediately")
 	}
-	if !strings.Contains(output, "main") {
+	if !strings.Contains(output, mainBranchName) {
 		t.Error("should show base branch immediately")
 	}
 
