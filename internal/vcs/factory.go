@@ -17,6 +17,8 @@ func DetectVCSType(repoPath string) models.VCSType {
 }
 
 // GetOperations returns the Operations implementation matching repoPath's VCS type.
+//
+//nolint:ireturn // factory returns the vcs.Operations interface so callers can inject git or jj implementations
 func GetOperations(repoPath string) Operations {
 	vcsType := DetectVCSType(repoPath)
 	switch vcsType {

@@ -21,6 +21,8 @@ const (
 )
 
 // Operations abstracts the git/jj commands used to inspect and mutate a repository.
+//
+//nolint:interfacebloat // single cohesive VCS abstraction; splitting would fragment call sites without a real consumer boundary
 type Operations interface {
 	GetRepoSummary(ctx context.Context, repoPath string) (models.RepoSummary, error)
 	GetCurrentBranch(ctx context.Context, repoPath string) (string, error)

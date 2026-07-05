@@ -115,6 +115,12 @@ above.
 - `--cli` flag for non-interactive JSON output, cache-only by default (fresh retrieval
   only on request) for performance
 - gh-poi integration to identify safe-to-delete branches
+- Split `vcs.Operations` (18 methods, `//nolint:interfacebloat` suppressed for now)
+  into narrower interfaces, e.g. a query-only reader (`GetRepoSummary`,
+  `GetBranchList`, `GetStashList`, `GetWorktreeList`, `GetCommitLog`, etc.) and a
+  mutator (`FetchAll`, `PruneRemote`, `CleanupMergedBranches`). Deferred because it
+  would ripple through every caller (`app`, `vcs/git.go`, `vcs/jj.go`, tests) for a
+  cosmetic lint fix rather than a real consumer boundary need
 
 ## Parked ideas
 

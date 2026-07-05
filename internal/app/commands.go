@@ -4,15 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
-	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 )
-
-func refreshCmd(_ []string, _ int) tea.Cmd {
-	return func() tea.Msg {
-		cache.ClearAll()
-		return nil
-	}
-}
 
 func batchFetchAllCmd(paths []string) tea.Cmd {
 	return batch.RunTask("Fetch All", paths, batch.FetchAll)
