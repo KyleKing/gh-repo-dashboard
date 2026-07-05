@@ -176,12 +176,61 @@ for jj bookmarks too.
   default-branch resolver (jj cleanup still assumes `main`/`master`/`trunk`,
   matching pre-M9 behavior)
 
+### M10: Code-health quick wins and view split
+
+From the 2026-07-05 code-health survey. Two commits: cleanups, then pure file moves.
+
+- `withSelection(style, selected)` helper replacing the ~10 repetitions of
+  `if selected { style = style.Background(styles.Surface0) }` in `view.go`
+- One shared definition of default-branch names (`vcs` consts, jj's
+  `isProtectedBookmark` with its extra `trunk`, and app's `findDefaultBranch`
+  currently disagree); git-side cleanup should protect the same set jj does
+- Cache registry: `NewTTLCache` self-registers so `cache.ClearAll` stops
+  hand-listing every cache (a missed entry silently breaks refresh)
+- Refactor `CycleSortState` (gocognit 26, the last complexity-lint outlier)
+- File moves: split `view.go` (~1750 lines) along view-mode seams into
+  `view_repolist.go`, `view_detail.go`, `view_modals.go`, `view_branchdetail.go`,
+  `view_prdetail.go`; move the `tea.Cmd` constructors from `update.go` into
+  `commands.go`
+- Ship: no behavior change, golden snapshots byte-identical, lint baseline shrinks
+
+### M11: Config file
+
+TOML config at the XDG path (`~/.config/gh-repo-dashboard/config.toml`), flags
+taking precedence over config over defaults. Saved scan paths are the headline:
+launching from anywhere without retyping paths.
+
+- New `internal/config` package: load/parse/validate, plus centralizing the
+  hardcoded values the survey catalogued (scan paths, depth, notes filenames,
+  cache TTLs)
+- Wire into `main.go` for both TUI and `--cli` modes
+- Ship: config discovered and applied, flags still win, no config file required
+
+### M12: Scripts and history
+
+The parked recording/script cluster, cheap-first:
+
+- `:history` command and `@:` repeat-last-command against the existing registry
+- `--cli --filter '<predicate>'` reusing the predicate parser (small, immediate)
+- `--script commands.txt`: run command lines headlessly against the model via the
+  fixture harness's replay machinery, printing results as text or `--cli` JSON
+- Macro registers (`:record @a` / `:replay @a`) stay parked
+- Ship: scripted batch flows work headlessly; history/repeat in the TUI
+
 ## Deferred features
 
 Low priority; slot between milestones when convenient rather than blocking the line
 above.
 
 - Full Catppuccin themes replacing the current textual themes
+- Deep-DRY items from the code-health survey, to do opportunistically when work
+  next touches these files: a shared repo-enrichment path for `cli.loadRepo` and
+  app's summary/detail loading (same GetRepoSummary → worktrees → DetectNotes →
+  PR-lookup sequence, differing only in cache policy), and guard/update helpers
+  for the five `*LoadedMsg` handlers repeating the selected-repo check and
+  summary read-modify-write
+- Surface deletable-branch counts in the repo list from cache-resident data and a
+  `has_deletable` predicate (M9 leftovers), plus gh-poi-style branch pinning
 - `internal/app`'s 11 test files stay whitebox (`package app`, `//nolint:testpackage`)
   rather than converting to `app_test`. `Model` has 35+ unexported fields that tests
   construct and inspect directly across hundreds of call sites (`app_test.go`,
@@ -193,15 +242,9 @@ above.
 
 ## Parked ideas
 
-Captured from earlier planning, not yet on the line. The recording/script cluster
-has a natural cheap-first order when it activates:
+Captured from earlier planning, not yet on the line. Most of the recording/script
+cluster moved onto the line as M12; what remains parked:
 
-1. `:history` and repeat-last-command (vim's `@:`) — trivial with the existing
-   command registry
-2. Script execution (`gh-repo-dashboard --script commands.txt`): run command lines
-   headlessly against the model, reusing the fixture harness's replay machinery and
-   printing results as text or the `--cli` JSON shape. A one-line script also covers
-   most of the "gh CLI subcommands backed by text objects" idea
-   (`gh repo fetch-dirty ~/Developer`)
-3. Macro registers (`:record @a` / `:replay @a`) — last; persistence and
-   record-while-recording edge cases cost more than scripts deliver
+- Macro registers (`:record @a` / `:replay @a`); persistence and
+  record-while-recording edge cases cost more than scripts deliver
+- Watch/auto-refresh mode
