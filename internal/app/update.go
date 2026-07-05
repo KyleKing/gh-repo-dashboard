@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -668,6 +669,31 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// moveToAdjacentPR switches the PR-detail view to the PR delta positions away
+// from the currently selected one in m.prs, loading its detail and
+// prefetching the next one in the same direction.
+func (m Model) moveToAdjacentPR(delta int) (tea.Model, tea.Cmd) {
+	currentIdx := slices.IndexFunc(m.prs, func(pr models.PRInfo) bool {
+		return pr.Number == m.selectedPR.Number
+	})
+
+	newIdx := currentIdx + delta
+	if currentIdx == -1 || newIdx < 0 || newIdx >= len(m.prs) {
+		return m, nil
+	}
+
+	m.selectedPR = m.prs[newIdx]
+	m.prDetail = models.PRDetail{PRInfo: m.selectedPR}
+
+	cmds := []tea.Cmd{loadPRDetailCmd(m.selectedRepo, m.selectedPR.Number)}
+
+	if prefetchIdx := newIdx + delta; prefetchIdx >= 0 && prefetchIdx < len(m.prs) {
+		cmds = append(cmds, prefetchPRDetailCmd(m.selectedRepo, m.prs[prefetchIdx].Number))
+	}
+
+	return m, tea.Batch(cmds...)
+}
+
 func (m Model) handlePRDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Quit):
@@ -680,47 +706,11 @@ func (m Model) handlePRDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Refresh):
 		return m.handleRefresh()
 
-	case key.Matches(msg, m.keys.Up), key.Matches(msg, m.keys.Down):
-		// Navigate to adjacent PR
-		currentIdx := -1
-		for i := range m.prs {
-			if m.prs[i].Number == m.selectedPR.Number {
-				currentIdx = i
-				break
-			}
-		}
+	case key.Matches(msg, m.keys.Up):
+		return m.moveToAdjacentPR(-1)
 
-		if currentIdx != -1 {
-			var newIdx int
-			switch {
-			case key.Matches(msg, m.keys.Up) && currentIdx > 0:
-				newIdx = currentIdx - 1
-			case key.Matches(msg, m.keys.Down) && currentIdx < len(m.prs)-1:
-				newIdx = currentIdx + 1
-			default:
-				return m, nil
-			}
-
-			// Switch to adjacent PR
-			m.selectedPR = m.prs[newIdx]
-			m.prDetail = models.PRDetail{
-				PRInfo: m.selectedPR,
-			}
-
-			var cmds []tea.Cmd
-			cmds = append(cmds, loadPRDetailCmd(m.selectedRepo, m.selectedPR.Number))
-
-			// Prefetch next adjacent PR
-			if key.Matches(msg, m.keys.Down) && newIdx+1 < len(m.prs) {
-				cmds = append(cmds, prefetchPRDetailCmd(m.selectedRepo, m.prs[newIdx+1].Number))
-			} else if key.Matches(msg, m.keys.Up) && newIdx > 0 {
-				cmds = append(cmds, prefetchPRDetailCmd(m.selectedRepo, m.prs[newIdx-1].Number))
-			}
-
-			return m, tea.Batch(cmds...)
-		}
-
-		return m, nil
+	case key.Matches(msg, m.keys.Down):
+		return m.moveToAdjacentPR(1)
 
 	case key.Matches(msg, m.keys.OpenURL):
 		if m.prDetail.URL != "" {
