@@ -155,108 +155,92 @@ func (m Model) renderRepoList() string {
 func (m Model) renderBreadcrumbs() string {
 	switch m.viewMode {
 	case ViewModeRepoDetail:
-		summary, ok := m.summaries[m.selectedRepo]
-		if !ok {
-			return styles.TitleStyle.Render("repo-dashboard")
-		}
-
-		home := styles.SubtitleStyle.Render("Repos")
-		sep := styles.SubtitleStyle.Render(" > ")
-		repo := styles.TitleStyle.Render(summary.Name())
-
-		var badges []string
-		badges = append(badges, styles.Badge(summary.VCSType.String(), styles.CountBadgeStyle))
-		if summary.IsDirty() {
-			badges = append(badges, styles.Badge("dirty", styles.FilterBadgeStyle))
-		}
-		if summary.PRInfo != nil {
-			badges = append(badges, styles.Badge(fmt.Sprintf("PR #%d", summary.PRInfo.Number), styles.PROpenStyle))
-		}
-
-		return home + sep + repo + "  " + strings.Join(badges, " ")
-
+		return m.renderRepoDetailBreadcrumbs()
 	case ViewModeBranchDetail:
-		summary, ok := m.summaries[m.selectedRepo]
-		if !ok {
-			return styles.TitleStyle.Render("repo-dashboard")
-		}
-
-		home := styles.SubtitleStyle.Render("Repos")
-		sep := styles.SubtitleStyle.Render(" > ")
-		repo := styles.BranchStyle.Render(summary.Name())
-		branch := styles.TitleStyle.Render(m.branchDetail.Branch.Name)
-
-		var badges []string
-		if m.branchDetail.Branch.IsCurrent {
-			badges = append(badges, styles.Badge("current", styles.PROpenStyle))
-		}
-		if m.branchDetail.Branch.Ahead > 0 {
-			badges = append(badges, styles.Badge(fmt.Sprintf("↑%d", m.branchDetail.Branch.Ahead), styles.AheadStyle))
-		}
-		if m.branchDetail.Branch.Behind > 0 {
-			badges = append(badges, styles.Badge(fmt.Sprintf("↓%d", m.branchDetail.Branch.Behind), styles.BehindStyle))
-		}
-
-		return home + sep + repo + sep + branch + "  " + strings.Join(badges, " ")
-
+		return m.renderBranchDetailBreadcrumbs()
 	default:
-		title := styles.TitleStyle.Render("repo-dashboard")
-
-		badges := []string{}
-
-		repoCount := fmt.Sprintf("%d repos", len(m.filteredPaths))
-		if len(m.filteredPaths) != len(m.repoPaths) {
-			repoCount = fmt.Sprintf("%d/%d repos", len(m.filteredPaths), len(m.repoPaths))
-		}
-		badges = append(badges, styles.Badge(repoCount, styles.CountBadgeStyle))
-
-		if dirtyCount := m.DirtyCount(); dirtyCount > 0 {
-			badges = append(badges, styles.Badge(fmt.Sprintf("%d dirty", dirtyCount), styles.FilterBadgeStyle))
-		}
-
-		if prCount := m.PRCount(); prCount > 0 {
-			badges = append(badges, styles.Badge(fmt.Sprintf("%d PRs", prCount), styles.PROpenStyle))
-		}
-
-		if m.loading {
-			progress := fmt.Sprintf("Loading %d/%d", m.loadedCount, m.loadingCount)
-			badges = append(badges, styles.Badge(progress, styles.CountBadgeStyle))
-		}
-
-		return title + "  " + strings.Join(badges, " ")
+		return m.renderRepoListBreadcrumbs()
 	}
+}
+
+func (m Model) renderRepoDetailBreadcrumbs() string {
+	summary, ok := m.summaries[m.selectedRepo]
+	if !ok {
+		return styles.TitleStyle.Render("repo-dashboard")
+	}
+
+	home := styles.SubtitleStyle.Render("Repos")
+	sep := styles.SubtitleStyle.Render(" > ")
+	repo := styles.TitleStyle.Render(summary.Name())
+
+	var badges []string
+	badges = append(badges, styles.Badge(summary.VCSType.String(), styles.CountBadgeStyle))
+	if summary.IsDirty() {
+		badges = append(badges, styles.Badge("dirty", styles.FilterBadgeStyle))
+	}
+	if summary.PRInfo != nil {
+		badges = append(badges, styles.Badge(fmt.Sprintf("PR #%d", summary.PRInfo.Number), styles.PROpenStyle))
+	}
+
+	return home + sep + repo + "  " + strings.Join(badges, " ")
+}
+
+func (m Model) renderBranchDetailBreadcrumbs() string {
+	summary, ok := m.summaries[m.selectedRepo]
+	if !ok {
+		return styles.TitleStyle.Render("repo-dashboard")
+	}
+
+	home := styles.SubtitleStyle.Render("Repos")
+	sep := styles.SubtitleStyle.Render(" > ")
+	repo := styles.BranchStyle.Render(summary.Name())
+	branch := styles.TitleStyle.Render(m.branchDetail.Branch.Name)
+
+	var badges []string
+	if m.branchDetail.Branch.IsCurrent {
+		badges = append(badges, styles.Badge("current", styles.PROpenStyle))
+	}
+	if m.branchDetail.Branch.Ahead > 0 {
+		badges = append(badges, styles.Badge(fmt.Sprintf("↑%d", m.branchDetail.Branch.Ahead), styles.AheadStyle))
+	}
+	if m.branchDetail.Branch.Behind > 0 {
+		badges = append(badges, styles.Badge(fmt.Sprintf("↓%d", m.branchDetail.Branch.Behind), styles.BehindStyle))
+	}
+
+	return home + sep + repo + sep + branch + "  " + strings.Join(badges, " ")
+}
+
+func (m Model) renderRepoListBreadcrumbs() string {
+	title := styles.TitleStyle.Render("repo-dashboard")
+
+	badges := []string{}
+
+	repoCount := fmt.Sprintf("%d repos", len(m.filteredPaths))
+	if len(m.filteredPaths) != len(m.repoPaths) {
+		repoCount = fmt.Sprintf("%d/%d repos", len(m.filteredPaths), len(m.repoPaths))
+	}
+	badges = append(badges, styles.Badge(repoCount, styles.CountBadgeStyle))
+
+	if dirtyCount := m.DirtyCount(); dirtyCount > 0 {
+		badges = append(badges, styles.Badge(fmt.Sprintf("%d dirty", dirtyCount), styles.FilterBadgeStyle))
+	}
+
+	if prCount := m.PRCount(); prCount > 0 {
+		badges = append(badges, styles.Badge(fmt.Sprintf("%d PRs", prCount), styles.PROpenStyle))
+	}
+
+	if m.loading {
+		progress := fmt.Sprintf("Loading %d/%d", m.loadedCount, m.loadingCount)
+		badges = append(badges, styles.Badge(progress, styles.CountBadgeStyle))
+	}
+
+	return title + "  " + strings.Join(badges, " ")
 }
 
 func (m Model) renderStatusBar() string {
 	parts := []string{}
-
-	for _, f := range m.activeFilters {
-		if f.Enabled && f.Mode != models.FilterModeAll {
-			label := f.Mode.String()
-			if f.Inverted {
-				label = "NOT " + label
-			}
-			parts = append(parts, styles.Badge(label, styles.FilterBadgeStyle))
-		}
-	}
-
-	enabledSorts := []models.ActiveSort{}
-	for _, s := range m.activeSorts {
-		if s.IsEnabled() {
-			enabledSorts = append(enabledSorts, s)
-		}
-	}
-
-	if len(enabledSorts) > 0 {
-		for i := range enabledSorts {
-			for _, s := range m.activeSorts {
-				if s.IsEnabled() && s.Priority == i {
-					parts = append(parts, styles.Badge(s.DisplayName(), styles.SortBadgeStyle))
-					break
-				}
-			}
-		}
-	}
+	parts = appendFilterBadges(parts, m.activeFilters)
+	parts = appendSortBadges(parts, m.activeSorts)
 
 	if m.predicateText != "" {
 		parts = append(parts, styles.Badge(m.predicateText, styles.FilterBadgeStyle))
@@ -271,6 +255,42 @@ func (m Model) renderStatusBar() string {
 	}
 
 	return strings.Join(parts, " ")
+}
+
+// appendFilterBadges appends a badge for each enabled, non-"all" filter.
+func appendFilterBadges(parts []string, activeFilters []models.ActiveFilter) []string {
+	for _, f := range activeFilters {
+		if f.Enabled && f.Mode != models.FilterModeAll {
+			label := f.Mode.String()
+			if f.Inverted {
+				label = "NOT " + label
+			}
+			parts = append(parts, styles.Badge(label, styles.FilterBadgeStyle))
+		}
+	}
+
+	return parts
+}
+
+// appendSortBadges appends a badge for each enabled sort, in priority order.
+func appendSortBadges(parts []string, activeSorts []models.ActiveSort) []string {
+	enabledCount := 0
+	for _, s := range activeSorts {
+		if s.IsEnabled() {
+			enabledCount++
+		}
+	}
+
+	for priority := range enabledCount {
+		for _, s := range activeSorts {
+			if s.IsEnabled() && s.Priority == priority {
+				parts = append(parts, styles.Badge(s.DisplayName(), styles.SortBadgeStyle))
+				break
+			}
+		}
+	}
+
+	return parts
 }
 
 func (m Model) renderTable() string {
