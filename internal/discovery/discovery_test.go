@@ -83,7 +83,7 @@ func TestDiscoverRepos(t *testing.T) {
 		},
 		{
 			name:     "handles empty directory",
-			setup:    func(base string) []string { return nil },
+			setup:    func(_ string) []string { return nil },
 			maxDepth: 1,
 			expected: 0,
 		},

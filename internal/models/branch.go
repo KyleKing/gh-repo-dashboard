@@ -1,3 +1,5 @@
+// Package models defines the domain types shared across the repo dashboard: repos,
+// branches, pull requests, and the filter/sort state used to display them.
 package models
 
 import (
@@ -6,6 +8,7 @@ import (
 	"time"
 )
 
+// BranchInfo summarizes a single branch's tracking state.
 type BranchInfo struct {
 	Name       string
 	Upstream   string
@@ -16,6 +19,7 @@ type BranchInfo struct {
 	IsRemote   bool
 }
 
+// RelativeLastCommit returns a human-readable relative time for the branch's last commit.
 func (b BranchInfo) RelativeLastCommit() string {
 	if b.LastCommit.IsZero() {
 		return "—"
@@ -24,6 +28,7 @@ func (b BranchInfo) RelativeLastCommit() string {
 	return RelativeTime(b.LastCommit)
 }
 
+// BranchDetail holds the full detail view state for a single branch.
 type BranchDetail struct {
 	Branch       BranchInfo
 	Commits      []CommitInfo
@@ -37,10 +42,12 @@ type BranchDetail struct {
 	Description  string
 }
 
+// UncommittedCount returns the total number of staged, unstaged, untracked, and conflicted files.
 func (b BranchDetail) UncommittedCount() int {
 	return b.Staged + b.Unstaged + b.Untracked + b.Conflicted
 }
 
+// FileChangesSummary renders a human-readable summary of uncommitted file changes.
 func (b BranchDetail) FileChangesSummary() string {
 	parts := []string{}
 	if b.Staged > 0 {
@@ -62,6 +69,7 @@ func (b BranchDetail) FileChangesSummary() string {
 	return strings.Join(parts, ", ")
 }
 
+// CommitInfo summarizes a single commit for display.
 type CommitInfo struct {
 	Hash      string
 	ShortHash string
@@ -70,10 +78,12 @@ type CommitInfo struct {
 	Date      time.Time
 }
 
+// RelativeDate returns a human-readable relative time for the commit's date.
 func (c CommitInfo) RelativeDate() string {
 	return RelativeTime(c.Date)
 }
 
+// StashDetail summarizes a single stash entry.
 type StashDetail struct {
 	Index   int
 	Message string
@@ -81,6 +91,7 @@ type StashDetail struct {
 	Date    time.Time
 }
 
+// RelativeDate returns a human-readable relative time for the stash's date.
 func (s StashDetail) RelativeDate() string {
 	return RelativeTime(s.Date)
 }
@@ -92,6 +103,7 @@ const (
 	daysPerYear  = 365
 )
 
+// RelativeTime renders t as a human-readable duration relative to now (e.g. "3 days ago").
 func RelativeTime(t time.Time) string {
 	if t.IsZero() {
 		return "—"

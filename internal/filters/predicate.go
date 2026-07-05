@@ -11,6 +11,7 @@ import (
 // Predicate reports whether a repo summary matches a filter expression.
 type Predicate func(models.RepoSummary) bool
 
+// ParseError reports a filter predicate expression that failed to parse.
 type ParseError struct {
 	Input   string
 	Message string

@@ -58,14 +58,14 @@ func goldenModel() Model {
 
 func TestGoldenRepoList(t *testing.T) {
 	m := goldenModel()
-	golden.RequireEqual(t, []byte(m.view()))
+	golden.RequireEqual(t, []byte(m.renderScreen()))
 }
 
 func TestGoldenFilterModal(t *testing.T) {
 	m := goldenModel()
 	m.viewMode = ViewModeFilter
 	m.filterCursor = 1
-	golden.RequireEqual(t, []byte(m.view()))
+	golden.RequireEqual(t, []byte(m.renderScreen()))
 }
 
 func TestGoldenRepoDetail(t *testing.T) {
@@ -77,7 +77,7 @@ func TestGoldenRepoDetail(t *testing.T) {
 		{Name: "main", Upstream: "origin/main", LastCommit: time.Now().Add(-2 * time.Hour)},
 		{Name: "feature/login", Upstream: "origin/feature/login", Ahead: 2, LastCommit: time.Now().Add(-10 * time.Minute), IsCurrent: true},
 	}
-	golden.RequireEqual(t, []byte(m.view()))
+	golden.RequireEqual(t, []byte(m.renderScreen()))
 }
 
 func TestGoldenBatchProgress(t *testing.T) {
@@ -92,5 +92,5 @@ func TestGoldenBatchProgress(t *testing.T) {
 		{Path: "/Users/dev/bravo", Success: true, Message: "fetched"},
 		{Path: "/Users/dev/charlie", Success: false, Message: "no remote configured"},
 	}
-	golden.RequireEqual(t, []byte(m.view()))
+	golden.RequireEqual(t, []byte(m.renderScreen()))
 }

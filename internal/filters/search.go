@@ -11,7 +11,9 @@ import (
 
 const fuzzyThreshold = 0.6
 
-func SearchRepos(paths []string, summaries map[string]models.RepoSummary, searchText string) []string {
+// SearchRepos filters paths to those whose base name matches searchText, preferring substring
+// matches and falling back to fuzzy matching when there are none.
+func SearchRepos(paths []string, _ map[string]models.RepoSummary, searchText string) []string {
 	if searchText == "" {
 		return paths
 	}
@@ -52,6 +54,7 @@ func SearchRepos(paths []string, summaries map[string]models.RepoSummary, search
 	return results
 }
 
+// FuzzyMatch reports whether text matches pattern via substring or fuzzy matching.
 func FuzzyMatch(pattern, text string) bool {
 	if pattern == "" {
 		return true

@@ -1012,7 +1012,7 @@ func loadRepoSummaryCmd(path string) tea.Cmd {
 	}
 }
 
-func loadPRCmd(path, branch, upstream string) tea.Cmd {
+func loadPRCmd(path, _, upstream string) tea.Cmd {
 	if upstream == "" {
 		return nil
 	}
@@ -1134,7 +1134,7 @@ func prefetchPRDetailCmd(repoPath string, prNumber int) tea.Cmd {
 	}
 }
 
-func openOrCreatePRCmd(repoPath, branchName string) tea.Cmd {
+func openOrCreatePRCmd(_, _ string) tea.Cmd {
 	return func() tea.Msg {
 		return PRCreatedMsg{
 			URL:   "",
@@ -1211,7 +1211,7 @@ func openURLCmd(url string) tea.Cmd {
 }
 
 func clearStatusAfterDelay() tea.Cmd {
-	return tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
+	return tea.Tick(3*time.Second, func(_ time.Time) tea.Msg {
 		return ClearStatusMsg{}
 	})
 }

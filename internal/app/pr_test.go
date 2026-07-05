@@ -464,7 +464,7 @@ func TestPRDetailViewRender(t *testing.T) {
 		Body:      "This is the PR description",
 	}
 
-	output := m.view()
+	output := m.renderScreen()
 
 	if !strings.Contains(output, "PR #456") {
 		t.Error("output should contain PR number")
@@ -584,7 +584,7 @@ func TestPRDetailViewWithStatusMessage(t *testing.T) {
 	}
 	m.statusMessage = "Copied to clipboard: #123"
 
-	output := m.view()
+	output := m.renderScreen()
 
 	if !strings.Contains(output, "Copied to clipboard: #123") {
 		t.Error("output should contain status message")
@@ -693,7 +693,7 @@ func TestEmptyPRDetailFields(t *testing.T) {
 		Body:      "",
 	}
 
-	output := m.view()
+	output := m.renderScreen()
 
 	if !strings.Contains(output, "Minimal PR") {
 		t.Error("should contain PR title")
@@ -725,7 +725,7 @@ func TestPRDetailLoadingState(t *testing.T) {
 	// prDetail.Number is 0 (not loaded yet)
 	m.prDetail = models.PRDetail{}
 
-	output := m.view()
+	output := m.renderScreen()
 
 	if !strings.Contains(output, "Loading PR details") {
 		t.Error("should show loading message when PR detail not loaded")
@@ -891,7 +891,7 @@ func TestPRDetailProgressiveView(t *testing.T) {
 		// Author and other fields empty (not loaded yet)
 	}
 
-	output := m.view()
+	output := m.renderScreen()
 
 	// Basic info should be visible
 	if !strings.Contains(output, "PR #100") {
@@ -917,7 +917,7 @@ func TestPRDetailProgressiveView(t *testing.T) {
 	m.prDetail.Additions = 100
 	m.prDetail.Deletions = 50
 
-	output = m.view()
+	output = m.renderScreen()
 
 	// Should no longer show loading indicator
 	if strings.Contains(output, "loading details") {

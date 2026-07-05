@@ -7,6 +7,7 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
+// FetchAll is a batch.TaskFunc that fetches all remotes for a repo.
 func FetchAll(ctx context.Context, ops vcs.Operations, repoPath string) (bool, string, error) {
 	ok, msg, err := ops.FetchAll(ctx, repoPath)
 	if err != nil {
@@ -16,6 +17,7 @@ func FetchAll(ctx context.Context, ops vcs.Operations, repoPath string) (bool, s
 	return ok, msg, nil
 }
 
+// PruneRemote is a batch.TaskFunc that prunes stale remote-tracking refs for a repo.
 func PruneRemote(ctx context.Context, ops vcs.Operations, repoPath string) (bool, string, error) {
 	ok, msg, err := ops.PruneRemote(ctx, repoPath)
 	if err != nil {
@@ -25,6 +27,7 @@ func PruneRemote(ctx context.Context, ops vcs.Operations, repoPath string) (bool
 	return ok, msg, nil
 }
 
+// CleanupMerged is a batch.TaskFunc that deletes merged branches for a repo.
 func CleanupMerged(ctx context.Context, ops vcs.Operations, repoPath string) (bool, string, error) {
 	ok, msg, err := ops.CleanupMergedBranches(ctx, repoPath)
 	if err != nil {

@@ -30,7 +30,7 @@ var (
 func stubCommands(t *testing.T, canned map[string]string, failures map[string]error) context.Context {
 	t.Helper()
 
-	return withCommandRunner(context.Background(), func(ctx context.Context, dir, name string, args ...string) (string, error) {
+	return withCommandRunner(context.Background(), func(_ context.Context, _, name string, args ...string) (string, error) {
 		key := name + " " + strings.Join(args, " ")
 		if err, ok := failures[key]; ok {
 			return "", err

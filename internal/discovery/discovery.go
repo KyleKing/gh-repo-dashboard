@@ -1,3 +1,4 @@
+// Package discovery walks configured base paths to find git and jj repositories.
 package discovery
 
 import (
@@ -8,6 +9,7 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
+// DiscoverRepos walks basePaths up to maxDepth and returns every repo found, deduplicated.
 func DiscoverRepos(basePaths []string, maxDepth int) []string {
 	var repos []string
 	seen := make(map[string]bool)

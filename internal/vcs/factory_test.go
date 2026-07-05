@@ -39,7 +39,7 @@ func TestDetectVCSType(t *testing.T) {
 		},
 		{
 			name:     "empty dir defaults to git",
-			setup:    func(dir string) error { return nil },
+			setup:    func(_ string) error { return nil },
 			expected: models.VCSTypeGit,
 		},
 	}
@@ -114,7 +114,7 @@ func TestIsRepo(t *testing.T) {
 		},
 		{
 			name:     "not a repo",
-			setup:    func(dir string) error { return nil },
+			setup:    func(_ string) error { return nil },
 			expected: false,
 		},
 		{

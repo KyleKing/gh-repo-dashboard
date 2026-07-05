@@ -1,3 +1,4 @@
+// Package app implements the Bubble Tea TUI model, update, and view for gh-repo-dashboard.
 package app
 
 import (
@@ -9,8 +10,10 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+// ViewMode identifies which screen the TUI is currently displaying.
 type ViewMode int
 
+// ViewMode values.
 const (
 	ViewModeRepoList ViewMode = iota
 	ViewModeRepoDetail
@@ -22,8 +25,10 @@ const (
 	ViewModeBatchProgress
 )
 
+// DetailTab identifies which tab is active on the repo detail screen.
 type DetailTab int
 
+// DetailTab values.
 const (
 	DetailTabBranches DetailTab = iota
 	DetailTabStashes
@@ -31,6 +36,7 @@ const (
 	DetailTabPRs
 )
 
+// Model is the root Bubble Tea model holding all TUI state.
 type Model struct {
 	scanPaths []string
 	maxDepth  int
@@ -97,6 +103,7 @@ type Model struct {
 	help help.Model
 }
 
+// New builds the initial Model for the given repo scan roots.
 func New(scanPaths []string, maxDepth int) Model {
 	ti := textinput.New()
 	ti.Placeholder = "Search repos..."
@@ -106,9 +113,9 @@ func New(scanPaths []string, maxDepth int) Model {
 	ci.Prompt = ":"
 	ci.CharLimit = 200
 
-	filters := make([]models.ActiveFilter, 0, len(models.AllFilterModes()))
+	activeFilters := make([]models.ActiveFilter, 0, len(models.AllFilterModes()))
 	for _, mode := range models.AllFilterModes() {
-		filters = append(filters, models.NewActiveFilter(mode))
+		activeFilters = append(activeFilters, models.NewActiveFilter(mode))
 	}
 
 	sorts := make([]models.ActiveSort, 0, len(models.AllSortModes()))
@@ -125,7 +132,7 @@ func New(scanPaths []string, maxDepth int) Model {
 		maxDepth:      maxDepth,
 		summaries:     make(map[string]models.RepoSummary),
 		prCount:       make(map[string]int),
-		activeFilters: filters,
+		activeFilters: activeFilters,
 		activeSorts:   sorts,
 		searchInput:   ti,
 		commandInput:  ci,
@@ -137,10 +144,12 @@ func New(scanPaths []string, maxDepth int) Model {
 	}
 }
 
+// Init kicks off the initial repo discovery command.
 func (m Model) Init() tea.Cmd {
 	return discoverReposCmd(m.scanPaths, m.maxDepth)
 }
 
+// CurrentFilter returns the single active, non-inverted filter mode, or FilterModeAll if none is set.
 func (m Model) CurrentFilter() models.FilterMode {
 	for _, f := range m.activeFilters {
 		if f.Enabled && f.Mode != models.FilterModeAll {
@@ -151,6 +160,7 @@ func (m Model) CurrentFilter() models.FilterMode {
 	return models.FilterModeAll
 }
 
+// ActiveFilterModes returns all enabled, non-inverted filter modes.
 func (m Model) ActiveFilterModes() []models.FilterMode {
 	var modes []models.FilterMode
 	for _, f := range m.activeFilters {
@@ -162,12 +172,14 @@ func (m Model) ActiveFilterModes() []models.FilterMode {
 	return modes
 }
 
+// SetFilter enables only the given filter mode, disabling all others.
 func (m *Model) SetFilter(mode models.FilterMode) {
 	for i := range m.activeFilters {
 		m.activeFilters[i].Enabled = m.activeFilters[i].Mode == mode
 	}
 }
 
+// CycleFilterState advances the given filter mode through off -> enabled -> inverted -> off.
 func (m *Model) CycleFilterState(mode models.FilterMode) {
 	if mode == models.FilterModeAll {
 		return
@@ -188,6 +200,7 @@ func (m *Model) CycleFilterState(mode models.FilterMode) {
 	}
 }
 
+// CycleFilter advances the single-selection filter to the next filter mode.
 func (m *Model) CycleFilter() {
 	current := m.CurrentFilter()
 	modes := models.AllFilterModes()
@@ -202,6 +215,7 @@ func (m *Model) CycleFilter() {
 	m.SetFilter(models.FilterModeAll)
 }
 
+// CycleSortState advances the given sort mode through off -> ascending -> descending -> off.
 func (m *Model) CycleSortState(mode models.SortMode) {
 	for i := range m.activeSorts {
 		if m.activeSorts[i].Mode == mode {
@@ -225,6 +239,7 @@ func (m *Model) CycleSortState(mode models.SortMode) {
 	}
 }
 
+// MoveSortUp raises the priority of the sort at the cursor, swapping with the sort above it.
 func (m *Model) MoveSortUp() {
 	if m.sortCursor < 0 || m.sortCursor >= len(m.activeSorts) {
 		return
@@ -245,6 +260,7 @@ func (m *Model) MoveSortUp() {
 	}
 }
 
+// MoveSortDown lowers the priority of the sort at the cursor, swapping with the sort below it.
 func (m *Model) MoveSortDown() {
 	if m.sortCursor < 0 || m.sortCursor >= len(m.activeSorts) {
 		return
@@ -276,6 +292,7 @@ func (m *Model) MoveSortDown() {
 	}
 }
 
+// ResetFilters disables all filters, restores the default "all" mode, and clears any predicate.
 func (m *Model) ResetFilters() {
 	for i := range m.activeFilters {
 		m.activeFilters[i].Enabled = m.activeFilters[i].Mode == models.FilterModeAll
@@ -285,15 +302,18 @@ func (m *Model) ResetFilters() {
 	m.predicateText = ""
 }
 
+// SetPredicate sets the active filter predicate and its source text.
 func (m *Model) SetPredicate(text string, pred filters.Predicate) {
 	m.predicate = pred
 	m.predicateText = text
 }
 
+// SelectedCount returns the number of repos currently selected for batch operations.
 func (m Model) SelectedCount() int {
 	return len(m.selectedPaths)
 }
 
+// ResetSorts restores all sorts to their default direction and priority order.
 func (m *Model) ResetSorts() {
 	for i := range m.activeSorts {
 		if m.activeSorts[i].Mode == models.SortModeName {
@@ -305,6 +325,7 @@ func (m *Model) ResetSorts() {
 	}
 }
 
+// DirtyCount returns the number of repos with uncommitted changes.
 func (m Model) DirtyCount() int {
 	count := 0
 	for _, s := range m.summaries {
@@ -316,6 +337,7 @@ func (m Model) DirtyCount() int {
 	return count
 }
 
+// PRCount returns the number of repos with an associated pull request.
 func (m Model) PRCount() int {
 	count := 0
 	for _, s := range m.summaries {
@@ -327,6 +349,7 @@ func (m Model) PRCount() int {
 	return count
 }
 
+// SelectedSummary returns the RepoSummary at the cursor and whether it was found.
 func (m Model) SelectedSummary() (models.RepoSummary, bool) {
 	if m.cursor >= 0 && m.cursor < len(m.filteredPaths) {
 		path := m.filteredPaths[m.cursor]

@@ -14,7 +14,7 @@ type TextObject struct {
 
 func textObjects() []TextObject {
 	return []TextObject{
-		{Key: "ar", Name: "all", Matches: func(m Model, path string) bool {
+		{Key: "ar", Name: "all", Matches: func(_ Model, _ string) bool {
 			return true
 		}},
 		{Key: "br", Name: "behind", Matches: func(m Model, path string) bool {

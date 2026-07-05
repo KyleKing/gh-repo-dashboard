@@ -13,14 +13,15 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
+// View renders the TUI for the current model state.
 func (m Model) View() tea.View {
-	v := tea.NewView(m.view())
+	v := tea.NewView(m.renderScreen())
 	v.AltScreen = true
 
 	return v
 }
 
-func (m Model) view() string {
+func (m Model) renderScreen() string {
 	if m.width == 0 {
 		return "Loading..."
 	}

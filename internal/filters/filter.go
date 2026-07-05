@@ -1,7 +1,9 @@
+// Package filters implements repo list filtering, fuzzy search, and sorting.
 package filters
 
 import "github.com/kyleking/gh-repo-dashboard/internal/models"
 
+// FilterRepos returns the subset of paths whose summary passes the single filter mode.
 func FilterRepos(paths []string, summaries map[string]models.RepoSummary, mode models.FilterMode) []string {
 	if mode == models.FilterModeAll {
 		return paths
@@ -22,6 +24,7 @@ func FilterRepos(paths []string, summaries map[string]models.RepoSummary, mode m
 	return filtered
 }
 
+// FilterReposMulti returns the subset of paths whose summary passes every enabled filter, honoring inversion.
 func FilterReposMulti(paths []string, summaries map[string]models.RepoSummary, activeFilters []models.ActiveFilter) []string {
 	enabledFilters := []models.ActiveFilter{}
 	for _, f := range activeFilters {
@@ -80,6 +83,7 @@ func passesFilter(s models.RepoSummary, mode models.FilterMode) bool {
 	}
 }
 
+// FilterAndSort filters paths by a single mode and search text, then sorts the result.
 func FilterAndSort(
 	paths []string,
 	summaries map[string]models.RepoSummary,
@@ -99,6 +103,7 @@ func FilterAndSort(
 	return sorted
 }
 
+// FilterAndSortMulti filters paths by multiple active filters and search text, then sorts by multiple active sorts.
 func FilterAndSortMulti(
 	paths []string,
 	summaries map[string]models.RepoSummary,

@@ -1,3 +1,5 @@
+// Package cache provides a generic in-memory TTL cache used to avoid
+// redundant gh/git/jj calls across TUI refreshes.
 package cache
 
 import (
@@ -12,12 +14,14 @@ type entry[T any] struct {
 	expiresAt time.Time
 }
 
+// TTLCache is a generic in-memory cache whose entries expire after a fixed duration.
 type TTLCache[T any] struct {
 	mu      sync.RWMutex
 	entries map[string]entry[T]
 	ttl     time.Duration
 }
 
+// NewTTLCache returns an empty TTLCache with the given entry lifetime.
 func NewTTLCache[T any](ttl time.Duration) *TTLCache[T] {
 	return &TTLCache[T]{
 		entries: make(map[string]entry[T]),
@@ -25,6 +29,7 @@ func NewTTLCache[T any](ttl time.Duration) *TTLCache[T] {
 	}
 }
 
+// Get returns the cached value for key and whether it was present and unexpired.
 func (c *TTLCache[T]) Get(key string) (T, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -43,6 +48,7 @@ func (c *TTLCache[T]) Get(key string) (T, bool) {
 	return e.value, true
 }
 
+// Set stores value under key, expiring after the cache's configured TTL.
 func (c *TTLCache[T]) Set(key string, value T) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -53,6 +59,7 @@ func (c *TTLCache[T]) Set(key string, value T) {
 	}
 }
 
+// Clear removes all entries from the cache.
 func (c *TTLCache[T]) Clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -60,6 +67,7 @@ func (c *TTLCache[T]) Clear() {
 	c.entries = make(map[string]entry[T])
 }
 
+// Delete removes the entry for key, if any.
 func (c *TTLCache[T]) Delete(key string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -67,6 +75,7 @@ func (c *TTLCache[T]) Delete(key string) {
 	delete(c.entries, key)
 }
 
+// Package-level caches shared across the app, keyed by repo path (or "path#N" for PR-numbered lookups).
 var (
 	PRCache       = NewTTLCache[*models.PRInfo](5 * time.Minute)
 	PRListCache   = NewTTLCache[[]models.PRInfo](5 * time.Minute)
@@ -76,6 +85,7 @@ var (
 	WorkflowCache = NewTTLCache[*models.WorkflowSummary](2 * time.Minute)
 )
 
+// ClearAll clears every package-level cache.
 func ClearAll() {
 	PRCache.Clear()
 	PRListCache.Clear()

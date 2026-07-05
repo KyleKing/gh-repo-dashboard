@@ -1,3 +1,4 @@
+// Package batch runs repo operations (fetch, prune, cleanup) over multiple repos concurrently.
 package batch
 
 import (
@@ -41,67 +42,67 @@ type mockVCS struct {
 	cleanupResult func() (bool, string, error)
 }
 
-func (m *mockVCS) GetRepoSummary(ctx context.Context, repoPath string) (models.RepoSummary, error) {
+func (*mockVCS) GetRepoSummary(_ context.Context, _ string) (models.RepoSummary, error) {
 	return models.RepoSummary{}, nil
 }
 
-func (m *mockVCS) GetCurrentBranch(ctx context.Context, repoPath string) (string, error) {
+func (*mockVCS) GetCurrentBranch(_ context.Context, _ string) (string, error) {
 	return "main", nil
 }
 
-func (m *mockVCS) GetUpstream(ctx context.Context, repoPath, branch string) (string, error) {
+func (*mockVCS) GetUpstream(_ context.Context, _, _ string) (string, error) {
 	return "", nil
 }
 
-func (m *mockVCS) GetAheadBehind(ctx context.Context, repoPath, branch, upstream string) (int, int, error) {
+func (*mockVCS) GetAheadBehind(_ context.Context, _, _, _ string) (int, int, error) {
 	return 0, 0, nil
 }
 
-func (m *mockVCS) GetStagedCount(ctx context.Context, repoPath string) (int, error) {
+func (*mockVCS) GetStagedCount(_ context.Context, _ string) (int, error) {
 	return 0, nil
 }
 
-func (m *mockVCS) GetUnstagedCount(ctx context.Context, repoPath string) (int, error) {
+func (*mockVCS) GetUnstagedCount(_ context.Context, _ string) (int, error) {
 	return 0, nil
 }
 
-func (m *mockVCS) GetUntrackedCount(ctx context.Context, repoPath string) (int, error) {
+func (*mockVCS) GetUntrackedCount(_ context.Context, _ string) (int, error) {
 	return 0, nil
 }
 
-func (m *mockVCS) GetConflictedCount(ctx context.Context, repoPath string) (int, error) {
+func (*mockVCS) GetConflictedCount(_ context.Context, _ string) (int, error) {
 	return 0, nil
 }
 
-func (m *mockVCS) GetBranchList(ctx context.Context, repoPath string) ([]models.BranchInfo, error) {
+func (*mockVCS) GetBranchList(_ context.Context, _ string) ([]models.BranchInfo, error) {
 	return nil, nil
 }
 
-func (m *mockVCS) GetStashList(ctx context.Context, repoPath string) ([]models.StashDetail, error) {
+func (*mockVCS) GetStashList(_ context.Context, _ string) ([]models.StashDetail, error) {
 	return nil, nil
 }
 
-func (m *mockVCS) GetWorktreeList(ctx context.Context, repoPath string) ([]models.WorktreeInfo, error) {
+func (*mockVCS) GetWorktreeList(_ context.Context, _ string) ([]models.WorktreeInfo, error) {
 	return nil, nil
 }
 
-func (m *mockVCS) GetCommitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error) {
+func (*mockVCS) GetCommitLog(_ context.Context, _ string, _ int) ([]models.CommitInfo, error) {
 	return nil, nil
 }
 
-func (m *mockVCS) GetLastModified(ctx context.Context, repoPath string) (int64, error) {
+func (*mockVCS) GetLastModified(_ context.Context, _ string) (int64, error) {
 	return 0, nil
 }
 
-func (m *mockVCS) GetRemoteURL(ctx context.Context, repoPath string) (string, error) {
+func (*mockVCS) GetRemoteURL(_ context.Context, _ string) (string, error) {
 	return "", nil
 }
 
-func (m *mockVCS) VCSType() models.VCSType {
+func (*mockVCS) VCSType() models.VCSType {
 	return models.VCSTypeGit
 }
 
-func (m *mockVCS) FetchAll(ctx context.Context, repoPath string) (bool, string, error) {
+func (m *mockVCS) FetchAll(_ context.Context, _ string) (bool, string, error) {
 	if m.fetchResult != nil {
 		return m.fetchResult()
 	}
@@ -109,7 +110,7 @@ func (m *mockVCS) FetchAll(ctx context.Context, repoPath string) (bool, string, 
 	return true, "success", nil
 }
 
-func (m *mockVCS) PruneRemote(ctx context.Context, repoPath string) (bool, string, error) {
+func (m *mockVCS) PruneRemote(_ context.Context, _ string) (bool, string, error) {
 	if m.pruneResult != nil {
 		return m.pruneResult()
 	}
@@ -117,7 +118,7 @@ func (m *mockVCS) PruneRemote(ctx context.Context, repoPath string) (bool, strin
 	return true, "success", nil
 }
 
-func (m *mockVCS) CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error) {
+func (m *mockVCS) CleanupMergedBranches(_ context.Context, _ string) (bool, string, error) {
 	if m.cleanupResult != nil {
 		return m.cleanupResult()
 	}

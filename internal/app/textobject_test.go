@@ -190,7 +190,7 @@ func TestOperatorPendingFooterHint(t *testing.T) {
 	m.height = 30
 
 	m2, _ := pressKeys(t, m, "F")
-	if !strings.Contains(m2.view(), "pending") {
+	if !strings.Contains(m2.renderScreen(), "pending") {
 		t.Error("expected pending hint in footer")
 	}
 }

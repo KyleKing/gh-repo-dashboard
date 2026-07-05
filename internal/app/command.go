@@ -11,6 +11,7 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+// Command is a named `:command` invocable from the TUI's command bar.
 type Command struct {
 	Name        string
 	Description string
@@ -18,14 +19,17 @@ type Command struct {
 	Run         func(m Model, args []string) (Model, tea.Cmd)
 }
 
+// Registry holds the set of available commands.
 type Registry struct {
 	commands []Command
 }
 
+// NewRegistry builds a Registry from the given commands.
 func NewRegistry(commands ...Command) Registry {
 	return Registry{commands: commands}
 }
 
+// Commands returns all registered commands.
 func (r Registry) Commands() []Command {
 	return r.commands
 }
@@ -48,6 +52,7 @@ func (r Registry) Lookup(name string) (Command, bool) {
 	return Command{}, false
 }
 
+// Candidates returns command names starting with the given prefix.
 func (r Registry) Candidates(prefix string) []string {
 	var names []string
 	for _, c := range r.commands {
@@ -98,7 +103,7 @@ func DefaultRegistry() Registry {
 		Command{
 			Name:        "filter",
 			Description: "Filter repos: :filter <mode|predicate> or :filter to open the modal",
-			Complete: func(m Model, args []string) []string {
+			Complete: func(_ Model, args []string) []string {
 				prefix := ""
 				if len(args) > 0 {
 					prefix = args[len(args)-1]
@@ -139,7 +144,7 @@ func DefaultRegistry() Registry {
 		Command{
 			Name:        "help",
 			Description: "Show help",
-			Run: func(m Model, args []string) (Model, tea.Cmd) {
+			Run: func(m Model, _ []string) (Model, tea.Cmd) {
 				m.viewMode = ViewModeHelp
 				return m, nil
 			},
@@ -148,21 +153,21 @@ func DefaultRegistry() Registry {
 		Command{
 			Name:        "quit",
 			Description: "Quit",
-			Run: func(m Model, args []string) (Model, tea.Cmd) {
+			Run: func(m Model, _ []string) (Model, tea.Cmd) {
 				return m, tea.Quit
 			},
 		},
 		Command{
 			Name:        "refresh",
 			Description: "Clear caches and reload the current view",
-			Run: func(m Model, args []string) (Model, tea.Cmd) {
+			Run: func(m Model, _ []string) (Model, tea.Cmd) {
 				return m.handleRefresh()
 			},
 		},
 		Command{
 			Name:        "select",
 			Description: "Mark repos: :select where <predicate>, :select all, :select none",
-			Complete: func(m Model, args []string) []string {
+			Complete: func(_ Model, args []string) []string {
 				if len(args) <= 1 {
 					prefix := ""
 					if len(args) == 1 {
@@ -211,7 +216,7 @@ func DefaultRegistry() Registry {
 		Command{
 			Name:        "sort",
 			Description: "Cycle sort for a mode: :sort <mode> or :sort to open the modal",
-			Complete: func(m Model, args []string) []string {
+			Complete: func(_ Model, args []string) []string {
 				prefix := ""
 				if len(args) > 0 {
 					prefix = args[len(args)-1]
@@ -245,7 +250,7 @@ func batchCommand(name, description, taskName string, taskCmd func([]string) tea
 	return Command{
 		Name:        name,
 		Description: description,
-		Complete: func(m Model, args []string) []string {
+		Complete: func(_ Model, args []string) []string {
 			prefix := ""
 			if len(args) > 0 {
 				prefix = args[len(args)-1]

@@ -2,8 +2,10 @@ package models
 
 const unknownEnumString = "unknown"
 
+// VCSType identifies the version control system managing a repo.
 type VCSType int
 
+// VCSType values.
 const (
 	VCSTypeGit VCSType = iota
 	VCSTypeJJ
@@ -20,8 +22,10 @@ func (v VCSType) String() string {
 	}
 }
 
+// FilterMode identifies a repo list filter criterion.
 type FilterMode int
 
+// FilterMode values.
 const (
 	FilterModeAll FilterMode = iota
 	FilterModeAhead
@@ -50,6 +54,7 @@ func (f FilterMode) String() string {
 	}
 }
 
+// ShortKey returns the single-character key binding label for the filter mode.
 func (f FilterMode) ShortKey() string {
 	switch f {
 	case FilterModeAll:
@@ -69,6 +74,7 @@ func (f FilterMode) ShortKey() string {
 	}
 }
 
+// AllFilterModes returns every FilterMode in display order.
 func AllFilterModes() []FilterMode {
 	return []FilterMode{
 		FilterModeAll,
@@ -80,6 +86,7 @@ func AllFilterModes() []FilterMode {
 	}
 }
 
+// SelectableFilterModes returns the FilterModes a user can toggle, excluding FilterModeAll.
 func SelectableFilterModes() []FilterMode {
 	return []FilterMode{
 		FilterModeDirty,
@@ -90,8 +97,10 @@ func SelectableFilterModes() []FilterMode {
 	}
 }
 
+// SortMode identifies a repo list sort criterion.
 type SortMode int
 
+// SortMode values.
 const (
 	SortModeName SortMode = iota
 	SortModeModified
@@ -114,6 +123,7 @@ func (s SortMode) String() string {
 	}
 }
 
+// ShortKey returns the single-character key binding label for the sort mode.
 func (s SortMode) ShortKey() string {
 	switch s {
 	case SortModeName:
@@ -129,10 +139,12 @@ func (s SortMode) ShortKey() string {
 	}
 }
 
+// Next returns the next SortMode in cyclic order.
 func (s SortMode) Next() SortMode {
 	return SortMode((int(s) + 1) % 4)
 }
 
+// AllSortModes returns every SortMode in display order.
 func AllSortModes() []SortMode {
 	return []SortMode{
 		SortModeName,
@@ -142,8 +154,10 @@ func AllSortModes() []SortMode {
 	}
 }
 
+// RepoStatus summarizes a repo's overall working tree and sync state.
 type RepoStatus int
 
+// RepoStatus values.
 const (
 	RepoStatusClean RepoStatus = iota
 	RepoStatusDirty
@@ -169,8 +183,10 @@ func (r RepoStatus) String() string {
 	}
 }
 
+// ItemKind identifies the kind of item shown in a repo's detail tabs.
 type ItemKind int
 
+// ItemKind values.
 const (
 	ItemKindBranch ItemKind = iota
 	ItemKindStash

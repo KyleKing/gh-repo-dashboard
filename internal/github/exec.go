@@ -1,3 +1,4 @@
+// Package github wraps the gh CLI to fetch pull request and workflow run data.
 package github
 
 import (

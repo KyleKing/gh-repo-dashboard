@@ -298,7 +298,7 @@ func TestCommandBarRendered(t *testing.T) {
 	newModel, _ := m.Update(keyPress(':'))
 	m = mustModel(t, newModel)
 
-	output := m.view()
+	output := m.renderScreen()
 	lines := strings.Split(output, "\n")
 	if len(lines) != m.height {
 		t.Fatalf("expected %d lines, got %d", m.height, len(lines))

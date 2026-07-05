@@ -7,7 +7,7 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 )
 
-func refreshCmd(scanPaths []string, maxDepth int) tea.Cmd {
+func refreshCmd(_ []string, _ int) tea.Cmd {
 	return func() tea.Msg {
 		cache.ClearAll()
 		return nil

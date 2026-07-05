@@ -7,6 +7,7 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+// DetectVCSType inspects repoPath to determine whether it is a jj or git repository.
 func DetectVCSType(repoPath string) models.VCSType {
 	if _, err := os.Stat(filepath.Join(repoPath, ".jj")); err == nil {
 		return models.VCSTypeJJ
@@ -15,6 +16,7 @@ func DetectVCSType(repoPath string) models.VCSType {
 	return models.VCSTypeGit
 }
 
+// GetOperations returns the Operations implementation matching repoPath's VCS type.
 func GetOperations(repoPath string) Operations {
 	vcsType := DetectVCSType(repoPath)
 	switch vcsType {
@@ -25,6 +27,7 @@ func GetOperations(repoPath string) Operations {
 	}
 }
 
+// GetGitHubEnv returns extra environment variables needed for the gh CLI to work in a jj-colocated repo.
 func GetGitHubEnv(repoPath string) []string {
 	vcsType := DetectVCSType(repoPath)
 	if vcsType == models.VCSTypeJJ {
@@ -40,6 +43,7 @@ func GetGitHubEnv(repoPath string) []string {
 	return nil
 }
 
+// IsRepo reports whether path is a git or jj repository root.
 func IsRepo(path string) bool {
 	gitDir := filepath.Join(path, ".git")
 	if _, err := os.Stat(gitDir); err == nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
+// GetWorkflowRunsForCommit returns the CI workflow run summary for a commit, using the cache when fresh.
 func GetWorkflowRunsForCommit(ctx context.Context, repoPath, commitSHA string) (*models.WorkflowSummary, error) {
 	if commitSHA == "" {
 		//nolint:nilnil // no commit means nothing to look up, not a failure

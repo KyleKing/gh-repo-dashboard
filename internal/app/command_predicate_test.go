@@ -139,7 +139,7 @@ func TestSelectionMarkerRendered(t *testing.T) {
 	m.height = 30
 
 	m2, _ := m.ExecuteCommand("select where has_pr")
-	output := m2.view()
+	output := m2.renderScreen()
 	if !strings.Contains(output, "•") {
 		t.Error("expected selection marker in view")
 	}
@@ -155,7 +155,7 @@ func TestPredicateBadgeRendered(t *testing.T) {
 	m.height = 30
 
 	m2, _ := m.ExecuteCommand("filter dirty and has_pr")
-	if !strings.Contains(m2.view(), "dirty and has_pr") {
+	if !strings.Contains(m2.renderScreen(), "dirty and has_pr") {
 		t.Error("expected predicate badge in status bar")
 	}
 }

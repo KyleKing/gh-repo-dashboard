@@ -20,6 +20,7 @@ const (
 	masterBranch      = "master"
 )
 
+// Operations abstracts the git/jj commands used to inspect and mutate a repository.
 type Operations interface {
 	GetRepoSummary(ctx context.Context, repoPath string) (models.RepoSummary, error)
 	GetCurrentBranch(ctx context.Context, repoPath string) (string, error)

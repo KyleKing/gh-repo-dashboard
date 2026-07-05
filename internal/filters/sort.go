@@ -8,6 +8,7 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+// SortPaths returns a copy of paths sorted by the single sort mode, optionally reversed.
 func SortPaths(paths []string, summaries map[string]models.RepoSummary, mode models.SortMode, reverse bool) []string {
 	if len(paths) == 0 {
 		return paths
@@ -83,6 +84,7 @@ func compareByBranch(a, b models.RepoSummary) bool {
 	return compareByName(a, b)
 }
 
+// SortPathsMulti returns a copy of paths sorted by multiple active sorts, applied in priority order.
 func SortPathsMulti(paths []string, summaries map[string]models.RepoSummary, activeSorts []models.ActiveSort) []string {
 	if len(paths) == 0 {
 		return paths

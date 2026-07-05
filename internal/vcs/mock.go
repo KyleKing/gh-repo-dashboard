@@ -6,6 +6,7 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+// MockOperations is a test double implementing Operations via injectable function fields.
 type MockOperations struct {
 	GetRepoSummaryFn        func(ctx context.Context, repoPath string) (models.RepoSummary, error)
 	GetCurrentBranchFn      func(ctx context.Context, repoPath string) (string, error)
@@ -27,6 +28,7 @@ type MockOperations struct {
 	CleanupMergedBranchesFn func(ctx context.Context, repoPath string) (bool, string, error)
 }
 
+// GetRepoSummary implements Operations.
 func (m *MockOperations) GetRepoSummary(ctx context.Context, repoPath string) (models.RepoSummary, error) {
 	if m.GetRepoSummaryFn != nil {
 		return m.GetRepoSummaryFn(ctx, repoPath)
@@ -35,6 +37,7 @@ func (m *MockOperations) GetRepoSummary(ctx context.Context, repoPath string) (m
 	return models.RepoSummary{Path: repoPath}, nil
 }
 
+// GetCurrentBranch implements Operations.
 func (m *MockOperations) GetCurrentBranch(ctx context.Context, repoPath string) (string, error) {
 	if m.GetCurrentBranchFn != nil {
 		return m.GetCurrentBranchFn(ctx, repoPath)
@@ -43,6 +46,7 @@ func (m *MockOperations) GetCurrentBranch(ctx context.Context, repoPath string) 
 	return "main", nil
 }
 
+// GetUpstream implements Operations.
 func (m *MockOperations) GetUpstream(ctx context.Context, repoPath, branch string) (string, error) {
 	if m.GetUpstreamFn != nil {
 		return m.GetUpstreamFn(ctx, repoPath, branch)
@@ -51,6 +55,7 @@ func (m *MockOperations) GetUpstream(ctx context.Context, repoPath, branch strin
 	return "", nil
 }
 
+// GetAheadBehind implements Operations.
 func (m *MockOperations) GetAheadBehind(ctx context.Context, repoPath, branch, upstream string) (int, int, error) {
 	if m.GetAheadBehindFn != nil {
 		return m.GetAheadBehindFn(ctx, repoPath, branch, upstream)
@@ -59,6 +64,7 @@ func (m *MockOperations) GetAheadBehind(ctx context.Context, repoPath, branch, u
 	return 0, 0, nil
 }
 
+// GetStagedCount implements Operations.
 func (m *MockOperations) GetStagedCount(ctx context.Context, repoPath string) (int, error) {
 	if m.GetStagedCountFn != nil {
 		return m.GetStagedCountFn(ctx, repoPath)
@@ -67,6 +73,7 @@ func (m *MockOperations) GetStagedCount(ctx context.Context, repoPath string) (i
 	return 0, nil
 }
 
+// GetUnstagedCount implements Operations.
 func (m *MockOperations) GetUnstagedCount(ctx context.Context, repoPath string) (int, error) {
 	if m.GetUnstagedCountFn != nil {
 		return m.GetUnstagedCountFn(ctx, repoPath)
@@ -75,6 +82,7 @@ func (m *MockOperations) GetUnstagedCount(ctx context.Context, repoPath string) 
 	return 0, nil
 }
 
+// GetUntrackedCount implements Operations.
 func (m *MockOperations) GetUntrackedCount(ctx context.Context, repoPath string) (int, error) {
 	if m.GetUntrackedCountFn != nil {
 		return m.GetUntrackedCountFn(ctx, repoPath)
@@ -83,6 +91,7 @@ func (m *MockOperations) GetUntrackedCount(ctx context.Context, repoPath string)
 	return 0, nil
 }
 
+// GetConflictedCount implements Operations.
 func (m *MockOperations) GetConflictedCount(ctx context.Context, repoPath string) (int, error) {
 	if m.GetConflictedCountFn != nil {
 		return m.GetConflictedCountFn(ctx, repoPath)
@@ -91,6 +100,7 @@ func (m *MockOperations) GetConflictedCount(ctx context.Context, repoPath string
 	return 0, nil
 }
 
+// GetBranchList implements Operations.
 func (m *MockOperations) GetBranchList(ctx context.Context, repoPath string) ([]models.BranchInfo, error) {
 	if m.GetBranchListFn != nil {
 		return m.GetBranchListFn(ctx, repoPath)
@@ -99,6 +109,7 @@ func (m *MockOperations) GetBranchList(ctx context.Context, repoPath string) ([]
 	return nil, nil
 }
 
+// GetStashList implements Operations.
 func (m *MockOperations) GetStashList(ctx context.Context, repoPath string) ([]models.StashDetail, error) {
 	if m.GetStashListFn != nil {
 		return m.GetStashListFn(ctx, repoPath)
@@ -107,6 +118,7 @@ func (m *MockOperations) GetStashList(ctx context.Context, repoPath string) ([]m
 	return nil, nil
 }
 
+// GetWorktreeList implements Operations.
 func (m *MockOperations) GetWorktreeList(ctx context.Context, repoPath string) ([]models.WorktreeInfo, error) {
 	if m.GetWorktreeListFn != nil {
 		return m.GetWorktreeListFn(ctx, repoPath)
@@ -115,6 +127,7 @@ func (m *MockOperations) GetWorktreeList(ctx context.Context, repoPath string) (
 	return nil, nil
 }
 
+// GetCommitLog implements Operations.
 func (m *MockOperations) GetCommitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error) {
 	if m.GetCommitLogFn != nil {
 		return m.GetCommitLogFn(ctx, repoPath, count)
@@ -123,6 +136,7 @@ func (m *MockOperations) GetCommitLog(ctx context.Context, repoPath string, coun
 	return nil, nil
 }
 
+// GetLastModified implements Operations.
 func (m *MockOperations) GetLastModified(ctx context.Context, repoPath string) (int64, error) {
 	if m.GetLastModifiedFn != nil {
 		return m.GetLastModifiedFn(ctx, repoPath)
@@ -131,6 +145,7 @@ func (m *MockOperations) GetLastModified(ctx context.Context, repoPath string) (
 	return 0, nil
 }
 
+// GetRemoteURL implements Operations.
 func (m *MockOperations) GetRemoteURL(ctx context.Context, repoPath string) (string, error) {
 	if m.GetRemoteURLFn != nil {
 		return m.GetRemoteURLFn(ctx, repoPath)
@@ -139,6 +154,7 @@ func (m *MockOperations) GetRemoteURL(ctx context.Context, repoPath string) (str
 	return "", nil
 }
 
+// VCSType implements Operations.
 func (m *MockOperations) VCSType() models.VCSType {
 	if m.VCSTypeFn != nil {
 		return m.VCSTypeFn()
@@ -147,6 +163,7 @@ func (m *MockOperations) VCSType() models.VCSType {
 	return models.VCSTypeGit
 }
 
+// FetchAll implements Operations.
 func (m *MockOperations) FetchAll(ctx context.Context, repoPath string) (bool, string, error) {
 	if m.FetchAllFn != nil {
 		return m.FetchAllFn(ctx, repoPath)
@@ -155,6 +172,7 @@ func (m *MockOperations) FetchAll(ctx context.Context, repoPath string) (bool, s
 	return true, "Fetched", nil
 }
 
+// PruneRemote implements Operations.
 func (m *MockOperations) PruneRemote(ctx context.Context, repoPath string) (bool, string, error) {
 	if m.PruneRemoteFn != nil {
 		return m.PruneRemoteFn(ctx, repoPath)
@@ -163,6 +181,7 @@ func (m *MockOperations) PruneRemote(ctx context.Context, repoPath string) (bool
 	return true, "Pruned", nil
 }
 
+// CleanupMergedBranches implements Operations.
 func (m *MockOperations) CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error) {
 	if m.CleanupMergedBranchesFn != nil {
 		return m.CleanupMergedBranchesFn(ctx, repoPath)

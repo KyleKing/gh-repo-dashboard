@@ -12,6 +12,7 @@ const (
 	StatusFailing          = "failing"
 )
 
+// PRInfo summarizes a pull request for the repo list and detail views.
 type PRInfo struct {
 	Number          int
 	Title           string
@@ -27,6 +28,7 @@ type PRInfo struct {
 	ChangesRequests int
 }
 
+// StatusDisplay returns the pull request's display status label.
 func (p PRInfo) StatusDisplay() string {
 	if p.IsDraft {
 		return "DRAFT"
@@ -43,6 +45,7 @@ func (p PRInfo) StatusDisplay() string {
 	}
 }
 
+// ReviewStatus returns a human-readable summary of the pull request's review decision.
 func (p PRInfo) ReviewStatus() string {
 	switch p.ReviewDecision {
 	case "APPROVED":
@@ -60,6 +63,7 @@ func (p PRInfo) ReviewStatus() string {
 	}
 }
 
+// ChecksStatus tallies a pull request's CI check outcomes.
 type ChecksStatus struct {
 	Total   int
 	Passing int
@@ -68,6 +72,7 @@ type ChecksStatus struct {
 	Skipped int
 }
 
+// Summary returns a one-word overall status for the checks.
 func (c ChecksStatus) Summary() string {
 	if c.Total == 0 {
 		return "—"
@@ -85,6 +90,7 @@ func (c ChecksStatus) Summary() string {
 	return "mixed"
 }
 
+// PRDetail holds the full detail view state for a single pull request.
 type PRDetail struct {
 	PRInfo
 	Body       string
@@ -99,14 +105,17 @@ type PRDetail struct {
 	ReviewsURL string
 }
 
+// RelativeCreated returns a human-readable relative time for the pull request's creation.
 func (p PRDetail) RelativeCreated() string {
 	return RelativeTime(p.CreatedAt)
 }
 
+// RelativeUpdated returns a human-readable relative time for the pull request's last update.
 func (p PRDetail) RelativeUpdated() string {
 	return RelativeTime(p.UpdatedAt)
 }
 
+// WorkflowRun summarizes a single CI workflow run.
 type WorkflowRun struct {
 	ID         int64
 	Name       string
@@ -117,6 +126,7 @@ type WorkflowRun struct {
 	UpdatedAt  time.Time
 }
 
+// StatusDisplay returns the workflow run's display status label.
 func (w WorkflowRun) StatusDisplay() string {
 	if w.Status == "completed" {
 		return w.Conclusion
@@ -125,6 +135,7 @@ func (w WorkflowRun) StatusDisplay() string {
 	return w.Status
 }
 
+// WorkflowSummary aggregates the CI workflow runs for a commit.
 type WorkflowSummary struct {
 	Runs       []WorkflowRun
 	Total      int
@@ -133,6 +144,7 @@ type WorkflowSummary struct {
 	InProgress int
 }
 
+// StatusDisplay returns a one-word overall status for the workflow runs.
 func (w WorkflowSummary) StatusDisplay() string {
 	if w.Total == 0 {
 		return "—"

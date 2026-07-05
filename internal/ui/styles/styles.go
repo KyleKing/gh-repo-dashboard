@@ -1,7 +1,10 @@
+// Package styles defines the Catppuccin-derived color palette and lipgloss
+// styles shared across the TUI's views.
 package styles
 
 import "charm.land/lipgloss/v2"
 
+// Catppuccin Macchiato palette colors.
 var (
 	Base     = lipgloss.Color("#24273a")
 	Mantle   = lipgloss.Color("#1e2030")
@@ -32,6 +35,7 @@ var (
 	Lavender  = lipgloss.Color("#b7bdf8")
 )
 
+// Shared lipgloss styles used across views.
 var (
 	TitleStyle = lipgloss.NewStyle().
 			Bold(true).
@@ -146,10 +150,12 @@ var (
 				Foreground(Surface1)
 )
 
+// Badge renders text with the given style.
 func Badge(text string, style lipgloss.Style) string {
 	return style.Render(text)
 }
 
+// StatusBadge renders a CI/check status as a colored badge.
 func StatusBadge(status string) string {
 	switch status {
 	case "passing", "success":
@@ -163,6 +169,7 @@ func StatusBadge(status string) string {
 	}
 }
 
+// PRStatusBadge renders a pull request's state as a colored badge.
 func PRStatusBadge(state string, isDraft bool) string {
 	if isDraft {
 		return Badge("DRAFT", PRDraftStyle)

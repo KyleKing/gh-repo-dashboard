@@ -2,6 +2,7 @@ package app
 
 import "charm.land/bubbles/v2/key"
 
+// KeyMap holds the key bindings used across the TUI.
 type KeyMap struct {
 	Quit   key.Binding
 	Help   key.Binding
@@ -33,6 +34,7 @@ type KeyMap struct {
 	OpenURL      key.Binding
 }
 
+// DefaultKeyMap returns the built-in key bindings.
 func DefaultKeyMap() KeyMap {
 	return KeyMap{
 		Quit: key.NewBinding(
@@ -138,10 +140,12 @@ func DefaultKeyMap() KeyMap {
 	}
 }
 
+// ShortHelp implements help.KeyMap.
 func (k KeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{k.Up, k.Down, k.Enter, k.Filter, k.Sort, k.Search, k.Command, k.Refresh, k.Quit}
 }
 
+// FullHelp implements help.KeyMap.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Top, k.Bottom},

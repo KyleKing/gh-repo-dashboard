@@ -15,17 +15,20 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+// GitOperations implements Operations for git repositories.
 type GitOperations struct{}
 
+// NewGitOperations returns a GitOperations.
 func NewGitOperations() *GitOperations {
 	return &GitOperations{}
 }
 
-func (g *GitOperations) VCSType() models.VCSType {
+// VCSType implements Operations.
+func (*GitOperations) VCSType() models.VCSType {
 	return models.VCSTypeGit
 }
 
-func (g *GitOperations) runGit(ctx context.Context, repoPath string, args ...string) (string, error) {
+func (*GitOperations) runGit(ctx context.Context, repoPath string, args ...string) (string, error) {
 	out, err := runCommand(ctx, repoPath, "git", args...)
 	if err != nil {
 		exitErr := &exec.ExitError{}
@@ -39,6 +42,7 @@ func (g *GitOperations) runGit(ctx context.Context, repoPath string, args ...str
 	return out, nil
 }
 
+// GetRepoSummary implements Operations.
 func (g *GitOperations) GetRepoSummary(ctx context.Context, repoPath string) (models.RepoSummary, error) {
 	summary := models.RepoSummary{
 		Path:    repoPath,
@@ -79,6 +83,7 @@ func (g *GitOperations) GetRepoSummary(ctx context.Context, repoPath string) (mo
 	return summary, nil
 }
 
+// GetCurrentBranch implements Operations.
 func (g *GitOperations) GetCurrentBranch(ctx context.Context, repoPath string) (string, error) {
 	out, err := g.runGit(ctx, repoPath, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
@@ -97,6 +102,7 @@ func (g *GitOperations) GetCurrentBranch(ctx context.Context, repoPath string) (
 	return out, nil
 }
 
+// GetUpstream implements Operations.
 func (g *GitOperations) GetUpstream(ctx context.Context, repoPath, branch string) (string, error) {
 	out, err := g.runGit(ctx, repoPath, "rev-parse", "--abbrev-ref", branch+"@{upstream}")
 	if err != nil {
@@ -106,6 +112,7 @@ func (g *GitOperations) GetUpstream(ctx context.Context, repoPath, branch string
 	return out, nil
 }
 
+// GetAheadBehind implements Operations.
 func (g *GitOperations) GetAheadBehind(ctx context.Context, repoPath, branch, upstream string) (int, int, error) {
 	out, err := g.runGit(ctx, repoPath, "rev-list", "--left-right", "--count", fmt.Sprintf("%s...%s", branch, upstream))
 	if err != nil {
@@ -166,18 +173,22 @@ func (g *GitOperations) getStatusCounts(ctx context.Context, repoPath string) st
 	return counts
 }
 
+// GetStagedCount implements Operations.
 func (g *GitOperations) GetStagedCount(ctx context.Context, repoPath string) (int, error) {
 	return g.getStatusCounts(ctx, repoPath).staged, nil
 }
 
+// GetUnstagedCount implements Operations.
 func (g *GitOperations) GetUnstagedCount(ctx context.Context, repoPath string) (int, error) {
 	return g.getStatusCounts(ctx, repoPath).unstaged, nil
 }
 
+// GetUntrackedCount implements Operations.
 func (g *GitOperations) GetUntrackedCount(ctx context.Context, repoPath string) (int, error) {
 	return g.getStatusCounts(ctx, repoPath).untracked, nil
 }
 
+// GetConflictedCount implements Operations.
 func (g *GitOperations) GetConflictedCount(ctx context.Context, repoPath string) (int, error) {
 	return g.getStatusCounts(ctx, repoPath).conflicted, nil
 }
@@ -198,6 +209,7 @@ func (g *GitOperations) getStashCount(ctx context.Context, repoPath string) (int
 // for-each-ref format below (refname, upstream, track, date, HEAD marker).
 const branchListFieldCount = 5
 
+// GetBranchList implements Operations.
 func (g *GitOperations) GetBranchList(ctx context.Context, repoPath string) ([]models.BranchInfo, error) {
 	format := "%(refname:short)\t%(upstream:short)\t%(upstream:track)\t%(committerdate:unix)\t%(HEAD)"
 	out, err := g.runGit(ctx, repoPath, "for-each-ref", "--format="+format, "refs/heads/")
@@ -248,6 +260,7 @@ func (g *GitOperations) GetBranchList(ctx context.Context, repoPath string) ([]m
 // stash-list format below (reflog short name, subject, date).
 const stashListFieldCount = 3
 
+// GetStashList implements Operations.
 func (g *GitOperations) GetStashList(ctx context.Context, repoPath string) ([]models.StashDetail, error) {
 	format := "%(reflog:short)\t%(reflog:subject)\t%(committerdate:unix)"
 	out, err := g.runGit(ctx, repoPath, "stash", "list", "--format="+format)
@@ -287,6 +300,7 @@ func (g *GitOperations) GetStashList(ctx context.Context, repoPath string) ([]mo
 	return stashes, nil
 }
 
+// GetWorktreeList implements Operations.
 func (g *GitOperations) GetWorktreeList(ctx context.Context, repoPath string) ([]models.WorktreeInfo, error) {
 	out, err := g.runGit(ctx, repoPath, "worktree", "list", "--porcelain")
 	if err != nil {
@@ -326,6 +340,7 @@ func (g *GitOperations) GetWorktreeList(ctx context.Context, repoPath string) ([
 // format below (hash, short hash, subject, author, date).
 const commitLogFieldCount = 5
 
+// GetCommitLog implements Operations.
 func (g *GitOperations) GetCommitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error) {
 	format := "%H\t%h\t%s\t%an\t%ct"
 	out, err := g.runGit(ctx, repoPath, "log", fmt.Sprintf("-n%d", count), "--format="+format)
@@ -356,6 +371,7 @@ func (g *GitOperations) GetCommitLog(ctx context.Context, repoPath string, count
 	return commits, nil
 }
 
+// GetLastModified implements Operations.
 func (g *GitOperations) GetLastModified(ctx context.Context, repoPath string) (int64, error) {
 	out, err := g.runGit(ctx, repoPath, "log", "-1", "--format=%ct")
 	if err != nil {
@@ -370,6 +386,7 @@ func (g *GitOperations) GetLastModified(ctx context.Context, repoPath string) (i
 	return ts, nil
 }
 
+// GetRemoteURL implements Operations.
 func (g *GitOperations) GetRemoteURL(ctx context.Context, repoPath string) (string, error) {
 	out, err := g.runGit(ctx, repoPath, "remote", "get-url", "origin")
 	if err != nil {
@@ -379,6 +396,7 @@ func (g *GitOperations) GetRemoteURL(ctx context.Context, repoPath string) (stri
 	return out, nil
 }
 
+// FetchAll implements Operations.
 func (g *GitOperations) FetchAll(ctx context.Context, repoPath string) (bool, string, error) {
 	_, err := g.runGit(ctx, repoPath, "fetch", "--all", "--prune")
 	if err != nil {
@@ -389,6 +407,7 @@ func (g *GitOperations) FetchAll(ctx context.Context, repoPath string) (bool, st
 	return true, "Fetched from all remotes", nil
 }
 
+// PruneRemote implements Operations.
 func (g *GitOperations) PruneRemote(ctx context.Context, repoPath string) (bool, string, error) {
 	_, err := g.runGit(ctx, repoPath, "remote", "prune", "origin")
 	if err != nil {
@@ -399,14 +418,15 @@ func (g *GitOperations) PruneRemote(ctx context.Context, repoPath string) (bool,
 	return true, "Pruned stale remote branches", nil
 }
 
+// CleanupMergedBranches implements Operations.
 func (g *GitOperations) CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error) {
 	mainBranch := defaultMainBranch
 	if _, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", defaultMainBranch); err != nil {
-		if _, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", masterBranch); err == nil {
-			mainBranch = masterBranch
-		} else {
+		_, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", masterBranch)
+		if err != nil {
 			return false, "Could not find main or master branch", nil
 		}
+		mainBranch = masterBranch
 	}
 
 	out, err := g.runGit(ctx, repoPath, "branch", "--merged", mainBranch)
@@ -437,6 +457,7 @@ func (g *GitOperations) CleanupMergedBranches(ctx context.Context, repoPath stri
 	return true, fmt.Sprintf("Deleted %d branches: %s", len(deleted), strings.Join(deleted, ", ")), nil
 }
 
+// ExtractRepoPath derives an "owner/repo" style path from a git remote URL.
 func ExtractRepoPath(remoteURL string) string {
 	url := strings.TrimSuffix(remoteURL, ".git")
 

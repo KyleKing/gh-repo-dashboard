@@ -1,3 +1,4 @@
+// Package vcs abstracts git and jj repository operations behind a common Operations interface.
 package vcs
 
 import (

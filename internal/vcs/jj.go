@@ -13,8 +13,10 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+// JJOperations implements Operations for jj (Jujutsu) repositories.
 type JJOperations struct{}
 
+// NewJJOperations returns a JJOperations.
 func NewJJOperations() *JJOperations {
 	return &JJOperations{}
 }
@@ -77,11 +79,12 @@ func parseJJBookmarkList(out string) []jjBookmark {
 	return bookmarks
 }
 
-func (j *JJOperations) VCSType() models.VCSType {
+// VCSType implements Operations.
+func (*JJOperations) VCSType() models.VCSType {
 	return models.VCSTypeJJ
 }
 
-func (j *JJOperations) runJJ(ctx context.Context, repoPath string, args ...string) (string, error) {
+func (*JJOperations) runJJ(ctx context.Context, repoPath string, args ...string) (string, error) {
 	fullArgs := append([]string{"-R", repoPath}, args...)
 	out, err := runCommand(ctx, "", "jj", fullArgs...)
 	if err != nil {
@@ -96,6 +99,7 @@ func (j *JJOperations) runJJ(ctx context.Context, repoPath string, args ...strin
 	return out, nil
 }
 
+// GetRepoSummary implements Operations.
 func (j *JJOperations) GetRepoSummary(ctx context.Context, repoPath string) (models.RepoSummary, error) {
 	summary := models.RepoSummary{
 		Path:    repoPath,
@@ -122,7 +126,7 @@ func (j *JJOperations) GetRepoSummary(ctx context.Context, repoPath string) (mod
 		}
 	}
 
-	summary.Unstaged = j.getUnstagedCount(ctx, repoPath)
+	summary.Unstaged = j.countUnstaged(ctx, repoPath)
 
 	lastMod, _ := j.GetLastModified(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
 	if lastMod > 0 {
@@ -132,6 +136,7 @@ func (j *JJOperations) GetRepoSummary(ctx context.Context, repoPath string) (mod
 	return summary, nil
 }
 
+// GetCurrentBranch implements Operations.
 func (j *JJOperations) GetCurrentBranch(ctx context.Context, repoPath string) (string, error) {
 	out, err := j.runJJ(ctx, repoPath, "log", "-r", "@", "-T", jjCurrentBookmarkFormat, "--no-graph")
 	if err != nil {
@@ -149,6 +154,7 @@ func (j *JJOperations) GetCurrentBranch(ctx context.Context, repoPath string) (s
 	return "@", nil
 }
 
+// GetUpstream implements Operations.
 func (j *JJOperations) GetUpstream(ctx context.Context, repoPath, branch string) (string, error) {
 	if branch == "@" || branch == "" {
 		return "", nil
@@ -168,6 +174,7 @@ func (j *JJOperations) GetUpstream(ctx context.Context, repoPath, branch string)
 	return "", nil
 }
 
+// GetAheadBehind implements Operations.
 func (j *JJOperations) GetAheadBehind(ctx context.Context, repoPath, branch, upstream string) (int, int, error) {
 	if branch == "@" || branch == "" || upstream == "" {
 		return 0, 0, nil
@@ -188,9 +195,9 @@ func (j *JJOperations) GetAheadBehind(ctx context.Context, repoPath, branch, ups
 	return 0, 0, nil
 }
 
-// getUnstagedCount returns jj's uncommitted-change count. There is no
+// countUnstaged returns jj's uncommitted-change count. There is no
 // separate staged/untracked/conflicted state, so those always report zero.
-func (j *JJOperations) getUnstagedCount(ctx context.Context, repoPath string) int {
+func (j *JJOperations) countUnstaged(ctx context.Context, repoPath string) int {
 	out, err := j.runJJ(ctx, repoPath, "status")
 	if err != nil {
 		return 0
@@ -208,22 +215,27 @@ func (j *JJOperations) getUnstagedCount(ctx context.Context, repoPath string) in
 	return unstaged
 }
 
-func (j *JJOperations) GetStagedCount(ctx context.Context, repoPath string) (int, error) {
+// GetStagedCount implements Operations.
+func (*JJOperations) GetStagedCount(_ context.Context, _ string) (int, error) {
 	return 0, nil
 }
 
+// GetUnstagedCount implements Operations.
 func (j *JJOperations) GetUnstagedCount(ctx context.Context, repoPath string) (int, error) {
-	return j.getUnstagedCount(ctx, repoPath), nil
+	return j.countUnstaged(ctx, repoPath), nil
 }
 
-func (j *JJOperations) GetUntrackedCount(ctx context.Context, repoPath string) (int, error) {
+// GetUntrackedCount implements Operations.
+func (*JJOperations) GetUntrackedCount(_ context.Context, _ string) (int, error) {
 	return 0, nil
 }
 
-func (j *JJOperations) GetConflictedCount(ctx context.Context, repoPath string) (int, error) {
+// GetConflictedCount implements Operations.
+func (*JJOperations) GetConflictedCount(_ context.Context, _ string) (int, error) {
 	return 0, nil
 }
 
+// GetBranchList implements Operations.
 func (j *JJOperations) GetBranchList(ctx context.Context, repoPath string) ([]models.BranchInfo, error) {
 	out, err := j.runJJ(ctx, repoPath, "bookmark", "list", "--all-remotes", "-T", jjBookmarkListFormat)
 	if err != nil {
@@ -246,10 +258,12 @@ func (j *JJOperations) GetBranchList(ctx context.Context, repoPath string) ([]mo
 	return branches, nil
 }
 
-func (j *JJOperations) GetStashList(ctx context.Context, repoPath string) ([]models.StashDetail, error) {
+// GetStashList implements Operations.
+func (*JJOperations) GetStashList(_ context.Context, _ string) ([]models.StashDetail, error) {
 	return nil, nil
 }
 
+// GetWorktreeList implements Operations.
 func (j *JJOperations) GetWorktreeList(ctx context.Context, repoPath string) ([]models.WorktreeInfo, error) {
 	out, err := j.runJJ(ctx, repoPath, "workspace", "list", "-T", jjWorkspaceListFormat)
 	if err != nil {
@@ -282,6 +296,7 @@ func (j *JJOperations) GetWorktreeList(ctx context.Context, repoPath string) ([]
 // template below (change id, subject, author, date).
 const jjCommitLogFieldCount = 4
 
+// GetCommitLog implements Operations.
 func (j *JJOperations) GetCommitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error) {
 	format := `change_id.short() ++ "\t" ++ description.first_line() ++ "\t" ++ author.name() ++ "\t" ++ committer.timestamp().utc().format("%s")`
 	out, err := j.runJJ(ctx, repoPath, "log", "-r", fmt.Sprintf("@~%d..", count), "-T", format, "--no-graph")
@@ -312,6 +327,7 @@ func (j *JJOperations) GetCommitLog(ctx context.Context, repoPath string, count 
 	return commits, nil
 }
 
+// GetLastModified implements Operations.
 func (j *JJOperations) GetLastModified(ctx context.Context, repoPath string) (int64, error) {
 	format := `committer.timestamp().utc().format("%s")`
 	out, err := j.runJJ(ctx, repoPath, "log", "-r", "@", "-T", format, "--no-graph")
@@ -327,6 +343,7 @@ func (j *JJOperations) GetLastModified(ctx context.Context, repoPath string) (in
 	return ts, nil
 }
 
+// GetRemoteURL implements Operations.
 func (j *JJOperations) GetRemoteURL(ctx context.Context, repoPath string) (string, error) {
 	out, err := j.runJJ(ctx, repoPath, "git", "remote", "list")
 	if err != nil {
@@ -345,6 +362,7 @@ func (j *JJOperations) GetRemoteURL(ctx context.Context, repoPath string) (strin
 	return "", nil
 }
 
+// FetchAll implements Operations.
 func (j *JJOperations) FetchAll(ctx context.Context, repoPath string) (bool, string, error) {
 	_, err := j.runJJ(ctx, repoPath, "git", "fetch", "--all-remotes")
 	if err != nil {
@@ -355,10 +373,12 @@ func (j *JJOperations) FetchAll(ctx context.Context, repoPath string) (bool, str
 	return true, "Fetched from all remotes", nil
 }
 
-func (j *JJOperations) PruneRemote(ctx context.Context, repoPath string) (bool, string, error) {
+// PruneRemote implements Operations.
+func (*JJOperations) PruneRemote(_ context.Context, _ string) (bool, string, error) {
 	return true, "JJ doesn't require explicit pruning", nil
 }
 
+// CleanupMergedBranches implements Operations.
 func (j *JJOperations) CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error) {
 	out, err := j.runJJ(ctx, repoPath, "bookmark", "list", "--all-remotes", "-T", jjBookmarkListFormat)
 	if err != nil {

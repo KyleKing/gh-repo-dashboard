@@ -27,17 +27,17 @@ func TestSearchReposSubstring(t *testing.T) {
 		t.Errorf("expected 2 repos matching 'api', got %d", len(result))
 	}
 
-	hasApiService := false
-	hasApiClient := false
+	hasAPIService := false
+	hasAPIClient := false
 	for _, p := range result {
 		if p == "/api-service" {
-			hasApiService = true
+			hasAPIService = true
 		}
 		if p == "/api-client" {
-			hasApiClient = true
+			hasAPIClient = true
 		}
 	}
-	if !hasApiService || !hasApiClient {
+	if !hasAPIService || !hasAPIClient {
 		t.Errorf("expected both api repos, got %v", result)
 	}
 }

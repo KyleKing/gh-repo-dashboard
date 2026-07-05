@@ -31,6 +31,7 @@ type statusCheck struct {
 	Conclusion string `json:"conclusion,omitempty"`
 }
 
+// GetPRForBranch returns the pull request associated with branch, if any, using the cache when fresh.
 func GetPRForBranch(ctx context.Context, repoPath, branch, upstream string) (*models.PRInfo, error) {
 	cacheKey := upstream + ":" + branch
 	if cached, ok := cache.PRCache.Get(cacheKey); ok {
@@ -101,6 +102,7 @@ func parseChecks(checks []statusCheck) models.ChecksStatus {
 	return status
 }
 
+// GetPRDetail returns the full detail for a single pull request, using the cache when fresh.
 func GetPRDetail(ctx context.Context, repoPath string, prNumber int) (*models.PRDetail, error) {
 	cacheKey := fmt.Sprintf("%s:pr:%d", repoPath, prNumber)
 	if cached, ok := cache.PRDetailCache.Get(cacheKey); ok {
@@ -189,6 +191,7 @@ func GetPRDetail(ctx context.Context, repoPath string, prNumber int) (*models.PR
 	return detail, nil
 }
 
+// GetPRsForRepo returns all open pull requests for the repo, using the cache when fresh.
 func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRInfo, error) {
 	if upstream == "" {
 		return []models.PRInfo{}, nil
@@ -243,6 +246,7 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 	return result, nil
 }
 
+// GetPRCount returns the number of open pull requests for the repo, using the cache when fresh.
 func GetPRCount(ctx context.Context, repoPath, upstream string) (int, error) {
 	prs, err := GetPRsForRepo(ctx, repoPath, upstream)
 	if err != nil {
