@@ -17,3 +17,7 @@ func batchPruneRemoteCmd(paths []string) tea.Cmd {
 func batchCleanupMergedCmd(paths []string) tea.Cmd {
 	return batch.RunTask("Cleanup Merged", paths, batch.CleanupMerged)
 }
+
+func batchPreviewCleanupCmd(paths []string) tea.Cmd {
+	return batch.RunTask("Cleanup Merged (dry run)", paths, batch.PreviewCleanup)
+}

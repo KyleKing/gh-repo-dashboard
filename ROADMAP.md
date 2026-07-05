@@ -135,36 +135,46 @@ first-line read, independent of the VCS layer (no `Operations` growth).
   the detail tab
 - Ship: badge visible, tab renders, filterable by predicate
 
-### M9: Safe-to-delete branch detection (gh-poi equivalent)
+### M9: Safe-to-delete branch detection (gh-poi equivalent) (shipped)
 
-`CleanupMergedBranches` only catches true merges (`git branch --merged`), so
-squash-merged branches survive forever. Rather than shelling out to the gh-poi
+`CleanupMergedBranches` only caught true merges (`git branch --merged`), so
+squash-merged branches survived forever. Rather than shelling out to the gh-poi
 extension (human-readable output only, extra install) or importing its unstable
-internals, reimplement the core detection with the `gh --json` pattern the
-`internal/github` package already uses. PR data is VCS-agnostic, so this can work
+internals, reimplemented the core detection with the `gh --json` pattern the
+`internal/github` package already uses. PR data is VCS-agnostic, so this works
 for jj bookmarks too.
 
-- `internal/github`: fetch merged/closed PR head refs
-  (`gh pr list --state merged --json headRefName,headRefOid,mergedAt`)
-- Add the branch tip OID to `models.BranchInfo` (both git and jj list
-  implementations); a branch is safe to delete when its tip matches a merged PR's
-  `headRefOid` or it is fully merged into the default branch
-- Fix default-branch detection while here: `git symbolic-ref
-  refs/remotes/origin/HEAD` with fallback to the current main/master guess
-- Safety rails: never the current branch, never branches checked out in worktrees;
-  a gh-poi-style lock/pin list is out of scope for the first cut
-- Rework `CleanupMergedBranches` failure handling: it currently ignores per-branch
-  `git branch -d` failures silently. Squash-merged branches need `-D` (git considers
-  them unmerged), so the task must pass the PR-verified set explicitly, use `-D`
-  only for those, and report per-branch failures so the dry-run preview matches
-  what actually deletes
-- UI: mark deletable branches in the branch detail tab, add a `has_deletable`
-  predicate, and upgrade the cleanup batch task to include squash-merged branches
-  with a dry-run preview before the write (batch writes stay behind an explicit
-  keybinding)
-- jj follow-up within the milestone: same PR-head comparison against bookmark
-  targets
-- Ship: squash-merged branches detected and cleanable, dry-run preview, git first
+- `internal/github.GetMergedPRHeads` fetches merged PR head refs
+  (`gh pr list --state merged --json headRefName,headRefOid --limit 100`), cached
+  like the existing PR lookups
+- Added a `Head` tip-OID field to `models.BranchInfo` (both git `for-each-ref` and
+  jj bookmark-list template implementations); a branch is safe to delete when its
+  tip matches a merged PR's `headRefOid`
+- Fixed default-branch detection: `GitOperations.resolveDefaultBranch` tries `git
+  symbolic-ref refs/remotes/origin/HEAD` first, falling back to the previous
+  main/master probing
+- Safety rails: squash-merged deletion skips the current branch and any branch
+  checked out in a worktree; a gh-poi-style lock/pin list stayed out of scope
+- Reworked `vcs.Mutator.CleanupMergedBranches` to `(ctx, repoPath, squashMerged
+  []string) (bool, string, error)`. Git deletes true-merges with `-d` and the
+  caller-verified squash-merged set with `-D`, collecting per-branch failures
+  into the result message (`"Deleted N branches: ...; failed: name (reason)"`)
+  instead of silently ignoring them. jj deletes matching bookmarks the same way
+  via `jj bookmark delete`, since it doesn't distinguish a true merge from a
+  squash merge
+- `batch.CleanupMerged` computes the squash-merged set itself (merged PR heads
+  intersected with local branch tips) via swappable `getMergedPRHeads`/
+  `getOperations` seams so tests can stub gh/git access; `batch.PreviewCleanup`
+  backs `:cleanup --dry-run`, reporting the same detection without deleting
+- UI: the repo detail Branches tab marks deletable branches with a green
+  "merged" badge, computed best-effort when the tab loads (missing `gh` yields
+  no annotations rather than failing the load)
+- Ship: squash-merged branches detected and cleanable (git and jj), dry-run
+  preview via `:cleanup --dry-run`, per-branch failure reporting
+- Deferred: the `has_deletable` filter predicate (would need per-repo gh calls
+  at summary-load time, which the roadmap explicitly avoids) and a jj-specific
+  default-branch resolver (jj cleanup still assumes `main`/`master`/`trunk`,
+  matching pre-M9 behavior)
 
 ## Deferred features
 

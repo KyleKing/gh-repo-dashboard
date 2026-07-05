@@ -197,6 +197,57 @@ func TestExecuteCommandFetch(t *testing.T) {
 	}
 }
 
+func TestExecuteCommandCleanup(t *testing.T) {
+	t.Parallel()
+	m := commandModel()
+	m2, cmd := m.ExecuteCommand("cleanup")
+	if m2.viewMode != ViewModeBatchProgress {
+		t.Errorf("expected ViewModeBatchProgress, got %v", m2.viewMode)
+	}
+	if m2.batchTask != "Cleanup Merged" {
+		t.Errorf("expected task name %q, got %q", "Cleanup Merged", m2.batchTask)
+	}
+	if !m2.batchRunning || m2.batchTotal != 2 {
+		t.Errorf("expected batch running over 2 repos, got running=%v total=%d", m2.batchRunning, m2.batchTotal)
+	}
+	if cmd == nil {
+		t.Error("expected batch cmd")
+	}
+}
+
+func TestExecuteCommandCleanupDryRun(t *testing.T) {
+	t.Parallel()
+	m := commandModel()
+	m2, cmd := m.ExecuteCommand("cleanup --dry-run")
+	if m2.viewMode != ViewModeBatchProgress {
+		t.Errorf("expected ViewModeBatchProgress, got %v", m2.viewMode)
+	}
+	if m2.batchTask != "Cleanup Merged (dry run)" {
+		t.Errorf("expected task name %q, got %q", "Cleanup Merged (dry run)", m2.batchTask)
+	}
+	if !m2.batchRunning || m2.batchTotal != 2 {
+		t.Errorf("expected batch running over 2 repos, got running=%v total=%d", m2.batchRunning, m2.batchTotal)
+	}
+	if cmd == nil {
+		t.Error("expected batch cmd")
+	}
+}
+
+func TestExecuteCommandCleanupDryRunWithPredicate(t *testing.T) {
+	t.Parallel()
+	m := commandModel()
+	m2, cmd := m.ExecuteCommand("cleanup --dry-run dirty")
+	if m2.batchTask != "Cleanup Merged (dry run) (dirty)" {
+		t.Errorf("expected task name %q, got %q", "Cleanup Merged (dry run) (dirty)", m2.batchTask)
+	}
+	if m2.batchTotal != 1 {
+		t.Errorf("expected 1 matching repo, got %d", m2.batchTotal)
+	}
+	if cmd == nil {
+		t.Error("expected batch cmd")
+	}
+}
+
 func TestCommandModeKeyFlow(t *testing.T) {
 	t.Parallel()
 	m := commandModel()

@@ -78,13 +78,14 @@ type Model struct {
 	loadingCount int
 	loadedCount  int
 
-	detailTab    DetailTab
-	detailCursor int
-	branches     []models.BranchInfo
-	stashes      []models.StashDetail
-	worktrees    []models.WorktreeInfo
-	notesFile    string
-	notesContent string
+	detailTab         DetailTab
+	detailCursor      int
+	branches          []models.BranchInfo
+	deletableBranches map[string]bool
+	stashes           []models.StashDetail
+	worktrees         []models.WorktreeInfo
+	notesFile         string
+	notesContent      string
 
 	selectedBranch models.BranchInfo
 	branchDetail   models.BranchDetail

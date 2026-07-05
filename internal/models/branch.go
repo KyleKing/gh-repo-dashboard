@@ -20,6 +20,10 @@ type BranchInfo struct {
 	LastCommit time.Time
 	IsCurrent  bool
 	IsRemote   bool
+	// Head is the branch tip's commit OID (git) or change target commit id
+	// (jj), used to detect squash-merged branches whose tip matches a merged
+	// pull request's head OID even though the branch itself was never merged.
+	Head string
 }
 
 // RelativeLastCommit returns a human-readable relative time for the branch's last commit.

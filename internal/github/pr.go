@@ -266,3 +266,45 @@ func GetPRCount(ctx context.Context, repoPath, upstream string) (int, error) {
 
 	return len(prs), nil
 }
+
+type mergedPRHead struct {
+	HeadRefName string `json:"headRefName"`
+	HeadRefOid  string `json:"headRefOid"`
+}
+
+// CachedMergedPRHeads returns the cached merged-PR head map for repoPath, if any, without invoking gh.
+func CachedMergedPRHeads(repoPath string) (map[string]string, bool) {
+	return cache.MergedPRHeadsCache.Get(repoPath)
+}
+
+// GetMergedPRHeads returns merged pull requests' head branch name mapped to head commit OID for
+// repoPath, using the cache when fresh. A branch whose tip matches one of these OIDs was
+// squash-merged: `git branch --merged` won't catch it because the squash commit differs from the
+// branch's own tip.
+func GetMergedPRHeads(ctx context.Context, repoPath string) (map[string]string, error) {
+	if cached, ok := CachedMergedPRHeads(repoPath); ok {
+		return cached, nil
+	}
+
+	env := vcs.GetGitHubEnv(repoPath)
+
+	out, err := runGH(ctx, repoPath, env, "pr", "list", "--state", "merged",
+		"--json", "headRefName,headRefOid", "--limit", "100")
+	if err != nil {
+		return map[string]string{}, err
+	}
+
+	var prs []mergedPRHead
+	if err := json.Unmarshal(out, &prs); err != nil {
+		return map[string]string{}, fmt.Errorf("parsing gh pr list output: %w", err)
+	}
+
+	heads := make(map[string]string, len(prs))
+	for _, pr := range prs {
+		heads[pr.HeadRefName] = pr.HeadRefOid
+	}
+
+	cache.MergedPRHeadsCache.Set(repoPath, heads)
+
+	return heads, nil
+}

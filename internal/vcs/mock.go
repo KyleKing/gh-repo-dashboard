@@ -22,7 +22,7 @@ type MockOperations struct {
 	VCSTypeFn               func() models.VCSType
 	FetchAllFn              func(ctx context.Context, repoPath string) (bool, string, error)
 	PruneRemoteFn           func(ctx context.Context, repoPath string) (bool, string, error)
-	CleanupMergedBranchesFn func(ctx context.Context, repoPath string) (bool, string, error)
+	CleanupMergedBranchesFn func(ctx context.Context, repoPath string, squashMerged []string) (bool, string, error)
 }
 
 // GetRepoSummary implements Operations.
@@ -162,9 +162,11 @@ func (m *MockOperations) PruneRemote(ctx context.Context, repoPath string) (bool
 // CleanupMergedBranches implements Operations.
 //
 //nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
-func (m *MockOperations) CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error) {
+func (m *MockOperations) CleanupMergedBranches(
+	ctx context.Context, repoPath string, squashMerged []string,
+) (bool, string, error) {
 	if m.CleanupMergedBranchesFn != nil {
-		return m.CleanupMergedBranchesFn(ctx, repoPath)
+		return m.CleanupMergedBranchesFn(ctx, repoPath, squashMerged)
 	}
 
 	return true, "No branches to cleanup", nil

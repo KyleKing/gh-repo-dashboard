@@ -201,6 +201,27 @@ func TestDetailLoadedMsg(t *testing.T) {
 	}
 }
 
+func TestDetailLoadedMsgDeletableBranches(t *testing.T) {
+	t.Parallel()
+	m := New(nil, 1)
+	m.selectedRepo = testRepo1Path
+
+	msg := DetailLoadedMsg{
+		Path:              testRepo1Path,
+		Branches:          []models.BranchInfo{{Name: "feature-a"}, {Name: mainBranchName}},
+		DeletableBranches: map[string]bool{"feature-a": true},
+	}
+	updatedModel, _ := m.Update(msg)
+	m = mustModel(t, updatedModel)
+
+	if !m.deletableBranches["feature-a"] {
+		t.Error("expected feature-a to be marked deletable")
+	}
+	if m.deletableBranches[mainBranchName] {
+		t.Error("main should not be marked deletable")
+	}
+}
+
 func TestDetailLoadedMsgPathMismatch(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)

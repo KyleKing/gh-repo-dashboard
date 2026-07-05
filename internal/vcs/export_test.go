@@ -26,8 +26,8 @@ func (j *JJOperations) RunJJForTest(ctx context.Context, repoPath string, args .
 type JJBookmark = jjBookmark
 
 // NewJJBookmark constructs a jjBookmark for black-box tests, since its fields are unexported.
-func NewJJBookmark(name, upstream string, ahead, behind int) JJBookmark {
-	return jjBookmark{name: name, upstream: upstream, ahead: ahead, behind: behind}
+func NewJJBookmark(name, upstream string, ahead, behind int, head string) JJBookmark {
+	return jjBookmark{name: name, upstream: upstream, ahead: ahead, behind: behind, head: head}
 }
 
 // ParseJJBookmarkList exposes the unexported parseJJBookmarkList helper to black-box tests.

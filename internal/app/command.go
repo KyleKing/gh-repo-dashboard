@@ -100,9 +100,7 @@ func namesMatching[T any](modes map[string]T, prefix string) []string {
 // DefaultRegistry builds the Registry of all built-in ":command" commands.
 func DefaultRegistry() Registry {
 	return NewRegistry(
-		batchCommand("cleanup",
-			"Delete merged branches in visible repos, optionally scoped: :cleanup [predicate]",
-			"Cleanup Merged", batchCleanupMergedCmd),
+		cleanupCommand(),
 		batchCommand("fetch",
 			"Fetch visible repos, optionally scoped: :fetch [predicate]",
 			"Fetch All", batchFetchAllCmd),
@@ -287,27 +285,79 @@ func batchCommand(name, description, taskName string, taskCmd func([]string) tea
 			return predicateCandidates(prefix)
 		},
 		Run: func(m Model, args []string) (Model, tea.Cmd) {
-			paths := m.filteredPaths
-			label := taskName
-			if len(args) > 0 {
-				expr := strings.Join(args, " ")
-				pred, err := filters.ParsePredicate(expr)
-				if err != nil {
-					return m, statusCmd(err.Error())
-				}
-				paths = nil
-				for _, path := range m.filteredPaths {
-					if summary, ok := m.summaries[path]; ok && pred(summary) {
-						paths = append(paths, path)
-					}
-				}
-				label = fmt.Sprintf("%s (%s)", taskName, expr)
+			return runBatchCommand(m, args, taskName, taskCmd)
+		},
+	}
+}
+
+// runBatchCommand scopes paths to the visible repos, narrows them by an
+// optional predicate expression, and starts the batch task on the result.
+func runBatchCommand(m Model, args []string, taskName string, taskCmd func([]string) tea.Cmd) (Model, tea.Cmd) {
+	paths := m.filteredPaths
+	label := taskName
+	if len(args) > 0 {
+		expr := strings.Join(args, " ")
+		pred, err := filters.ParsePredicate(expr)
+		if err != nil {
+			return m, statusCmd(err.Error())
+		}
+		paths = nil
+		for _, path := range m.filteredPaths {
+			if summary, ok := m.summaries[path]; ok && pred(summary) {
+				paths = append(paths, path)
 			}
-			if len(paths) == 0 {
-				return m, statusCmd("No repos match")
+		}
+		label = fmt.Sprintf("%s (%s)", taskName, expr)
+	}
+	if len(paths) == 0 {
+		return m, statusCmd("No repos match")
+	}
+
+	return m.startBatchTaskOn(label, paths, taskCmd)
+}
+
+// dryRunFlag is the ":cleanup" flag that previews deletions instead of
+// performing them.
+const dryRunFlag = "--dry-run"
+
+// cleanupCommand builds the ":cleanup" command: deletes merged and
+// squash-merged branches in the visible repos, optionally narrowed by a
+// predicate, or previews the same detection with "--dry-run" instead of
+// deleting anything.
+func cleanupCommand() Command {
+	return Command{
+		Name: "cleanup",
+		Description: "Delete merged branches in visible repos, optionally scoped: " +
+			":cleanup [--dry-run] [predicate]",
+		Complete: func(_ Model, args []string) []string {
+			prefix := ""
+			if len(args) > 0 {
+				prefix = args[len(args)-1]
 			}
 
-			return m.startBatchTaskOn(label, paths, taskCmd)
+			candidates := predicateCandidates(prefix)
+			if !slices.Contains(args, dryRunFlag) && strings.HasPrefix(dryRunFlag, prefix) {
+				candidates = append([]string{dryRunFlag}, candidates...)
+			}
+
+			return candidates
+		},
+		Run: func(m Model, args []string) (Model, tea.Cmd) {
+			taskName := "Cleanup Merged"
+			taskCmd := batchCleanupMergedCmd
+
+			rest := make([]string, 0, len(args))
+			for _, arg := range args {
+				if arg == dryRunFlag {
+					taskName = "Cleanup Merged (dry run)"
+					taskCmd = batchPreviewCleanupCmd
+
+					continue
+				}
+				rest = append(rest, arg)
+			}
+
+			return runBatchCommand(m, rest, taskName, taskCmd)
 		},
 	}
 }

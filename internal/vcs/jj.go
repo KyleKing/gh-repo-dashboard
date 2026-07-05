@@ -29,11 +29,12 @@ const jjCurrentBookmarkFormat = `self.local_bookmarks().map(|b| b.name()).join("
 // one additional line with its origin ahead/behind counts. Real `jj bookmark
 // list` output puts remote-tracking info on an indented "@origin: ..."
 // continuation line rather than inline with the bookmark name, so this
-// template sidesteps that text format entirely.
+// template sidesteps that text format entirely. The local line also carries
+// the bookmark's target commit id, used to detect squash-merged bookmarks.
 const jjBookmarkListFormat = `if(self.remote() == "origin", ` +
 	`self.name() ++ "\torigin\t" ++ self.tracking_ahead_count().lower() ++ ` +
 	`"\t" ++ self.tracking_behind_count().lower() ++ "\n", ` +
-	`if(self.remote(), "", self.name() ++ "\tlocal\n"))`
+	`if(self.remote(), "", self.name() ++ "\tlocal\t" ++ self.normal_target().commit_id() ++ "\n"))`
 
 // jjWorkspaceListFormat emits "name\tabsolute-path" per workspace. The default
 // `jj workspace list` output has no path at all, so a template is required.
@@ -44,6 +45,7 @@ type jjBookmark struct {
 	upstream string
 	ahead    int
 	behind   int
+	head     string
 }
 
 func parseJJBookmarkList(out string) []jjBookmark {
@@ -65,10 +67,13 @@ func parseJJBookmarkList(out string) []jjBookmark {
 			order = append(order, name)
 		}
 
-		if len(fields) == 4 && fields[1] == "origin" {
+		switch {
+		case len(fields) == 4 && fields[1] == "origin":
 			bookmark.upstream = name + "@origin"
 			bookmark.ahead, _ = strconv.Atoi(fields[2])  //nolint:errcheck // jj's template emits digits here
 			bookmark.behind, _ = strconv.Atoi(fields[3]) //nolint:errcheck // jj's template emits digits here
+		case len(fields) == 3 && fields[1] == "local":
+			bookmark.head = fields[2]
 		}
 	}
 
@@ -293,6 +298,7 @@ func (j *JJOperations) GetBranchList(ctx context.Context, repoPath string) ([]mo
 			Ahead:     bookmark.ahead,
 			Behind:    bookmark.behind,
 			IsCurrent: bookmark.name == currentBookmark,
+			Head:      bookmark.head,
 		})
 	}
 
@@ -428,38 +434,82 @@ func (*JJOperations) PruneRemote(_ context.Context, _ string) (bool, string, err
 	return true, "JJ doesn't require explicit pruning", nil
 }
 
-// CleanupMergedBranches implements Operations.
+// isProtectedBookmark reports whether name is a default-branch-style bookmark
+// that cleanup should never touch.
+func isProtectedBookmark(name string) bool {
+	return name == defaultMainBranch || name == masterBranch || name == "trunk"
+}
+
+// PreviewMergedBranches reports bookmarks that are fully merged into the
+// default branch, without deleting anything. Used by the `:cleanup --dry-run`
+// preview; not part of the Mutator interface since it's read-only. Always
+// reports defaultMainBranch as the default: jj cleanup doesn't otherwise
+// resolve one (see CleanupMergedBranches).
+//
+//nolint:gocritic,unparam // matches GitOperations.PreviewMergedBranches's (default branch, merged, err)
+func (j *JJOperations) PreviewMergedBranches(ctx context.Context, repoPath string) (string, []string, error) {
+	out, err := j.runJJ(ctx, repoPath, "bookmark", "list", "--all-remotes", "-T", jjBookmarkListFormat)
+	if err != nil {
+		return defaultMainBranch, nil, err
+	}
+
+	var merged []string
+	for _, bookmark := range parseJJBookmarkList(out) {
+		if isProtectedBookmark(bookmark.name) {
+			continue
+		}
+		if j.isMergedIntoDefault(ctx, repoPath, bookmark.name) {
+			merged = append(merged, bookmark.name)
+		}
+	}
+
+	return defaultMainBranch, merged, nil
+}
+
+func (j *JJOperations) isMergedIntoDefault(ctx context.Context, repoPath, bookmarkName string) bool {
+	out, err := j.runJJ(ctx, repoPath, "log", "-r",
+		bookmarkName+"@origin.."+defaultMainBranch+"@origin", "-T", "change_id", "--no-graph")
+
+	return err == nil && strings.TrimSpace(out) == ""
+}
+
+// CleanupMergedBranches implements Operations. The squashMerged parameter
+// names bookmarks already verified by the caller (via merged PR head OIDs)
+// as squash-merged. `jj bookmark delete` doesn't distinguish a true merge
+// from a squash merge, so squash-merged bookmarks are deleted the same way
+// as fully-merged ones.
 //
 //nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
-func (j *JJOperations) CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error) {
+func (j *JJOperations) CleanupMergedBranches(
+	ctx context.Context, repoPath string, squashMerged []string,
+) (bool, string, error) {
 	out, err := j.runJJ(ctx, repoPath, "bookmark", "list", "--all-remotes", "-T", jjBookmarkListFormat)
 	if err != nil {
 		//nolint:nilerr // failure is reported through the message, not the error field
 		return false, err.Error(), nil
 	}
 
-	var deleted []string
+	squash := make(map[string]bool, len(squashMerged))
+	for _, name := range squashMerged {
+		squash[name] = true
+	}
+
+	var deleted, failed []string
 	for _, bookmark := range parseJJBookmarkList(out) {
-		if bookmark.name == defaultMainBranch || bookmark.name == masterBranch || bookmark.name == "trunk" {
+		if isProtectedBookmark(bookmark.name) {
 			continue
 		}
 
-		isMerged, err := j.runJJ(ctx, repoPath, "log", "-r",
-			bookmark.name+"@origin.."+defaultMainBranch+"@origin", "-T", "change_id", "--no-graph")
-		if err != nil {
+		if !j.isMergedIntoDefault(ctx, repoPath, bookmark.name) && !squash[bookmark.name] {
 			continue
 		}
 
-		if strings.TrimSpace(isMerged) == "" {
-			if _, err := j.runJJ(ctx, repoPath, "bookmark", "delete", bookmark.name); err == nil {
-				deleted = append(deleted, bookmark.name)
-			}
+		if _, err := j.runJJ(ctx, repoPath, "bookmark", "delete", bookmark.name); err != nil {
+			failed = append(failed, fmt.Sprintf("%s (%s)", bookmark.name, err.Error()))
+			continue
 		}
+		deleted = append(deleted, bookmark.name)
 	}
 
-	if len(deleted) == 0 {
-		return true, "No merged bookmarks to delete", nil
-	}
-
-	return true, fmt.Sprintf("Deleted %d bookmarks: %s", len(deleted), strings.Join(deleted, ", ")), nil
+	return true, cleanupMessage("bookmarks", deleted, failed), nil
 }

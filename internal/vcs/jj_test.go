@@ -22,21 +22,21 @@ func TestParseJJBookmarkList(t *testing.T) {
 		{
 			name:     "single local bookmark",
 			input:    "main\tlocal\n",
-			expected: []vcs.JJBookmark{vcs.NewJJBookmark("main", "", 0, 0)},
+			expected: []vcs.JJBookmark{vcs.NewJJBookmark("main", "", 0, 0, "")},
 		},
 		{
 			name:  "bookmark tracked at origin",
 			input: "main\tlocal\nmain\torigin\t1\t2\n",
 			expected: []vcs.JJBookmark{
-				vcs.NewJJBookmark("main", "main@origin", 1, 2),
+				vcs.NewJJBookmark("main", "main@origin", 1, 2, ""),
 			},
 		},
 		{
 			name:  "multiple bookmarks",
 			input: "main\tlocal\nfeature\tlocal\n",
 			expected: []vcs.JJBookmark{
-				vcs.NewJJBookmark("main", "", 0, 0),
-				vcs.NewJJBookmark("feature", "", 0, 0),
+				vcs.NewJJBookmark("main", "", 0, 0, ""),
+				vcs.NewJJBookmark("feature", "", 0, 0, ""),
 			},
 		},
 		{
@@ -44,8 +44,13 @@ func TestParseJJBookmarkList(t *testing.T) {
 			input: "main\tlocal\n" +
 				"main\torigin\t0\t1\n",
 			expected: []vcs.JJBookmark{
-				vcs.NewJJBookmark("main", "main@origin", 0, 1),
+				vcs.NewJJBookmark("main", "main@origin", 0, 1, ""),
 			},
+		},
+		{
+			name:     "local bookmark carries head commit id",
+			input:    "main\tlocal\tabc123\n",
+			expected: []vcs.JJBookmark{vcs.NewJJBookmark("main", "", 0, 0, "abc123")},
 		},
 	}
 

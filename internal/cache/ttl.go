@@ -84,12 +84,13 @@ const (
 
 // Package-level caches shared across the app, keyed by repo path (or "path#N" for PR-numbered lookups).
 var (
-	PRCache       = NewTTLCache[*models.PRInfo](defaultTTL)
-	PRListCache   = NewTTLCache[[]models.PRInfo](defaultTTL)
-	PRDetailCache = NewTTLCache[*models.PRDetail](defaultTTL)
-	BranchCache   = NewTTLCache[[]models.BranchInfo](defaultTTL)
-	CommitCache   = NewTTLCache[[]models.CommitInfo](defaultTTL)
-	WorkflowCache = NewTTLCache[*models.WorkflowSummary](workflowTTL)
+	PRCache            = NewTTLCache[*models.PRInfo](defaultTTL)
+	PRListCache        = NewTTLCache[[]models.PRInfo](defaultTTL)
+	PRDetailCache      = NewTTLCache[*models.PRDetail](defaultTTL)
+	BranchCache        = NewTTLCache[[]models.BranchInfo](defaultTTL)
+	CommitCache        = NewTTLCache[[]models.CommitInfo](defaultTTL)
+	WorkflowCache      = NewTTLCache[*models.WorkflowSummary](workflowTTL)
+	MergedPRHeadsCache = NewTTLCache[map[string]string](defaultTTL)
 )
 
 // ClearAll clears every package-level cache.
@@ -100,4 +101,5 @@ func ClearAll() {
 	BranchCache.Clear()
 	CommitCache.Clear()
 	WorkflowCache.Clear()
+	MergedPRHeadsCache.Clear()
 }

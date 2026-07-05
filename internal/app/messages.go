@@ -51,6 +51,10 @@ type DetailLoadedMsg struct {
 	PRs          []models.PRInfo
 	NotesFile    string
 	NotesContent string
+	// DeletableBranches names local, non-current branches whose tip matches a
+	// merged pull request's head OID (safe-to-delete detection). It's
+	// best-effort: a missing gh yields an empty set rather than failing the load.
+	DeletableBranches map[string]bool
 }
 
 // BranchDetailLoadedMsg reports the loaded detail for a single branch.

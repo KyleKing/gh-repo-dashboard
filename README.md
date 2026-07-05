@@ -156,14 +156,21 @@ Cleans up stale remote branch references.
 - **Git**: `git remote prune origin`
 - **JJ**: No-op (jj handles this automatically during fetch)
 
-### Cleanup Merged Branches (`C`)
-Deletes local branches/bookmarks that have been merged into main/master.
-- **Git**: Deletes local branches merged into main
-- **JJ**: Deletes bookmarks that are ancestors of main
+### Cleanup Merged Branches (`C`, `:cleanup`)
+Deletes local branches/bookmarks that have been merged into main/master, plus
+branches squash-merged via a pull request (detected by comparing the branch tip
+against merged PR head OIDs from `gh`).
+- **Git**: Deletes true-merges with `git branch -d` and verified squash-merges
+  with `git branch -D`, skipping the current branch and any branch checked out
+  in a worktree
+- **JJ**: Deletes bookmarks that are ancestors of main, plus verified
+  squash-merged bookmarks, via `jj bookmark delete`
+- `:cleanup --dry-run [predicate]` previews what would be deleted without
+  deleting anything
 
 **Usage:**
 1. Apply filters to select repositories (e.g., filter by "dirty" or search for specific repos)
-2. Press `F`, `P`, or `C` to run the batch operation
+2. Press `F`, `P`, or `C` to run the batch operation, or run `:cleanup --dry-run` to preview first
 3. View real-time progress and results in the modal
 4. Operations run sequentially across all filtered repositories
 

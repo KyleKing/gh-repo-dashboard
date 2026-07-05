@@ -259,6 +259,7 @@ func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
 	}
 
 	m.branches = msg.Branches
+	m.deletableBranches = msg.DeletableBranches
 	m.stashes = msg.Stashes
 	m.worktrees = msg.Worktrees
 	m.prs = msg.PRs
@@ -1116,15 +1117,38 @@ func loadDetailCmd(path string) tea.Cmd {
 		notesContent := models.ReadNotesFile(path, notesFile)
 
 		return DetailLoadedMsg{
-			Path:         path,
-			Branches:     branches,
-			Stashes:      stashes,
-			Worktrees:    worktrees,
-			PRs:          prs,
-			NotesFile:    notesFile,
-			NotesContent: notesContent,
+			Path:              path,
+			Branches:          branches,
+			Stashes:           stashes,
+			Worktrees:         worktrees,
+			PRs:               prs,
+			NotesFile:         notesFile,
+			NotesContent:      notesContent,
+			DeletableBranches: deletableBranches(ctx, path, branches),
 		}
 	}
+}
+
+// deletableBranches marks local, non-current branches whose tip matches a
+// merged pull request's head OID as safe to delete. Best-effort: a missing gh
+// yields an empty set rather than failing the detail load.
+func deletableBranches(ctx context.Context, path string, branches []models.BranchInfo) map[string]bool {
+	heads, err := github.GetMergedPRHeads(ctx, path)
+	if err != nil || len(heads) == 0 {
+		return nil
+	}
+
+	deletable := make(map[string]bool)
+	for _, b := range branches {
+		if b.IsCurrent || b.IsRemote || b.Head == "" {
+			continue
+		}
+		if oid, ok := heads[b.Name]; ok && oid == b.Head {
+			deletable[b.Name] = true
+		}
+	}
+
+	return deletable
 }
 
 func findDefaultBranch(branches []models.BranchInfo) string {

@@ -63,8 +63,19 @@ An interface-based abstraction supports multiple version control systems.
 Read operations include `GetRepoSummary`, `GetCurrentBranch`, `GetBranchList`,
 `GetStashList` (git only), `GetWorktreeList`, `GetCommitLog`, and `GetAheadBehind`.
 File-status counts are computed internally by `GetRepoSummary` rather than exposed
-as separate interface methods. Write operations used by batch tasks (`FetchAll`,
-`PruneRemote`, `CleanupMergedBranches`) return `(success bool, message string)` for UI feedback.
+as separate interface methods. `models.BranchInfo` carries a `Head` tip-OID field
+(git `for-each-ref`'s `%(objectname)`, jj's bookmark target commit id) used to
+detect squash-merged branches whose tip matches a merged PR's head OID even though
+the branch itself was never merged. Write operations used by batch tasks
+(`FetchAll`, `PruneRemote`, `CleanupMergedBranches`) return `(success bool, message
+string)` for UI feedback. `CleanupMergedBranches(ctx, repoPath, squashMerged
+[]string)` additionally takes the caller-verified squash-merged branch names: git
+deletes them with `-D` (skipping the current branch and any branch checked out in
+a worktree) alongside true-merges deleted with `-d`, and reports per-branch
+failures in the result message rather than swallowing them. `GitOperations` and
+`JJOperations` each also expose a `PreviewMergedBranches` method (outside the
+`Mutator` interface, since it's read-only) that reports what cleanup would delete
+without deleting anything, backing the `:cleanup --dry-run` command.
 
 ### GitHub CLI integration
 
@@ -81,6 +92,14 @@ failure (failures are highlighted, not fatal). Progress is reported via Tea mess
 
 Batch operations are read-only by default; write operations require an explicit
 keybinding. Scope is always the filtered set, making the blast radius explicit.
+
+`batch.CleanupMerged` and `batch.PreviewCleanup` detect squash-merged branches by
+comparing `internal/github.GetMergedPRHeads` (cached merged PR head OIDs) against
+`GetBranchList`'s `Head` field, reading through swappable `getMergedPRHeads`/
+`getOperations` package-level seams (`internal/batch/export_test.go`) so tests can
+stub gh/git access without shelling out. `PreviewCleanup` backs `:cleanup
+--dry-run`: it runs the same detection plus each VCS's `PreviewMergedBranches` and
+reports what would be deleted without calling `CleanupMergedBranches`.
 
 Adding a new batch task:
 

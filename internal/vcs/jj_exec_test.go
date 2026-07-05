@@ -343,22 +343,22 @@ func TestJJGetBranchList(t *testing.T) {
 		{
 			name: "local bookmarks",
 			canned: map[string]string{
-				listKey:    "feature\tlocal\nmain\tlocal\n",
+				listKey:    "feature\tlocal\tabc111\nmain\tlocal\tdef222\n",
 				currentKey: "main",
 			},
 			expected: []models.BranchInfo{
-				{Name: "feature"},
-				{Name: "main", IsCurrent: true},
+				{Name: "feature", Head: "abc111"},
+				{Name: "main", IsCurrent: true, Head: "def222"},
 			},
 		},
 		{
 			name: "tracked bookmark",
 			canned: map[string]string{
-				listKey:    "main\tlocal\nmain\torigin\t1\t0\n",
+				listKey:    "main\tlocal\tdef222\nmain\torigin\t1\t0\n",
 				currentKey: "",
 			},
 			expected: []models.BranchInfo{
-				{Name: "main", Upstream: "main@origin", Ahead: 1},
+				{Name: "main", Upstream: "main@origin", Ahead: 1, Head: "def222"},
 			},
 		},
 		{
@@ -642,11 +642,12 @@ func TestJJCleanupMergedBranches(t *testing.T) {
 	listKey := jjKey("bookmark list --all-remotes -T " + vcs.JJBookmarkListFormat)
 
 	tests := []struct {
-		name       string
-		canned     map[string]string
-		failures   map[string]error
-		expectedOK bool
-		expected   string
+		name         string
+		canned       map[string]string
+		failures     map[string]error
+		squashMerged []string
+		expectedOK   bool
+		expected     string
 	}{
 		{
 			name: "deletes merged bookmark",
@@ -673,6 +674,17 @@ func TestJJCleanupMergedBranches(t *testing.T) {
 			expectedOK: false,
 			expected:   "boom",
 		},
+		{
+			name: "deletes squash-merged bookmark despite unmerged revset",
+			canned: map[string]string{
+				listKey: "squashed\tlocal\nmain\tlocal\n",
+				jjKey("log -r squashed@origin..main@origin -T change_id --no-graph"): "changeid1",
+				jjKey("bookmark delete squashed"):                                    "",
+			},
+			squashMerged: []string{"squashed"},
+			expectedOK:   true,
+			expected:     "Deleted 1 bookmarks: squashed",
+		},
 	}
 
 	for _, tt := range tests {
@@ -681,7 +693,7 @@ func TestJJCleanupMergedBranches(t *testing.T) {
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			j := vcs.NewJJOperations()
-			ok, msg, err := j.CleanupMergedBranches(ctx, testRepoPath)
+			ok, msg, err := j.CleanupMergedBranches(ctx, testRepoPath, tt.squashMerged)
 			if err != nil {
 				t.Fatal(err)
 			}

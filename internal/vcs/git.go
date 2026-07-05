@@ -242,15 +242,15 @@ func (g *GitOperations) getStashCount(ctx context.Context, repoPath string) (int
 }
 
 // branchListFieldCount is the number of tab-separated fields in the
-// for-each-ref format below (refname, upstream, track, date, HEAD marker).
-// RunCommand trims trailing whitespace from the output, so the final line can
-// lose empty trailing fields (e.g. a last branch with no upstream); the parser
-// pads missing fields back to this count.
-const branchListFieldCount = 5
+// for-each-ref format below (refname, upstream, track, date, HEAD marker,
+// object name). RunCommand trims trailing whitespace from the output, so the
+// final line can lose empty trailing fields (e.g. a last branch with no
+// upstream); the parser pads missing fields back to this count.
+const branchListFieldCount = 6
 
 // GetBranchList implements Operations.
 func (g *GitOperations) GetBranchList(ctx context.Context, repoPath string) ([]models.BranchInfo, error) {
-	format := "%(refname:short)\t%(upstream:short)\t%(upstream:track)\t%(committerdate:unix)\t%(HEAD)"
+	format := "%(refname:short)\t%(upstream:short)\t%(upstream:track)\t%(committerdate:unix)\t%(HEAD)\t%(objectname)"
 	out, err := g.runGit(ctx, repoPath, "for-each-ref", "--format="+format, "refs/heads/")
 	if err != nil {
 		return nil, err
@@ -293,6 +293,7 @@ func (g *GitOperations) GetBranchList(ctx context.Context, repoPath string) ([]m
 			Behind:     behind,
 			LastCommit: time.Unix(ts, 0),
 			IsCurrent:  parts[4] == "*",
+			Head:       parts[5],
 		})
 	}
 
@@ -465,27 +466,58 @@ func (g *GitOperations) PruneRemote(ctx context.Context, repoPath string) (bool,
 	return true, "Pruned stale remote branches", nil
 }
 
-// CleanupMergedBranches implements Operations.
-//
-//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
-func (g *GitOperations) CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error) {
-	mainBranch := defaultMainBranch
-	if _, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", defaultMainBranch); err != nil {
-		_, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", masterBranch)
-		if err != nil {
-			//nolint:nilerr // failure is reported through the message, not the error field
-			return false, "Could not find main or master branch", nil
+// resolveDefaultBranch returns the repository's default branch and whether one
+// was found. It prefers the remote's advertised HEAD (`git symbolic-ref
+// refs/remotes/origin/HEAD`), which reflects the actual default even when it's
+// neither "main" nor "master", falling back to probing for local main/master
+// when no such ref exists (e.g. no remote, or origin/HEAD was never set).
+func (g *GitOperations) resolveDefaultBranch(ctx context.Context, repoPath string) (string, bool) {
+	const originHEADPrefix = "refs/remotes/origin/"
+
+	if out, err := g.runGit(ctx, repoPath, "symbolic-ref", "refs/remotes/origin/HEAD"); err == nil {
+		if branch, ok := strings.CutPrefix(out, originHEADPrefix); ok && branch != "" {
+			return branch, true
 		}
-		mainBranch = masterBranch
 	}
 
+	if _, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", defaultMainBranch); err == nil {
+		return defaultMainBranch, true
+	}
+	if _, err := g.runGit(ctx, repoPath, "rev-parse", "--verify", masterBranch); err == nil {
+		return masterBranch, true
+	}
+
+	return "", false
+}
+
+// PreviewMergedBranches reports the default branch and the local branches
+// fully merged into it, without deleting anything. Used by the `:cleanup
+// --dry-run` preview; not part of the Mutator interface since it's read-only.
+//
+//nolint:gocritic // matches JJOperations.PreviewMergedBranches's (default branch, merged, err)
+func (g *GitOperations) PreviewMergedBranches(ctx context.Context, repoPath string) (string, []string, error) {
+	mainBranch, ok := g.resolveDefaultBranch(ctx, repoPath)
+	if !ok {
+		return "", nil, nil
+	}
+
+	merged, err := g.mergedBranchNames(ctx, repoPath, mainBranch)
+	if err != nil {
+		return mainBranch, nil, err
+	}
+
+	return mainBranch, merged, nil
+}
+
+// mergedBranchNames lists local branches fully merged into mainBranch,
+// excluding mainBranch/master itself.
+func (g *GitOperations) mergedBranchNames(ctx context.Context, repoPath, mainBranch string) ([]string, error) {
 	out, err := g.runGit(ctx, repoPath, "branch", "--merged", mainBranch)
 	if err != nil {
-		//nolint:nilerr // failure is reported through the message, not the error field
-		return false, err.Error(), nil
+		return nil, err
 	}
 
-	var deleted []string
+	var names []string
 	scanner := bufio.NewScanner(strings.NewReader(out))
 	for scanner.Scan() {
 		branch := strings.TrimSpace(scanner.Text())
@@ -495,16 +527,116 @@ func (g *GitOperations) CleanupMergedBranches(ctx context.Context, repoPath stri
 			continue
 		}
 
-		if _, err := g.runGit(ctx, repoPath, "branch", "-d", branch); err == nil {
-			deleted = append(deleted, branch)
+		names = append(names, branch)
+	}
+
+	return names, nil
+}
+
+// localBranchNames returns the set of local branch names, keyed for
+// membership checks.
+func (g *GitOperations) localBranchNames(ctx context.Context, repoPath string) (map[string]bool, error) {
+	branches, err := g.GetBranchList(ctx, repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	names := make(map[string]bool, len(branches))
+	for _, b := range branches {
+		names[b.Name] = true
+	}
+
+	return names, nil
+}
+
+// deleteSquashMerged force-deletes branches in squashMerged that are local,
+// not the current branch, and not checked out in any worktree. Squash-merged
+// branches need `-D` because git's own merge-base check considers them
+// unmerged (the squash commit differs from the branch's own tip).
+//
+//nolint:gocritic // matches CleanupMergedBranches's (deleted, failed []string)
+func (g *GitOperations) deleteSquashMerged(
+	ctx context.Context, repoPath string, squashMerged []string,
+) ([]string, []string) {
+	currentBranch, _ := g.GetCurrentBranch(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
+	worktrees, _ := g.GetWorktreeList(ctx, repoPath)      //nolint:errcheck // best-effort, see comment above
+	localBranches, _ := g.localBranchNames(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
+
+	checkedOut := make(map[string]bool, len(worktrees))
+	for _, wt := range worktrees {
+		checkedOut[wt.Branch] = true
+	}
+
+	var deleted, failed []string
+	for _, branch := range squashMerged {
+		if branch == currentBranch || checkedOut[branch] || !localBranches[branch] {
+			continue
 		}
+
+		if _, err := g.runGit(ctx, repoPath, "branch", "-D", branch); err != nil {
+			failed = append(failed, fmt.Sprintf("%s (%s)", branch, err.Error()))
+			continue
+		}
+		deleted = append(deleted, branch)
 	}
 
-	if len(deleted) == 0 {
-		return true, "No merged branches to delete", nil
+	return deleted, failed
+}
+
+// cleanupMessage renders a human-readable summary of a cleanup run, naming
+// both the branches deleted and any that failed to delete.
+func cleanupMessage(noun string, deleted, failed []string) string {
+	switch {
+	case len(deleted) == 0 && len(failed) == 0:
+		return "No merged " + noun + " to delete"
+	case len(failed) == 0:
+		return fmt.Sprintf("Deleted %d %s: %s", len(deleted), noun, strings.Join(deleted, ", "))
+	case len(deleted) == 0:
+		return fmt.Sprintf("Failed to delete %d %s: %s", len(failed), noun, strings.Join(failed, ", "))
+	default:
+		return fmt.Sprintf("Deleted %d %s: %s; failed: %s",
+			len(deleted), noun, strings.Join(deleted, ", "), strings.Join(failed, ", "))
+	}
+}
+
+// CleanupMergedBranches implements Operations. The squashMerged parameter
+// names branches already verified by the caller (via merged PR head OIDs) as
+// squash-merged: `git branch --merged` misses these because the squash
+// commit differs from the original branch tip, so they're deleted with `-D`
+// instead of `-d`, and only when not the current branch and not checked out
+// in a worktree.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (g *GitOperations) CleanupMergedBranches(
+	ctx context.Context, repoPath string, squashMerged []string,
+) (bool, string, error) {
+	mainBranch, ok := g.resolveDefaultBranch(ctx, repoPath)
+	if !ok {
+		return false, "Could not find main or master branch", nil
 	}
 
-	return true, fmt.Sprintf("Deleted %d branches: %s", len(deleted), strings.Join(deleted, ", ")), nil
+	merged, err := g.mergedBranchNames(ctx, repoPath, mainBranch)
+	if err != nil {
+		//nolint:nilerr // failure is reported through the message, not the error field
+		return false, err.Error(), nil
+	}
+
+	var deleted, failed []string
+	for _, branch := range merged {
+		if _, err := g.runGit(ctx, repoPath, "branch", "-d", branch); err != nil {
+			failed = append(failed, fmt.Sprintf("%s (%s)", branch, err.Error()))
+			continue
+		}
+		deleted = append(deleted, branch)
+	}
+
+	if len(squashMerged) > 0 {
+		squashDeleted, squashFailed := g.deleteSquashMerged(ctx, repoPath, squashMerged)
+		deleted = append(deleted, squashDeleted...)
+		failed = append(failed, squashFailed...)
+	}
+
+	return true, cleanupMessage("branches", deleted, failed), nil
 }
 
 // ExtractRepoPath derives an "owner/repo" style path from a git remote URL.

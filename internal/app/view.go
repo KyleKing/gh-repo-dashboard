@@ -726,7 +726,7 @@ func (m Model) renderBranchList() string {
 	rows = append(rows, styles.HeaderStyle.Render(header))
 
 	for i, branch := range m.branches {
-		rows = append(rows, renderBranchRow(branch, i == m.detailCursor))
+		rows = append(rows, renderBranchRow(branch, i == m.detailCursor, m.deletableBranches[branch.Name]))
 	}
 
 	return strings.Join(rows, "\n")
@@ -752,7 +752,7 @@ func branchAheadBehindStatus(branch models.BranchInfo) string {
 	return status
 }
 
-func renderBranchRow(branch models.BranchInfo, isSelected bool) string {
+func renderBranchRow(branch models.BranchInfo, isSelected, deletable bool) string {
 	cursor := "  "
 	if isSelected {
 		cursor = "> "
@@ -783,13 +783,18 @@ func renderBranchRow(branch models.BranchInfo, isSelected bool) string {
 	formattedUpstream := fmt.Sprintf("%-20s", upstream)
 	formattedStatus := fmt.Sprintf("%-10s", status)
 
-	return fmt.Sprintf("%s%s  %s  %s  %s",
+	row := fmt.Sprintf("%s%s  %s  %s  %s",
 		cursor,
 		nameStyle.Render(formattedName),
 		style.Render(formattedUpstream),
 		style.Render(formattedStatus),
 		style.Render(lastCommit),
 	)
+	if deletable {
+		row += "  " + styles.Badge("merged", styles.PROpenStyle)
+	}
+
+	return row
 }
 
 func (m Model) renderStashList() string {

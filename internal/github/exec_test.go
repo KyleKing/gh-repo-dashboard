@@ -428,6 +428,89 @@ func TestGetPRCount(t *testing.T) {
 }
 
 //nolint:paralleltest // asserts against shared global cache.ClearAll() state
+func TestGetMergedPRHeads(t *testing.T) {
+	tests := []struct {
+		name      string
+		output    []byte
+		runErr    error
+		expected  map[string]string
+		expectErr bool
+	}{
+		{
+			name: "success",
+			output: []byte(`[
+				{"headRefName": "feature-a", "headRefOid": "aaa111"},
+				{"headRefName": "feature-b", "headRefOid": "bbb222"}
+			]`),
+			expected: map[string]string{"feature-a": "aaa111", "feature-b": "bbb222"},
+		},
+		{name: "empty list", output: []byte(`[]`), expected: map[string]string{}},
+		{name: "gh error", runErr: errGHFailed, expected: map[string]string{}, expectErr: true},
+		{
+			name:      "malformed JSON",
+			output:    []byte(`{"not": "an array"}`),
+			expected:  map[string]string{},
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cache.ClearAll()
+			ctx, _ := stubRunGH(tt.output, tt.runErr)
+
+			heads, err := github.GetMergedPRHeads(ctx, "/repo")
+			if tt.expectErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+			} else if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !reflect.DeepEqual(heads, tt.expected) {
+				t.Errorf("expected %+v, got %+v", tt.expected, heads)
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
+func TestGetMergedPRHeadsArgs(t *testing.T) {
+	cache.ClearAll()
+	ctx, calls := stubRunGH([]byte(`[]`), nil)
+
+	if _, err := github.GetMergedPRHeads(ctx, "/repo"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := []string{"pr", "list", "--state", "merged", "--json", "headRefName,headRefOid", "--limit", "100"}
+	if len(*calls) != 1 || !reflect.DeepEqual((*calls)[0], want) {
+		t.Errorf("expected gh args %v, got %v", want, *calls)
+	}
+}
+
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
+func TestGetMergedPRHeadsUsesCache(t *testing.T) {
+	cache.ClearAll()
+	ctx, calls := stubRunGH([]byte(`[{"headRefName": "x", "headRefOid": "y"}]`), nil)
+
+	first, err := github.GetMergedPRHeads(ctx, "/repo")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	second, err := github.GetMergedPRHeads(ctx, "/repo")
+	if err != nil {
+		t.Fatalf("unexpected error on cached call: %v", err)
+	}
+	if !reflect.DeepEqual(first, second) {
+		t.Errorf("expected cached result %+v, got %+v", first, second)
+	}
+	if len(*calls) != 1 {
+		t.Errorf("expected 1 gh invocation, got %d", len(*calls))
+	}
+}
+
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
 func TestGetWorkflowRunsForCommit(t *testing.T) {
 	successJSON := []byte(`[
 		{

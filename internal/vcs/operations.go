@@ -45,7 +45,11 @@ type DetailReader interface {
 // (success, message) alongside an error so callers can surface per-repo feedback
 // in the UI even when the operation itself didn't error.
 type Mutator interface {
-	CleanupMergedBranches(ctx context.Context, repoPath string) (bool, string, error)
+	// CleanupMergedBranches deletes local branches fully merged into the
+	// default branch, plus any names in squashMerged: branches the caller has
+	// already verified (via merged PR head OIDs) as squash-merged, which
+	// `git branch --merged`/`jj bookmark` can't detect on their own.
+	CleanupMergedBranches(ctx context.Context, repoPath string, squashMerged []string) (bool, string, error)
 	FetchAll(ctx context.Context, repoPath string) (bool, string, error)
 	PruneRemote(ctx context.Context, repoPath string) (bool, string, error)
 }

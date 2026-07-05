@@ -443,7 +443,7 @@ func TestGitGetRepoSummary(t *testing.T) {
 func TestGitGetBranchList(t *testing.T) {
 	t.Parallel()
 	key := "git for-each-ref --format=%(refname:short)\t%(upstream:short)\t" +
-		"%(upstream:track)\t%(committerdate:unix)\t%(HEAD) refs/heads/"
+		"%(upstream:track)\t%(committerdate:unix)\t%(HEAD)\t%(objectname) refs/heads/"
 
 	tests := []struct {
 		name     string
@@ -455,32 +455,32 @@ func TestGitGetBranchList(t *testing.T) {
 		{
 			name: "mixed branches",
 			canned: map[string]string{
-				key: "dev\t\t\t1680000000\t \n" +
-					"feature\torigin/feature\t[behind 3]\t1690000000\t \n" +
-					"main\torigin/main\t[ahead 2, behind 1]\t1700000000\t*",
+				key: "dev\t\t\t1680000000\t \tabc111\n" +
+					"feature\torigin/feature\t[behind 3]\t1690000000\t \tbcd222\n" +
+					"main\torigin/main\t[ahead 2, behind 1]\t1700000000\t*\tcde333",
 			},
 			expected: []models.BranchInfo{
-				{Name: "dev", LastCommit: time.Unix(1680000000, 0)},
+				{Name: "dev", LastCommit: time.Unix(1680000000, 0), Head: "abc111"},
 				{
 					Name: "feature", Upstream: "origin/feature", Behind: 3,
-					LastCommit: time.Unix(1690000000, 0),
+					LastCommit: time.Unix(1690000000, 0), Head: "bcd222",
 				},
 				{
 					Name: "main", Upstream: "origin/main", Ahead: 2, Behind: 1,
-					LastCommit: time.Unix(1700000000, 0), IsCurrent: true,
+					LastCommit: time.Unix(1700000000, 0), IsCurrent: true, Head: "cde333",
 				},
 			},
 		},
 		{
 			name: "last branch without upstream survives output trimming",
 			canned: map[string]string{
-				key: "main\torigin/main\t\t1700000000\t*\n" +
+				key: "main\torigin/main\t\t1700000000\t*\tcde333\n" +
 					"zz-experiment\t\t\t1680000000",
 			},
 			expected: []models.BranchInfo{
 				{
 					Name: "main", Upstream: "origin/main",
-					LastCommit: time.Unix(1700000000, 0), IsCurrent: true,
+					LastCommit: time.Unix(1700000000, 0), IsCurrent: true, Head: "cde333",
 				},
 				{Name: "zz-experiment", LastCommit: time.Unix(1680000000, 0)},
 			},
@@ -804,26 +804,42 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 	}
 }
 
+const symbolicRefKey = "git symbolic-ref refs/remotes/origin/HEAD"
+
 //nolint:dupl // same table shape as TestJJCleanupMergedBranches, different VCS output formats/literals
 func TestGitCleanupMergedBranches(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name       string
-		canned     map[string]string
-		failures   map[string]error
-		expectedOK bool
-		expected   string
+		name         string
+		canned       map[string]string
+		failures     map[string]error
+		squashMerged []string
+		expectedOK   bool
+		expected     string
 	}{
 		{
-			name: "deletes merged branches",
+			name: "deletes merged branches via origin/HEAD",
 			canned: map[string]string{
-				"git rev-parse --verify main": "abc123",
-				"git branch --merged main":    "  feature\n* main\n  old-fix",
-				"git branch -d feature":       "",
-				"git branch -d old-fix":       "",
+				symbolicRefKey:             "refs/remotes/origin/main",
+				"git branch --merged main": "  feature\n* main\n  old-fix",
+				"git branch -d feature":    "",
+				"git branch -d old-fix":    "",
 			},
 			expectedOK: true,
 			expected:   "Deleted 2 branches: feature, old-fix",
+		},
+		{
+			name: "falls back to main when origin/HEAD is unset",
+			canned: map[string]string{
+				"git rev-parse --verify main": "abc123",
+				"git branch --merged main":    "  feature\n* main",
+				"git branch -d feature":       "",
+			},
+			failures: map[string]error{
+				symbolicRefKey: errNoSuchRemote,
+			},
+			expectedOK: true,
+			expected:   "Deleted 1 branches: feature",
 		},
 		{
 			name: "falls back to master",
@@ -832,6 +848,7 @@ func TestGitCleanupMergedBranches(t *testing.T) {
 				"git branch --merged master":    "* master",
 			},
 			failures: map[string]error{
+				symbolicRefKey:                errNoSuchRemote,
 				"git rev-parse --verify main": errUnknownRevision,
 			},
 			expectedOK: true,
@@ -840,6 +857,7 @@ func TestGitCleanupMergedBranches(t *testing.T) {
 		{
 			name: "neither main nor master",
 			failures: map[string]error{
+				symbolicRefKey:                  errNoSuchRemote,
 				"git rev-parse --verify main":   errUnknownRevision,
 				"git rev-parse --verify master": errUnknownRevision,
 			},
@@ -849,7 +867,7 @@ func TestGitCleanupMergedBranches(t *testing.T) {
 		{
 			name: "merged listing failure",
 			canned: map[string]string{
-				"git rev-parse --verify main": "abc123",
+				symbolicRefKey: "refs/remotes/origin/main",
 			},
 			failures: map[string]error{
 				"git branch --merged main": errBoom,
@@ -865,12 +883,72 @@ func TestGitCleanupMergedBranches(t *testing.T) {
 			ctx := stubCommands(t, tt.canned, tt.failures)
 
 			g := vcs.NewGitOperations()
-			ok, msg, err := g.CleanupMergedBranches(ctx, testRepoPath)
+			ok, msg, err := g.CleanupMergedBranches(ctx, testRepoPath, tt.squashMerged)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if ok != tt.expectedOK {
 				t.Errorf("expected ok=%v, got %v", tt.expectedOK, ok)
+			}
+			if msg != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, msg)
+			}
+		})
+	}
+}
+
+// forEachRefKey is the git for-each-ref command key used by GetBranchList,
+// which CleanupMergedBranches' squash-merged path calls via localBranchNames.
+const forEachRefKey = "git for-each-ref --format=%(refname:short)\t%(upstream:short)\t" +
+	"%(upstream:track)\t%(committerdate:unix)\t%(HEAD)\t%(objectname) refs/heads/"
+
+func TestGitCleanupMergedBranchesSquashMerged(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name         string
+		canned       map[string]string
+		squashMerged []string
+		expected     string
+	}{
+		{
+			name: "deletes squash-merged branches with -D",
+			canned: map[string]string{
+				symbolicRefKey:                    "refs/remotes/origin/main",
+				"git branch --merged main":        "* main",
+				"git rev-parse --abbrev-ref HEAD": "main",
+				"git worktree list --porcelain":   "",
+				forEachRefKey:                     "squashed\t\t\t1700000000\t\tabc\nmain\t\t\t1700000000\t*\tdef",
+				"git branch -D squashed":          "",
+			},
+			squashMerged: []string{"squashed"},
+			expected:     "Deleted 1 branches: squashed",
+		},
+		{
+			name: "skips squash-merged branch that's the current branch",
+			canned: map[string]string{
+				symbolicRefKey:                    "refs/remotes/origin/main",
+				"git branch --merged main":        "* main",
+				"git rev-parse --abbrev-ref HEAD": "squashed",
+				"git worktree list --porcelain":   "",
+				forEachRefKey:                     "squashed\t\t\t1700000000\t*\tabc",
+			},
+			squashMerged: []string{"squashed"},
+			expected:     "No merged branches to delete",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := stubCommands(t, tt.canned, nil)
+
+			g := vcs.NewGitOperations()
+			ok, msg, err := g.CleanupMergedBranches(ctx, testRepoPath, tt.squashMerged)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !ok {
+				t.Error("expected ok=true")
 			}
 			if msg != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, msg)
