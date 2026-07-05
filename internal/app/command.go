@@ -96,6 +96,7 @@ func namesMatching[T any](modes map[string]T, prefix string) []string {
 	return names
 }
 
+// DefaultRegistry builds the Registry of all built-in ":command" commands.
 func DefaultRegistry() Registry {
 	return NewRegistry(
 		batchCommand("cleanup",
@@ -104,47 +105,7 @@ func DefaultRegistry() Registry {
 		batchCommand("fetch",
 			"Fetch visible repos, optionally scoped: :fetch [predicate]",
 			"Fetch All", batchFetchAllCmd),
-		Command{
-			Name:        "filter",
-			Description: "Filter repos: :filter <mode|predicate> or :filter to open the modal",
-			Complete: func(_ Model, args []string) []string {
-				prefix := ""
-				if len(args) > 0 {
-					prefix = args[len(args)-1]
-				}
-
-				return predicateCandidates(prefix)
-			},
-			Run: func(m Model, args []string) (Model, tea.Cmd) {
-				if len(args) == 0 {
-					m.viewMode = ViewModeFilter
-					return m, nil
-				}
-				if len(args) == 1 {
-					if mode, ok := filterModeNames()[args[0]]; ok {
-						if mode == models.FilterModeAll {
-							m.ResetFilters()
-						} else {
-							m.SetFilter(mode)
-						}
-						m.updateFilteredPaths()
-						m.cursor = 0
-
-						return m, nil
-					}
-				}
-				expr := strings.Join(args, " ")
-				pred, err := filters.ParsePredicate(expr)
-				if err != nil {
-					return m, statusCmd(err.Error())
-				}
-				m.SetPredicate(expr, pred)
-				m.updateFilteredPaths()
-				m.cursor = 0
-
-				return m, nil
-			},
-		},
+		filterCommand(),
 		Command{
 			Name:        "help",
 			Description: "Show help",
@@ -170,84 +131,144 @@ func DefaultRegistry() Registry {
 				return m.handleRefresh()
 			},
 		},
-		Command{
-			Name:        "select",
-			Description: "Mark repos: :select where <predicate>, :select all, :select none",
-			Complete: func(_ Model, args []string) []string {
-				if len(args) <= 1 {
-					prefix := ""
-					if len(args) == 1 {
-						prefix = args[0]
-					}
+		selectCommand(),
+		sortCommand(),
+	)
+}
 
-					return namesMatching(map[string]struct{}{"all": {}, "none": {}, "where": {}}, prefix)
-				}
+// filterCommand builds the ":filter" command: a bare mode name, or a
+// predicate expression, or no args to open the filter modal.
+func filterCommand() Command {
+	return Command{
+		Name:        "filter",
+		Description: "Filter repos: :filter <mode|predicate> or :filter to open the modal",
+		Complete: func(_ Model, args []string) []string {
+			prefix := ""
+			if len(args) > 0 {
+				prefix = args[len(args)-1]
+			}
 
-				return predicateCandidates(args[len(args)-1])
-			},
-			Run: func(m Model, args []string) (Model, tea.Cmd) {
-				if len(args) == 0 {
-					return m, statusCmd("Usage: :select where <predicate> | :select all | :select none")
-				}
-				switch args[0] {
-				case "none":
-					m.selectedPaths = nil
-					return m, nil
-				case "all":
-					m.selectedPaths = make(map[string]bool, len(m.repoPaths))
-					for _, path := range m.repoPaths {
-						m.selectedPaths[path] = true
-					}
-
-					return m, statusCmd(fmt.Sprintf("Selected %d repos", len(m.selectedPaths)))
-				case "where":
-					expr := strings.Join(args[1:], " ")
-					pred, err := filters.ParsePredicate(expr)
-					if err != nil {
-						return m, statusCmd(err.Error())
-					}
-					m.selectedPaths = make(map[string]bool)
-					for _, path := range m.repoPaths {
-						if summary, ok := m.summaries[path]; ok && pred(summary) {
-							m.selectedPaths[path] = true
-						}
-					}
-
-					return m, statusCmd(fmt.Sprintf("Selected %d repos", len(m.selectedPaths)))
-				default:
-					return m, statusCmd("Unknown select action: " + args[0])
-				}
-			},
+			return predicateCandidates(prefix)
 		},
-		Command{
-			Name:        "sort",
-			Description: "Cycle sort for a mode: :sort <mode> or :sort to open the modal",
-			Complete: func(_ Model, args []string) []string {
-				prefix := ""
-				if len(args) > 0 {
-					prefix = args[len(args)-1]
-				}
-
-				return namesMatching(sortModeNames(), prefix)
-			},
-			Run: func(m Model, args []string) (Model, tea.Cmd) {
-				if len(args) == 0 {
-					m.viewMode = ViewModeSort
-					m.sortCursor = 0
+		Run: func(m Model, args []string) (Model, tea.Cmd) {
+			if len(args) == 0 {
+				m.viewMode = ViewModeFilter
+				return m, nil
+			}
+			if len(args) == 1 {
+				if mode, ok := filterModeNames()[args[0]]; ok {
+					if mode == models.FilterModeAll {
+						m.ResetFilters()
+					} else {
+						m.SetFilter(mode)
+					}
+					m.updateFilteredPaths()
+					m.cursor = 0
 
 					return m, nil
 				}
-				mode, ok := sortModeNames()[args[0]]
-				if !ok {
-					return m, statusCmd("Unknown sort: " + args[0])
+			}
+			expr := strings.Join(args, " ")
+			pred, err := filters.ParsePredicate(expr)
+			if err != nil {
+				return m, statusCmd(err.Error())
+			}
+			m.SetPredicate(expr, pred)
+			m.updateFilteredPaths()
+			m.cursor = 0
+
+			return m, nil
+		},
+	}
+}
+
+// selectCommand builds the ":select" command: "all", "none", or
+// "where <predicate>".
+func selectCommand() Command {
+	return Command{
+		Name:        "select",
+		Description: "Mark repos: :select where <predicate>, :select all, :select none",
+		Complete: func(_ Model, args []string) []string {
+			if len(args) <= 1 {
+				prefix := ""
+				if len(args) == 1 {
+					prefix = args[0]
 				}
-				m.CycleSortState(mode)
-				m.updateFilteredPaths()
+
+				return namesMatching(map[string]struct{}{"all": {}, "none": {}, "where": {}}, prefix)
+			}
+
+			return predicateCandidates(args[len(args)-1])
+		},
+		Run: runSelectCommand,
+	}
+}
+
+func runSelectCommand(m Model, args []string) (Model, tea.Cmd) {
+	if len(args) == 0 {
+		return m, statusCmd("Usage: :select where <predicate> | :select all | :select none")
+	}
+	switch args[0] {
+	case "none":
+		m.selectedPaths = nil
+		return m, nil
+	case "all":
+		m.selectedPaths = make(map[string]bool, len(m.repoPaths))
+		for _, path := range m.repoPaths {
+			m.selectedPaths[path] = true
+		}
+
+		return m, statusCmd(fmt.Sprintf("Selected %d repos", len(m.selectedPaths)))
+	case "where":
+		expr := strings.Join(args[1:], " ")
+		pred, err := filters.ParsePredicate(expr)
+		if err != nil {
+			return m, statusCmd(err.Error())
+		}
+		m.selectedPaths = make(map[string]bool)
+		for _, path := range m.repoPaths {
+			if summary, ok := m.summaries[path]; ok && pred(summary) {
+				m.selectedPaths[path] = true
+			}
+		}
+
+		return m, statusCmd(fmt.Sprintf("Selected %d repos", len(m.selectedPaths)))
+	default:
+		return m, statusCmd("Unknown select action: " + args[0])
+	}
+}
+
+// sortCommand builds the ":sort" command: a bare mode name to cycle, or no
+// args to open the sort modal.
+func sortCommand() Command {
+	return Command{
+		Name:        "sort",
+		Description: "Cycle sort for a mode: :sort <mode> or :sort to open the modal",
+		Complete: func(_ Model, args []string) []string {
+			prefix := ""
+			if len(args) > 0 {
+				prefix = args[len(args)-1]
+			}
+
+			return namesMatching(sortModeNames(), prefix)
+		},
+		Run: func(m Model, args []string) (Model, tea.Cmd) {
+			if len(args) == 0 {
+				m.viewMode = ViewModeSort
+				m.sortCursor = 0
 
 				return m, nil
-			},
+			}
+			mode, ok := sortModeNames()[args[0]]
+			if !ok {
+				return m, statusCmd("Unknown sort: " + args[0])
+			}
+			m.CycleSortState(mode)
+			m.updateFilteredPaths()
+
+			return m, nil
 		},
-	)
+	}
 }
 
 // batchCommand builds a batch operator command that runs over the visible
