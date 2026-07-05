@@ -44,6 +44,71 @@ type fixture struct {
 	Steps []fixtureStep
 }
 
+// parseFixtureWhen builds the fixtureStep for a "when ..." line.
+func parseFixtureWhen(path string, lineNo int, line string) (fixtureStep, error) {
+	input := strings.TrimSpace(strings.TrimPrefix(line, "when "))
+	step := fixtureStep{Input: input}
+
+	switch {
+	case strings.HasPrefix(input, ":"):
+		step.IsCommand = true
+	case strings.HasPrefix(input, "keys "):
+		step.Keys = strings.Fields(strings.TrimPrefix(input, "keys "))
+	default:
+		return fixtureStep{}, fmt.Errorf("%s:%d: %w", path, lineNo+1, errFixtureBadWhen)
+	}
+
+	return step, nil
+}
+
+// applyFixtureThen appends the assertion from a "then field = value" line to
+// the most recent step in f.
+func applyFixtureThen(f *fixture, path string, lineNo int, line string) error {
+	if len(f.Steps) == 0 {
+		return fmt.Errorf("%s:%d: %w", path, lineNo+1, errFixtureThenBeforeWhen)
+	}
+
+	field, value, found := strings.Cut(strings.TrimPrefix(line, "then "), "=")
+	if !found {
+		return fmt.Errorf("%s:%d: %w", path, lineNo+1, errFixtureBadThen)
+	}
+
+	last := &f.Steps[len(f.Steps)-1]
+	last.Assertions = append(last.Assertions, fixtureAssertion{
+		Field: strings.TrimSpace(field),
+		Value: strings.TrimSpace(value),
+	})
+
+	return nil
+}
+
+func parseFixtureLine(f *fixture, path string, lineNo int, line string) error {
+	switch {
+	case strings.HasPrefix(line, "doc:"):
+		f.Doc = strings.TrimSpace(strings.TrimPrefix(line, "doc:"))
+		return nil
+
+	case strings.HasPrefix(line, "given "):
+		f.Given = strings.TrimSpace(strings.TrimPrefix(line, "given "))
+		return nil
+
+	case strings.HasPrefix(line, "when "):
+		step, err := parseFixtureWhen(path, lineNo, line)
+		if err != nil {
+			return err
+		}
+		f.Steps = append(f.Steps, step)
+
+		return nil
+
+	case strings.HasPrefix(line, "then "):
+		return applyFixtureThen(f, path, lineNo, line)
+
+	default:
+		return fmt.Errorf("%s:%d: %w: %q", path, lineNo+1, errFixtureUnrecognized, line)
+	}
+}
+
 func parseFixture(path string) (fixture, error) {
 	data, err := os.ReadFile(path) //nolint:gosec // path comes from a glob over our own testdata dir
 	if err != nil {
@@ -57,42 +122,8 @@ func parseFixture(path string) (fixture, error) {
 			continue
 		}
 
-		switch {
-		case strings.HasPrefix(line, "doc:"):
-			f.Doc = strings.TrimSpace(strings.TrimPrefix(line, "doc:"))
-
-		case strings.HasPrefix(line, "given "):
-			f.Given = strings.TrimSpace(strings.TrimPrefix(line, "given "))
-
-		case strings.HasPrefix(line, "when "):
-			input := strings.TrimSpace(strings.TrimPrefix(line, "when "))
-			step := fixtureStep{Input: input}
-			switch {
-			case strings.HasPrefix(input, ":"):
-				step.IsCommand = true
-			case strings.HasPrefix(input, "keys "):
-				step.Keys = strings.Fields(strings.TrimPrefix(input, "keys "))
-			default:
-				return fixture{}, fmt.Errorf("%s:%d: %w", path, lineNo+1, errFixtureBadWhen)
-			}
-			f.Steps = append(f.Steps, step)
-
-		case strings.HasPrefix(line, "then "):
-			if len(f.Steps) == 0 {
-				return fixture{}, fmt.Errorf("%s:%d: %w", path, lineNo+1, errFixtureThenBeforeWhen)
-			}
-			field, value, found := strings.Cut(strings.TrimPrefix(line, "then "), "=")
-			if !found {
-				return fixture{}, fmt.Errorf("%s:%d: %w", path, lineNo+1, errFixtureBadThen)
-			}
-			last := &f.Steps[len(f.Steps)-1]
-			last.Assertions = append(last.Assertions, fixtureAssertion{
-				Field: strings.TrimSpace(field),
-				Value: strings.TrimSpace(value),
-			})
-
-		default:
-			return fixture{}, fmt.Errorf("%s:%d: %w: %q", path, lineNo+1, errFixtureUnrecognized, line)
+		if err := parseFixtureLine(&f, path, lineNo, line); err != nil {
+			return fixture{}, err
 		}
 	}
 
@@ -176,29 +207,8 @@ func runFixtureStep(t *testing.T, m Model, step fixtureStep) Model {
 
 	snap := m.Snapshot()
 	for _, assertion := range step.Assertions {
-		var got string
-		switch assertion.Field {
-		case "cursor":
-			got = strconv.Itoa(snap.Cursor)
-		case "filtered":
-			got = joinOrNone(snap.Filtered)
-		case "input":
-			got = snap.CommandInput
-		case "predicate":
-			got = snap.Predicate
-		case "search":
-			got = snap.Search
-		case "selected":
-			got = joinOrNone(snap.Selected)
-		case "status":
-			got = snap.StatusMessage
-		case "task":
-			got = snap.BatchTask
-		case "total":
-			got = strconv.Itoa(snap.BatchTotal)
-		case "view":
-			got = snap.View
-		default:
+		got, ok := fixtureAssertionValue(snap, assertion.Field)
+		if !ok {
 			t.Fatalf("unknown assertion field %q", assertion.Field)
 		}
 		if got != assertion.Value {
@@ -207,6 +217,34 @@ func runFixtureStep(t *testing.T, m Model, step fixtureStep) Model {
 	}
 
 	return m
+}
+
+// fixtureAssertionValue reads the named field off a Model snapshot for fixture assertions.
+func fixtureAssertionValue(snap Snapshot, field string) (string, bool) {
+	switch field {
+	case "cursor":
+		return strconv.Itoa(snap.Cursor), true
+	case "filtered":
+		return joinOrNone(snap.Filtered), true
+	case "input":
+		return snap.CommandInput, true
+	case "predicate":
+		return snap.Predicate, true
+	case "search":
+		return snap.Search, true
+	case "selected":
+		return joinOrNone(snap.Selected), true
+	case "status":
+		return snap.StatusMessage, true
+	case "task":
+		return snap.BatchTask, true
+	case "total":
+		return strconv.Itoa(snap.BatchTotal), true
+	case "view":
+		return snap.View, true
+	default:
+		return "", false
+	}
 }
 
 func joinOrNone(items []string) string {
