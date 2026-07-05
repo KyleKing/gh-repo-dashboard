@@ -343,17 +343,7 @@ func TestJJGetBranchList(t *testing.T) {
 
 			j := NewJJOperations()
 			branches, err := j.GetBranchList(ctx, testRepoPath)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("unexpected error state: %v", err)
-			}
-			if len(branches) != len(tt.expected) {
-				t.Fatalf("expected %d branches, got %d", len(tt.expected), len(branches))
-			}
-			for i, expected := range tt.expected {
-				if branches[i] != expected {
-					t.Errorf("branch %d: expected %+v, got %+v", i, expected, branches[i])
-				}
-			}
+			assertListResult(t, tt.wantErr, tt.expected, branches, err, "branch")
 		})
 	}
 }
@@ -410,17 +400,7 @@ func TestJJGetWorktreeList(t *testing.T) {
 
 			j := NewJJOperations()
 			worktrees, err := j.GetWorktreeList(ctx, testRepoPath)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("unexpected error state: %v", err)
-			}
-			if len(worktrees) != len(tt.expected) {
-				t.Fatalf("expected %d worktrees, got %d", len(tt.expected), len(worktrees))
-			}
-			for i, expected := range tt.expected {
-				if worktrees[i] != expected {
-					t.Errorf("worktree %d: expected %+v, got %+v", i, expected, worktrees[i])
-				}
-			}
+			assertListResult(t, tt.wantErr, tt.expected, worktrees, err, "worktree")
 		})
 	}
 }
@@ -429,6 +409,7 @@ func TestJJGetCommitLog(t *testing.T) {
 	t.Parallel()
 	key := jjKey("log -r @~2.. -T " + jjCommitFormat + " --no-graph")
 
+	//nolint:dupl // same table shape as TestGitGetCommitLog, different VCS output formats/literals
 	tests := []struct {
 		name     string
 		canned   map[string]string
@@ -472,17 +453,7 @@ func TestJJGetCommitLog(t *testing.T) {
 
 			j := NewJJOperations()
 			commits, err := j.GetCommitLog(ctx, testRepoPath, 2)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("unexpected error state: %v", err)
-			}
-			if len(commits) != len(tt.expected) {
-				t.Fatalf("expected %d commits, got %d", len(tt.expected), len(commits))
-			}
-			for i, expected := range tt.expected {
-				if commits[i] != expected {
-					t.Errorf("commit %d: expected %+v, got %+v", i, expected, commits[i])
-				}
-			}
+			assertListResult(t, tt.wantErr, tt.expected, commits, err, "commit")
 		})
 	}
 }

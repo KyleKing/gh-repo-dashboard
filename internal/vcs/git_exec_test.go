@@ -14,6 +14,24 @@ import (
 
 const testRepoPath = "/repo"
 
+// assertListResult checks the common shape shared by the git/jj list-parsing
+// tests below: an error-state match, then an element-by-element comparison.
+func assertListResult[T comparable](t *testing.T, wantErr bool, expected, got []T, err error, label string) {
+	t.Helper()
+
+	if (err != nil) != wantErr {
+		t.Fatalf("unexpected error state: %v", err)
+	}
+	if len(got) != len(expected) {
+		t.Fatalf("expected %d %s, got %d", len(expected), label, len(got))
+	}
+	for i, exp := range expected {
+		if got[i] != exp {
+			t.Errorf("%s %d: expected %+v, got %+v", label, i, exp, got[i])
+		}
+	}
+}
+
 var (
 	errUnexpectedCommand = errors.New("unexpected command")
 	errBoom              = errors.New("boom")
@@ -421,17 +439,7 @@ func TestGitGetBranchList(t *testing.T) {
 
 			g := NewGitOperations()
 			branches, err := g.GetBranchList(ctx, testRepoPath)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("unexpected error state: %v", err)
-			}
-			if len(branches) != len(tt.expected) {
-				t.Fatalf("expected %d branches, got %d", len(tt.expected), len(branches))
-			}
-			for i, expected := range tt.expected {
-				if branches[i] != expected {
-					t.Errorf("branch %d: expected %+v, got %+v", i, expected, branches[i])
-				}
-			}
+			assertListResult(t, tt.wantErr, tt.expected, branches, err, "branch")
 		})
 	}
 }
@@ -477,17 +485,7 @@ func TestGitGetStashList(t *testing.T) {
 
 			g := NewGitOperations()
 			stashes, err := g.GetStashList(ctx, testRepoPath)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("unexpected error state: %v", err)
-			}
-			if len(stashes) != len(tt.expected) {
-				t.Fatalf("expected %d stashes, got %d", len(tt.expected), len(stashes))
-			}
-			for i, expected := range tt.expected {
-				if stashes[i] != expected {
-					t.Errorf("stash %d: expected %+v, got %+v", i, expected, stashes[i])
-				}
-			}
+			assertListResult(t, tt.wantErr, tt.expected, stashes, err, "stash")
 		})
 	}
 }
@@ -535,17 +533,7 @@ func TestGitGetWorktreeList(t *testing.T) {
 
 			g := NewGitOperations()
 			worktrees, err := g.GetWorktreeList(ctx, testRepoPath)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("unexpected error state: %v", err)
-			}
-			if len(worktrees) != len(tt.expected) {
-				t.Fatalf("expected %d worktrees, got %d", len(tt.expected), len(worktrees))
-			}
-			for i, expected := range tt.expected {
-				if worktrees[i] != expected {
-					t.Errorf("worktree %d: expected %+v, got %+v", i, expected, worktrees[i])
-				}
-			}
+			assertListResult(t, tt.wantErr, tt.expected, worktrees, err, "worktree")
 		})
 	}
 }
@@ -554,6 +542,7 @@ func TestGitGetCommitLog(t *testing.T) {
 	t.Parallel()
 	key := "git log -n2 --format=%H\t%h\t%s\t%an\t%ct"
 
+	//nolint:dupl // same table shape as TestJJGetCommitLog, different VCS output formats/literals
 	tests := []struct {
 		name     string
 		canned   map[string]string
@@ -597,17 +586,7 @@ func TestGitGetCommitLog(t *testing.T) {
 
 			g := NewGitOperations()
 			commits, err := g.GetCommitLog(ctx, testRepoPath, 2)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("unexpected error state: %v", err)
-			}
-			if len(commits) != len(tt.expected) {
-				t.Fatalf("expected %d commits, got %d", len(tt.expected), len(commits))
-			}
-			for i, expected := range tt.expected {
-				if commits[i] != expected {
-					t.Errorf("commit %d: expected %+v, got %+v", i, expected, commits[i])
-				}
-			}
+			assertListResult(t, tt.wantErr, tt.expected, commits, err, "commit")
 		})
 	}
 }
