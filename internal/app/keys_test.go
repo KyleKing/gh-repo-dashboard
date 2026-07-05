@@ -446,8 +446,10 @@ func TestSortModalPriorityMoves(t *testing.T) {
 		}
 	}
 
-	m.activeSorts[nameIdx].Priority = 0
-	m.activeSorts[modIdx].Priority = 1
+	if m.activeSorts[nameIdx].Priority != 0 || m.activeSorts[modIdx].Priority != 1 {
+		t.Fatalf("expected contiguous priorities after enable: Name=%d Modified=%d",
+			m.activeSorts[nameIdx].Priority, m.activeSorts[modIdx].Priority)
+	}
 	m.sortCursor = modIdx
 	updatedModel, _ := m.Update(keyPress('['))
 	m = mustModel(t, updatedModel)

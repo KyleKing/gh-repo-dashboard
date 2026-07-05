@@ -97,9 +97,6 @@ Couples to command mode: fixtures script command sequences and generate usage do
 Real bugs surfaced while writing tests; tests currently assert the existing
 behavior so fixes are visible diffs. Fix opportunistically between milestones.
 
-- `Model.CycleSortState` counts the just-enabled sort when computing the next
-  priority, leaving a gap; `[`/`MoveSortUp` is then a silent no-op until
-  priorities happen to be contiguous
 - `github.GetPRForBranch` and `GetWorkflowRunsForCommit` cache `nil` on gh
   failure, so "gh errored" is indistinguishable from "no PR" for the cache TTL
   and the error is swallowed on cache hits

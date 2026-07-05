@@ -182,6 +182,9 @@ func TestModelCycleSortState(t *testing.T) {
 	if m.activeSorts[modifiedIdx].Direction != models.SortDirectionAsc {
 		t.Error("first cycle: should be Asc")
 	}
+	if m.activeSorts[modifiedIdx].Priority != 1 {
+		t.Errorf("first cycle: expected contiguous priority 1 after Name at 0, got %d", m.activeSorts[modifiedIdx].Priority)
+	}
 
 	m.CycleSortState(models.SortModeModified)
 	if m.activeSorts[modifiedIdx].Direction != models.SortDirectionDesc {
@@ -191,6 +194,61 @@ func TestModelCycleSortState(t *testing.T) {
 	m.CycleSortState(models.SortModeModified)
 	if m.activeSorts[modifiedIdx].Direction != models.SortDirectionOff {
 		t.Error("third cycle: should be Off")
+	}
+}
+
+func TestModelCycleSortStateCompactsOnDisable(t *testing.T) {
+	t.Parallel()
+	m := New(nil, 1)
+
+	m.CycleSortState(models.SortModeModified)
+	m.CycleSortState(models.SortModeStatus)
+
+	m.CycleSortState(models.SortModeModified)
+	m.CycleSortState(models.SortModeModified)
+	m.CycleSortState(models.SortModeModified)
+
+	for _, s := range m.activeSorts {
+		switch s.Mode {
+		case models.SortModeName:
+			if s.Priority != 0 {
+				t.Errorf("Name priority: expected 0, got %d", s.Priority)
+			}
+		case models.SortModeStatus:
+			if s.Priority != 1 {
+				t.Errorf("Status priority: expected 1 after Modified disabled, got %d", s.Priority)
+			}
+		default:
+			// only enabled sorts have contiguity requirements
+		}
+	}
+}
+
+func TestMoveSortUpAfterEnable(t *testing.T) {
+	t.Parallel()
+	m := New(nil, 1)
+
+	var nameIdx, modIdx int
+	for i, s := range m.activeSorts {
+		switch s.Mode {
+		case models.SortModeName:
+			nameIdx = i
+		case models.SortModeModified:
+			modIdx = i
+		default:
+			// only name/modified indices are needed below
+		}
+	}
+
+	m.CycleSortState(models.SortModeModified)
+	m.sortCursor = modIdx
+	m.MoveSortUp()
+
+	if m.activeSorts[modIdx].Priority != 0 {
+		t.Errorf("MoveSortUp after enable: expected Modified priority 0, got %d", m.activeSorts[modIdx].Priority)
+	}
+	if m.activeSorts[nameIdx].Priority != 1 {
+		t.Errorf("MoveSortUp after enable: expected Name priority 1, got %d", m.activeSorts[nameIdx].Priority)
 	}
 }
 
