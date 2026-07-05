@@ -1084,14 +1084,11 @@ func (m Model) countForFilter(mode models.FilterMode) int {
 	return count
 }
 
-func (m Model) renderSortModal() string {
-	var b strings.Builder
-
-	b.WriteString(styles.TitleStyle.Render("Sort Repositories"))
-	b.WriteString("\n\n")
-
+// buildSortModalRows orders activeSorts for display: enabled sorts first (with
+// their priority gaps compacted), then disabled sorts.
+func buildSortModalRows(activeSorts []models.ActiveSort) []models.ActiveSort {
 	sortsByPriority := make([]models.ActiveSort, 0)
-	for _, s := range m.activeSorts {
+	for _, s := range activeSorts {
 		if s.IsEnabled() {
 			sortsByPriority = append(sortsByPriority, s)
 		}
@@ -1113,7 +1110,7 @@ func (m Model) renderSortModal() string {
 	}
 
 	inactiveSorts := make([]models.ActiveSort, 0)
-	for _, s := range m.activeSorts {
+	for _, s := range activeSorts {
 		if !s.IsEnabled() {
 			inactiveSorts = append(inactiveSorts, s)
 		}
@@ -1122,6 +1119,55 @@ func (m Model) renderSortModal() string {
 	displaySorts := make([]models.ActiveSort, 0, len(sortsByPriority)+len(inactiveSorts))
 	displaySorts = append(displaySorts, sortsByPriority...)
 	displaySorts = append(displaySorts, inactiveSorts...)
+
+	return displaySorts
+}
+
+func renderSortModalRow(sortState models.ActiveSort, isSelected bool) string {
+	cursor := "  "
+	if isSelected {
+		cursor = "> "
+	}
+
+	indicator := "   "
+	if sortState.IsEnabled() {
+		indicator = fmt.Sprintf(" %d ", sortState.Priority+1)
+	}
+
+	shortKey := sortState.ShortKey()
+	label := sortState.DisplayName()
+	if !sortState.IsEnabled() {
+		label = sortState.Mode.String()
+	}
+
+	rowStyle := styles.TableRowStyle
+	if isSelected {
+		rowStyle = styles.SelectedRowStyle
+	}
+
+	checkStyle := lipgloss.NewStyle().Foreground(styles.Green)
+	keyStyle := lipgloss.NewStyle().
+		Foreground(styles.Mauve).
+		Bold(true)
+
+	formattedIndicator := fmt.Sprintf("%-4s", indicator)
+	formattedKey := fmt.Sprintf("%-3s", shortKey)
+
+	return fmt.Sprintf("%s%s  %s  %s",
+		cursor,
+		checkStyle.Render(formattedIndicator),
+		keyStyle.Render(formattedKey),
+		rowStyle.Render(label),
+	)
+}
+
+func (m Model) renderSortModal() string {
+	var b strings.Builder
+
+	b.WriteString(styles.TitleStyle.Render("Sort Repositories"))
+	b.WriteString("\n\n")
+
+	displaySorts := buildSortModalRows(m.activeSorts)
 
 	headerStyle := lipgloss.NewStyle().
 		Foreground(styles.Subtext0).
@@ -1141,44 +1187,7 @@ func (m Model) renderSortModal() string {
 	}
 
 	for i, sortState := range displaySorts {
-		cursor := "  "
-		if i == cursorIndex {
-			cursor = "> "
-		}
-
-		indicator := "   "
-		if sortState.IsEnabled() {
-			indicator = fmt.Sprintf(" %d ", sortState.Priority+1)
-		}
-
-		shortKey := sortState.ShortKey()
-		label := sortState.DisplayName()
-		if !sortState.IsEnabled() {
-			label = sortState.Mode.String()
-		}
-
-		var rowStyle lipgloss.Style
-		if i == cursorIndex {
-			rowStyle = styles.SelectedRowStyle
-		} else {
-			rowStyle = styles.TableRowStyle
-		}
-
-		checkStyle := lipgloss.NewStyle().Foreground(styles.Green)
-		keyStyle := lipgloss.NewStyle().
-			Foreground(styles.Mauve).
-			Bold(true)
-
-		formattedIndicator := fmt.Sprintf("%-4s", indicator)
-		formattedKey := fmt.Sprintf("%-3s", shortKey)
-
-		row := fmt.Sprintf("%s%s  %s  %s",
-			cursor,
-			checkStyle.Render(formattedIndicator),
-			keyStyle.Render(formattedKey),
-			rowStyle.Render(label),
-		)
-		b.WriteString(row)
+		b.WriteString(renderSortModalRow(sortState, i == cursorIndex))
 		b.WriteString("\n")
 	}
 
