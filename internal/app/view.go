@@ -1720,34 +1720,27 @@ func (m Model) findDefaultBranch() string {
 	return ""
 }
 
+//nolint:gocritic // named results trip nonamedreturns instead; returns (ahead, behind)
 func (m Model) compareToDefaultBranch(defaultBranch string) (int, int) {
 	if defaultBranch == "" || m.branchDetail.Branch.Name == defaultBranch {
 		return -1, -1
 	}
 
-	for _, branch := range m.branches {
-		if branch.Name == defaultBranch {
-			ahead := 0
-			behind := 0
+	if !slices.ContainsFunc(m.branches, func(b models.BranchInfo) bool { return b.Name == defaultBranch }) {
+		return -1, -1
+	}
 
-			for _, commit := range m.branchDetail.Commits {
-				found := false
-				for _, defCommit := range m.branchDetail.Commits {
-					if commit.Hash == defCommit.Hash {
-						found = true
-						break
-					}
-				}
-				if !found {
-					ahead++
-				}
-			}
-
-			return ahead, behind
+	ahead := 0
+	for _, commit := range m.branchDetail.Commits {
+		inDefault := slices.ContainsFunc(m.branchDetail.Commits, func(defCommit models.CommitInfo) bool {
+			return commit.Hash == defCommit.Hash
+		})
+		if !inDefault {
+			ahead++
 		}
 	}
 
-	return -1, -1
+	return ahead, 0
 }
 
 func truncate(s string, maxLen int) string {
