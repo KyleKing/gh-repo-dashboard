@@ -1,10 +1,12 @@
-package discovery
+package discovery_test
 
 import (
 	"os"
 	"path/filepath"
 	"sort"
 	"testing"
+
+	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
 )
 
 func mustMkdirAll(path string) {
@@ -95,7 +97,7 @@ func TestDiscoverRepos(t *testing.T) {
 			base := t.TempDir()
 			tt.setup(base)
 
-			repos := DiscoverRepos([]string{base}, tt.maxDepth)
+			repos := discovery.DiscoverRepos([]string{base}, tt.maxDepth)
 			if len(repos) != tt.expected {
 				t.Errorf("expected %d repos, got %d: %v", tt.expected, len(repos), repos)
 			}
@@ -109,7 +111,7 @@ func TestDiscoverReposDeduplicates(t *testing.T) {
 	repoPath := filepath.Join(base, "repo")
 	mustMkdirAll(filepath.Join(repoPath, ".git"))
 
-	repos := DiscoverRepos([]string{base, repoPath, base}, 1)
+	repos := discovery.DiscoverRepos([]string{base, repoPath, base}, 1)
 	if len(repos) != 1 {
 		t.Errorf("expected 1 unique repo, got %d: %v", len(repos), repos)
 	}
@@ -123,7 +125,7 @@ func TestDiscoverReposMultiplePaths(t *testing.T) {
 	mustMkdirAll(filepath.Join(base1, "repo1", ".git"))
 	mustMkdirAll(filepath.Join(base2, "repo2", ".git"))
 
-	repos := DiscoverRepos([]string{base1, base2}, 1)
+	repos := discovery.DiscoverRepos([]string{base1, base2}, 1)
 	if len(repos) != 2 {
 		t.Errorf("expected 2 repos, got %d", len(repos))
 	}
@@ -139,7 +141,7 @@ func TestDiscoverReposStopsAtRepo(t *testing.T) {
 	mustMkdirAll(filepath.Join(parentRepo, ".git"))
 	mustMkdirAll(filepath.Join(nestedRepo, ".git"))
 
-	repos := DiscoverRepos([]string{base}, 3)
+	repos := discovery.DiscoverRepos([]string{base}, 3)
 
 	if len(repos) != 1 {
 		t.Errorf("expected 1 repo (should stop at parent), got %d: %v", len(repos), repos)
@@ -157,7 +159,7 @@ func TestDiscoverReposOrder(t *testing.T) {
 		mustMkdirAll(filepath.Join(base, name, ".git"))
 	}
 
-	repos := DiscoverRepos([]string{base}, 1)
+	repos := discovery.DiscoverRepos([]string{base}, 1)
 
 	names := make([]string, len(repos))
 	for i, r := range repos {
@@ -171,7 +173,7 @@ func TestDiscoverReposOrder(t *testing.T) {
 
 func TestDiscoverReposNonexistentPath(t *testing.T) {
 	t.Parallel()
-	repos := DiscoverRepos([]string{"/nonexistent/path/that/does/not/exist"}, 1)
+	repos := discovery.DiscoverRepos([]string{"/nonexistent/path/that/does/not/exist"}, 1)
 	if len(repos) != 0 {
 		t.Errorf("expected 0 repos for nonexistent path, got %d", len(repos))
 	}
@@ -182,7 +184,7 @@ func TestDiscoverReposZeroDepth(t *testing.T) {
 	base := t.TempDir()
 	mustMkdirAll(filepath.Join(base, "repo", ".git"))
 
-	repos := DiscoverRepos([]string{base}, 0)
+	repos := discovery.DiscoverRepos([]string{base}, 0)
 	if len(repos) != 0 {
 		t.Errorf("expected 0 repos at depth 0, got %d", len(repos))
 	}
