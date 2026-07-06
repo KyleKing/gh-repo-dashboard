@@ -29,6 +29,31 @@ func NewTTLCache[T any](ttl time.Duration) *TTLCache[T] {
 	}
 }
 
+// clearer is satisfied by any TTLCache, letting the registry hold caches of
+// differing type parameters.
+type clearer interface {
+	Clear()
+}
+
+var (
+	registryMu sync.Mutex
+	registry   []clearer
+)
+
+// newRegisteredTTLCache builds a TTLCache like NewTTLCache and appends it to
+// the package-level registry that ClearAll drains. Reserved for the
+// package-level cache variables below; tests wanting a throwaway cache should
+// use NewTTLCache directly so they don't accumulate in the registry.
+func newRegisteredTTLCache[T any](ttl time.Duration) *TTLCache[T] {
+	c := NewTTLCache[T](ttl)
+
+	registryMu.Lock()
+	defer registryMu.Unlock()
+	registry = append(registry, c)
+
+	return c
+}
+
 // Get returns the cached value for key and whether it was present and unexpired.
 //
 //nolint:ireturn // T is the cache's own type parameter, not an abstraction leak
@@ -84,22 +109,21 @@ const (
 
 // Package-level caches shared across the app, keyed by repo path (or "path#N" for PR-numbered lookups).
 var (
-	PRCache            = NewTTLCache[*models.PRInfo](defaultTTL)
-	PRListCache        = NewTTLCache[[]models.PRInfo](defaultTTL)
-	PRDetailCache      = NewTTLCache[*models.PRDetail](defaultTTL)
-	BranchCache        = NewTTLCache[[]models.BranchInfo](defaultTTL)
-	CommitCache        = NewTTLCache[[]models.CommitInfo](defaultTTL)
-	WorkflowCache      = NewTTLCache[*models.WorkflowSummary](workflowTTL)
-	MergedPRHeadsCache = NewTTLCache[map[string]string](defaultTTL)
+	PRCache            = newRegisteredTTLCache[*models.PRInfo](defaultTTL)
+	PRListCache        = newRegisteredTTLCache[[]models.PRInfo](defaultTTL)
+	PRDetailCache      = newRegisteredTTLCache[*models.PRDetail](defaultTTL)
+	BranchCache        = newRegisteredTTLCache[[]models.BranchInfo](defaultTTL)
+	CommitCache        = newRegisteredTTLCache[[]models.CommitInfo](defaultTTL)
+	WorkflowCache      = newRegisteredTTLCache[*models.WorkflowSummary](workflowTTL)
+	MergedPRHeadsCache = newRegisteredTTLCache[map[string]string](defaultTTL)
 )
 
-// ClearAll clears every package-level cache.
+// ClearAll clears every registered package-level cache.
 func ClearAll() {
-	PRCache.Clear()
-	PRListCache.Clear()
-	PRDetailCache.Clear()
-	BranchCache.Clear()
-	CommitCache.Clear()
-	WorkflowCache.Clear()
-	MergedPRHeadsCache.Clear()
+	registryMu.Lock()
+	defer registryMu.Unlock()
+
+	for _, c := range registry {
+		c.Clear()
+	}
 }

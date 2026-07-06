@@ -437,7 +437,7 @@ func (*JJOperations) PruneRemote(_ context.Context, _ string) (bool, string, err
 // isProtectedBookmark reports whether name is a default-branch-style bookmark
 // that cleanup should never touch.
 func isProtectedBookmark(name string) bool {
-	return name == defaultMainBranch || name == masterBranch || name == "trunk"
+	return IsDefaultBranchName(name)
 }
 
 // PreviewMergedBranches reports bookmarks that are fully merged into the

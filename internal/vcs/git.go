@@ -523,7 +523,7 @@ func (g *GitOperations) mergedBranchNames(ctx context.Context, repoPath, mainBra
 		branch := strings.TrimSpace(scanner.Text())
 		branch = strings.TrimPrefix(branch, "* ")
 
-		if branch == mainBranch || branch == masterBranch || branch == defaultMainBranch || branch == "" {
+		if branch == mainBranch || IsDefaultBranchName(branch) || branch == "" {
 			continue
 		}
 

@@ -226,29 +226,43 @@ func (m *Model) CycleFilter() {
 // CycleSortState advances the given sort mode through off -> ascending -> descending -> off.
 func (m *Model) CycleSortState(mode models.SortMode) {
 	for i := range m.activeSorts {
-		if m.activeSorts[i].Mode == mode {
-			switch m.activeSorts[i].Direction {
-			case models.SortDirectionOff:
-				highestPriority := -1
-				for _, s := range m.activeSorts {
-					if s.IsEnabled() && s.Priority > highestPriority {
-						highestPriority = s.Priority
-					}
-				}
-				m.activeSorts[i].Direction = models.SortDirectionAsc
-				m.activeSorts[i].Priority = highestPriority + 1
-			case models.SortDirectionAsc:
-				m.activeSorts[i].Direction = models.SortDirectionDesc
-			case models.SortDirectionDesc:
-				freedPriority := m.activeSorts[i].Priority
-				m.activeSorts[i].Direction = models.SortDirectionOff
-				m.activeSorts[i].Priority = len(m.activeSorts)
-				for j := range m.activeSorts {
-					if m.activeSorts[j].IsEnabled() && m.activeSorts[j].Priority > freedPriority {
-						m.activeSorts[j].Priority--
-					}
-				}
-			}
+		if m.activeSorts[i].Mode != mode {
+			continue
+		}
+
+		switch m.activeSorts[i].Direction {
+		case models.SortDirectionOff:
+			m.activateSort(i)
+		case models.SortDirectionAsc:
+			m.activeSorts[i].Direction = models.SortDirectionDesc
+		case models.SortDirectionDesc:
+			m.deactivateSort(i)
+		}
+	}
+}
+
+// activateSort turns on the sort at index i (off -> ascending), assigning it
+// the next available priority after any already-enabled sorts.
+func (m *Model) activateSort(i int) {
+	highestPriority := -1
+	for _, s := range m.activeSorts {
+		if s.IsEnabled() && s.Priority > highestPriority {
+			highestPriority = s.Priority
+		}
+	}
+	m.activeSorts[i].Direction = models.SortDirectionAsc
+	m.activeSorts[i].Priority = highestPriority + 1
+}
+
+// deactivateSort turns off the sort at index i (descending -> off), compacting
+// the priorities of any sorts that were ranked below it.
+func (m *Model) deactivateSort(i int) {
+	freedPriority := m.activeSorts[i].Priority
+	m.activeSorts[i].Direction = models.SortDirectionOff
+	m.activeSorts[i].Priority = len(m.activeSorts)
+	for j := range m.activeSorts {
+		if m.activeSorts[j].IsEnabled() && m.activeSorts[j].Priority > freedPriority {
+			m.activeSorts[j].Priority--
 		}
 	}
 }

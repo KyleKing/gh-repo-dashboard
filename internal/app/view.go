@@ -116,6 +116,15 @@ func (m Model) renderView() string {
 	}
 }
 
+// withSelection applies the shared selected-row background to s when selected is true.
+func withSelection(s lipgloss.Style, selected bool) lipgloss.Style {
+	if selected {
+		return s.Background(styles.Surface0)
+	}
+
+	return s
+}
+
 // centerModal centers content on screen as a single block. Content is first
 // left-padded to a uniform width because lipgloss.Place centers each line of
 // a multi-line string independently based on that line's own width, which
@@ -404,10 +413,7 @@ func notesMarker(s models.RepoSummary, base lipgloss.Style, selected bool) (stri
 		return " ", base
 	}
 
-	style := styles.NotesBadgeStyle
-	if selected {
-		style = style.Background(styles.Surface0)
-	}
+	style := withSelection(styles.NotesBadgeStyle, selected)
 
 	return "N", style
 }
@@ -451,10 +457,7 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 	}
 
 	nameStyle := style
-	branchStyle := styles.BranchStyle
-	if selected {
-		branchStyle = branchStyle.Background(styles.Surface0)
-	}
+	branchStyle := withSelection(styles.BranchStyle, selected)
 
 	var statusStyle lipgloss.Style
 	switch {
@@ -465,16 +468,11 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 	default:
 		statusStyle = style
 	}
-	if selected {
-		statusStyle = statusStyle.Background(styles.Surface0)
-	}
+	statusStyle = withSelection(statusStyle, selected)
 
 	prStyle := style
 	if s.PRInfo != nil {
-		prStyle = styles.PROpenStyle
-		if selected {
-			prStyle = prStyle.Background(styles.Surface0)
-		}
+		prStyle = withSelection(styles.PROpenStyle, selected)
 	}
 
 	notesText, notesStyle := notesMarker(s, style, selected)
@@ -775,9 +773,7 @@ func renderBranchRow(branch models.BranchInfo, isSelected, deletable bool) strin
 	if branch.IsCurrent {
 		nameStyle = styles.PROpenStyle
 	}
-	if isSelected {
-		nameStyle = nameStyle.Background(styles.Surface0)
-	}
+	nameStyle = withSelection(nameStyle, isSelected)
 
 	formattedName := fmt.Sprintf("%-20s", name)
 	formattedUpstream := fmt.Sprintf("%-20s", upstream)
@@ -934,10 +930,7 @@ func (m Model) renderWorktreeList() string {
 		formattedPath := fmt.Sprintf("%-30s", path)
 		formattedBranch := fmt.Sprintf("%-20s", branch)
 
-		branchStyleLocal := styles.BranchStyle
-		if i == m.detailCursor {
-			branchStyleLocal = branchStyleLocal.Background(styles.Surface0)
-		}
+		branchStyleLocal := withSelection(styles.BranchStyle, i == m.detailCursor)
 
 		row := fmt.Sprintf("%s%s  %s  %s",
 			cursor,
@@ -996,9 +989,7 @@ func (m Model) renderPRList() string {
 		case state == models.PRStatusClosed:
 			stateStyle = styles.ErrorStyle
 		}
-		if i == m.detailCursor {
-			stateStyle = stateStyle.Background(styles.Surface0)
-		}
+		stateStyle = withSelection(stateStyle, i == m.detailCursor)
 
 		reviewStyle := styles.SubtitleStyle
 		switch review {
@@ -1007,14 +998,9 @@ func (m Model) renderPRList() string {
 		case models.ReviewChangesRequested:
 			reviewStyle = styles.ErrorStyle
 		}
-		if i == m.detailCursor {
-			reviewStyle = reviewStyle.Background(styles.Surface0)
-		}
+		reviewStyle = withSelection(reviewStyle, i == m.detailCursor)
 
-		branchStyleLocal := styles.BranchStyle
-		if i == m.detailCursor {
-			branchStyleLocal = branchStyleLocal.Background(styles.Surface0)
-		}
+		branchStyleLocal := withSelection(styles.BranchStyle, i == m.detailCursor)
 
 		row := fmt.Sprintf("%s%-8s  %-40s  %s  %-18s  %s",
 			cursor,

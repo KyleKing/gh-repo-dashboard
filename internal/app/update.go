@@ -1153,7 +1153,7 @@ func deletableBranches(ctx context.Context, path string, branches []models.Branc
 
 func findDefaultBranch(branches []models.BranchInfo) string {
 	for _, branch := range branches {
-		if branch.Name == mainBranchName || branch.Name == "master" {
+		if vcs.IsDefaultBranchName(branch.Name) {
 			return branch.Name
 		}
 	}

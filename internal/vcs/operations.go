@@ -13,12 +13,20 @@ var ErrCommandFailed = errors.New("command failed")
 // ErrUnexpectedOutput wraps a CLI output that didn't match the expected format.
 var ErrUnexpectedOutput = errors.New("unexpected command output")
 
-// defaultMainBranch and masterBranch are the conventional primary branch
-// names assumed when scanning for merged branches to clean up.
+// defaultMainBranch, masterBranch, and trunkBranch are the conventional
+// primary branch names assumed when scanning for merged branches to clean up.
 const (
 	defaultMainBranch = "main"
 	masterBranch      = "master"
+	trunkBranch       = "trunk"
 )
+
+// IsDefaultBranchName reports whether name is one of the conventional
+// default-branch names (main, master, trunk) that cleanup should never treat
+// as a feature branch.
+func IsDefaultBranchName(name string) bool {
+	return name == defaultMainBranch || name == masterBranch || name == trunkBranch
+}
 
 // StatusReader answers summary-level queries about a repository's current state.
 type StatusReader interface {

@@ -842,6 +842,16 @@ func TestGitCleanupMergedBranches(t *testing.T) {
 			expected:   "Deleted 1 branches: feature",
 		},
 		{
+			name: "protects local trunk branch alongside the resolved default",
+			canned: map[string]string{
+				symbolicRefKey:             "refs/remotes/origin/main",
+				"git branch --merged main": "  feature\n* main\n  trunk",
+				"git branch -d feature":    "",
+			},
+			expectedOK: true,
+			expected:   "Deleted 1 branches: feature",
+		},
+		{
 			name: "falls back to master",
 			canned: map[string]string{
 				"git rev-parse --verify master": "abc123",
