@@ -1,3 +1,41 @@
+## v1.1.0 (2026-07-06)
+
+### Feat
+
+- command history, @: repeat, --script, and --cli --filter (M12)
+- TOML config file at the XDG path (M11)
+- detect and clean squash-merged branches (M9)
+- surface per-repo notes files (M8)
+- add --cli flag for non-interactive JSON output
+
+### Fix
+
+- compute real ahead/behind vs default branch in branch detail
+- keep last upstream-less branch in GetBranchList
+- stop caching nil PR/workflow results when gh fails
+- assign contiguous sort priorities in CycleSortState
+
+### Refactor
+
+- split view.go by view mode and move Cmd constructors (M10 phase 2)
+- code-health quick wins from survey (M10 phase 1)
+- split vcs.Operations into composed sub-interfaces (M7)
+- split renderPRDetail's loading/description/actions to reduce complexity
+- flatten compareToDefaultBranch's nested loops to reduce complexity
+- split renderBranchDetail into per-section writers
+- extract sort-modal row building/rendering to reduce complexity
+- extract table-row and branch-row rendering to reduce complexity
+- extract breadcrumb/status-bar rendering to reduce complexity
+- reduce nestif in completeCommand and copyToClipboardCmd
+- extract adjacent-PR navigation to reduce handlePRDetailKey complexity
+- extract handleDetailKey's tab/cursor/enter logic to reduce complexity
+- extract handleKey's cursor/enter/back handling to reduce complexity
+- extract Update message handlers to reduce cognitive complexity
+- extract filter/select/sort commands to reduce DefaultRegistry complexity
+- extract fixture parsing/assertion helpers to reduce complexity
+- extract subtest bodies to reduce test cognitive complexity
+- extract porcelain status classification to reduce complexity
+
 ## v1.0.1 (2026-07-04)
 
 ### Fix
