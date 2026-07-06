@@ -176,7 +176,7 @@ for jj bookmarks too.
   default-branch resolver (jj cleanup still assumes `main`/`master`/`trunk`,
   matching pre-M9 behavior)
 
-### M10: Code-health quick wins and view split
+### M10: Code-health quick wins and view split (shipped)
 
 From the 2026-07-05 code-health survey. Two commits: cleanups, then pure file moves.
 
