@@ -9,6 +9,15 @@ import (
 // notesFilenames lists candidate per-repo notes files, in priority order.
 var notesFilenames = []string{".doing", "doing.md", "doing.txt", "TODO.md"}
 
+// SetNotesFilenames replaces the candidate notes filename list. Intended for
+// startup config application only; not safe to call concurrently with
+// DetectNotes.
+func SetNotesFilenames(names []string) {
+	if len(names) > 0 {
+		notesFilenames = names
+	}
+}
+
 const notesContentReadLimit = 64 * 1024
 
 // DetectNotes finds the first matching notes file at repoPath's root and

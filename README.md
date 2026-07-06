@@ -36,6 +36,29 @@ gh repo-dashboard --cli ~/projects
 gh repo-dashboard --cli --fresh ~/projects
 ```
 
+## Configuration
+
+An optional TOML config at `$XDG_CONFIG_HOME/gh-repo-dashboard/config.toml`
+(defaulting to `~/.config/gh-repo-dashboard/config.toml`) sets defaults so you
+can launch from anywhere without arguments. Flags and positional paths take
+precedence over the config file.
+
+```toml
+# Directories scanned when no paths are passed on the command line
+scan_paths = ["~/Developer", "~/work"]
+
+# Default for -depth
+depth = 2
+
+# Per-repo notes files detected at each repo root, in priority order
+notes_filenames = [".doing", "doing.md", "doing.txt", "TODO.md"]
+
+# Lifetime of cached GitHub data (PRs, workflow runs), in minutes
+cache_ttl_minutes = 5
+```
+
+All keys are optional; a missing file means built-in defaults.
+
 ## Supported Version Control Systems
 
 - **Git**: Full support for git repositories

@@ -194,16 +194,19 @@ From the 2026-07-05 code-health survey. Two commits: cleanups, then pure file mo
   `commands.go`
 - Ship: no behavior change, golden snapshots byte-identical, lint baseline shrinks
 
-### M11: Config file
+### M11: Config file (shipped)
 
 TOML config at the XDG path (`~/.config/gh-repo-dashboard/config.toml`), flags
 taking precedence over config over defaults. Saved scan paths are the headline:
 launching from anywhere without retyping paths.
 
-- New `internal/config` package: load/parse/validate, plus centralizing the
-  hardcoded values the survey catalogued (scan paths, depth, notes filenames,
-  cache TTLs)
-- Wire into `main.go` for both TUI and `--cli` modes
+- New `internal/config` package (pelletier/go-toml/v2): `scan_paths` (with `~`
+  expansion), `depth`, `notes_filenames`, `cache_ttl_minutes`; missing file is
+  the zero config, malformed file is a hard error so typos aren't silently
+  ignored
+- Wired into `main.go` for both TUI and `--cli` modes via startup hooks
+  (`models.SetNotesFilenames`, `cache.SetAllTTLs`); an explicitly set `-depth`
+  flag wins over the config value
 - Ship: config discovered and applied, flags still win, no config file required
 
 ### M12: Scripts and history

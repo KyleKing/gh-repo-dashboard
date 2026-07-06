@@ -33,6 +33,7 @@ func NewTTLCache[T any](ttl time.Duration) *TTLCache[T] {
 // differing type parameters.
 type clearer interface {
 	Clear()
+	setTTL(ttl time.Duration)
 }
 
 var (
@@ -102,6 +103,13 @@ func (c *TTLCache[T]) Delete(key string) {
 	delete(c.entries, key)
 }
 
+func (c *TTLCache[T]) setTTL(ttl time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.ttl = ttl
+}
+
 const (
 	defaultTTL  = 5 * time.Minute
 	workflowTTL = 2 * time.Minute
@@ -125,5 +133,16 @@ func ClearAll() {
 
 	for _, c := range registry {
 		c.Clear()
+	}
+}
+
+// SetAllTTLs overrides every registered cache's entry lifetime. Intended for
+// startup config application; existing entries keep their original expiry.
+func SetAllTTLs(ttl time.Duration) {
+	registryMu.Lock()
+	defer registryMu.Unlock()
+
+	for _, c := range registry {
+		c.setTTL(ttl)
 	}
 }
