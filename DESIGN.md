@@ -8,6 +8,9 @@ setup and task commands live in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 K9s-inspired Bubble Tea TUI for managing multiple git and jj repositories with
 progressive loading, filtering, GitHub PR integration, and batch maintenance tasks.
+Besides the TUI, two headless modes share the same internals: `--cli` prints repo
+summaries as JSON (optionally narrowed by `--filter <predicate>`) and `--script`
+replays `:command` lines from a file or stdin.
 
 - Framework: Bubble Tea (Go TUI framework)
 - Theme: Catppuccin Macchiato
@@ -16,22 +19,28 @@ progressive loading, filtering, GitHub PR integration, and batch maintenance tas
 ## Architecture
 
 ```
-├── cmd/gh-repo-dashboard/    # CLI entry point (main.go)
+├── cmd/gh-repo-dashboard/    # CLI entry point (main.go, flag/config wiring)
 ├── internal/
 │   ├── app/                  # Bubble Tea app
 │   │   ├── app.go           # Model definition, Init
 │   │   ├── update.go        # Update function (message handling)
-│   │   ├── view.go          # View rendering
+│   │   ├── view.go          # Shared rendering scaffolding
+│   │   ├── view_*.go        # Per-view-mode rendering (repolist, detail, modals, ...)
 │   │   ├── keymap.go        # Key bindings
-│   │   ├── commands.go      # Tea commands
+│   │   ├── command.go       # :command registry and commands
+│   │   ├── commands.go      # tea.Cmd constructors
+│   │   ├── script.go        # --script headless runner
+│   │   ├── textobject.go    # Text objects and operators
 │   │   └── messages.go      # Message types
-│   ├── models/               # Data structures (repo, branch, pr, filter, enums)
-│   ├── vcs/                  # VCS abstraction (operations, git, jj, factory, mock)
-│   ├── filters/              # Filter/sort/search logic
-│   ├── discovery/            # Repo discovery
 │   ├── batch/                # Batch operations (runner, tasks)
+│   ├── cache/                # Generic TTL cache with registry
+│   ├── cli/                  # --cli JSON output mode
+│   ├── config/               # TOML config file loading
+│   ├── discovery/            # Repo discovery
+│   ├── filters/              # Filter/sort/search and predicate logic
 │   ├── github/               # GitHub integration (pr, workflow)
-│   ├── cache/                # Generic TTL cache
+│   ├── models/               # Data structures (repo, branch, pr, notes, enums)
+│   ├── vcs/                  # VCS abstraction (operations, git, jj, factory, mock)
 │   └── ui/styles/            # Lipgloss styles
 ```
 
@@ -147,8 +156,9 @@ columns. `ViewModeRepoDetail` (Enter) drills into branches, stashes, worktrees,
 PRs, and notes with tab switching. `ViewModeFilter` (f), `ViewModeSort` (s), and `ViewModeHelp`
 (?) are modals, and `ViewModeBatchProgress` shows a progress bar during batch runs.
 
-Adding a view mode: add the const in `app/app.go`, rendering in `view.go`, update
-handling in `update.go`, and enter/exit navigation.
+Adding a view mode: add the const in `app/app.go`, rendering in a `view_*.go`
+file (dispatched from `renderView` in `view.go`), update handling in
+`update.go`, and enter/exit navigation.
 
 ## Bubble Tea Patterns
 
@@ -160,22 +170,24 @@ commands that return messages (for example `loadRepoSummary` returns
 cached style objects.
 
 Adding a keybinding: register it in `keymap.go`, handle it in `handleKey()`
-(`update.go`), update help text in `view.go`, and add a test in `app_test.go`.
+(`update.go`), update help text in `view_modals.go`, and add a test in `app_test.go`.
 
 ## Key Features
 
 - Progressive loading: the repo list appears immediately with placeholder data while goroutines load each `RepoSummary` concurrently and the table updates incrementally via Tea messages, never blocking on slow git operations
 - Caching: a generic TTL cache with mutex protection backs `prCache`, `branchCache`, and `summaryCache`; refresh clears all caches
-- Notes detection: a per-repo notes file (`.doing`, `doing.md`, `doing.txt`, or `TODO.md` at the repo root, first match wins) surfaces as a badge in the Status column, a Notes tab in repo detail, and the `has_notes` filter/predicate with the `nr` text object; detection is a plain file check outside the VCS abstraction
+- Notes detection: a per-repo notes file (`.doing`, `doing.md`, `doing.txt`, or `TODO.md` at the repo root, first match wins; overridable via config) surfaces as a badge in the Status column, a Notes tab in repo detail, and the `has_notes` filter/predicate with the `nr` text object; detection is a plain file check outside the VCS abstraction
+- Configuration: optional TOML at `$XDG_CONFIG_HOME/gh-repo-dashboard/config.toml` (`internal/config`) supplies scan paths, depth, notes filenames, and cache TTLs; flags take precedence
+- Command history: `ExecuteCommand` records recognized commands (capped at 50), shared by the command bar, `:history`, the `@:` repeat key, and `--script` runs
 - Cancellation: use `context.Context` and cancel when leaving views or quitting to avoid goroutine leaks
 
 ## Testing
 
 The strategy is a layered pyramid: direct state-transition tests as the base, a thin
 teatest golden-file layer for visual regression on stable screens, and fixture-based
-(catwalk-style) sequences once command mode lands. Golden-file tests run under a build
-tag (`go test -tags=golden ./...`, add `-update` to refresh snapshots). See
-[ROADMAP.md](ROADMAP.md) for how these phase in.
+command sequences (`internal/app/testdata/fixtures/*.fix`) that also generate
+`docs/USAGE.md` via `mise run docs:usage`. Golden-file tests run under a build tag
+(`go test -tags=golden ./...`, add `-update` to refresh snapshots).
 
 ## External Dependencies
 

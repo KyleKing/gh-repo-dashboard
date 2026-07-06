@@ -82,7 +82,7 @@ All keys are optional; a missing file means built-in defaults.
 The dashboard automatically detects the VCS type and uses appropriate operations. Colocated repositories (having both `.git` and `.jj`) are treated as jj repositories.
 
 **Requirements:**
-- Go 1.23+ (for building)
+- Go 1.25+ (for building)
 - git CLI (if managing git repos)
 - jj CLI (if managing jj repos)
 - gh CLI (GitHub CLI) - optional, for PR features with both git and jj repos
@@ -167,18 +167,23 @@ The dashboard automatically detects the VCS type and uses appropriate operations
 
 ### Filtering & Sorting
 - **Multi-Filter Support**: Combine multiple filters with AND logic
-- **Filter Modes**: all, dirty, ahead, behind, has_pr, has_stash
+- **Filter Modes**: all, dirty, ahead, behind, has_pr, has_stash, has_notes
+- **Predicates**: Expressions like `:filter dirty and has_pr` in command mode
 - **Sort Modes**: name, modified, status, branch (all reversible)
 - **Fuzzy Search**: Real-time search with similarity matching
 
 ### Repository Management
 - **Batch Operations**: Fetch, prune, and cleanup across filtered repositories
+- **Squash-Merge Cleanup**: Detects branches whose merged PRs were squashed (via gh) and deletes them safely, with `:cleanup --dry-run` preview
+- **Per-Repo Notes**: A `.doing`/`doing.md`/`doing.txt`/`TODO.md` file at a repo root shows as a badge and a detail tab
 - **Worktree Detection**: Git worktrees and jj workspaces
 - **Stash Tracking**: Git stash monitoring (jj doesn't use stashes)
 - **Branch Details**: View branches, PRs, commits, workflow runs, and modified files
 
 ### User Experience
-- **Vim-Style Keybindings**: Familiar navigation patterns
+- **Vim-Style Keybindings**: Familiar navigation, operators × text objects (`Fdr` fetches dirty repos), `@:` repeat
+- **Command Mode**: `:filter`, `:fetch`, `:sort`, `:select where <predicate>`, `:history`, and more with tab completion
+- **Automation**: `--cli` JSON output with `--filter`, `--script` headless command runs, TOML config with saved scan paths
 - **Help Modal**: Complete keybinding reference
 - **Catppuccin Theme**: Dark theme with minimal color usage
 
