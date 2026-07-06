@@ -5,6 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -223,5 +227,60 @@ func TestWriteOutput(t *testing.T) {
 	}
 	if decoded["generated_at"] != "2026-01-02T03:04:05Z" {
 		t.Errorf("unexpected generated_at: %v", decoded["generated_at"])
+	}
+}
+
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
+func TestRunFilterPredicate(t *testing.T) {
+	cache.ClearAll()
+	root := t.TempDir()
+	for _, name := range []string{"clean", "dirty"} {
+		dir := filepath.Join(root, name)
+		runGitCmd(t, "", "init", "-q", dir)
+		runGitCmd(t, dir, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "init")
+	}
+	if err := os.WriteFile(filepath.Join(root, "dirty", "wip.txt"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	if err := cli.Run(context.Background(), &buf, []string{root}, 1, false, "dirty"); err != nil {
+		t.Fatal(err)
+	}
+
+	var out struct {
+		Repos []struct {
+			Name  string `json:"name"`
+			Dirty bool   `json:"dirty"`
+		} `json:"repos"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Repos) != 1 || out.Repos[0].Name != "dirty" {
+		t.Errorf("filtered repos = %+v; want only 'dirty'", out.Repos)
+	}
+}
+
+func TestRunFilterInvalidPredicate(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	err := cli.Run(context.Background(), &buf, []string{t.TempDir()}, 1, false, "dirty and")
+	if err == nil {
+		t.Fatal("expected error for invalid predicate")
+	}
+	if !strings.Contains(err.Error(), "--filter") {
+		t.Errorf("error = %v; want mention of --filter", err)
+	}
+}
+
+func runGitCmd(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.CommandContext(t.Context(), "git", args...)
+	if dir != "" {
+		cmd.Dir = dir
+	}
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, out)
 	}
 }

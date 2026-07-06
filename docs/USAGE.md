@@ -42,6 +42,15 @@ pressing `:`; bare keys act on the repo list.
 | `:filter behind or has_pr` | shows behind, dirty-pr |
 | `:filter all` | shows behind, clean, dirty, dirty-pr; predicate: (cleared) |
 
+## Review command history and repeat the last command
+
+| Input | Result |
+|---|---|
+| `:filter dirty` | shows dirty, dirty-pr |
+| `:history` | status: History: filter dirty |
+| `:filter all` | shows behind, clean, dirty, dirty-pr |
+| press `@` `:` | shows behind, clean, dirty, dirty-pr |
+
 ## Navigate the repo list with vim keys
 
 | Input | Result |

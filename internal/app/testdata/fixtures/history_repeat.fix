@@ -1,0 +1,10 @@
+doc: Review command history and repeat the last command
+given standard
+when :filter dirty
+then filtered = dirty dirty-pr
+when :history
+then status = History: filter dirty
+when :filter all
+then filtered = behind clean dirty dirty-pr
+when keys @ :
+then filtered = behind clean dirty dirty-pr

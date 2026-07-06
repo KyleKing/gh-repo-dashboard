@@ -156,6 +156,14 @@ func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.commandMode {
 		return m.handleCommandKey(msg)
 	}
+	if m.pendingRepeat {
+		m.pendingRepeat = false
+		if key.Matches(msg, m.keys.Command) {
+			return m.repeatLastCommand()
+		}
+
+		return m, nil
+	}
 	if key.Matches(msg, m.keys.Command) {
 		m.commandMode = true
 		m.commandInput.Reset()
@@ -279,6 +287,11 @@ func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.pendingOperator != "" {
 		return m.handleOperatorPendingKey(msg)
+	}
+
+	if key.Matches(msg, m.keys.Repeat) {
+		m.pendingRepeat = true
+		return m, nil
 	}
 
 	if newM, handled := m.handleCursorKey(msg); handled {

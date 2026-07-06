@@ -359,3 +359,85 @@ func TestCommandBarRendered(t *testing.T) {
 		t.Errorf("expected command prompt on last line, got %q", lines[len(lines)-1])
 	}
 }
+
+func TestCommandHistoryRecording(t *testing.T) {
+	t.Parallel()
+	m := operatorModel()
+	m, _ = m.ExecuteCommand("filter dirty")
+	m, _ = m.ExecuteCommand("sort name")
+	m, _ = m.ExecuteCommand("bogus command")
+
+	if len(m.commandHistory) != 2 {
+		t.Fatalf("history = %v; want 2 recognized commands", m.commandHistory)
+	}
+	if m.commandHistory[1] != "sort name" {
+		t.Errorf("last history entry = %q; want %q", m.commandHistory[1], "sort name")
+	}
+}
+
+func TestHistoryCommandStatus(t *testing.T) {
+	t.Parallel()
+	m := operatorModel()
+
+	_, cmd := m.ExecuteCommand("history")
+	if status, ok := cmd().(StatusMsg); !ok || status.Message != "History: (empty)" {
+		t.Errorf("empty history status = %v", cmd())
+	}
+
+	m, _ = m.ExecuteCommand("filter dirty")
+	m, _ = m.ExecuteCommand("filter all")
+	m2, cmd := m.ExecuteCommand("history")
+	status, ok := cmd().(StatusMsg)
+	if !ok || status.Message != "History: filter all | filter dirty" {
+		t.Errorf("history status = %v", status)
+	}
+	if len(m2.commandHistory) != 2 {
+		t.Errorf(":history must not record itself, got %v", m2.commandHistory)
+	}
+}
+
+func TestRepeatLastCommandKey(t *testing.T) {
+	t.Parallel()
+	m := operatorModel()
+	m, _ = m.ExecuteCommand("filter dirty")
+	m, _ = m.ExecuteCommand("filter all")
+	m, _ = m.ExecuteCommand("filter dirty")
+
+	m, _ = m.ExecuteCommand("filter all")
+	m2, _ := pressKeys(t, m, "@:")
+	if len(m2.filteredPaths) != 4 {
+		t.Errorf("repeat of 'filter all' should show 4 repos, got %d", len(m2.filteredPaths))
+	}
+	if got := m2.commandHistory[len(m2.commandHistory)-1]; got != "filter all" {
+		t.Errorf("repeat should re-record the command, got %q", got)
+	}
+}
+
+func TestRepeatWithEmptyHistory(t *testing.T) {
+	t.Parallel()
+	m := operatorModel()
+	m2, cmd := pressKeys(t, m, "@:")
+	if m2.commandMode {
+		t.Error("@: with empty history must not open command mode")
+	}
+	if cmd == nil {
+		t.Fatal("expected status cmd")
+	}
+	if status, ok := cmd().(StatusMsg); !ok || status.Message != "No command to repeat" {
+		t.Errorf("status = %v", cmd())
+	}
+}
+
+func TestRepeatPendingCancelledByOtherKey(t *testing.T) {
+	t.Parallel()
+	m := operatorModel()
+	m, _ = m.ExecuteCommand("filter dirty")
+	m2, _ := pressKeys(t, m, "@x")
+	if m2.pendingRepeat {
+		t.Error("non-: key must cancel pending repeat")
+	}
+	m3, _ := pressKeys(t, m2, ":")
+	if !m3.commandMode {
+		t.Error(": after canceled repeat should open command mode")
+	}
+}

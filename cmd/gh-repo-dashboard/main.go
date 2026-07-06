@@ -2,9 +2,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -46,6 +48,24 @@ func findGitRoot(startPath string) (string, bool) {
 	return startPath, false
 }
 
+// runScript executes :command lines from path ("-" for stdin) headlessly.
+func runScript(path string, scanPaths []string, depth int) error {
+	var script io.Reader = os.Stdin
+	if path != "-" {
+		data, err := os.ReadFile(path) //nolint:gosec // user-supplied script path is the point
+		if err != nil {
+			return fmt.Errorf("reading script: %w", err)
+		}
+		script = bytes.NewReader(data)
+	}
+
+	if err := app.RunScript(context.Background(), os.Stdout, scanPaths, depth, script); err != nil {
+		return fmt.Errorf("running script: %w", err)
+	}
+
+	return nil
+}
+
 // applyConfig applies config-file values below flag precedence: an explicitly
 // set flag wins, otherwise a non-zero config value replaces the default.
 func applyConfig(cfg config.Config, depth *int) {
@@ -72,6 +92,10 @@ func main() {
 	depth := flag.Int("depth", 1, "Maximum directory depth to scan")
 	cliMode := flag.Bool("cli", false, "Print repo summaries as JSON instead of the TUI (cached GitHub data only)")
 	fresh := flag.Bool("fresh", false, "With -cli, fetch fresh GitHub PR data instead of relying on the cache")
+	filterExpr := flag.String("filter", "",
+		"With -cli, narrow output by a predicate expression (e.g. 'dirty and has_notes')")
+	scriptPath := flag.String("script", "",
+		"Run :command lines from the given file (or - for stdin) instead of the TUI")
 	flag.Parse()
 
 	if *showVersion {
@@ -115,7 +139,16 @@ func main() {
 	}
 
 	if *cliMode {
-		if err := cli.Run(context.Background(), os.Stdout, absPathList, *depth, *fresh); err != nil {
+		if err := cli.Run(context.Background(), os.Stdout, absPathList, *depth, *fresh, *filterExpr); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		return
+	}
+
+	if *scriptPath != "" {
+		if err := runScript(*scriptPath, absPathList, *depth); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}

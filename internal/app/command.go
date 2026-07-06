@@ -113,6 +113,7 @@ func DefaultRegistry() Registry {
 				return m, nil
 			},
 		},
+		historyCommand(),
 		batchCommand("prune",
 			"Prune remote refs in visible repos, optionally scoped: :prune [predicate]",
 			"Prune Remote", batchPruneRemoteCmd),
@@ -385,7 +386,16 @@ func statusCmd(message string) tea.Cmd {
 	}
 }
 
-// ExecuteCommand parses and dispatches a command line like "filter dirty".
+// commandHistoryLimit caps the retained command history; historyStatusCount
+// is how many recent entries ":history" shows.
+const (
+	commandHistoryLimit = 50
+	historyStatusCount  = 5
+)
+
+// ExecuteCommand parses and dispatches a command line like "filter dirty",
+// recording recognized commands in the history that ":history" and the "@:"
+// repeat key replay.
 func (m Model) ExecuteCommand(line string) (Model, tea.Cmd) {
 	fields := strings.Fields(line)
 	if len(fields) == 0 {
@@ -396,5 +406,41 @@ func (m Model) ExecuteCommand(line string) (Model, tea.Cmd) {
 		return m, statusCmd("Unknown command: " + fields[0])
 	}
 
+	if cmd.Name != "history" {
+		m.commandHistory = append(m.commandHistory, strings.TrimSpace(line))
+		if len(m.commandHistory) > commandHistoryLimit {
+			m.commandHistory = m.commandHistory[len(m.commandHistory)-commandHistoryLimit:]
+		}
+	}
+
 	return cmd.Run(m, fields[1:])
+}
+
+// repeatLastCommand re-executes the most recent history entry ("@:").
+func (m Model) repeatLastCommand() (Model, tea.Cmd) {
+	if len(m.commandHistory) == 0 {
+		return m, statusCmd("No command to repeat")
+	}
+
+	return m.ExecuteCommand(m.commandHistory[len(m.commandHistory)-1])
+}
+
+// historyCommand builds the ":history" command, showing the most recent
+// command lines newest-first in the status bar.
+func historyCommand() Command {
+	return Command{
+		Name:        "history",
+		Description: "Show recent :commands (newest first); repeat the last with @:",
+		Run: func(m Model, _ []string) (Model, tea.Cmd) {
+			if len(m.commandHistory) == 0 {
+				return m, statusCmd("History: (empty)")
+			}
+
+			start := max(0, len(m.commandHistory)-historyStatusCount)
+			recent := slices.Clone(m.commandHistory[start:])
+			slices.Reverse(recent)
+
+			return m, statusCmd("History: " + strings.Join(recent, " | "))
+		},
+	}
 }

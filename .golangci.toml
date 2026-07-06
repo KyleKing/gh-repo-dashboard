@@ -268,7 +268,7 @@ linters = ["tagliatelle"]
 # and the domain types are frequently read out of map[string]T values, which aren't
 # addressable in Go, so switching their methods to pointer receivers would break those
 # call sites. Not worth the ripple for structs under ~1.6KB.
-path = "internal/app/(app|keymap|command|state|textobject|view(_\\w+)?|update|fixture)(_test)?\\.go|internal/models/(branch|pr|repo)\\.go|internal/ui/styles/styles\\.go"
+path = "internal/app/(app|keymap|command|script|state|textobject|view(_\\w+)?|update|fixture)(_test)?\\.go|internal/models/(branch|pr|repo)\\.go|internal/ui/styles/styles\\.go"
 linters = ["gocritic"]
 text = "hugeParam"
 

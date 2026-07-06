@@ -38,6 +38,8 @@ type KeyMap struct {
 	CopyURL      key.Binding
 	CopyPRNumber key.Binding
 	OpenURL      key.Binding
+
+	Repeat key.Binding
 }
 
 // DefaultKeyMap returns the built-in key bindings.
@@ -74,6 +76,10 @@ func DefaultKeyMap() KeyMap {
 	km.OpenURL = key.NewBinding(
 		key.WithKeys("o"),
 		key.WithHelp("o", "open URL"),
+	)
+	km.Repeat = key.NewBinding(
+		key.WithKeys("@"),
+		key.WithHelp("@:", "repeat :command"),
 	)
 
 	return km
@@ -164,7 +170,7 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Top, k.Bottom},
 		{k.Enter, k.Back},
-		{k.Filter, k.Sort, k.Search, k.Command},
+		{k.Filter, k.Sort, k.Search, k.Command, k.Repeat},
 		{k.Refresh, k.FetchAll, k.PruneRemote, k.CleanupMerged},
 		{k.Help, k.Quit},
 	}

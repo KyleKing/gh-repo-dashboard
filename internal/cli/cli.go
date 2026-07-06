@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
+	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
@@ -67,20 +68,30 @@ func defaultGitHubClient() githubClient {
 }
 
 // Run discovers repos under scanPaths and writes their summaries as JSON to w.
-// GitHub data is served from the cache only, unless fresh is set.
-func Run(ctx context.Context, w io.Writer, scanPaths []string, maxDepth int, fresh bool) error {
+// GitHub data is served from the cache only, unless fresh is set. A non-empty
+// predicate expression (e.g. "dirty and has_notes") narrows the output.
+func Run(ctx context.Context, w io.Writer, scanPaths []string, maxDepth int, fresh bool, predicate string) error {
+	var pred filters.Predicate
+	if predicate != "" {
+		parsed, err := filters.ParsePredicate(predicate)
+		if err != nil {
+			return fmt.Errorf("invalid --filter predicate: %w", err)
+		}
+		pred = parsed
+	}
+
 	paths := discovery.DiscoverRepos(scanPaths, maxDepth)
 	out := Output{
 		GeneratedAt: time.Now().UTC(),
 		ScanPaths:   scanPaths,
-		Repos:       collectRepos(ctx, defaultGitHubClient(), paths, fresh),
+		Repos:       collectRepos(ctx, defaultGitHubClient(), paths, fresh, pred),
 	}
 
 	return writeOutput(w, out)
 }
 
-func collectRepos(ctx context.Context, client githubClient, paths []string, fresh bool) []Repo {
-	repos := make([]Repo, len(paths))
+func collectRepos(ctx context.Context, client githubClient, paths []string, fresh bool, pred filters.Predicate) []Repo {
+	repos := make([]*Repo, len(paths))
 	sem := make(chan struct{}, maxConcurrentRepos)
 
 	var wg sync.WaitGroup
@@ -90,22 +101,36 @@ func collectRepos(ctx context.Context, client githubClient, paths []string, fres
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			repos[i] = loadRepo(ctx, client, path, fresh)
+			repos[i] = loadRepo(ctx, client, path, fresh, pred)
 		}()
 	}
 	wg.Wait()
 
-	return repos
+	kept := make([]Repo, 0, len(repos))
+	for _, repo := range repos {
+		if repo != nil {
+			kept = append(kept, *repo)
+		}
+	}
+
+	return kept
 }
 
-func loadRepo(ctx context.Context, client githubClient, path string, fresh bool) Repo {
+// loadRepo builds the Repo for path, or nil when pred is set and the repo's
+// summary doesn't match it.
+func loadRepo(ctx context.Context, client githubClient, path string, fresh bool, pred filters.Predicate) *Repo {
 	ops := vcs.GetOperations(path)
 	summary, err := ops.GetRepoSummary(ctx, path)
 	if err != nil {
-		return Repo{
+		summary = models.RepoSummary{Path: path, VCSType: vcs.DetectVCSType(path), Error: err}
+		if pred != nil && !pred(summary) {
+			return nil
+		}
+
+		return &Repo{
 			Path:  path,
 			Name:  filepath.Base(path),
-			VCS:   vcs.DetectVCSType(path).String(),
+			VCS:   summary.VCSType.String(),
 			Error: err.Error(),
 		}
 	}
@@ -115,8 +140,15 @@ func loadRepo(ctx context.Context, client githubClient, path string, fresh bool)
 	summary.NotesFile, summary.NotesFirstLine = models.DetectNotes(path)
 	pr := lookupPR(ctx, client, path, summary.Branch, summary.Upstream, fresh)
 	prCount := lookupPRCount(ctx, client, path, summary.Upstream, fresh)
+	summary.PRInfo = pr
 
-	return newRepo(&summary, len(worktrees), pr, prCount)
+	if pred != nil && !pred(summary) {
+		return nil
+	}
+
+	repo := newRepo(&summary, len(worktrees), pr, prCount)
+
+	return &repo
 }
 
 func newRepo(summary *models.RepoSummary, worktreeCount int, pr *models.PRInfo, prCount *int) Repo {

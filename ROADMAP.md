@@ -209,14 +209,18 @@ launching from anywhere without retyping paths.
   flag wins over the config value
 - Ship: config discovered and applied, flags still win, no config file required
 
-### M12: Scripts and history
+### M12: Scripts and history (shipped)
 
 The parked recording/script cluster, cheap-first:
 
-- `:history` command and `@:` repeat-last-command against the existing registry
-- `--cli --filter '<predicate>'` reusing the predicate parser (small, immediate)
-- `--script commands.txt`: run command lines headlessly against the model via the
-  fixture harness's replay machinery, printing results as text or `--cli` JSON
+- `:history` shows recent commands newest-first in the status bar; `@:` repeats
+  the last one. History is recorded in `ExecuteCommand` (capped at 50) so the
+  command bar, scripts, and repeats all share it
+- `--cli --filter '<predicate>'` narrows JSON output via the predicate parser;
+  PR data is attached before the predicate runs so `has_pr` works from cache
+- `--script file.txt` (or `-` for stdin) loads summaries synchronously, then
+  executes `:command` lines headlessly, printing status messages and per-repo
+  batch results; `quit` stops early, `#` comments and blanks are skipped
 - Macro registers (`:record @a` / `:replay @a`) stay parked
 - Ship: scripted batch flows work headlessly; history/repeat in the TUI
 

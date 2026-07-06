@@ -62,6 +62,8 @@ type Model struct {
 	registry             Registry
 	completionCandidates []string
 	completionIndex      int
+	commandHistory       []string
+	pendingRepeat        bool
 
 	predicateText string
 	predicate     filters.Predicate

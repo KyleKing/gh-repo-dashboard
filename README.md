@@ -34,6 +34,21 @@ gh repo-dashboard --cli ~/projects
 
 # JSON output with fresh GitHub PR data (invokes gh per repo)
 gh repo-dashboard --cli --fresh ~/projects
+
+# Narrow JSON output by a predicate expression
+gh repo-dashboard --cli --filter 'dirty and has_notes' ~/projects
+
+# Run :command lines headlessly from a file (or - for stdin)
+gh repo-dashboard --script maintenance.txt ~/projects
+```
+
+Script files hold one `:command` per line (the leading `:` is optional); blank
+lines and `#` comments are skipped:
+
+```text
+# fetch everything that is behind, then report
+:fetch behind
+:filter dirty
 ```
 
 ## Configuration
@@ -92,6 +107,8 @@ The dashboard automatically detects the VCS type and uses appropriate operations
 |-----|--------|
 | `?` | Help |
 | `/` | Search |
+| `:` | Command mode (`:filter`, `:fetch`, `:history`, ...) |
+| `@:` | Repeat the last `:command` |
 | `f` | Filter modal |
 | `s` | Sort modal |
 | `R` | Reverse sort |
