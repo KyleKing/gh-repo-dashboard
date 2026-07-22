@@ -189,7 +189,7 @@ func lookupPR(ctx context.Context, client githubClient, repoPath, branch, upstre
 		return nil
 	}
 
-	if cached, ok := github.CachedPRForBranch(branch, upstream); ok {
+	if cached, ok := github.CachedPRForBranch(repoPath, branch, upstream); ok {
 		return cached
 	}
 	if !fresh {
@@ -211,7 +211,7 @@ func lookupPRCount(ctx context.Context, client githubClient, repoPath, upstream 
 		return nil
 	}
 
-	if cached, ok := github.CachedPRs(upstream); ok {
+	if cached, ok := github.CachedPRs(repoPath, upstream); ok {
 		count := len(cached)
 		return &count
 	}

@@ -31,20 +31,31 @@ type statusCheck struct {
 	Conclusion string `json:"conclusion,omitempty"`
 }
 
-// CachedPRForBranch returns the cached pull request for branch, if any, without invoking gh.
-func CachedPRForBranch(branch, upstream string) (*models.PRInfo, bool) {
-	return cache.PRCache.Get(upstream + ":" + branch)
+// PRCacheKey and PRListCacheKey scope cache entries by repo path because
+// upstream is a local ref name ("origin/main") that nearly every repo shares.
+// Exported so callers seeding the cache can't drift from this format.
+func PRCacheKey(repoPath, upstream, branch string) string {
+	return repoPath + "\x00" + upstream + ":" + branch
 }
 
-// CachedPRs returns the cached open pull request list for upstream without invoking gh.
-func CachedPRs(upstream string) ([]models.PRInfo, bool) {
-	return cache.PRListCache.Get(upstream + ":all_prs")
+func PRListCacheKey(repoPath, upstream string) string {
+	return repoPath + "\x00" + upstream + ":all_prs"
+}
+
+// CachedPRForBranch returns the cached pull request for branch, if any, without invoking gh.
+func CachedPRForBranch(repoPath, branch, upstream string) (*models.PRInfo, bool) {
+	return cache.PRCache.Get(PRCacheKey(repoPath, upstream, branch))
+}
+
+// CachedPRs returns the cached open pull request list for the repo without invoking gh.
+func CachedPRs(repoPath, upstream string) ([]models.PRInfo, bool) {
+	return cache.PRListCache.Get(PRListCacheKey(repoPath, upstream))
 }
 
 // GetPRForBranch returns the pull request associated with branch, if any, using the cache when fresh.
 func GetPRForBranch(ctx context.Context, repoPath, branch, upstream string) (*models.PRInfo, error) {
-	cacheKey := upstream + ":" + branch
-	if cached, ok := CachedPRForBranch(branch, upstream); ok {
+	cacheKey := PRCacheKey(repoPath, upstream, branch)
+	if cached, ok := CachedPRForBranch(repoPath, branch, upstream); ok {
 		return cached, nil
 	}
 
@@ -208,8 +219,8 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 		return []models.PRInfo{}, nil
 	}
 
-	cacheKey := upstream + ":all_prs"
-	if cached, ok := CachedPRs(upstream); ok {
+	cacheKey := PRListCacheKey(repoPath, upstream)
+	if cached, ok := CachedPRs(repoPath, upstream); ok {
 		return cached, nil
 	}
 
