@@ -93,6 +93,36 @@ that check flips to a failure telling you to update the script.
 - It builds the binary under test with `go build` into the temp directory rather
   than using whatever `gh extension` version happens to be installed
 
+### Token setup
+
+The script aborts in preflight if the token cannot create a repository:
+
+```
+POST /user/repos -> 403 Resource not accessible by personal access token
+```
+
+What to do depends on which credential `gh` has stored. Check the prefix in
+`gh auth status`: `gho_` is an OAuth token, `ghp_` a classic PAT, `github_pat_`
+a fine-grained PAT.
+
+- **OAuth token** (`gho_`): `gh auth refresh --hostname github.com --scopes delete_repo`
+- **Fine-grained PAT** (`github_pat_`): `gh auth refresh` cannot help, because the
+  permissions live on GitHub's side rather than under gh's OAuth app. Either
+  switch to the OAuth flow with `gh auth login --web`, or edit the token under
+  Settings → Developer settings → Fine-grained tokens and grant
+  **Administration: Read and write** with **Repository access: All repositories**.
+  All repositories is required because the script creates a repo that does not
+  exist yet, which a token scoped to selected repositories can never reach
+- **Classic PAT** (`ghp_`): add the `delete_repo` scope on the web, then re-store
+  the token with `gh auth login --with-token`
+
+Verify with the same probe the script uses:
+
+```bash
+gh api -X POST /user/repos -f name=zz-token-probe -F private=true --jq .full_name \
+  && gh repo delete zz-token-probe --yes
+```
+
 ### Cost
 
 One private repo and one pull request created and deleted, a handful of `gh` API
