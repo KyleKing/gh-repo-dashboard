@@ -14,6 +14,7 @@ import (
 
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 	"github.com/kyleking/gh-repo-dashboard/internal/cli"
+	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -61,7 +62,7 @@ func TestLookupPR(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cache.ClearAll()
 			if tt.cached != nil {
-				cache.PRCache.Set(tt.upstream+":main", tt.cached)
+				cache.PRCache.Set(github.PRCacheKey("/repo", tt.upstream, "main"), tt.cached)
 			}
 
 			calls := 0
@@ -109,7 +110,7 @@ func TestLookupPRCount(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cache.ClearAll()
 			if tt.cached != nil {
-				cache.PRListCache.Set(tt.upstream+":all_prs", tt.cached)
+				cache.PRListCache.Set(github.PRListCacheKey("/repo", tt.upstream), tt.cached)
 			}
 
 			calls := 0

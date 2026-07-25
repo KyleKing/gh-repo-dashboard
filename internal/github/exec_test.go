@@ -390,6 +390,50 @@ func TestGetPRsForRepoUsesCache(t *testing.T) {
 	}
 }
 
+// upstream is a local ref name that nearly every repo shares, so it cannot
+// identify a repo on its own.
+//
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
+func TestGetPRsForRepoCacheIsScopedByRepo(t *testing.T) {
+	cache.ClearAll()
+
+	ctxA, _ := stubRunGH([]byte(`[{"number": 1, "title": "Only in A"}]`), nil)
+	if _, err := github.GetPRsForRepo(ctxA, "/repo-a", "origin/main"); err != nil {
+		t.Fatalf("unexpected error for repo A: %v", err)
+	}
+
+	ctxB, callsB := stubRunGH([]byte(`[]`), nil)
+
+	prsB, err := github.GetPRsForRepo(ctxB, "/repo-b", "origin/main")
+	if err != nil {
+		t.Fatalf("unexpected error for repo B: %v", err)
+	}
+	if len(prsB) != 0 {
+		t.Errorf("repo B got repo A's cached PRs: %+v", prsB)
+	}
+	if len(*callsB) != 1 {
+		t.Errorf("expected repo B to invoke gh once, got %d", len(*callsB))
+	}
+
+	if _, ok := github.CachedPRs("/repo-b", "origin/main"); !ok {
+		t.Error("expected repo B's own entry to be cached")
+	}
+}
+
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
+func TestGetPRForBranchCacheIsScopedByRepo(t *testing.T) {
+	cache.ClearAll()
+
+	ctxA, _ := stubRunGH([]byte(`{"number": 1, "title": "Only in A", "headRefName": "main"}`), nil)
+	if _, err := github.GetPRForBranch(ctxA, "/repo-a", "main", "origin/main"); err != nil {
+		t.Fatalf("unexpected error for repo A: %v", err)
+	}
+
+	if _, ok := github.CachedPRForBranch("/repo-b", "main", "origin/main"); ok {
+		t.Error("repo B hit repo A's cached PR")
+	}
+}
+
 //nolint:paralleltest // asserts against shared global cache.ClearAll() state
 func TestGetPRCount(t *testing.T) {
 	tests := []struct {

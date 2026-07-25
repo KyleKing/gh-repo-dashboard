@@ -434,41 +434,68 @@ func (*JJOperations) PruneRemote(_ context.Context, _ string) (bool, string, err
 	return true, "JJ doesn't require explicit pruning", nil
 }
 
-// isProtectedBookmark reports whether name is a default-branch-style bookmark
-// that cleanup should never touch.
-func isProtectedBookmark(name string) bool {
-	return IsDefaultBranchName(name)
+// isProtectedBookmark reports whether name is a default-branch-style bookmark,
+// or the repo's own resolved default, that cleanup should never touch.
+func isProtectedBookmark(name, defaultBookmark string) bool {
+	return name == defaultBookmark || IsDefaultBranchName(name)
 }
 
-// PreviewMergedBranches reports bookmarks that are fully merged into the
-// default branch, without deleting anything. Used by the `:cleanup --dry-run`
-// preview; not part of the Mutator interface since it's read-only. Always
-// reports defaultMainBranch as the default: jj cleanup doesn't otherwise
-// resolve one (see CleanupMergedBranches).
+// resolveDefaultBookmark returns the repo's trunk bookmark. jj's trunk() revset
+// resolves the remote's default bookmark rather than assuming main, which
+// matters for repos defaulting to develop or a release branch.
+func (j *JJOperations) resolveDefaultBookmark(ctx context.Context, repoPath string) string {
+	out, err := j.runJJ(ctx, repoPath, "log", "-r", "trunk()", "-T", "bookmarks", "--no-graph")
+	if err != nil {
+		return defaultMainBranch
+	}
+
+	for _, field := range strings.Fields(out) {
+		name := strings.TrimSuffix(field, "*")
+		if name, _, found := strings.Cut(name, "@"); found {
+			if name != "" {
+				return name
+			}
+
+			continue
+		}
+
+		if name != "" {
+			return name
+		}
+	}
+
+	return defaultMainBranch
+}
+
+// PreviewMergedBranches reports the default bookmark and the bookmarks fully
+// merged into it, without deleting anything. Used by the `:cleanup --dry-run`
+// preview; not part of the Mutator interface since it's read-only.
 //
-//nolint:gocritic,unparam // matches GitOperations.PreviewMergedBranches's (default branch, merged, err)
+//nolint:gocritic // matches GitOperations.PreviewMergedBranches's (default branch, merged, err)
 func (j *JJOperations) PreviewMergedBranches(ctx context.Context, repoPath string) (string, []string, error) {
+	defaultBookmark := j.resolveDefaultBookmark(ctx, repoPath)
+
 	out, err := j.runJJ(ctx, repoPath, "bookmark", "list", "--all-remotes", "-T", jjBookmarkListFormat)
 	if err != nil {
-		return defaultMainBranch, nil, err
+		return defaultBookmark, nil, err
 	}
 
 	var merged []string
 	for _, bookmark := range parseJJBookmarkList(out) {
-		if isProtectedBookmark(bookmark.name) {
+		if isProtectedBookmark(bookmark.name, defaultBookmark) {
 			continue
 		}
-		if j.isMergedIntoDefault(ctx, repoPath, bookmark.name) {
+		if j.isMergedIntoDefault(ctx, repoPath, bookmark.name, defaultBookmark) {
 			merged = append(merged, bookmark.name)
 		}
 	}
 
-	return defaultMainBranch, merged, nil
+	return defaultBookmark, merged, nil
 }
 
-func (j *JJOperations) isMergedIntoDefault(ctx context.Context, repoPath, bookmarkName string) bool {
+func (j *JJOperations) isMergedIntoDefault(ctx context.Context, repoPath, bookmarkName, defaultBookmark string) bool {
 	out, err := j.runJJ(ctx, repoPath, "log", "-r",
-		bookmarkName+"@origin.."+defaultMainBranch+"@origin", "-T", "change_id", "--no-graph")
+		bookmarkName+"@origin.."+defaultBookmark+"@origin", "-T", "change_id", "--no-graph")
 
 	return err == nil && strings.TrimSpace(out) == ""
 }
@@ -483,6 +510,8 @@ func (j *JJOperations) isMergedIntoDefault(ctx context.Context, repoPath, bookma
 func (j *JJOperations) CleanupMergedBranches(
 	ctx context.Context, repoPath string, squashMerged []string,
 ) (bool, string, error) {
+	defaultBookmark := j.resolveDefaultBookmark(ctx, repoPath)
+
 	out, err := j.runJJ(ctx, repoPath, "bookmark", "list", "--all-remotes", "-T", jjBookmarkListFormat)
 	if err != nil {
 		//nolint:nilerr // failure is reported through the message, not the error field
@@ -496,11 +525,11 @@ func (j *JJOperations) CleanupMergedBranches(
 
 	var deleted, failed []string
 	for _, bookmark := range parseJJBookmarkList(out) {
-		if isProtectedBookmark(bookmark.name) {
+		if isProtectedBookmark(bookmark.name, defaultBookmark) {
 			continue
 		}
 
-		if !j.isMergedIntoDefault(ctx, repoPath, bookmark.name) && !squash[bookmark.name] {
+		if !j.isMergedIntoDefault(ctx, repoPath, bookmark.name, defaultBookmark) && !squash[bookmark.name] {
 			continue
 		}
 

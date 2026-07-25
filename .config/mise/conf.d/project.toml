@@ -1,0 +1,6 @@
+# Project-specific tasks for gh-repo-dashboard
+# Generic tasks are in template.toml (managed by copier template)
+
+[tasks."test:live"]
+description = "Live integration test of the destructive :cleanup path (creates and deletes a scratch GitHub repo)"
+run = "./scripts/live-test.sh"
