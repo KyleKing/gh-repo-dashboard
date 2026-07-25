@@ -191,7 +191,7 @@ mise run build
 
 Releases are fully automated by the `Bump Version` workflow: every push to `main` with a releasable Conventional Commit triggers commitizen to bump the version, tag, and update `CHANGELOG.md`, then goreleaser builds the binaries, publishes the GitHub release, and pushes an updated cask to [kyleking/homebrew-tap](https://github.com/kyleking/homebrew-tap). Tags pushed with the default `GITHUB_TOKEN` cannot trigger a second workflow, which is why goreleaser runs inside the same workflow rather than on tag push.
 
-The tap push happens over SSH with a write deploy key on `kyleking/homebrew-tap`, stored as the `TAP_DEPLOY_KEY` repository secret (GitHub offers no API to create PATs, so a deploy key keeps provisioning scriptable and scoped to one repo). Run `scripts/provision-tap-deploy-key.sh` to create or rotate it; the script also creates the tap repo if missing and archives the private key in 1Password. If the secret is missing the release still publishes; only the cask upload fails.
+The tap push happens over SSH with a write deploy key on `kyleking/homebrew-tap`, stored as the `TAP_DEPLOY_KEY` repository secret (GitHub offers no API to create PATs, so a deploy key keeps provisioning scriptable and scoped to one repo). Run `scripts/provision-tap-deploy-key.sh` to create or rotate it once the tap repo exists; the script archives the private key in 1Password. If the secret is missing the release still publishes; only the cask upload fails.
 
 After a release, verify the properly named binaries are attached (`gh-repo-dashboard-linux-amd64`, `gh-repo-dashboard-darwin-arm64`, `gh-repo-dashboard-windows-amd64.exe`, etc.), since `gh extension install kyleking/gh-repo-dashboard` and the cask both download them by that exact naming.
 
