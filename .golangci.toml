@@ -1,7 +1,7 @@
 # Configuration file for golangci-lint
 # For more options, see https://golangci-lint.run/usage/configuration/
 
-version = 2
+version = "2"
 
 [formatters]
 enable = [
@@ -124,7 +124,6 @@ enable = [
 
 [linters.settings.cyclop]
 max-complexity = 15
-skip-tests = true
 
 [linters.settings.dupl]
 threshold = 100
@@ -147,7 +146,6 @@ min-complexity = 20
 [linters.settings.goconst]
 min-len = 3
 min-occurrences = 3
-ignore-tests = true
 
 [linters.settings.gocritic]
 enabled-tags = ["diagnostic", "style", "performance", "experimental", "opinionated"]
@@ -257,6 +255,11 @@ case.rules.json = "snake"
 case.rules.yaml = "kebab"
 
 [[linters.exclusions.rules]]
+# Table-driven tests grow long cases and repeat literals without adding real complexity.
+path = "_test\\.go"
+linters = ["cyclop", "goconst"]
+
+[[linters.exclusions.rules]]
 # These structs decode `gh`/GitHub API JSON, which is camelCase on the wire;
 # the tags must match the API's field names, not our naming convention.
 path = "internal/github/(pr|workflow)\\.go"
@@ -279,7 +282,7 @@ enable-all = true
 check-exported = true
 
 [linters.settings.wrapcheck]
-ignoreSigs = [
+ignore-sigs = [
   ".Errorf(",
   "errors.New(",
   "errors.Unwrap(",

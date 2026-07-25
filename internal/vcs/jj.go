@@ -440,7 +440,7 @@ func isProtectedBookmark(name, defaultBookmark string) bool {
 	return name == defaultBookmark || IsDefaultBranchName(name)
 }
 
-// resolveDefaultBookmark returns the repo's trunk bookmark. jj's trunk() revset
+// resolveDefaultBookmark returns the repo's trunk bookmark. The trunk() revset
 // resolves the remote's default bookmark rather than assuming main, which
 // matters for repos defaulting to develop or a release branch.
 func (j *JJOperations) resolveDefaultBookmark(ctx context.Context, repoPath string) string {

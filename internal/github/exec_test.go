@@ -702,7 +702,8 @@ func TestGetWorkflowRunsForCommitDoesNotCacheError(t *testing.T) {
 		t.Fatal("expected error, got nil")
 	}
 
-	okCtx, okCalls := stubRunGH([]byte(`[{"databaseId": 7, "name": "CI", "status": "completed", "conclusion": "success"}]`), nil)
+	okJSON := `[{"databaseId": 7, "name": "CI", "status": "completed", "conclusion": "success"}]`
+	okCtx, okCalls := stubRunGH([]byte(okJSON), nil)
 
 	summary, err := github.GetWorkflowRunsForCommit(okCtx, "/repo", "abc123")
 	if err != nil {

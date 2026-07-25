@@ -2,22 +2,13 @@
 description = "Run benchmarks"
 run = "go test -bench=. -benchmem -run=^$ ./..."
 
-[tasks."brew:sha"]
-description = "Print SHA256 for Homebrew formula (run after release)"
-run = """
-echo "Download binaries from the latest release and run:"
-echo "  shasum -a 256 gh-repo-dashboard-darwin-arm64 gh-repo-dashboard-darwin-amd64 gh-repo-dashboard-linux-arm64 gh-repo-dashboard-linux-amd64"
-echo ""
-echo "Then update Formula/gh-repo-dashboard.rb with the SHA256 values and version."
-"""
-
 [tasks.build]
 description = "Build binary"
 run = "go build -v -o gh-repo-dashboard ./cmd/gh-repo-dashboard"
 
 [tasks.ci]
 description = "Run all checks (used in GitHub Actions)"
-run = ["go test -v -coverprofile=coverage.out ./...", "go test -tags=golden -run TestGolden ./internal/app/", "go build -v -o gh-repo-dashboard ./cmd/gh-repo-dashboard"]
+run = ["mise run test:coverage-min", "go test -tags=golden -run TestGolden ./internal/app/", "go build -v -o gh-repo-dashboard ./cmd/gh-repo-dashboard"]
 
 [tasks.clean]
 description = "Clean build artifacts"

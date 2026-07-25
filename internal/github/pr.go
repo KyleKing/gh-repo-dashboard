@@ -38,6 +38,7 @@ func PRCacheKey(repoPath, upstream, branch string) string {
 	return repoPath + "\x00" + upstream + ":" + branch
 }
 
+// PRListCacheKey builds the cache key for the full PR list of a repo's upstream.
 func PRListCacheKey(repoPath, upstream string) string {
 	return repoPath + "\x00" + upstream + ":all_prs"
 }

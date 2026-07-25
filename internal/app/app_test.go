@@ -184,7 +184,7 @@ func TestModelCycleSortState(t *testing.T) {
 		t.Error("first cycle: should be Asc")
 	}
 	if m.activeSorts[modifiedIdx].Priority != 1 {
-		t.Errorf("first cycle: expected contiguous priority 1 after Name at 0, got %d", m.activeSorts[modifiedIdx].Priority)
+		t.Errorf("first cycle: expected priority 1 after Name at 0, got %d", m.activeSorts[modifiedIdx].Priority)
 	}
 
 	m.CycleSortState(models.SortModeModified)
