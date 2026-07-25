@@ -70,9 +70,7 @@ Low priority; pick up when convenient.
   and guard/update helpers for the five `*LoadedMsg` handlers repeating the
   selected-repo check and summary read-modify-write
 - Surface deletable-branch counts in the repo list from cache-resident data and a
-  `has_deletable` predicate (M9 leftovers), plus gh-poi-style branch pinning; a
-  jj-specific default-branch resolver (jj cleanup still assumes
-  main/master/trunk)
+  `has_deletable` predicate (M9 leftovers), plus gh-poi-style branch pinning
 - `internal/app`'s test files stay whitebox (`package app`,
   `//nolint:testpackage`) rather than converting to `app_test`. `Model` has 35+
   unexported fields that tests construct and inspect directly across hundreds of

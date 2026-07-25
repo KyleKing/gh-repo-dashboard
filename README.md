@@ -11,15 +11,21 @@ As a GitHub CLI extension:
 gh extension install kyleking/gh-repo-dashboard
 ```
 
+With Homebrew:
+```bash
+brew install --cask kyleking/tap/gh-repo-dashboard
+```
+
 Or build from source:
 ```bash
-go build -o gh-repo-dashboard .
+go build -o gh-repo-dashboard ./cmd/gh-repo-dashboard
 ```
 
 ## Usage
 
 ```bash
-# Scan default directory (~/Developer)
+# Scan the config-file scan_paths, or with no config the enclosing repo
+# (walking up from the current directory), or the current directory itself
 gh repo-dashboard
 
 # Scan specific directories
@@ -77,7 +83,7 @@ All keys are optional; a missing file means built-in defaults.
 ## Supported Version Control Systems
 
 - **Git**: Full support for git repositories
-- **Jujutsu (jj)**: Full support for jj repositories (both colocated and non-colocated)
+- **Jujutsu (jj)**: Best-effort support for jj repositories (both colocated and non-colocated); jj's CLI output formats still change between releases, so some fields may be missing on newer jj versions
 
 The dashboard automatically detects the VCS type and uses appropriate operations. Colocated repositories (having both `.git` and `.jj`) are treated as jj repositories.
 
@@ -224,6 +230,13 @@ against merged PR head OIDs from `gh`).
 - Only operate on currently filtered/visible repositories
 - Each operation shows success/failure status with detailed messages
 - Failed operations don't stop the batch (continues to next repo)
+
+## Troubleshooting
+
+- PR and workflow columns are blank: the `gh` CLI is missing or unauthenticated. Run `gh auth status`, and `gh auth login` if needed. Everything else works without `gh`
+- Rows for jj repositories show errors: the `jj` CLI is not installed. Install it, or scan paths without jj repositories; colocated repos (both `.git` and `.jj`) are read via jj
+- Nothing is listed on launch: with no arguments and no config file the dashboard scans the repository enclosing the current directory. Pass parent directories as arguments (`gh repo-dashboard ~/projects`) or set `scan_paths` in the config file
+- Stale PR data: cached GitHub data lives for `cache_ttl_minutes` (default 5). Press `r` to refresh, or use `--fresh` with `--cli`
 
 ## Development
 
