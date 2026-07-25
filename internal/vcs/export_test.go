@@ -6,6 +6,15 @@ import "context"
 // git/jj CLI calls.
 var WithCommandRunner = withCommandRunner
 
+// SetJJAvailableForTest forces jj-binary detection for black-box tests and
+// returns a restore func. Only safe from tests that have not called t.Parallel.
+func SetJJAvailableForTest(available bool) func() {
+	prev := jjAvailable
+	jjAvailable = func() bool { return available }
+
+	return func() { jjAvailable = prev }
+}
+
 // CommandRunner exposes the commandRunner function type to black-box tests.
 type CommandRunner = commandRunner
 

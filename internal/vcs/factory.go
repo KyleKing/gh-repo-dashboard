@@ -2,14 +2,31 @@ package vcs
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
+	"sync"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+var jjAvailable = sync.OnceValue(func() bool {
+	_, err := exec.LookPath("jj")
+
+	return err == nil
+})
+
 // DetectVCSType inspects repoPath to determine whether it is a jj or git repository.
+// A colocated repo (both .jj and .git) is treated as git when the jj binary is
+// not on PATH, so repos stay usable instead of erroring on every jj call.
 func DetectVCSType(repoPath string) models.VCSType {
 	if _, err := os.Stat(filepath.Join(repoPath, ".jj")); err == nil {
+		if jjAvailable() {
+			return models.VCSTypeJJ
+		}
+		if _, err := os.Stat(filepath.Join(repoPath, ".git")); err == nil {
+			return models.VCSTypeGit
+		}
+
 		return models.VCSTypeJJ
 	}
 

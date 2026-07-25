@@ -103,6 +103,11 @@ func main() {
 		os.Exit(0)
 	}
 
+	if err := preflight(context.Background(), os.Stderr); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

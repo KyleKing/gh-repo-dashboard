@@ -10,22 +10,31 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
+//nolint:paralleltest // stubs the package-global jj-availability check
 func TestDetectVCSType(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
-		name     string
-		setup    func(dir string) error
-		expected models.VCSType
+		name        string
+		setup       func(dir string) error
+		jjAvailable bool
+		expected    models.VCSType
 	}{
 		{
-			name:     "git repo",
-			setup:    func(dir string) error { return os.Mkdir(filepath.Join(dir, ".git"), 0o750) },
-			expected: models.VCSTypeGit,
+			name:        "git repo",
+			setup:       func(dir string) error { return os.Mkdir(filepath.Join(dir, ".git"), 0o750) },
+			jjAvailable: true,
+			expected:    models.VCSTypeGit,
 		},
 		{
-			name:     "jj repo",
-			setup:    func(dir string) error { return os.Mkdir(filepath.Join(dir, ".jj"), 0o750) },
-			expected: models.VCSTypeJJ,
+			name:        "jj repo",
+			setup:       func(dir string) error { return os.Mkdir(filepath.Join(dir, ".jj"), 0o750) },
+			jjAvailable: true,
+			expected:    models.VCSTypeJJ,
+		},
+		{
+			name:        "jj-only repo without jj binary stays jj",
+			setup:       func(dir string) error { return os.Mkdir(filepath.Join(dir, ".jj"), 0o750) },
+			jjAvailable: false,
+			expected:    models.VCSTypeJJ,
 		},
 		{
 			name: "colocated prefers jj",
@@ -36,22 +45,37 @@ func TestDetectVCSType(t *testing.T) {
 
 				return os.Mkdir(filepath.Join(dir, ".jj"), 0o750)
 			},
-			expected: models.VCSTypeJJ,
+			jjAvailable: true,
+			expected:    models.VCSTypeJJ,
 		},
 		{
-			name:     "empty dir defaults to git",
-			setup:    func(_ string) error { return nil },
-			expected: models.VCSTypeGit,
+			name: "colocated without jj binary falls back to git",
+			setup: func(dir string) error {
+				if err := os.Mkdir(filepath.Join(dir, ".git"), 0o750); err != nil {
+					return fmt.Errorf("mkdir .git: %w", err)
+				}
+
+				return os.Mkdir(filepath.Join(dir, ".jj"), 0o750)
+			},
+			jjAvailable: false,
+			expected:    models.VCSTypeGit,
+		},
+		{
+			name:        "empty dir defaults to git",
+			setup:       func(_ string) error { return nil },
+			jjAvailable: true,
+			expected:    models.VCSTypeGit,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 			dir := t.TempDir()
 			if err := tt.setup(dir); err != nil {
 				t.Fatal(err)
 			}
+			restore := vcs.SetJJAvailableForTest(tt.jjAvailable)
+			defer restore()
 
 			result := vcs.DetectVCSType(dir)
 			if result != tt.expected {
