@@ -189,59 +189,11 @@ mise run build
 
 ## Releases
 
-Automated via goreleaser on tag push. **Note:** For GH CLI extensions, the first release is required before users can run `gh extension install kyleking/gh-repo-dashboard`.
+Releases are fully automated by the `Bump Version` workflow: every push to `main` with a releasable Conventional Commit triggers commitizen to bump the version, tag, and update `CHANGELOG.md`, then goreleaser builds the binaries, publishes the GitHub release, and pushes an updated cask to [kyleking/homebrew-tap](https://github.com/kyleking/homebrew-tap). Tags pushed with the default `GITHUB_TOKEN` cannot trigger a second workflow, which is why goreleaser runs inside the same workflow rather than on tag push.
 
-### Creating a Release
+The tap push happens over SSH with a write deploy key on `kyleking/homebrew-tap`, stored as the `TAP_DEPLOY_KEY` repository secret (GitHub offers no API to create PATs, so a deploy key keeps provisioning scriptable and scoped to one repo). Run `scripts/provision-tap-deploy-key.sh` to create or rotate it; the script also creates the tap repo if missing and archives the private key in 1Password. If the secret is missing the release still publishes; only the cask upload fails.
 
-1. Tag and push:
-
-   ```bash
-   git tag v0.1.0
-   git push origin v0.1.0
-   ```
-
-2. GitHub Actions will automatically:
-   - Run tests and build
-   - Create release with binaries for Linux, macOS, Windows, and FreeBSD (amd64/arm64)
-   - Publish to GitHub Releases
-
-3. Verify the release has properly named binaries:
-   - `gh-repo-dashboard-linux-amd64`
-   - `gh-repo-dashboard-darwin-arm64`
-   - `gh-repo-dashboard-windows-amd64.exe`
-   - etc.
-
-### Updating the Homebrew Formula
-
-After a release, update `Formula/gh-repo-dashboard.rb`:
-
-1. Download the release binaries from the GitHub release page
-2. Generate SHA256 checksums:
-
-   ```bash
-   shasum -a 256 gh-repo-dashboard-darwin-arm64 gh-repo-dashboard-darwin-amd64 gh-repo-dashboard-linux-arm64 gh-repo-dashboard-linux-amd64
-   ```
-
-   Or run `mise run brew:sha` for a reminder of these steps.
-
-3. Update the `version` and `sha256` values in `Formula/gh-repo-dashboard.rb`
-4. Commit and push the formula changes
-
-### Installing via Homebrew
-
-Users can install directly from the repository formula:
-
-```bash
-brew install --formula https://github.com/kyleking/gh-repo-dashboard/raw/main/Formula/gh-repo-dashboard.rb
-```
-
-Or from a local checkout:
-
-```bash
-brew install --formula ./Formula/gh-repo-dashboard.rb
-```
-
-To set up a [homebrew tap](https://docs.brew.sh/Taps) for `brew install kyleking/tap/gh-repo-dashboard`, create a `homebrew-tap` repo at `https://github.com/kyleking/homebrew-tap` and copy the formula there.
+After a release, verify the properly named binaries are attached (`gh-repo-dashboard-linux-amd64`, `gh-repo-dashboard-darwin-arm64`, `gh-repo-dashboard-windows-amd64.exe`, etc.), since `gh extension install kyleking/gh-repo-dashboard` and the cask both download them by that exact naming.
 
 
 ## Troubleshooting

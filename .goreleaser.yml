@@ -35,14 +35,14 @@ builds:
 
 archives:
   - id: gh-repo-dashboard
-    format: binary
+    formats: [binary]
     name_template: "gh-repo-dashboard-{{ .Os }}-{{ .Arch }}"
 
 checksum:
   name_template: "checksums.txt"
 
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  version_template: "{{ .Tag }}-next"
 
 changelog:
   use: github
@@ -56,3 +56,24 @@ changelog:
 release:
   draft: false
   prerelease: auto
+
+homebrew_casks:
+  - name: gh-repo-dashboard
+    # Pushed over SSH with a deploy key scoped to the tap repo, since GitHub
+    # offers no API to mint PATs; provisioned by scripts/provision-tap-deploy-key.sh.
+    repository:
+      owner: kyleking
+      name: homebrew-tap
+      git:
+        url: git@github.com:kyleking/homebrew-tap.git
+        private_key: "{{ .Env.TAP_DEPLOY_KEY }}"
+    homepage: https://github.com/kyleking/gh-repo-dashboard
+    description: "K9s-inspired TUI dashboard for the status of many local git and jj repositories"
+    skip_upload: auto
+    # The binaries are unsigned; clear the quarantine bit so macOS will run them.
+    hooks:
+      post:
+        install: |
+          Dir.glob(File.join(staged_path, "gh-repo-dashboard*")).each do |f|
+            system_command "/usr/bin/xattr", args: ["-c", f], must_succeed: false
+          end
