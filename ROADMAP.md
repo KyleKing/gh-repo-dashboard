@@ -58,6 +58,50 @@ the commit messages referenced below.
 - M12 `:history` and `@:` repeat, `--script` headless command runner,
   `--cli --filter <predicate>` (79ba9cc)
 
+## Proposed: fleet assessment for the freshen workflow
+
+The freshen skill (multi-repo maintenance in `~/.claude/skills/freshen/`) needs a
+per-repo snapshot before it dispatches work: local git state, CI conclusions on
+the default branch, and where the repo sits relative to its copier template. Today
+that lives in a bundled shell script (`assess.sh`) that shells out to git, gh, yq,
+and jq per repo. `--cli` already emits the local half of that snapshot as JSON, so
+the script duplicates repo discovery and status logic this codebase already has.
+
+Options considered:
+
+1. Extend `--cli`. The gaps are additive fields on the existing `Repo` struct, and
+   the CI fetch already exists in `internal/github/workflow.go` (TUI-only today)
+2. A dedicated fleet tool. Rejected: it would re-implement discovery, status, and
+   PR enrichment for one consumer
+3. Keep the shell script. Works, but every field it computes outside `--cli` is
+   untested and unfilterable
+
+Decision: extend `--cli` with three additions, then retire the script:
+
+- CI status per repo, keyed by the default branch head rather than a commit SHA.
+  Latest conclusion per workflow with timestamps, plus failing step names when
+  red, so the caller can triage without a second round-trip
+- Copier awareness: parse `.copier-answers.yml` into `template_src` and
+  `template_version`, and let a predicate express drift
+  (`template_version != latest`)
+- Roster input: accept mani.yaml as a scan source alongside the configured scan
+  paths, so the fleet definition stays in one file
+
+Sketch of the added JSON, on the existing `Repo` shape:
+
+```json
+{
+  "ci": [{"workflow": "CI", "conclusion": "failure", "failed_steps": ["lint"],
+          "completed_at": "..."}],
+  "template_src": "gh:KyleKing/my_go_template",
+  "template_version": "v0.4.3"
+}
+```
+
+Out of scope: waiting or polling. The snapshot stays one-shot; the caller owns
+retry cadence. Batch mutations (fetch, prune, cleanup) already exist behind the
+TUI and are not part of assessment.
+
 ## Deferred features
 
 Low priority; pick up when convenient.
