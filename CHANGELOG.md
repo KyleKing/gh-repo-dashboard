@@ -1,3 +1,21 @@
+## v1.2.0 (2026-07-26)
+
+### Feat
+
+- preflight missing-tool checks with git fallback for colocated repos
+
+### Fix
+
+- **lint**: make repeated command strings constants and annotate deliberate exec wrappers
+- **release**: run goreleaser inside the bump workflow and publish a cask to the tap
+- **ci**: repair golangci config for the v2 schema, pin the lint version, and gate on coverage
+- resolve the jj default bookmark instead of assuming main
+- scope PR cache keys by repo path
+
+### Refactor
+
+- **scripts**: require the tap repo to exist and fix the secret name
+
 ## v1.1.0 (2026-07-06)
 
 ### Feat
