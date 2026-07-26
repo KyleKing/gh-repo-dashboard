@@ -1,0 +1,4 @@
+Confirm copier-auto-update
+claude --resume efe3eb0f-d87f-4a07-b485-f3fdcf19b6a5
+
+Consider expanding to suppor the freshen skill (waiting on CI results, returning relationships, versions of template, structured/filtered CI output of failing steps and timestamps, etc.? what makes sense here vs. dedicated tool?)
