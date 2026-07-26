@@ -13,7 +13,7 @@ mise run ci
 ## Tasks
 
 Shared tasks live in `.config/mise/conf.d/template.toml` (managed by the copier template).
-Project-specific tasks go in additional `.config/mise/conf.d/*.toml` files, which mise always loads regardless of `MISE_ENV`.
+Project-specific tasks go in additional `.config/mise/conf.d/*.toml` files.
 
 | Command | Description |
 |---------|-------------|
@@ -25,6 +25,7 @@ Project-specific tasks go in additional `.config/mise/conf.d/*.toml` files, whic
 | `mise run format` | Auto-fix lint and formatting |
 | `mise run hooks` | Run git hooks |
 | `mise run lint` | Run linter |
+| `mise run run` | Run from source (`go run`, always reflects current code) |
 | `mise run test` | Run tests with coverage |
 | `mise run test:live` | [Live integration test](#live-integration-test) of `:cleanup` against a scratch GitHub repo |
 | `mise tasks` | List all available tasks |
@@ -162,29 +163,19 @@ Git hooks run automatically via hk on commit and push.
 
 ## Development Install
 
-For GH CLI extensions, install locally during development:
+Run straight from source with `go run`, which always reflects the current code, so there's no built binary or installed extension to go stale between edits:
 
 ```bash
-mise run build
-gh extension install .
+go run ./cmd/gh-repo-dashboard [args]
 ```
 
-After code changes, rebuild and reinstall:
+To test the actual `gh gh-repo-dashboard ...` extension invocation or a Homebrew install, use the released version rather than installing from this checkout:
 
 ```bash
-gh extension remove gh-repo-dashboard
-mise run build
-gh extension install .
+gh extension install kyleking/gh-repo-dashboard
+# or
+brew install --formula https://github.com/kyleking/gh-repo-dashboard/raw/main/Formula/gh-repo-dashboard.rb
 ```
-
-Or test directly without installing:
-
-```bash
-mise run build
-./gh-repo-dashboard [args]
-```
-
-
 
 
 ## Releases
