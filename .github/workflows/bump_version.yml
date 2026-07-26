@@ -31,9 +31,17 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # A push with no releasable commits produces no bump and leaves HEAD
+      # untagged, in which case goreleaser must be skipped or it fails on the
+      # previous tag not pointing at HEAD.
+      - name: Detect release tag on HEAD
+        id: release-tag
+        run: echo "tag=$(git tag --points-at HEAD)" >> "$GITHUB_OUTPUT"
+
       # Runs in the same workflow because tags pushed with GITHUB_TOKEN do not
       # trigger other workflows, so a separate on-tag release workflow never fires.
       - name: Build release binaries and publish release
+        if: steps.release-tag.outputs.tag != ''
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser
