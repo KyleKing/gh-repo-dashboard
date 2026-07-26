@@ -2,3 +2,7 @@ Confirm copier-auto-update
 claude --resume efe3eb0f-d87f-4a07-b485-f3fdcf19b6a5
 
 Consider expanding to suppor the freshen skill (waiting on CI results, returning relationships, versions of template, structured/filtered CI output of failing steps and timestamps, etc.? what makes sense here vs. dedicated tool?)
+
+## 2026-07-26 copier v0.5.1 follow-ups
+
+- Upstream to my_go_template: bump_version.yml runs goreleaser unconditionally; a push with no releasable commit fails ("git tag vX was not made against commit ..."). Fixed locally in gh-repo-dashboard with a git tag --points-at HEAD gate; port to the template
