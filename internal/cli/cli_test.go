@@ -277,7 +277,7 @@ func TestRunFilterInvalidPredicate(t *testing.T) {
 
 func runGitCmd(t *testing.T, dir string, args ...string) {
 	t.Helper()
-	cmd := exec.CommandContext(t.Context(), "git", args...)
+	cmd := exec.CommandContext(t.Context(), "git", args...) // #nosec G204 -- fixed git binary, test-provided args
 	if dir != "" {
 		cmd.Dir = dir
 	}

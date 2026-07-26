@@ -37,7 +37,7 @@ func (m Model) renderHelp() string {
 				{"g/G", "Go to top/bottom"},
 				{"enter, space", "Select/enter"},
 				{"esc, backspace", "Go back"},
-				{"tab", "Next tab (detail view)"},
+				{keyTab, "Next tab (detail view)"},
 			},
 		},
 		{
@@ -70,9 +70,9 @@ func (m Model) renderHelp() string {
 		b.WriteString(sectionStyle.Render(section.title))
 		b.WriteString("\n")
 		for _, k := range section.keys {
-			b.WriteString(fmt.Sprintf("  %s  %s\n",
+			fmt.Fprintf(&b, "  %s  %s\n",
 				styles.HelpKeyStyle.Render(fmt.Sprintf("%-20s", k.key)),
-				styles.HelpDescStyle.Render(k.desc)))
+				styles.HelpDescStyle.Render(k.desc))
 		}
 		b.WriteString("\n")
 	}

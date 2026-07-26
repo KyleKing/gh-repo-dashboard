@@ -24,7 +24,7 @@ func runCommand(ctx context.Context, dir, name string, args ...string) (string, 
 		return fn(ctx, dir, name, args...)
 	}
 
-	cmd := exec.CommandContext(ctx, name, args...)
+	cmd := exec.CommandContext(ctx, name, args...) // #nosec G204 -- name/args from internal command tables
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {

@@ -16,8 +16,14 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
+// Batch task display names shared by :commands, operator keys, and batch cmds.
+const (
+	taskCleanupMerged = "Cleanup Merged"
+	taskFetchAll      = "Fetch All"
+)
+
 func batchFetchAllCmd(paths []string) tea.Cmd {
-	return batch.RunTask("Fetch All", paths, batch.FetchAll)
+	return batch.RunTask(taskFetchAll, paths, batch.FetchAll)
 }
 
 func batchPruneRemoteCmd(paths []string) tea.Cmd {
@@ -25,7 +31,7 @@ func batchPruneRemoteCmd(paths []string) tea.Cmd {
 }
 
 func batchCleanupMergedCmd(paths []string) tea.Cmd {
-	return batch.RunTask("Cleanup Merged", paths, batch.CleanupMerged)
+	return batch.RunTask(taskCleanupMerged, paths, batch.CleanupMerged)
 }
 
 func batchPreviewCleanupCmd(paths []string) tea.Cmd {
@@ -255,11 +261,11 @@ func openURLCmd(url string) tea.Cmd {
 		var cmd *exec.Cmd
 		switch runtime.GOOS {
 		case "darwin":
-			cmd = exec.CommandContext(ctx, "open", url)
+			cmd = exec.CommandContext(ctx, "open", url) // #nosec G204 -- fixed opener, url from gh output
 		case "linux":
-			cmd = exec.CommandContext(ctx, "xdg-open", url)
+			cmd = exec.CommandContext(ctx, "xdg-open", url) // #nosec G204 -- fixed opener, url from gh output
 		case "windows":
-			cmd = exec.CommandContext(ctx, "cmd", "/c", "start", url)
+			cmd = exec.CommandContext(ctx, "cmd", "/c", "start", url) // #nosec G204 -- fixed opener, url from gh output
 		default:
 			return StatusMsg{Message: "URL opening not supported on this platform"}
 		}

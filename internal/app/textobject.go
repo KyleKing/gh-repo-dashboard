@@ -14,7 +14,7 @@ type TextObject struct {
 
 func textObjects() []TextObject {
 	return []TextObject{
-		{Key: "ar", Name: "all", Matches: func(_ Model, _ string) bool {
+		{Key: "ar", Name: nameAll, Matches: func(_ Model, _ string) bool {
 			return true
 		}},
 		{Key: "br", Name: "behind", Matches: func(m Model, path string) bool {
@@ -29,7 +29,7 @@ func textObjects() []TextObject {
 		{Key: "pr", Name: "with PRs", Matches: func(m Model, path string) bool {
 			return m.summaries[path].PRInfo != nil
 		}},
-		{Key: "sr", Name: "selected", Matches: func(m Model, path string) bool {
+		{Key: "sr", Name: nameSelected, Matches: func(m Model, path string) bool {
 			return m.selectedPaths[path]
 		}},
 	}
@@ -65,8 +65,8 @@ type operator struct {
 
 func operators() []operator {
 	return []operator{
-		{Key: "C", TaskName: "Cleanup Merged", Cmd: batchCleanupMergedCmd},
-		{Key: "F", TaskName: "Fetch All", Cmd: batchFetchAllCmd},
+		{Key: "C", TaskName: taskCleanupMerged, Cmd: batchCleanupMergedCmd},
+		{Key: "F", TaskName: taskFetchAll, Cmd: batchFetchAllCmd},
 		{Key: "P", TaskName: "Prune Remote", Cmd: batchPruneRemoteCmd},
 	}
 }

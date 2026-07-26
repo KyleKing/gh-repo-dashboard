@@ -6,6 +6,7 @@ import "charm.land/bubbles/v2/key"
 const (
 	keyEnter = "enter"
 	keyEsc   = "esc"
+	keyTab   = "tab"
 )
 
 // KeyMap holds the key bindings used across the TUI.
@@ -91,11 +92,11 @@ func navigationKeyMap() KeyMap {
 	return KeyMap{
 		Quit: key.NewBinding(
 			key.WithKeys("q", "ctrl+c"),
-			key.WithHelp("q", "quit"),
+			key.WithHelp("q", nameQuit),
 		),
 		Help: key.NewBinding(
 			key.WithKeys("?"),
-			key.WithHelp("?", "help"),
+			key.WithHelp("?", nameHelp),
 		),
 		Up: key.NewBinding(
 			key.WithKeys("k", "up"),
@@ -130,8 +131,8 @@ func navigationKeyMap() KeyMap {
 			key.WithHelp(keyEsc, "back"),
 		),
 		Tab: key.NewBinding(
-			key.WithKeys("tab"),
-			key.WithHelp("tab", "next tab"),
+			key.WithKeys(keyTab),
+			key.WithHelp(keyTab, "next tab"),
 		),
 		Command: key.NewBinding(
 			key.WithKeys(":"),
@@ -139,15 +140,15 @@ func navigationKeyMap() KeyMap {
 		),
 		Refresh: key.NewBinding(
 			key.WithKeys("r", "ctrl+r"),
-			key.WithHelp("r/ctrl+r", "refresh"),
+			key.WithHelp("r/ctrl+r", nameRefresh),
 		),
 		Filter: key.NewBinding(
 			key.WithKeys("f"),
-			key.WithHelp("f", "filter"),
+			key.WithHelp("f", nameFilter),
 		),
 		Sort: key.NewBinding(
 			key.WithKeys("s"),
-			key.WithHelp("s", "sort"),
+			key.WithHelp("s", nameSort),
 		),
 		Search: key.NewBinding(
 			key.WithKeys("/"),

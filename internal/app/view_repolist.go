@@ -325,12 +325,12 @@ func (m Model) renderFooter() string {
 	}{
 		{"j/k", "nav"},
 		{keyEnter, "select"},
-		{"f", "filter"},
-		{"s", "sort"},
+		{"f", nameFilter},
+		{"s", nameSort},
 		{"/", "search"},
-		{"r", "refresh"},
-		{"?", "help"},
-		{"q", "quit"},
+		{"r", nameRefresh},
+		{"?", nameHelp},
+		{"q", nameQuit},
 	}
 
 	parts := make([]string, 0, len(bindings))

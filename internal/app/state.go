@@ -28,11 +28,11 @@ func (v ViewMode) String() string {
 	case ViewModePRDetail:
 		return "pr"
 	case ViewModeHelp:
-		return "help"
+		return nameHelp
 	case ViewModeFilter:
-		return "filter"
+		return nameFilter
 	case ViewModeSort:
-		return "sort"
+		return nameSort
 	case ViewModeBatchProgress:
 		return "batch"
 	default:

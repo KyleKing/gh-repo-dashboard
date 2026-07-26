@@ -11,6 +11,19 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+// Name words shared across command ids, mode names, text objects, and
+// key-help labels.
+const (
+	nameAll      = "all"
+	nameFilter   = "filter"
+	nameHelp     = "help"
+	nameQuit     = "quit"
+	nameRefresh  = "refresh"
+	nameSelected = "selected"
+	nameSort     = "sort"
+	nameStatus   = "status"
+)
+
 // Command is a named `:command` invocable from the TUI's command bar.
 type Command struct {
 	Name        string
@@ -67,7 +80,7 @@ func (r Registry) Candidates(prefix string) []string {
 func filterModeNames() map[string]models.FilterMode {
 	return map[string]models.FilterMode{
 		"ahead":     models.FilterModeAhead,
-		"all":       models.FilterModeAll,
+		nameAll:     models.FilterModeAll,
 		"behind":    models.FilterModeBehind,
 		"dirty":     models.FilterModeDirty,
 		"has_notes": models.FilterModeHasNotes,
@@ -81,7 +94,7 @@ func sortModeNames() map[string]models.SortMode {
 		"branch":   models.SortModeBranch,
 		"modified": models.SortModeModified,
 		"name":     models.SortModeName,
-		"status":   models.SortModeStatus,
+		nameStatus: models.SortModeStatus,
 	}
 }
 
@@ -103,10 +116,10 @@ func DefaultRegistry() Registry {
 		cleanupCommand(),
 		batchCommand("fetch",
 			"Fetch visible repos, optionally scoped: :fetch [predicate]",
-			"Fetch All", batchFetchAllCmd),
+			taskFetchAll, batchFetchAllCmd),
 		filterCommand(),
 		Command{
-			Name:        "help",
+			Name:        nameHelp,
 			Description: "Show help",
 			Run: func(m Model, _ []string) (Model, tea.Cmd) {
 				m.viewMode = ViewModeHelp
@@ -118,14 +131,14 @@ func DefaultRegistry() Registry {
 			"Prune remote refs in visible repos, optionally scoped: :prune [predicate]",
 			"Prune Remote", batchPruneRemoteCmd),
 		Command{
-			Name:        "quit",
+			Name:        nameQuit,
 			Description: "Quit",
 			Run: func(m Model, _ []string) (Model, tea.Cmd) {
 				return m, tea.Quit
 			},
 		},
 		Command{
-			Name:        "refresh",
+			Name:        nameRefresh,
 			Description: "Clear caches and reload the current view",
 			Run: func(m Model, _ []string) (Model, tea.Cmd) {
 				return m.handleRefresh()
@@ -140,7 +153,7 @@ func DefaultRegistry() Registry {
 // predicate expression, or no args to open the filter modal.
 func filterCommand() Command {
 	return Command{
-		Name:        "filter",
+		Name:        nameFilter,
 		Description: "Filter repos: :filter <mode|predicate> or :filter to open the modal",
 		Complete: func(_ Model, args []string) []string {
 			prefix := ""
@@ -195,7 +208,7 @@ func selectCommand() Command {
 					prefix = args[0]
 				}
 
-				return namesMatching(map[string]struct{}{"all": {}, "none": {}, "where": {}}, prefix)
+				return namesMatching(map[string]struct{}{nameAll: {}, "none": {}, "where": {}}, prefix)
 			}
 
 			return predicateCandidates(args[len(args)-1])
@@ -212,7 +225,7 @@ func runSelectCommand(m Model, args []string) (Model, tea.Cmd) {
 	case "none":
 		m.selectedPaths = nil
 		return m, nil
-	case "all":
+	case nameAll:
 		m.selectedPaths = make(map[string]bool, len(m.repoPaths))
 		for _, path := range m.repoPaths {
 			m.selectedPaths[path] = true
@@ -242,7 +255,7 @@ func runSelectCommand(m Model, args []string) (Model, tea.Cmd) {
 // args to open the sort modal.
 func sortCommand() Command {
 	return Command{
-		Name:        "sort",
+		Name:        nameSort,
 		Description: "Cycle sort for a mode: :sort <mode> or :sort to open the modal",
 		Complete: func(_ Model, args []string) []string {
 			prefix := ""
@@ -344,7 +357,7 @@ func cleanupCommand() Command {
 			return candidates
 		},
 		Run: func(m Model, args []string) (Model, tea.Cmd) {
-			taskName := "Cleanup Merged"
+			taskName := taskCleanupMerged
 			taskCmd := batchCleanupMergedCmd
 
 			rest := make([]string, 0, len(args))
@@ -370,7 +383,7 @@ func predicateCandidates(prefix string) []string {
 			names = append(names, name)
 		}
 	}
-	for _, word := range []string{"and", "all", "not", "or"} {
+	for _, word := range []string{"and", nameAll, "not", "or"} {
 		if strings.HasPrefix(word, prefix) && prefix != "" {
 			names = append(names, word)
 		}

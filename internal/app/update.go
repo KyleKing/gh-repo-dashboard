@@ -949,7 +949,7 @@ func (m Model) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+c":
 		return m, tea.Quit
 
-	case "tab":
+	case keyTab:
 		m.completeCommand()
 		return m, nil
 	}

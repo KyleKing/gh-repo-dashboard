@@ -23,7 +23,7 @@ func runGH(ctx context.Context, dir string, env []string, args ...string) ([]byt
 		return fn(ctx, dir, env, args...)
 	}
 
-	cmd := exec.CommandContext(ctx, "gh", args...)
+	cmd := exec.CommandContext(ctx, "gh", args...) // #nosec G204 -- fixed gh binary, args from internal tables
 	cmd.Dir = dir
 	if len(env) > 0 {
 		cmd.Env = append(cmd.Environ(), env...)
