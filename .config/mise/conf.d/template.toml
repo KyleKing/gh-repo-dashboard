@@ -1,3 +1,14 @@
+[tools]
+actionlint = "latest"
+go = "latest"
+"go:github.com/golangci/golines" = "0.15.0"
+"golangci-lint" = "2.12.2"
+hk = "1.53.0"
+ls-lint = "latest"
+"pipx:commitizen" = "latest"
+pkl = "latest"
+tombi = "latest"
+
 [tasks.bench]
 description = "Run benchmarks"
 run = "go test -bench=. -benchmem -run=^$ ./..."
@@ -19,13 +30,17 @@ description = "Generate VHS demo recordings"
 run = 'find . -name "*.tape" -not -path "./.git/*" -exec vhs {} \;'
 depends = ["build"]
 
+[tasks.dev]
+description = "Run from source (always reflects current code, no stale build)"
+run = "go run ./cmd/gh-repo-dashboard"
+
 [tasks."docs:usage"]
 description = "Regenerate docs/USAGE.md from command fixtures"
 run = "go test ./internal/app/ -run TestUsageDocsCurrent -update-docs"
 
 [tasks.format]
 description = "Format code with golangci-lint and golines"
-run = ["golangci-lint run --fix ./...", "golines -w ."]
+run = ["golangci-lint run --fix ./...", "golines -w -m 120 ."]
 
 [tasks.hooks]
 description = "Run git hooks"
@@ -34,10 +49,6 @@ run = "hk fix --quiet"
 [tasks.lint]
 description = "Run linter"
 run = "golangci-lint run ./..."
-
-[tasks.run]
-description = "Run from source (always reflects current code, no stale build)"
-run = "go run ./cmd/gh-repo-dashboard"
 
 [tasks.test]
 description = "Run tests with coverage"

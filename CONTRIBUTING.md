@@ -25,7 +25,7 @@ Project-specific tasks go in additional `.config/mise/conf.d/*.toml` files.
 | `mise run format` | Auto-fix lint and formatting |
 | `mise run hooks` | Run git hooks |
 | `mise run lint` | Run linter |
-| `mise run run` | Run from source (`go run`, always reflects current code) |
+| `mise dev` | Run from source (`go run`, always reflects current code) |
 | `mise run test` | Run tests with coverage |
 | `mise run test:live` | [Live integration test](#live-integration-test) of `:cleanup` against a scratch GitHub repo |
 | `mise tasks` | List all available tasks |
