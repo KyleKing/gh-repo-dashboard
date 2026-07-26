@@ -1,14 +1,3 @@
-[tools]
-actionlint = "latest"
-go = "latest"
-"go:github.com/golangci/golines" = "0.15.0"
-"golangci-lint" = "2.12.2"
-hk = "1.53.0"
-ls-lint = "latest"
-"pipx:commitizen" = "latest"
-pkl = "latest"
-tombi = "latest"
-
 [tasks.bench]
 description = "Run benchmarks"
 run = "go test -bench=. -benchmem -run=^$ ./..."
@@ -77,3 +66,14 @@ fi
 [tasks."test:view-coverage"]
 description = "View coverage report in browser"
 run = "go tool cover -html=coverage.out"
+
+[tools]
+actionlint = "latest"
+go = "latest"
+"go:github.com/golangci/golines" = "0.15.0"
+"golangci-lint" = "2.12.2"
+hk = "1.53.0"
+ls-lint = "latest"
+"pipx:commitizen" = "latest"
+pkl = "latest"
+tombi = "latest"
