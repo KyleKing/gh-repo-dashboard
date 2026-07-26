@@ -1,3 +1,9 @@
+## v1.2.1 (2026-07-26)
+
+### Fix
+
+- **ci**: skip goreleaser when a push produces no version bump
+
 ## v1.2.0 (2026-07-26)
 
 ### Feat
