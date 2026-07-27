@@ -167,7 +167,12 @@ func (m Model) renderTable() string {
 	)
 	header = styles.HeaderStyle.Render(header)
 
-	availableHeight := m.height - nonListRowHeight
+	previewLineCount := 0
+	if m.notesPreviewOpen && m.cursor < len(m.filteredPaths) {
+		previewLineCount = len(m.summaries[m.filteredPaths[m.cursor]].NotesFiles)
+	}
+
+	availableHeight := m.height - nonListRowHeight - previewLineCount
 	if m.searching {
 		availableHeight--
 	}
@@ -193,9 +198,37 @@ func (m Model) renderTable() string {
 		summary := m.summaries[path]
 		row := m.renderTableRow(summary, i == m.cursor, colWidths)
 		rows = append(rows, row)
+
+		if i == m.cursor && m.notesPreviewOpen {
+			if preview := renderNotesPreview(summary); preview != "" {
+				rows = append(rows, preview)
+			}
+		}
 	}
 
 	return strings.Join(rows, "\n")
+}
+
+// renderNotesPreview renders one line per detected notes file, showing its
+// name and first line. It reuses the first line already captured during
+// detection, so opening the preview requires no extra file reads.
+func renderNotesPreview(s models.RepoSummary) string {
+	if len(s.NotesFiles) == 0 {
+		return ""
+	}
+
+	lines := make([]string, len(s.NotesFiles))
+	for i, nf := range s.NotesFiles {
+		firstLine := nf.FirstLine
+		if firstLine == "" {
+			firstLine = "(empty)"
+		}
+
+		lines[i] = "     " + styles.NotesPreviewNameStyle.Render(nf.Name+":") + " " +
+			styles.NotesPreviewLineStyle.Render(firstLine)
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 // formatPRCell formats a repo's PR-column text: "#N" with a review-status
@@ -250,13 +283,17 @@ func formatCopierCell(s models.RepoSummary) string {
 }
 
 func notesMarker(s models.RepoSummary, base lipgloss.Style, selected bool) (string, lipgloss.Style) {
-	if s.NotesFile == "" {
+	count := len(s.NotesFiles)
+	if count == 0 {
 		return " ", base
 	}
 
 	style := withSelection(styles.NotesBadgeStyle, selected)
+	if count == 1 {
+		return "N", style
+	}
 
-	return "N", style
+	return "N" + strconv.Itoa(count), style
 }
 
 func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths struct {
@@ -330,7 +367,7 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 	formattedName := fmt.Sprintf("%-*s", colWidths.name, name)
 	formattedBranch := fmt.Sprintf("%-*s", colWidths.branch, branch)
 	formattedStatus := fmt.Sprintf("%-*s", statusTextWidth, status)
-	formattedNotes := fmt.Sprintf("%-*s", notesMarkerWidth, notesText)
+	formattedNotes := fmt.Sprintf("%-*s", notesMarkerWidth, truncate(notesText, notesMarkerWidth))
 	formattedPR := fmt.Sprintf("%-*s", colWidths.pr, pr)
 	formattedPRCount := fmt.Sprintf("%-*s", colWidths.prs, prCountStr)
 	formattedCopier := fmt.Sprintf("%-*s", colWidths.copier, copierText)
@@ -358,6 +395,7 @@ func (m Model) renderFooter() string {
 	}{
 		{"j/k", "nav"},
 		{keyEnter, "select"},
+		{"v", "notes"},
 		{"f", nameFilter},
 		{"s", nameSort},
 		{"/", "search"},

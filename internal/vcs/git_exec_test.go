@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -433,7 +434,8 @@ func TestGitGetRepoSummary(t *testing.T) {
 			if tt.wantErr {
 				return
 			}
-			if summary != tt.expected {
+			//nolint:govet // Error is always nil here; comparing NotesFiles/pointers, not errors
+			if !reflect.DeepEqual(summary, tt.expected) {
 				t.Errorf("expected %+v, got %+v", tt.expected, summary)
 			}
 		})

@@ -190,7 +190,7 @@ Adding a keybinding: register it in `keymap.go`, handle it in `handleKey()`
 
 - Progressive loading: the repo list appears immediately with placeholder data while goroutines load each `RepoSummary` concurrently and the table updates incrementally via Tea messages, never blocking on slow git operations
 - Caching: a generic TTL cache with mutex protection backs `prCache`, `branchCache`, and `summaryCache`; refresh clears all caches
-- Notes detection: a per-repo notes file (`.doing`, `doing.md`, `doing.txt`, or `TODO.md` at the repo root, first match wins; overridable via config) surfaces as a badge in the Status column, a Notes tab in repo detail, and the `has_notes` filter/predicate with the `nr` text object; detection is a plain file check outside the VCS abstraction
+- Notes detection: every configured notes filename (`.doing`, `doing.md`, `doing.txt`, `TODO.md` by default; overridable via config) present at a repo root is collected as a `models.NoteFile`, not just the first match; surfaces as a count badge in the Status column, a first-line preview toggled with `v` on the repo list, a Notes tab in repo detail rendering each file's full content delineated by name, and the `has_notes` filter/predicate with the `nr` text object; detection is a plain file check outside the VCS abstraction
 - Configuration: optional TOML at `$XDG_CONFIG_HOME/gh-repo-dashboard/config.toml` (`internal/config`) supplies scan paths, depth, notes filenames, and cache TTLs; flags take precedence
 - Command history: `ExecuteCommand` records recognized commands (capped at 50), shared by the command bar, `:history`, the `@:` repeat key, and `--script` runs
 - Cancellation: use `context.Context` and cancel when leaving views or quitting to avoid goroutine leaks

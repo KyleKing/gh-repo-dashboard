@@ -51,7 +51,7 @@ func loadRepoSummaryCmd(path string) tea.Cmd {
 		ops := vcs.GetOperations(path)
 		summary, err := ops.GetRepoSummary(context.Background(), path)
 		if err == nil {
-			summary.NotesFile, summary.NotesFirstLine = models.DetectNotes(path)
+			summary.NotesFiles = models.DetectNotes(path)
 		}
 
 		return RepoSummaryLoadedMsg{
@@ -99,8 +99,8 @@ func loadDetailCmd(path string) tea.Cmd {
 			prs, _ = github.GetPRsForRepo(ctx, path, summary.Upstream)
 		}
 
-		notesFile, _ := models.DetectNotes(path)
-		notesContent := models.ReadNotesFile(path, notesFile)
+		notesFiles := models.DetectNotes(path)
+		notesContents := models.ReadNotesFiles(path, notesFiles)
 
 		return DetailLoadedMsg{
 			Path:              path,
@@ -108,8 +108,7 @@ func loadDetailCmd(path string) tea.Cmd {
 			Stashes:           stashes,
 			Worktrees:         worktrees,
 			PRs:               prs,
-			NotesFile:         notesFile,
-			NotesContent:      notesContent,
+			NotesFiles:        notesContents,
 			DeletableBranches: deletableBranches(ctx, path, branches),
 		}
 	}

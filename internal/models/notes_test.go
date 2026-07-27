@@ -3,6 +3,7 @@ package models_test
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
@@ -12,53 +13,52 @@ func TestDetectNotes(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		files         map[string]string
-		wantFile      string
-		wantFirstLine string
+		name  string
+		files map[string]string
+		want  []models.NoteFile
 	}{
-		{name: "no notes file", files: nil, wantFile: "", wantFirstLine: ""},
+		{name: "no notes file", files: nil, want: nil},
 		{
-			name:          "doing.md only",
-			files:         map[string]string{"doing.md": "Working on M8\nmore detail\n"},
-			wantFile:      "doing.md",
-			wantFirstLine: "Working on M8",
+			name:  "doing.md only",
+			files: map[string]string{"doing.md": "Working on M8\nmore detail\n"},
+			want:  []models.NoteFile{{Name: "doing.md", FirstLine: "Working on M8"}},
 		},
 		{
-			name:          "TODO.md only",
-			files:         map[string]string{"TODO.md": "Fix the bug\n"},
-			wantFile:      "TODO.md",
-			wantFirstLine: "Fix the bug",
+			name:  "TODO.md only",
+			files: map[string]string{"TODO.md": "Fix the bug\n"},
+			want:  []models.NoteFile{{Name: "TODO.md", FirstLine: "Fix the bug"}},
 		},
 		{
-			name: "priority order prefers .doing over doing.md",
+			name: "multiple matches are all returned, in configured order",
 			files: map[string]string{
 				".doing":   "from dotfile",
 				"doing.md": "from markdown",
 			},
-			wantFile:      ".doing",
-			wantFirstLine: "from dotfile",
+			want: []models.NoteFile{
+				{Name: ".doing", FirstLine: "from dotfile"},
+				{Name: "doing.md", FirstLine: "from markdown"},
+			},
 		},
 		{
-			name: "priority order prefers doing.md over doing.txt",
+			name: "doing.md and doing.txt are both returned",
 			files: map[string]string{
 				"doing.md":  "from markdown",
 				"doing.txt": "from txt",
 			},
-			wantFile:      "doing.md",
-			wantFirstLine: "from markdown",
+			want: []models.NoteFile{
+				{Name: "doing.md", FirstLine: "from markdown"},
+				{Name: "doing.txt", FirstLine: "from txt"},
+			},
 		},
 		{
-			name:          "skips leading blank lines",
-			files:         map[string]string{"doing.md": "\n\n  \nActual first line\nsecond\n"},
-			wantFile:      "doing.md",
-			wantFirstLine: "Actual first line",
+			name:  "skips leading blank lines",
+			files: map[string]string{"doing.md": "\n\n  \nActual first line\nsecond\n"},
+			want:  []models.NoteFile{{Name: "doing.md", FirstLine: "Actual first line"}},
 		},
 		{
-			name:          "empty file yields empty first line",
-			files:         map[string]string{"doing.md": ""},
-			wantFile:      "doing.md",
-			wantFirstLine: "",
+			name:  "empty file yields empty first line",
+			files: map[string]string{"doing.md": ""},
+			want:  []models.NoteFile{{Name: "doing.md", FirstLine: ""}},
 		},
 	}
 
@@ -73,12 +73,9 @@ func TestDetectNotes(t *testing.T) {
 				}
 			}
 
-			gotFile, gotFirstLine := models.DetectNotes(dir)
-			if gotFile != tt.wantFile {
-				t.Errorf("file = %q; want %q", gotFile, tt.wantFile)
-			}
-			if gotFirstLine != tt.wantFirstLine {
-				t.Errorf("firstLine = %q; want %q", gotFirstLine, tt.wantFirstLine)
+			got := models.DetectNotes(dir)
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("DetectNotes() = %+v; want %+v", got, tt.want)
 			}
 		})
 	}

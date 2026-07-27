@@ -27,8 +27,12 @@ type RepoSummary struct {
 	Loading      bool
 	Error        error
 
-	NotesFile      string
-	NotesFirstLine string
+	NotesFiles []NoteFile
+}
+
+// HasNotes reports whether any notes file was detected at the repo's root.
+func (r RepoSummary) HasNotes() bool {
+	return len(r.NotesFiles) > 0
 }
 
 // Name returns the repo's directory name.

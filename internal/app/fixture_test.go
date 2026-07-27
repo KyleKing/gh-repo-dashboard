@@ -154,7 +154,7 @@ func fixtureDataset(t *testing.T, name string) Model {
 		"/repos/dirty":  {Path: "/repos/dirty", Branch: mainBranchName, Unstaged: 2},
 		"/repos/dirty-pr": {
 			Path: "/repos/dirty-pr", Branch: "feat", Unstaged: 1,
-			PRInfo: &models.PRInfo{Number: 7}, NotesFile: "doing.md",
+			PRInfo: &models.PRInfo{Number: 7}, NotesFiles: []models.NoteFile{{Name: "doing.md"}},
 		},
 	}
 	m.updateFilteredPaths()

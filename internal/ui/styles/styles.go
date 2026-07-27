@@ -107,6 +107,12 @@ var (
 			Foreground(Teal).
 			Bold(true)
 
+	NotesPreviewNameStyle = lipgloss.NewStyle().
+				Foreground(Teal)
+
+	NotesPreviewLineStyle = lipgloss.NewStyle().
+				Foreground(Subtext0)
+
 	FooterStyle = lipgloss.NewStyle().
 			Foreground(Subtext0)
 

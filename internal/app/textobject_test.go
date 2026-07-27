@@ -20,7 +20,7 @@ func operatorModel() Model {
 		"/test/dirty":  {Path: "/test/dirty", Branch: mainBranchName, Unstaged: 2},
 		"/test/dirty-pr": {
 			Path: "/test/dirty-pr", Branch: "feat", Unstaged: 1,
-			PRInfo: &models.PRInfo{Number: 7}, NotesFile: "doing.md",
+			PRInfo: &models.PRInfo{Number: 7}, NotesFiles: []models.NoteFile{{Name: "doing.md"}},
 		},
 	}
 	m.updateFilteredPaths()

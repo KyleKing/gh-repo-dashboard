@@ -55,7 +55,7 @@ func newScriptModel(ctx context.Context, scanPaths []string, maxDepth int) Model
 		if err != nil {
 			summary = models.RepoSummary{Path: path, VCSType: vcs.DetectVCSType(path), Error: err}
 		} else {
-			summary.NotesFile, summary.NotesFirstLine = models.DetectNotes(path)
+			summary.NotesFiles = models.DetectNotes(path)
 		}
 		m.summaries[path] = summary
 	}

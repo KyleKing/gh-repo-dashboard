@@ -24,7 +24,7 @@ func textObjects() []TextObject {
 			return m.summaries[path].IsDirty()
 		}},
 		{Key: "nr", Name: "with notes", Matches: func(m Model, path string) bool {
-			return m.summaries[path].NotesFile != ""
+			return m.summaries[path].HasNotes()
 		}},
 		{Key: "pr", Name: "with PRs", Matches: func(m Model, path string) bool {
 			return m.summaries[path].PRInfo != nil

@@ -277,8 +277,7 @@ func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
 	m.stashes = msg.Stashes
 	m.worktrees = msg.Worktrees
 	m.prs = msg.PRs
-	m.notesFile = msg.NotesFile
-	m.notesContent = msg.NotesContent
+	m.notesFiles = msg.NotesFiles
 
 	prefetchCount := min(prDetailPrefetchCount, len(msg.PRs))
 
@@ -343,6 +342,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.searching = true
 		m.searchInput.Focus()
 
+		return m, nil
+
+	case key.Matches(msg, m.keys.NotesPreview):
+		m.notesPreviewOpen = !m.notesPreviewOpen
 		return m, nil
 
 	case key.Matches(msg, m.keys.FetchAll),
@@ -660,8 +663,7 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		m.stashes = nil
 		m.worktrees = nil
 		m.prs = nil
-		m.notesFile = ""
-		m.notesContent = ""
+		m.notesFiles = nil
 		m.branchDetail = models.BranchDetail{}
 		m.prDetail = models.PRDetail{}
 

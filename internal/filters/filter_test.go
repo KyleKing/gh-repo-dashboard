@@ -113,7 +113,7 @@ func TestFilterReposHasNotes(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, NotesFile: "doing.md"},
+		testRepo1Path: {Path: testRepo1Path, NotesFiles: []models.NoteFile{{Name: "doing.md"}}},
 		"/repo2":      {Path: "/repo2"},
 	}
 

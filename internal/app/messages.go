@@ -49,15 +49,14 @@ type WindowSizeMsg struct {
 	Height int
 }
 
-// DetailLoadedMsg reports the branches, stashes, worktrees, PRs, and notes file loaded for a repo's detail view.
+// DetailLoadedMsg reports the branches, stashes, worktrees, PRs, and notes files loaded for a repo's detail view.
 type DetailLoadedMsg struct {
-	Path         string
-	Branches     []models.BranchInfo
-	Stashes      []models.StashDetail
-	Worktrees    []models.WorktreeInfo
-	PRs          []models.PRInfo
-	NotesFile    string
-	NotesContent string
+	Path       string
+	Branches   []models.BranchInfo
+	Stashes    []models.StashDetail
+	Worktrees  []models.WorktreeInfo
+	PRs        []models.PRInfo
+	NotesFiles []models.NoteFileContent
 	// DeletableBranches names local, non-current branches whose tip matches a
 	// merged pull request's head OID (safe-to-delete detection). It's
 	// best-effort: a missing gh yields an empty set rather than failing the load.

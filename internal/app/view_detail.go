@@ -94,10 +94,7 @@ func (m Model) renderDetailTabs() string {
 		worktreeLabel = "Workspaces"
 	}
 
-	notesCount := 0
-	if m.notesFile != "" {
-		notesCount = 1
-	}
+	notesCount := len(m.notesFiles)
 
 	tabs := []struct {
 		name  string
@@ -266,10 +263,11 @@ func (m Model) renderStashList() string {
 	return strings.Join(rows, "\n")
 }
 
-// renderNotesTab shows the full content of the repo's detected notes file, or
-// an empty state naming the filenames that are detected.
+// renderNotesTab shows the full content of each of the repo's detected notes
+// files, each clearly delineated by its filename, or an empty state naming
+// the filenames that are detected.
 func (m Model) renderNotesTab() string {
-	if m.notesFile == "" {
+	if len(m.notesFiles) == 0 {
 		emptyStyle := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(styles.Surface1).
@@ -283,14 +281,23 @@ func (m Model) renderNotesTab() string {
 	}
 
 	var b strings.Builder
-	b.WriteString(styles.HeaderStyle.Render(m.notesFile))
-	b.WriteString("\n\n")
 
-	content := m.notesContent
-	if content == "" {
-		content = "(empty file)"
+	for i, nf := range m.notesFiles {
+		if i > 0 {
+			b.WriteString("\n\n")
+			b.WriteString(styles.SubtitleStyle.Render(strings.Repeat("─", notesSeparatorWidth)))
+			b.WriteString("\n\n")
+		}
+
+		b.WriteString(styles.HeaderStyle.Render(nf.Name))
+		b.WriteString("\n\n")
+
+		content := nf.Content
+		if content == "" {
+			content = "(empty file)"
+		}
+		b.WriteString(styles.TableRowStyle.Render(content))
 	}
-	b.WriteString(styles.TableRowStyle.Render(content))
 
 	return b.String()
 }

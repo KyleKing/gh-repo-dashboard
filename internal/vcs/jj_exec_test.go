@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os/exec"
+	"reflect"
 	"testing"
 	"time"
 
@@ -321,7 +322,8 @@ func TestJJGetRepoSummary(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if summary != tt.expected {
+			//nolint:govet // Error is always nil here; comparing NotesFiles/pointers, not errors
+			if !reflect.DeepEqual(summary, tt.expected) {
 				t.Errorf("expected %+v, got %+v", tt.expected, summary)
 			}
 		})

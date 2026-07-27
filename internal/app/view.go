@@ -48,6 +48,7 @@ const (
 	commitEmptyStateVPad   = 1
 	loadingStatePad        = 2
 	branchDetailMaxCommits = 10
+	notesSeparatorWidth    = 40
 )
 
 // View renders the TUI for the current model state.

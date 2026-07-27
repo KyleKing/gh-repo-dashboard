@@ -48,8 +48,9 @@ type Model struct {
 	repoPaths []string
 	summaries map[string]models.RepoSummary
 
-	filteredPaths []string
-	cursor        int
+	filteredPaths    []string
+	cursor           int
+	notesPreviewOpen bool
 
 	activeFilters []models.ActiveFilter
 	activeSorts   []models.ActiveSort
@@ -86,8 +87,7 @@ type Model struct {
 	deletableBranches map[string]bool
 	stashes           []models.StashDetail
 	worktrees         []models.WorktreeInfo
-	notesFile         string
-	notesContent      string
+	notesFiles        []models.NoteFileContent
 
 	selectedBranch models.BranchInfo
 	branchDetail   models.BranchDetail

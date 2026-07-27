@@ -71,7 +71,7 @@ scan_paths = ["~/Developer", "~/work"]
 # Default for -depth
 depth = 2
 
-# Per-repo notes files detected at each repo root, in priority order
+# Per-repo notes filenames checked at each repo root; every match is shown
 notes_filenames = [".doing", "doing.md", "doing.txt", "TODO.md"]
 
 # Lifetime of cached GitHub data (PRs, workflow runs), in minutes
@@ -181,7 +181,7 @@ The dashboard automatically detects the VCS type and uses appropriate operations
 ### Repository Management
 - **Batch Operations**: Fetch, prune, and cleanup across filtered repositories
 - **Squash-Merge Cleanup**: Detects branches whose merged PRs were squashed (via gh) and deletes them safely, with `:cleanup --dry-run` preview
-- **Per-Repo Notes**: A `.doing`/`doing.md`/`doing.txt`/`TODO.md` file at a repo root shows as a badge and a detail tab
+- **Per-Repo Notes**: Any `.doing`/`doing.md`/`doing.txt`/`TODO.md` files found at a repo root (filenames configurable) show as a count badge in the list, a quick first-line preview (`v` to toggle), and a detail tab with each file's full content
 - **Worktree Detection**: Git worktrees and jj workspaces
 - **Stash Tracking**: Git stash monitoring (jj doesn't use stashes)
 - **Branch Details**: View branches, PRs, commits, workflow runs, and modified files

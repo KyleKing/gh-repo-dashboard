@@ -16,7 +16,7 @@ func TestParsePredicate(t *testing.T) {
 	ahead := models.RepoSummary{Ahead: 1}
 	clean := models.RepoSummary{}
 	jjRepo := models.RepoSummary{VCSType: models.VCSTypeJJ}
-	withNotes := models.RepoSummary{NotesFile: "doing.md"}
+	withNotes := models.RepoSummary{NotesFiles: []models.NoteFile{{Name: "doing.md"}}}
 
 	tests := []struct {
 		name     string
