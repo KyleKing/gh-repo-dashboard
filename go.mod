@@ -6,13 +6,14 @@ require (
 	charm.land/bubbles/v2 v2.1.1
 	charm.land/bubbletea/v2 v2.0.8
 	charm.land/lipgloss/v2 v2.0.5
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/charmbracelet/x/exp/golden v0.0.0-20251109135125-8916d276318f
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/sahilm/fuzzy v0.1.3
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-udiff v0.4.1 // indirect
 	github.com/charmbracelet/colorprofile v0.4.3 // indirect
@@ -30,5 +31,4 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
