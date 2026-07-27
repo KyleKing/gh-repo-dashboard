@@ -15,6 +15,11 @@ mise run ci
 Shared tasks live in `.config/mise/conf.d/template.toml` (managed by the copier template).
 Project-specific tasks go in additional `.config/mise/conf.d/*.toml` files.
 
+mise loads `conf.d/*.toml` files in alphabetical order, and a task defined in more
+than one file resolves to whichever file loaded last. Name your project file so it
+sorts after `template.toml` (`user.toml` works; `project.toml` does not, since
+`p` < `t`) or a same-named task override will silently do nothing.
+
 | Command | Description |
 |---------|-------------|
 | `mise run bench` | Run benchmarks |
@@ -180,7 +185,7 @@ brew install --formula https://github.com/kyleking/gh-repo-dashboard/raw/main/Fo
 
 ## Releases
 
-Releases are fully automated by the `Bump Version` workflow: every push to `main` with a releasable Conventional Commit triggers commitizen to bump the version, tag, and update `CHANGELOG.md`, then goreleaser builds the binaries, publishes the GitHub release, and pushes an updated cask to [kyleking/homebrew-tap](https://github.com/kyleking/homebrew-tap). Tags pushed with the default `GITHUB_TOKEN` cannot trigger a second workflow, which is why goreleaser runs inside the same workflow rather than on tag push.
+Releases are fully automated by the `Bump Version` workflow: every push to `main` with a releasable Conventional Commit triggers commitizen to bump the version, tag, and update `CHANGELOG.md`, then goreleaser builds the binaries, publishes the GitHub release, and pushes an updated cask to [kyleking/homebrew-tap](https://github.com/kyleking/homebrew-tap). Tags pushed with the default `GITHUB_TOKEN` cannot trigger a second workflow, which is why goreleaser runs inside the same workflow rather than on tag push. Commit types commitizen does not bump (`docs:`, `build(deps):`) cut no tag, and the release steps are skipped.
 
 The tap push happens over SSH with a write deploy key on `kyleking/homebrew-tap`, stored as the `TAP_DEPLOY_KEY` repository secret (GitHub offers no API to create PATs, so a deploy key keeps provisioning scriptable and scoped to one repo). Run `scripts/provision-tap-deploy-key.sh` to create or rotate it once the tap repo exists; the script archives the private key in 1Password. If the secret is missing the release still publishes; only the cask upload fails.
 

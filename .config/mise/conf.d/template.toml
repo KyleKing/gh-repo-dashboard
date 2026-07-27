@@ -43,18 +43,12 @@ run = "hk fix --quiet"
 [tasks.lint]
 description = "Run linter"
 run = "golangci-lint run ./..."
+raw_args = true
 
 [tasks.test]
 description = "Run tests with coverage"
 run = "go test -coverprofile=coverage.out ./..."
-
-[tasks."test:golden"]
-description = "Run golden snapshot tests"
-run = "go test -tags=golden -run TestGolden ./internal/app/"
-
-[tasks."test:golden-update"]
-description = "Regenerate golden snapshots"
-run = "go test -tags=golden -run TestGolden ./internal/app/ -update"
+raw_args = true
 
 [tasks."test:coverage-min"]
 description = "Verify minimum coverage threshold (70%)"
@@ -68,6 +62,14 @@ if (( $(awk "BEGIN {print ($coverage < 70)}") )); then
 fi
 '''
 
+[tasks."test:golden"]
+description = "Run golden snapshot tests"
+run = "go test -tags=golden -run TestGolden ./internal/app/"
+
+[tasks."test:golden-update"]
+description = "Regenerate golden snapshots"
+run = "go test -tags=golden -run TestGolden ./internal/app/ -update"
+
 [tasks."test:view-coverage"]
 description = "View coverage report in browser"
 run = "go tool cover -html=coverage.out"
@@ -80,5 +82,6 @@ go = "latest"
 hk = "1.53.0"
 ls-lint = "latest"
 "pipx:commitizen" = "latest"
+"pipx:yamllint" = "latest"
 pkl = "latest"
 tombi = "latest"
