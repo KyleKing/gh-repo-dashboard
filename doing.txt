@@ -13,3 +13,11 @@ Consider expanding to suppor the freshen skill (waiting on CI results, returning
 - Upstream to my_go_template if it ships golden tests: the newlines/trailing-whitespace/mixed-line-ending hooks rewrite byte-exact snapshot files; excluded internal/app/testdata/** here
 - `git remote -v` still points at kyleking/repo-dashboard; GitHub redirects, but set it to KyleKing/gh-repo-dashboard
 - Coverage is 70.0% against the 70% floor, so the next uncovered branch fails the gate
+
+## 2026-07-27 copier v0.6.3 follow-ups
+
+- Upstream to my_go_template, high priority: .goreleaser.yml's `no_unique_dist_dir: true` makes every build target write to dist/<binary>, so goreleaser 2.17.1 ships one binary under every asset name. v1.3.0 here shipped a freebsd/386 binary as darwin-arm64, linux-amd64, and six others. Removed here in v1.3.1; every child with use_goreleaser has the same bug
+- Upstream to my_go_template: the inline goreleaser step in bump_version.yml drops `TAP_DEPLOY_KEY`, which the homebrew_casks block needs. Restored here by hand
+- The TAP_DEPLOY_KEY secret is still unset on the repo and kyleking/homebrew-tap is empty, so the cask never publishes. Run scripts/provision-tap-deploy-key.sh once the tap repo has an initial commit
+- Dependabot PR #10 bumps jdx/mise-action 4.2.0 -> 4.2.3, a template-managed pin. Left open; bump it in my_go_template instead so the child does not drift
+- The earlier ls-lint relaxation is reverted: v0.6.3's `.go: snake_case` accepts every file here. The old `regex:.+_test | camelCase` rule was the only thing that ever rejected them
