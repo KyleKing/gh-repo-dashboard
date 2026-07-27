@@ -88,6 +88,18 @@ func applyConfig(cfg config.Config, depth *int) {
 }
 
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), `Usage: %s [flags] [paths...]
+
+Positional paths are the directories to scan for repos. They take precedence
+over the config file's scan_paths, which takes precedence over the enclosing
+repo (walking up from the current directory) or the current directory itself.
+
+Flags:
+`, os.Args[0])
+		flag.PrintDefaults()
+	}
+
 	showVersion := flag.Bool("version", false, "Show version information")
 	depth := flag.Int("depth", 1, "Maximum directory depth to scan")
 	cliMode := flag.Bool("cli", false, "Print repo summaries as JSON instead of the TUI (cached GitHub data only)")

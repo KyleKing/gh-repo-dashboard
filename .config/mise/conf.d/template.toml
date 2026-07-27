@@ -22,6 +22,7 @@ depends = ["build"]
 [tasks.dev]
 description = "Run from source (always reflects current code, no stale build)"
 run = "go run ./cmd/gh-repo-dashboard"
+raw_args = true
 
 [tasks."docs:usage"]
 description = "Regenerate docs/USAGE.md from command fixtures"
