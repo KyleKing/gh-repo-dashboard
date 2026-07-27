@@ -6,3 +6,10 @@ Consider expanding to suppor the freshen skill (waiting on CI results, returning
 ## 2026-07-26 copier v0.5.1 follow-ups
 
 - Upstream to my_go_template: bump_version.yml runs goreleaser unconditionally; a push with no releasable commit fails ("git tag vX was not made against commit ..."). Fixed locally in gh-repo-dashboard with a git tag --points-at HEAD gate; port to the template
+
+## 2026-07-27 follow-ups
+
+- Upstream to my_go_template: .ls-lint.yml's `.go: regex:.+_test | camelCase` rejects Go's conventional snake_case filenames; changed here to `snake_case | camelCase`
+- Upstream to my_go_template if it ships golden tests: the newlines/trailing-whitespace/mixed-line-ending hooks rewrite byte-exact snapshot files; excluded internal/app/testdata/** here
+- `git remote -v` still points at kyleking/repo-dashboard; GitHub redirects, but set it to KyleKing/gh-repo-dashboard
+- Coverage is 70.0% against the 70% floor, so the next uncovered branch fails the gate
