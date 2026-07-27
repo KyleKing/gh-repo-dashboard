@@ -1,3 +1,16 @@
+## v1.3.0 (2026-07-27)
+
+### Feat
+
+- surface every detected notes file, not just the first match
+- read copier template metadata in panel
+
+### Fix
+
+- **lint**: extract usage and scan-path helpers out of main
+- **lint**: accept Go's snake_case filenames in ls-lint
+- clarify CLI help text
+
 ## v1.2.1 (2026-07-26)
 
 ### Fix
