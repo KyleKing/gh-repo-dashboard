@@ -1,3 +1,9 @@
+## v1.3.1 (2026-07-27)
+
+### Fix
+
+- **release**: build each target into its own dist path
+
 ## v1.3.0 (2026-07-27)
 
 ### Feat
