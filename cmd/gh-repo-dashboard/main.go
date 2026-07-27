@@ -87,9 +87,8 @@ func applyConfig(cfg config.Config, depth *int) {
 	}
 }
 
-func main() {
-	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), `Usage: %s [flags] [paths...]
+func printUsage() {
+	fmt.Fprintf(os.Stderr, `Usage: %s [flags] [paths...]
 
 Positional paths are the directories to scan for repos. They take precedence
 over the config file's scan_paths, which takes precedence over the enclosing
@@ -97,8 +96,46 @@ repo (walking up from the current directory) or the current directory itself.
 
 Flags:
 `, os.Args[0])
-		flag.PrintDefaults()
+	flag.PrintDefaults()
+}
+
+// resolveScanPaths picks the scan roots: positional args, then config, then the
+// enclosing repo, then the current directory.
+func resolveScanPaths(args []string, cfg config.Config) ([]string, error) {
+	if len(args) > 0 {
+		return args, nil
 	}
+	if len(cfg.ScanPaths) > 0 {
+		return cfg.ScanPaths, nil
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("getting current directory: %w", err)
+	}
+
+	if repoRoot, found := findGitRoot(cwd); found {
+		return []string{repoRoot}, nil
+	}
+
+	return []string{cwd}, nil
+}
+
+func absolutePaths(paths []string) ([]string, error) {
+	absPathList := make([]string, 0, len(paths))
+	for _, p := range paths {
+		absPath, err := filepath.Abs(p)
+		if err != nil {
+			return nil, fmt.Errorf("resolving path %s: %w", p, err)
+		}
+		absPathList = append(absPathList, absPath)
+	}
+
+	return absPathList, nil
+}
+
+func main() {
+	flag.Usage = printUsage
 
 	showVersion := flag.Bool("version", false, "Show version information")
 	depth := flag.Int("depth", 1, "Maximum directory depth to scan")
@@ -127,32 +164,16 @@ Flags:
 	}
 	applyConfig(cfg, depth)
 
-	scanPaths := flag.Args()
-	if len(scanPaths) == 0 {
-		scanPaths = cfg.ScanPaths
-	}
-	if len(scanPaths) == 0 {
-		cwd, err := os.Getwd()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error getting current directory: %v\n", err)
-			os.Exit(1)
-		}
-
-		if repoRoot, found := findGitRoot(cwd); found {
-			scanPaths = []string{repoRoot}
-		} else {
-			scanPaths = []string{cwd}
-		}
+	scanPaths, err := resolveScanPaths(flag.Args(), cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
 
-	absPathList := make([]string, 0, len(scanPaths))
-	for _, p := range scanPaths {
-		absPath, err := filepath.Abs(p)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error resolving path %s: %v\n", p, err)
-			os.Exit(1)
-		}
-		absPathList = append(absPathList, absPath)
+	absPathList, err := absolutePaths(scanPaths)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
 
 	if *cliMode {
