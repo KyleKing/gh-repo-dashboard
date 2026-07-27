@@ -111,8 +111,9 @@ func (c *TTLCache[T]) setTTL(ttl time.Duration) {
 }
 
 const (
-	defaultTTL  = 5 * time.Minute
-	workflowTTL = 2 * time.Minute
+	defaultTTL   = 5 * time.Minute
+	workflowTTL  = 2 * time.Minute
+	copierTagTTL = 30 * time.Minute
 )
 
 // Package-level caches shared across the app, keyed by repo path (or "path#N" for PR-numbered lookups).
@@ -124,6 +125,10 @@ var (
 	CommitCache        = newRegisteredTTLCache[[]models.CommitInfo](defaultTTL)
 	WorkflowCache      = newRegisteredTTLCache[*models.WorkflowSummary](workflowTTL)
 	MergedPRHeadsCache = newRegisteredTTLCache[map[string]string](defaultTTL)
+	// CopierLatestTagCache is keyed by a template's _src_path rather than by
+	// repo path, so every repo generated from the same upstream template
+	// shares one lookup instead of each repo hitting the network on its own.
+	CopierLatestTagCache = newRegisteredTTLCache[string](copierTagTTL)
 )
 
 // ClearAll clears every registered package-level cache.

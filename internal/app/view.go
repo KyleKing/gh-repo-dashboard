@@ -26,6 +26,7 @@ const (
 	notesMarkerWidth       = 2
 	prColWidth             = 12
 	prsColWidth            = 6
+	copierColWidth         = 16
 	modifiedColWidth       = 12
 	nonListRowHeight       = 6
 	visibleWindowCenter    = 2

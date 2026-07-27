@@ -28,6 +28,13 @@ type WorkflowLoadedMsg struct {
 	Error    error
 }
 
+// CopierInfoLoadedMsg reports a repo's loaded copier template info, or nil
+// when the repo isn't copier-generated.
+type CopierInfoLoadedMsg struct {
+	Path string
+	Info *models.CopierTemplateInfo
+}
+
 // ErrorMsg carries an error to be displayed as a status message.
 type ErrorMsg struct {
 	Error error

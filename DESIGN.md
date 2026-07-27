@@ -119,6 +119,20 @@ Adding a new batch task:
 5. Register the keybinding in `app/keymap.go`
 6. Add tests in `internal/batch/batch_test.go`
 
+## Copier Template Info
+
+`internal/copier` reads a repo's `.copier-answers.yml` (copier's default
+answers-file name) for `_src_path` and `_commit`, exposed as
+`models.RepoSummary.TemplateInfo` (nil for non-copier repos). When `_commit`
+parses as a semver tag, it's compared against the template's latest upstream
+tag (`git ls-remote --tags --refs <_src_path>`); when it doesn't (a raw commit
+SHA or branch ref), currency can't be judged, so the TUI just flags it as
+non-tag rather than guessing. The latest-tag lookup is cached in
+`cache.CopierLatestTagCache` keyed by `_src_path` rather than by repo path, so
+every repo generated from the same template shares one network call. The repo
+list's TEMPLATE column shows the installed tag, `tag→latest` when behind, or
+the installed ref plus a warning icon when it isn't a tag.
+
 ## Filtering Architecture
 
 Filtering is compositional: `FilterMode -> SearchText -> SortMode -> Display`. For
@@ -151,7 +165,7 @@ the cursor uses Surface0.
 
 ### View hierarchy
 
-`ViewModeRepoList` (initial) lists repositories with Name/Branch/Status/PR/Modified
+`ViewModeRepoList` (initial) lists repositories with Name/Branch/Status/PR/Template/Modified
 columns. `ViewModeRepoDetail` (Enter) drills into branches, stashes, worktrees,
 PRs, and notes with tab switching. `ViewModeFilter` (f), `ViewModeSort` (s), and `ViewModeHelp`
 (?) are modals, and `ViewModeBatchProgress` shows a progress bar during batch runs.

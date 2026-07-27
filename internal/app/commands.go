@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
+	"github.com/kyleking/gh-repo-dashboard/internal/copier"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
@@ -68,6 +69,15 @@ func loadPRCmd(path, _, upstream string) tea.Cmd {
 
 	return func() tea.Msg {
 		return PRLoadedMsg{Path: path, PRInfo: nil}
+	}
+}
+
+func loadCopierInfoCmd(path string) tea.Cmd {
+	return func() tea.Msg {
+		//nolint:errcheck // best-effort, absence just renders emDash
+		info, _ := copier.GetTemplateInfo(context.Background(), path)
+
+		return CopierInfoLoadedMsg{Path: path, Info: info}
 	}
 }
 

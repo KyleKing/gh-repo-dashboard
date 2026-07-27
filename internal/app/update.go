@@ -62,6 +62,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
+	case CopierInfoLoadedMsg:
+		if summary, ok := m.summaries[msg.Path]; ok {
+			summary.TemplateInfo = msg.Info
+			m.summaries[msg.Path] = summary
+		}
+
+		return m, nil
+
 	case DetailLoadedMsg:
 		return m.handleDetailLoaded(msg)
 
@@ -228,6 +236,7 @@ func (m Model) handleRepoSummaryLoaded(msg RepoSummaryLoadedMsg) (tea.Model, tea
 		cmds = append(cmds,
 			loadPRCmd(msg.Path, msg.Summary.Branch, msg.Summary.Upstream),
 			loadPRCountCmd(msg.Path, msg.Summary.Upstream),
+			loadCopierInfoCmd(msg.Path),
 		)
 	}
 

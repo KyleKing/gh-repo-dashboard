@@ -23,6 +23,7 @@ type RepoSummary struct {
 	LastModified time.Time
 	PRInfo       *PRInfo
 	WorkflowInfo *WorkflowSummary
+	TemplateInfo *CopierTemplateInfo
 	Loading      bool
 	Error        error
 

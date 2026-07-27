@@ -144,6 +144,7 @@ func (m Model) renderTable() string {
 		status   int
 		pr       int
 		prs      int
+		copier   int
 		modified int
 	}{
 		name:     repoNameColWidth,
@@ -151,15 +152,17 @@ func (m Model) renderTable() string {
 		status:   statusColWidth,
 		pr:       prColWidth,
 		prs:      prsColWidth,
+		copier:   copierColWidth,
 		modified: modifiedColWidth,
 	}
 
-	header := fmt.Sprintf("  %-*s  %-*s  %-*s  %-*s  %-*s  %s",
+	header := fmt.Sprintf("  %-*s  %-*s  %-*s  %-*s  %-*s  %-*s  %s",
 		colWidths.name, "NAME",
 		colWidths.branch, "BRANCH",
 		colWidths.status, "STATUS",
 		colWidths.pr, "PR",
 		colWidths.prs, "PRs",
+		colWidths.copier, "TEMPLATE",
 		"MODIFIED",
 	)
 	header = styles.HeaderStyle.Render(header)
@@ -225,6 +228,27 @@ func formatPRCell(s models.RepoSummary) string {
 	return prNum
 }
 
+// formatCopierCell formats a repo's copier-template column: emDash if the
+// repo isn't copier-generated, the installed tag (with "→ latest" appended
+// when behind), or the installed ref plus a warning icon when it isn't a
+// semver tag at all (commit- or branch-pinned, so currency can't be judged).
+func formatCopierCell(s models.RepoSummary) string {
+	info := s.TemplateInfo
+	if info == nil {
+		return emDash
+	}
+
+	if !info.IsTag {
+		return truncate(info.Commit, copierColWidth-2) + " ⚠" //nolint:mnd // reserves room for the " ⚠" suffix
+	}
+
+	if info.Behind && info.LatestTag != "" {
+		return info.Commit + " → " + info.LatestTag
+	}
+
+	return info.Commit
+}
+
 func notesMarker(s models.RepoSummary, base lipgloss.Style, selected bool) (string, lipgloss.Style) {
 	if s.NotesFile == "" {
 		return " ", base
@@ -241,6 +265,7 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 	status   int
 	pr       int
 	prs      int
+	copier   int
 	modified int
 },
 ) string {
@@ -264,6 +289,7 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 		prCountStr = strconv.Itoa(count)
 	}
 
+	copierText := formatCopierCell(s)
 	modified := s.RelativeModified()
 
 	var style lipgloss.Style
@@ -292,6 +318,11 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 		prStyle = withSelection(styles.PROpenStyle, selected)
 	}
 
+	copierStyle := style
+	if info := s.TemplateInfo; info != nil && (!info.IsTag || info.Behind) {
+		copierStyle = withSelection(styles.WarningStyle, selected)
+	}
+
 	notesText, notesStyle := notesMarker(s, style, selected)
 
 	statusTextWidth := colWidths.status - notesMarkerWidth
@@ -302,16 +333,18 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 	formattedNotes := fmt.Sprintf("%-*s", notesMarkerWidth, notesText)
 	formattedPR := fmt.Sprintf("%-*s", colWidths.pr, pr)
 	formattedPRCount := fmt.Sprintf("%-*s", colWidths.prs, prCountStr)
+	formattedCopier := fmt.Sprintf("%-*s", colWidths.copier, copierText)
 
 	statusCell := statusStyle.Render(formattedStatus) + notesStyle.Render(formattedNotes)
 
-	row := fmt.Sprintf("%s%s  %s  %s  %s  %s  %s",
+	row := fmt.Sprintf("%s%s  %s  %s  %s  %s  %s  %s",
 		cursor,
 		nameStyle.Render(formattedName),
 		branchStyle.Render(formattedBranch),
 		statusCell,
 		prStyle.Render(formattedPR),
 		style.Render(formattedPRCount),
+		copierStyle.Render(formattedCopier),
 		style.Render(modified),
 	)
 
