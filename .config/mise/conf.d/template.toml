@@ -8,7 +8,11 @@ run = "go build -v -o gh-repo-dashboard ./cmd/gh-repo-dashboard"
 
 [tasks.ci]
 description = "Run all checks (used in GitHub Actions)"
-run = ["mise run test:coverage-min", "go test -tags=golden -run TestGolden ./internal/app/", "go build -v -o gh-repo-dashboard ./cmd/gh-repo-dashboard"]
+run = [
+  "mise run test:coverage-min",
+  "go test -tags=golden -run TestGolden ./internal/app/",
+  "go build -v -o gh-repo-dashboard ./cmd/gh-repo-dashboard"
+]
 
 [tasks.clean]
 description = "Clean build artifacts"
