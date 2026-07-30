@@ -179,7 +179,7 @@ To test the actual `gh gh-repo-dashboard ...` extension invocation or a Homebrew
 ```bash
 gh extension install kyleking/gh-repo-dashboard
 # or
-brew install --formula https://github.com/kyleking/gh-repo-dashboard/raw/main/Formula/gh-repo-dashboard.rb
+brew install --cask kyleking/tap/gh-repo-dashboard
 ```
 
 
