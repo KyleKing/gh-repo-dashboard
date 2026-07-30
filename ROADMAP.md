@@ -33,30 +33,8 @@ A layered pyramid:
   sequences and generate `docs/USAGE.md` (`mise run docs:usage`);
   `TestUsageDocsCurrent` fails CI when the docs go stale
 
-## Shipped
-
-Twelve milestones landed through 2026-07-05; full detail lives in git history and
-the commit messages referenced below.
-
-- M1 Bubble Tea v2 upgrade; M2 test foundation (state-transition tests, golden
-  layer); M3 `:command` mode with registry and completion; M4 predicate parser
-  (`:filter dirty and has_pr`); M5 text objects and operators (`Fdr`, `Cpr`);
-  M6 fixture-based tests generating `docs/USAGE.md`
-- M7 `vcs.Operations` split into `StatusReader`/`DetailReader`/`Mutator`
-  composites (6959fd3)
-- M8 per-repo notes surfacing: `.doing`/`doing.md`/`doing.txt`/`TODO.md` badge,
-  detail tab, `has_notes` filter and `nr` text object (537d79f)
-- M9 safe-to-delete branch detection: merged PR heads via `gh pr list --json`
-  compared against branch tip OIDs, `:cleanup --dry-run`, squash-merge-aware
-  cleanup with per-branch failure reporting, `origin/HEAD` default-branch
-  resolution (75e2d6d)
-- M10 code-health quick wins (`withSelection`, `vcs.IsDefaultBranchName`, cache
-  registry, `CycleSortState`) and the view.go split by view mode (1e27ac3,
-  0207985)
-- M11 TOML config at `$XDG_CONFIG_HOME/gh-repo-dashboard/config.toml`: saved
-  scan paths, depth, notes filenames, cache TTLs; flags win (d4a0f51)
-- M12 `:history` and `@:` repeat, `--script` headless command runner,
-  `--cli --filter <predicate>` (79ba9cc)
+M1 through M12 landed through 2026-07-05 and are not tracked here. `CHANGELOG.md`
+and `git log` are the record.
 
 ## Proposed: fleet assessment for the freshen workflow
 
@@ -101,6 +79,59 @@ Sketch of the added JSON, on the existing `Repo` shape:
 Out of scope: waiting or polling. The snapshot stays one-shot; the caller owns
 retry cadence. Batch mutations (fetch, prune, cleanup) already exist behind the
 TUI and are not part of assessment.
+
+Two gaps the proposal above does not cover, both found by reading
+`~/.claude/skills/freshen/scripts/assess.sh` against it. Close them before
+retiring the script:
+
+- `assess.sh:23` runs `git -C "$dir" fetch --quiet` before it counts
+  ahead/behind, so its counts are against freshly updated remote refs. `--cli` is
+  read-only and never fetches, so a straight swap silently changes the meaning of
+  `ahead`/`behind` to "against whatever `origin/<branch>` was last time you
+  fetched". Either add an opt-in fetch to `--cli` or state the difference where
+  callers will see it
+- `assess.sh:42` also emits `dependabot_alerts`, open counts grouped by
+  `security_advisory.severity` from `repos/{slug}/dependabot/alerts`, with a
+  fallback to `{}` when the endpoint denies access (archived repos). The three
+  additions listed above do not mention it, so a `--cli` that shipped exactly
+  them would still leave the caller making a second round-trip
+
+## Proposed: TUI polish from the 2026-07 critique
+
+From a `tui-critique` pass over 63 real repos. Every item below was re-verified
+against the source on 2026-07-27 and is still unfixed. Ordered by severity.
+
+- P1 `statusColWidth` is a hardcoded `12` (`internal/app/view.go:25`) and
+  `renderTableRow` pads with `fmt.Sprintf("%-*s", statusTextWidth, status)`
+  (`view_repolist.go:369`), which pads short statuses but never truncates long
+  ones. Name and branch cells do call `truncate()`; status is the one column
+  without that safety net, so any status over 12 characters (`+1 ~10 ?2 ↑1N` is
+  14) desyncs every column to its right for that row. Call `truncate()` on
+  `status`, or size the column from the real max width
+- P1 `NO_COLOR` is not implemented: no reference to it anywhere in `internal/`,
+  and `NO_COLOR=1` output is identical to a full-color run. Status meaning is
+  color-only in practice. Likely a lipgloss/termenv color-profile configuration
+  fix rather than a redesign, since the `+`/`↑`/`↓`/`?` glyphs already carry the
+  meaning
+- P2 Command mode has no discoverability. A bare `:` prompt shows no completion
+  list, no argument hint, and no footer change, and the `?` help screen never
+  mentions `:`, `@:` repeat, or text objects despite `command.go` and
+  `textobject.go` being first-class systems
+- P2 The empty state is a bare `"No repositories found"`
+  (`view_repolist.go:138`) with no next step. Name the path and depth that were
+  scanned and point at `--depth`
+- P3 Narrow terminals silently clip the PR/PRs/Template/Modified columns and part
+  of the footer's own `? help q quit` hints, with no truncation indicator and no
+  minimum-size gate. Priority-collapse the data columns before the footer hints
+- P3 optional: the app has zero motion anywhere (static
+  `"Discovering repositories..."`, a static-fill batch gauge). Deliberate
+  restraint or unaddressed is undecided; settle that before treating a spinner as
+  a backlog item
+
+Open questions the critique raised that Kyle has not answered: whether both P1s
+are wanted now or one can wait, whether command-mode discoverability should be a
+footer hint or a help-screen line or both, and whether 80x24 is a support target
+at all (DESIGN.md states no minimum either way).
 
 ## Deferred features
 
