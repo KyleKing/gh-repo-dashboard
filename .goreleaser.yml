@@ -65,10 +65,13 @@ homebrew_casks:
       name: homebrew-tap
       git:
         url: git@github.com:kyleking/homebrew-tap.git
-        private_key: "{{ .Env.TAP_DEPLOY_KEY }}"
+        private_key: '{{ envOrDefault "TAP_DEPLOY_KEY" "" }}'
     homepage: https://github.com/kyleking/gh-repo-dashboard
-    description: "K9s-inspired TUI dashboard for the status of many local git and jj repositories"
-    skip_upload: auto
+    description: "K9s-inspired Bubble Tea TUI for managing multiple git and jj repositories"
+    # Without the TAP_DEPLOY_KEY secret the tap push is skipped with a warning
+    # and the rest of the release still publishes, so a project that has not
+    # been provisioned yet needs no config change here.
+    skip_upload: '{{ if isEnvSet "TAP_DEPLOY_KEY" }}auto{{ else }}true{{ end }}'
     # The binaries are unsigned; clear the quarantine bit so macOS will run them.
     hooks:
       post:
