@@ -1,3 +1,10 @@
+## v1.3.2 (2026-07-30)
+
+### Fix
+
+- **release**: resolve the tap deploy key with envOrDefault and gate the upload on it
+- make 1p deploy key idempotent
+
 ## v1.3.1 (2026-07-27)
 
 ### Fix
