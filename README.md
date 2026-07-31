@@ -1,302 +1,47 @@
-# Repo Dashboard
+# gh-repo-dashboard
 
-![.github/assets/demo.gif](https://raw.githubusercontent.com/kyleking/gh-repo-dashboard/main/.github/assets/demo.gif)
+![demo](https://raw.githubusercontent.com/kyleking/gh-repo-dashboard/main/.github/assets/demo.gif)
 
-K9s-inspired TUI for managing multiple git and jj repositories with GitHub PR integration.
+See the status of every git and jj repository under a directory in one dashboard,
+with GitHub pull request and CI state beside the local status. Fetch, prune, and
+delete merged branches across all of them at once.
 
-## Installation
+## Install
 
-As a GitHub CLI extension:
 ```bash
+# GitHub CLI extension
 gh extension install kyleking/gh-repo-dashboard
-```
-
-With Homebrew:
-```bash
+# Homebrew
 brew install --cask kyleking/tap/gh-repo-dashboard
-```
-
-Or build from source:
-```bash
+# from source
 go build -o gh-repo-dashboard ./cmd/gh-repo-dashboard
 ```
 
-## Usage
+## Quick start
+
+Pass the directories that hold your repositories:
 
 ```bash
-# Scan the config-file scan_paths, or with no config the enclosing repo
-# (walking up from the current directory), or the current directory itself
-gh repo-dashboard
-
-# Scan specific directories
-gh repo-dashboard ~/projects ~/work
-
-# Limit scan depth
 gh repo-dashboard -depth 2 ~/Developer
-
-# Print repo summaries as JSON instead of launching the TUI
-# (uses only cached GitHub data, so PR fields may be omitted)
-gh repo-dashboard --cli ~/projects
-
-# JSON output with fresh GitHub PR data (invokes gh per repo)
-gh repo-dashboard --cli --fresh ~/projects
-
-# Narrow JSON output by a predicate expression
-gh repo-dashboard --cli --filter 'dirty and has_notes' ~/projects
-
-# Run :command lines headlessly from a file (or - for stdin)
-gh repo-dashboard --script maintenance.txt ~/projects
 ```
 
-Script files hold one `:command` per line (the leading `:` is optional); blank
-lines and `#` comments are skipped:
+Move with `j` and `k`, press `enter` to open a repo, and press `?` for the
+keymap. Set `scan_paths` in the [config file](./docs/configuration.md) once and
+`gh repo-dashboard` launches from anywhere with no arguments.
 
-```text
-# fetch everything that is behind, then report
-:fetch behind
-:filter dirty
-```
+## What it does not do
 
-## Configuration
+- Commit, push, merge, rebase, or stage. The only writes are `fetch`, remote
+  prune, and deleting branches already merged upstream
+- Open or create pull requests. Use `gh pr` for that
+- Replace a single-repo client. Per-repo detail is read-only, so use lazygit or
+  gitui to work inside one repo
+- Replace `gh`. Pull request data comes from the `gh` CLI, and every non-GitHub
+  column still works when `gh` is missing or logged out
+- Edit your notes files. It reads the configured notes files and never writes them
+- Run as a server or daemon. `--cli` and `--script` are one-shot headless runs
 
-An optional TOML config at `$XDG_CONFIG_HOME/gh-repo-dashboard/config.toml`
-(defaulting to `~/.config/gh-repo-dashboard/config.toml`) sets defaults so you
-can launch from anywhere without arguments. Flags and positional paths take
-precedence over the config file.
-
-```toml
-# Directories scanned when no paths are passed on the command line
-scan_paths = ["~/Developer", "~/work"]
-
-# Default for -depth
-depth = 2
-
-# Per-repo notes filenames checked at each repo root; every match is shown
-notes_filenames = [".doing", "doing.md", "doing.txt", "TODO.md"]
-
-# Lifetime of cached GitHub data (PRs, workflow runs), in minutes
-cache_ttl_minutes = 5
-```
-
-All keys are optional; a missing file means built-in defaults.
-
-## Supported Version Control Systems
-
-- **Git**: Full support for git repositories
-- **Jujutsu (jj)**: Best-effort support for jj repositories (both colocated and non-colocated); jj's CLI output formats still change between releases, so some fields may be missing on newer jj versions
-
-The dashboard automatically detects the VCS type and uses appropriate operations. Colocated repositories (having both `.git` and `.jj`) are treated as jj repositories.
-
-**Requirements:**
-- Go 1.25+ (for building)
-- git CLI (if managing git repos)
-- jj CLI (if managing jj repos)
-- gh CLI (GitHub CLI) - optional, for PR features with both git and jj repos
-
-## Keybindings
-
-### Navigation
-
-| Key | Action |
-|-----|--------|
-| `j` / `down` | Move down |
-| `k` / `up` | Move up |
-| `g` | Go to top |
-| `G` | Go to bottom |
-| `enter` / `space` | Select / drill down |
-| `esc` / `backspace` | Go back |
-| `q` | Quit |
-
-### Views
-
-| Key | Action |
-|-----|--------|
-| `?` | Help |
-| `/` | Search |
-| `:` | Command mode (`:filter`, `:fetch`, `:history`, ...) |
-| `@:` | Repeat the last `:command` |
-| `f` | Filter modal |
-| `s` | Sort modal |
-| `R` | Reverse sort |
-| `r` | Refresh |
-
-### Detail View
-
-| Key | Action |
-|-----|--------|
-| `tab` | Next tab |
-| `h` / `left` | Previous tab |
-| `l` / `right` | Next tab |
-
-### Actions
-
-| Key | Action |
-|-----|--------|
-| `o` | Open PR in browser |
-| `c` | Copy (branch/PR/path) |
-
-### Batch Operations
-
-| Key | Action |
-|-----|--------|
-| `F` | Fetch all (filtered repos) |
-| `P` | Prune remote branches (filtered repos, git only) |
-| `C` | Cleanup merged branches (filtered repos) |
-
-## Status Symbols
-
-### Repository Status
-- `+N` - N staged changes
-- `*N` - N unstaged changes
-- `?N` - N untracked files
-- `!N` - N conflicted files
-- `$N` - N stashed changes
-- `WN` - N worktrees/workspaces
-
-### Ahead/Behind
-- `^N` - N commits ahead of tracking branch
-- `vN` - N commits behind tracking branch
-
-### Workflow Status (GitHub Actions)
-- `oN` - N successful workflow runs
-- `xN` - N failed workflow runs
-- `-N` - N skipped workflow runs
-- `~N` - N pending/in-progress workflow runs
-
-## Features
-
-### Core Functionality
-- **Multi-VCS Support**: Works with both git and jj repositories
-- **Progressive Loading**: Data loads concurrently as it becomes available
-- **TTL Caching**: Intelligent caching for PR information, workflow status, and VCS operations
-- **GitHub Integration**: Pull request info, status checks, and workflow runs via gh CLI
-
-### Filtering & Sorting
-- **Multi-Filter Support**: Combine multiple filters with AND logic
-- **Filter Modes**: all, dirty, ahead, behind, has_pr, has_stash, has_notes
-- **Predicates**: Expressions like `:filter dirty and has_pr` in command mode
-- **Sort Modes**: name, modified, status, branch (all reversible)
-- **Fuzzy Search**: Real-time search with similarity matching
-
-### Repository Management
-- **Batch Operations**: Fetch, prune, and cleanup across filtered repositories
-- **Squash-Merge Cleanup**: Detects branches whose merged PRs were squashed (via gh) and deletes them safely, with `:cleanup --dry-run` preview
-- **Per-Repo Notes**: Any `.doing`/`doing.md`/`doing.txt`/`TODO.md` files found at a repo root (filenames configurable) show as a count badge in the list, a quick first-line preview (`v` to toggle), and a detail tab with each file's full content
-- **Worktree Detection**: Git worktrees and jj workspaces
-- **Stash Tracking**: Git stash monitoring (jj doesn't use stashes)
-- **Branch Details**: View branches, PRs, commits, workflow runs, and modified files
-
-### User Experience
-- **Vim-Style Keybindings**: Familiar navigation, operators × text objects (`Fdr` fetches dirty repos), `@:` repeat
-- **Command Mode**: `:filter`, `:fetch`, `:sort`, `:select where <predicate>`, `:history`, and more with tab completion
-- **Automation**: `--cli` JSON output with `--filter`, `--script` headless command runs, TOML config with saved scan paths
-- **Help Modal**: Complete keybinding reference
-- **Catppuccin Theme**: Dark theme with minimal color usage
-
-## Batch Operations
-
-Perform maintenance tasks across multiple repositories simultaneously:
-
-### Fetch All (`F`)
-Updates remote refs for all filtered repositories.
-- **Git**: `git fetch --all --prune`
-- **JJ**: `jj git fetch --all-remotes`
-
-### Prune Remote (`P`)
-Cleans up stale remote branch references.
-- **Git**: `git remote prune origin`
-- **JJ**: No-op (jj handles this automatically during fetch)
-
-### Cleanup Merged Branches (`C`, `:cleanup`)
-Deletes local branches/bookmarks that have been merged into main/master, plus
-branches squash-merged via a pull request (detected by comparing the branch tip
-against merged PR head OIDs from `gh`).
-- **Git**: Deletes true-merges with `git branch -d` and verified squash-merges
-  with `git branch -D`, skipping the current branch and any branch checked out
-  in a worktree
-- **JJ**: Deletes bookmarks that are ancestors of main, plus verified
-  squash-merged bookmarks, via `jj bookmark delete`
-- `:cleanup --dry-run [predicate]` previews what would be deleted without
-  deleting anything
-
-**Usage:**
-1. Apply filters to select repositories (e.g., filter by "dirty" or search for specific repos)
-2. Press `F`, `P`, or `C` to run the batch operation, or run `:cleanup --dry-run` to preview first
-3. View real-time progress and results in the modal
-4. Operations run sequentially across all filtered repositories
-
-**Safety:**
-- Batch operations only work in the repository list view
-- Only operate on currently filtered/visible repositories
-- Each operation shows success/failure status with detailed messages
-- Failed operations don't stop the batch (continues to next repo)
-
-## Troubleshooting
-
-- PR and workflow columns are blank: the `gh` CLI is missing or unauthenticated. Run `gh auth status`, and `gh auth login` if needed. Everything else works without `gh`
-- Rows for jj repositories show errors: the `jj` CLI is not installed. Install it, or scan paths without jj repositories; colocated repos (both `.git` and `.jj`) are read via jj
-- Nothing is listed on launch: with no arguments and no config file the dashboard scans the repository enclosing the current directory. Pass parent directories as arguments (`gh repo-dashboard ~/projects`) or set `scan_paths` in the config file
-- Stale PR data: cached GitHub data lives for `cache_ttl_minutes` (default 5). Press `r` to refresh, or use `--fresh` with `--cli`
-
-## Development
-
-### Running Tests
-
-```bash
-# Run all tests
-go test ./...
-
-# Run with verbose output
-go test -v ./...
-
-# Run specific package
-go test -v ./internal/filters/...
-
-# Run with coverage
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out
-
-# Run with race detector
-go test -race ./...
-```
-
-### Recording the Demo
-
-Generate demo GIF using VHS:
-
-```bash
-vhs < .github/assets/demo.tape
-```
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for more details on VHS setup and recording.
-
-## Alternatives
-
-### Multi-Repository TUIs
-
-**[Git-Scope](https://github.com/Bharath-code/git-scope)** - Similar tool built with Bubble Tea.
-
-| Feature | repo-dashboard | Git-Scope |
-|---------|---------------|-----------|
-| **VCS Support** | Git + Jujutsu (jj) | Git only |
-| **GitHub Integration** | PR details, checks, status via gh CLI | Contribution graphs |
-| **Filtering** | 6 modes (dirty, ahead, behind, has_pr, has_stash, all) | Dirty filter + pagination |
-| **Batch Operations** | Fetch all, prune remote, cleanup merged branches | None |
-| **Search** | Fuzzy search | Fuzzy search by name/path/branch |
-| **Additional Features** | Worktrees/workspaces, stash tracking, PR opening | Editor launch, disk usage, timeline view |
-
-### Other Multi-Repository Tools
-
-- **[Gita](https://github.com/nosarthur/gita)** - CLI tool to manage multiple git repositories with custom groups and batch operations
-- **[gitbatch](https://github.com/isacikgoz/gitbatch)** - Manage your git repositories in one place with interactive TUI
-- **[mgitstatus](https://github.com/fboender/multi-git-status)** - Show uncommitted, untracked, and unpushed changes for multiple repos
-- **[Mani](https://github.com/alajmo/mani)** - Go-based CLI with YAML configuration, built-in TUI, batch operations, and parallel command execution
-
-### Single-Repository TUIs
-
-- **[lazygit](https://github.com/jesseduffield/lazygit)** - Simple terminal UI for git commands
-- **[GitUI](https://github.com/extrawurst/gitui)** - Blazing fast terminal UI for git written in Rust
-- **[Gitu](https://github.com/altsem/gitu)** - TUI Git client inspired by Magit
+Full docs: [./docs](./docs)
 
 ## License
 
