@@ -1,3 +1,9 @@
+## v1.3.3 (2026-07-31)
+
+### Fix
+
+- **tui**: remove the p binding that never opened or created a PR
+
 ## v1.3.2 (2026-07-30)
 
 ### Fix
