@@ -210,15 +210,6 @@ func prefetchPRDetailCmd(repoPath string, prNumber int) tea.Cmd {
 	}
 }
 
-func openOrCreatePRCmd(_, _ string) tea.Cmd {
-	return func() tea.Msg {
-		return PRCreatedMsg{
-			URL:   "",
-			Error: nil,
-		}
-	}
-}
-
 func copyToClipboardCmd(text string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()

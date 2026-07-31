@@ -35,7 +35,6 @@ type KeyMap struct {
 	PruneRemote   key.Binding
 	CleanupMerged key.Binding
 
-	OpenPR       key.Binding
 	CopyBranch   key.Binding
 	CopyURL      key.Binding
 	CopyPRNumber key.Binding
@@ -58,10 +57,6 @@ func DefaultKeyMap() KeyMap {
 	km.CleanupMerged = key.NewBinding(
 		key.WithKeys("C"),
 		key.WithHelp("C+obj", "cleanup"),
-	)
-	km.OpenPR = key.NewBinding(
-		key.WithKeys("p"),
-		key.WithHelp("p", "open/create PR"),
 	)
 	km.CopyBranch = key.NewBinding(
 		key.WithKeys("b"),

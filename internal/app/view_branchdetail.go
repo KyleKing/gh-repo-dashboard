@@ -232,16 +232,12 @@ func (m Model) writeBranchActionsSection(b *strings.Builder, s branchDetailStyle
 	actionStyle := lipgloss.NewStyle().Foreground(styles.Blue).PaddingLeft(infoPaddingLeft)
 
 	actions := []string{
-		styles.FooterKeyStyle.Render("y") + actionStyle.Render(" copy branch name"),
+		styles.FooterKeyStyle.Render("b") + actionStyle.Render(" copy branch name"),
 	}
 
 	if m.branchDetail.PRInfo != nil {
 		actions = append(actions,
-			styles.FooterKeyStyle.Render("p")+actionStyle.Render(" open PR in browser"),
 			styles.FooterKeyStyle.Render("o")+actionStyle.Render(" open PR URL"))
-	} else {
-		actions = append(actions,
-			styles.FooterKeyStyle.Render("p")+actionStyle.Render(" create new PR"))
 	}
 
 	b.WriteString(strings.Join(actions, "  "))

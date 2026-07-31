@@ -69,12 +69,6 @@ type BranchDetailLoadedMsg struct {
 	Detail models.BranchDetail
 }
 
-// PRCreatedMsg reports the result of creating or opening a pull request.
-type PRCreatedMsg struct {
-	URL   string
-	Error error
-}
-
 // CopySuccessMsg reports text successfully copied to the clipboard.
 type CopySuccessMsg struct {
 	Text string

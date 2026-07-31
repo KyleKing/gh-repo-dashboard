@@ -98,13 +98,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	case PRCreatedMsg:
-		if msg.Error != nil {
-			return m, nil
-		}
-
-		return m, nil
-
 	case CopySuccessMsg:
 		m.statusMessage = "Copied to clipboard: " + msg.Text
 		return m, clearStatusAfterDelay()
@@ -593,9 +586,6 @@ func (m Model) handleBranchDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Back):
 		m.viewMode = ViewModeRepoDetail
 		return m, nil
-
-	case key.Matches(msg, m.keys.OpenPR):
-		return m, openOrCreatePRCmd(m.selectedRepo, m.branchDetail.Branch.Name)
 
 	case key.Matches(msg, m.keys.Refresh):
 		return m.handleRefresh()
