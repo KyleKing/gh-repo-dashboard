@@ -29,6 +29,13 @@ func (m Model) renderRepoDetailBreadcrumbs() string {
 	if summary.PRInfo != nil {
 		badges = append(badges, styles.Badge(fmt.Sprintf("PR #%d", summary.PRInfo.Number), styles.PROpenStyle))
 	}
+	if summary.RemoteProtocol != "" {
+		badges = append(badges, styles.Badge(summary.RemoteProtocol, styles.CountBadgeStyle))
+	}
+	for _, override := range summary.ConfigOverrides {
+		text := fmt.Sprintf("%s: %s≠%s", override.Key, override.LocalValue, override.GlobalValue)
+		badges = append(badges, styles.Badge(text, styles.WarningStyle))
+	}
 
 	return home + sep + repo + "  " + strings.Join(badges, " ")
 }
