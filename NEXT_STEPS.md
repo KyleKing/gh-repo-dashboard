@@ -56,9 +56,11 @@ and there is still no headless way to list the `:commands` (you have to read
 Coverage is 70.0% against the 70% floor `test:coverage-min` enforces, so the next
 uncovered branch fails the gate. Verified by running the task on 2026-07-27.
 
-## Pending the next copier update
+## Template
 
-This repo is pinned at my_go_template v0.7.0; the template is at v0.9.0.
+This repo is pinned at my_go_template v0.9.1, which is the template's current tag.
+The `brew:sha` and CI-`hooks` items that sat here are resolved: v0.9.1 drops the
+task, and `hk check --all` passes on this tree.
 
 - `.pre-commit-config.yaml` is dead config here and running `prek run --all-files`
   actively corrupts the tree: no testdata exclude, so end-of-file-fixer and
@@ -67,13 +69,36 @@ This repo is pinned at my_go_template v0.7.0; the template is at v0.9.0.
   prek runs in neither CI nor the git hooks. Either delete the file or give it the
   same testdata excludes `hk.pkl` has. The template carries the same problem and
   is the better place to fix it
-- The `brew:sha` mise task is dead advice (it tells you to paste SHA256 values
-  into a `Formula/*.rb` that no longer exists here). Template v0.8.0 drops it, so
-  the update removes it
-- The update also adds a CI `hooks` job running `hk check --all`. The two `typos`
-  findings measured against this repo were in `doing.txt` and `ROADMAP.md`, both
-  removed on 2026-07-27. Re-run `hk check --all` after the update rather than
-  assuming it is clean
+- `AGENTS.md` was replaced wholesale with the v0.9.1 render on 2026-08-01. It is a
+  `_skip_if_exists` file, so copier had left it at the v0.7.0 boilerplate; the local
+  copy carried no project-specific content, only a reformatted table-test snippet
+  and a deleted TUI Testing section. Confirm you did not want that section gone,
+  since the new render restores it
+
+## Extending `--cli` to replace assess.sh
+
+Re-verified against the source on 2026-08-01, before implementing anything from the
+ROADMAP proposal.
+
+- The proposal's premise holds: `--cli` emits the git fields and none of `ci[]`,
+  `archived`, `default_branch`, `dependabot_alerts`, `exists_locally`, or the copier
+  fields. `internal/copier.GetTemplateInfo` feeds only the TUI through
+  `RepoSummary.TemplateInfo`; `internal/cli` never imports it, and
+  `models.CopierTemplateInfo` has no JSON tags
+- `is_template` and `has_freshen_txt` are a third gap the ROADMAP does not list.
+  assess.sh emits both, and `freshen.txt` does not necessarily overlap with what
+  `models.DetectNotes` reports as `notes_files`
+- `ci[]` is more than a passthrough. `internal/github/workflow.go` produces
+  `models.WorkflowSummary`, keyed differently from assess.sh's per-workflow
+  `{workflow, status, conclusion, sha}` array, and the proposal also wants
+  `failed_steps` and `completed_at`, which assess.sh does not emit
+- Decide what `--fresh` means before adding anything. It is PR-only today, and
+  `lookupPR`/`lookupPRCount` are cache-first and swallow errors, so copying that
+  pattern would make CI and alert failures silently invisible
+- `exists_locally` is inapplicable until the roster lands, since `--cli` discovers
+  from the filesystem and a missing repo simply never appears
+- ROADMAP's line references have drifted: it cites `assess.sh:23` for the fetch
+  (now 24) and `assess.sh:42` for dependabot (now 41-44)
 
 ## Running the live test
 
