@@ -69,6 +69,13 @@ task, and `hk check --all` passes on this tree.
   prek runs in neither CI nor the git hooks. Either delete the file or give it the
   same testdata excludes `hk.pkl` has. The template carries the same problem and
   is the better place to fix it
+- **The `ci` job fix in `d41265c` lives in a template-managed file and the template
+  still has the bug.** Every my_go_template child on v0.8.0 or v0.9.1 goes red the
+  moment mise's `go = "latest"` resolves past the version in its `go.mod`, because
+  the `ci` job runs `jdx/mise-action` and `actions/setup-go` together and the two
+  disagree about `GOROOT`. Fix it in `go_template/.github/workflows/ci.yml.jinja`
+  or the next `copier update` reverts this repo. Setting `GOROOT` on the step does
+  not work; `mise run` re-exports it
 - `AGENTS.md` was replaced wholesale with the v0.9.1 render on 2026-08-01. It is a
   `_skip_if_exists` file, so copier had left it at the v0.7.0 boilerplate; the local
   copy carried no project-specific content, only a reformatted table-test snippet
