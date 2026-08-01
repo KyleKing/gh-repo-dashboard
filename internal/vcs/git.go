@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -85,6 +86,10 @@ func (g *GitOperations) GetRepoSummary(ctx context.Context, repoPath string) (mo
 	if lastMod > 0 {
 		summary.LastModified = time.Unix(lastMod, 0)
 	}
+
+	remoteURL, _ := g.GetRemoteURL(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
+	summary.RemoteProtocol = detectRemoteProtocol(remoteURL)
+	summary.ConfigOverrides = g.getConfigOverrides(ctx, repoPath)
 
 	return summary, nil
 }
@@ -637,6 +642,75 @@ func (g *GitOperations) CleanupMergedBranches(
 	}
 
 	return true, cleanupMessage("branches", deleted, failed), nil
+}
+
+// detectRemoteProtocol classifies a remote URL as "ssh" or "https", or ""
+// when the URL is empty or in an unrecognized scheme.
+func detectRemoteProtocol(remoteURL string) string {
+	switch {
+	case strings.HasPrefix(remoteURL, "git@"), strings.HasPrefix(remoteURL, "ssh://"):
+		return "ssh"
+	case strings.HasPrefix(remoteURL, "https://"), strings.HasPrefix(remoteURL, "http://"):
+		return "https"
+	default:
+		return ""
+	}
+}
+
+// parseConfigList parses `git config --list` output ("key=value" per line,
+// multi-line values folded onto one line by git itself) into a map. Later
+// duplicate keys win, matching git's own last-one-wins resolution.
+func parseConfigList(out string) map[string]string {
+	values := make(map[string]string)
+
+	for _, line := range strings.Split(out, "\n") {
+		key, value, found := strings.Cut(line, "=")
+		if !found {
+			continue
+		}
+		values[key] = value
+	}
+
+	return values
+}
+
+// getConfigOverrides reports git config keys whose repo-local value differs
+// from that same key's global value. Keys set only locally (with no global
+// counterpart, e.g. remote.origin.url) aren't overrides of anything and are
+// excluded. Best-effort: either lookup failing yields no overrides rather
+// than an error, consistent with the rest of GetRepoSummary.
+func (g *GitOperations) getConfigOverrides(ctx context.Context, repoPath string) []models.GitConfigOverride {
+	localOut, err := g.runGit(ctx, repoPath, "config", "--local", "--list")
+	if err != nil {
+		return nil
+	}
+	globalOut, err := g.runGit(ctx, repoPath, "config", "--global", "--list")
+	if err != nil {
+		return nil
+	}
+
+	local := parseConfigList(localOut)
+	global := parseConfigList(globalOut)
+
+	keys := make([]string, 0, len(local))
+	for key := range local {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	var overrides []models.GitConfigOverride
+	for _, key := range keys {
+		globalValue, hasGlobal := global[key]
+		if hasGlobal && globalValue != local[key] {
+			overrides = append(overrides, models.GitConfigOverride{
+				Key:         key,
+				LocalValue:  local[key],
+				GlobalValue: globalValue,
+			})
+		}
+	}
+
+	return overrides
 }
 
 // ExtractRepoPath derives an "owner/repo" style path from a git remote URL.

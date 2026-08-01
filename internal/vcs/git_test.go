@@ -529,3 +529,82 @@ func parseRevListOutput(out string) (int, int) {
 
 	return ahead, behind
 }
+
+func TestDetectRemoteProtocol(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{name: "ssh shorthand", input: "git@github.com:owner/repo.git", expected: "ssh"},
+		{name: "ssh url", input: "ssh://git@github.com/owner/repo.git", expected: "ssh"},
+		{name: "https url", input: "https://github.com/owner/repo.git", expected: "https"},
+		{name: "http url", input: "http://github.com/owner/repo.git", expected: "https"},
+		{name: "empty string", input: "", expected: ""},
+		{name: "unrecognized scheme", input: "file:///owner/repo", expected: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := vcs.DetectRemoteProtocol(tt.input)
+			if result != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestParseConfigList(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		input    string
+		expected map[string]string
+	}{
+		{
+			name:     "single key",
+			input:    "commit.gpgsign=true",
+			expected: map[string]string{"commit.gpgsign": "true"},
+		},
+		{
+			name:  "multiple keys",
+			input: "commit.gpgsign=true\nuser.email=me@example.com",
+			expected: map[string]string{
+				"commit.gpgsign": "true",
+				"user.email":     "me@example.com",
+			},
+		},
+		{
+			name:     "value containing equals",
+			input:    "alias.l=log --pretty=format:%h",
+			expected: map[string]string{"alias.l": "log --pretty=format:%h"},
+		},
+		{
+			name:     "duplicate key keeps last",
+			input:    "core.editor=vim\ncore.editor=nvim",
+			expected: map[string]string{"core.editor": "nvim"},
+		},
+		{
+			name:     "empty input",
+			input:    "",
+			expected: map[string]string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := vcs.ParseConfigList(tt.input)
+			if len(result) != len(tt.expected) {
+				t.Fatalf("expected %d keys, got %d (%v)", len(tt.expected), len(result), result)
+			}
+			for key, value := range tt.expected {
+				if result[key] != value {
+					t.Errorf("key %q: expected %q, got %q", key, value, result[key])
+				}
+			}
+		})
+	}
+}

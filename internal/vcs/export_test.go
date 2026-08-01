@@ -50,3 +50,9 @@ const (
 	JJBookmarkListFormat    = jjBookmarkListFormat
 	JJWorkspaceListFormat   = jjWorkspaceListFormat
 )
+
+// DetectRemoteProtocol exposes the unexported detectRemoteProtocol helper to black-box tests.
+var DetectRemoteProtocol = detectRemoteProtocol
+
+// ParseConfigList exposes the unexported parseConfigList helper to black-box tests.
+var ParseConfigList = parseConfigList
