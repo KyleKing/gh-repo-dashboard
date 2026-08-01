@@ -27,12 +27,20 @@ type RepoSummary struct {
 	Loading      bool
 	Error        error
 
-	NotesFiles []NoteFile
+	NotesFiles      []NoteFile
+	RemoteProtocol  string // "ssh", "https", or "" if unknown/no remote
+	ConfigOverrides []GitConfigOverride
 }
 
 // HasNotes reports whether any notes file was detected at the repo's root.
 func (r RepoSummary) HasNotes() bool {
 	return len(r.NotesFiles) > 0
+}
+
+// HasConfigOverrides reports whether the repo has any local git config value
+// that differs from the same key's global value.
+func (r RepoSummary) HasConfigOverrides() bool {
+	return len(r.ConfigOverrides) > 0
 }
 
 // Name returns the repo's directory name.
