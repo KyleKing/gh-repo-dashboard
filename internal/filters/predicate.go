@@ -23,17 +23,20 @@ func (e *ParseError) Error() string {
 
 func atoms() map[string]Predicate {
 	return map[string]Predicate{
-		"ahead":        func(s models.RepoSummary) bool { return s.Ahead > 0 },
-		"behind":       func(s models.RepoSummary) bool { return s.Behind > 0 },
-		"clean":        func(s models.RepoSummary) bool { return !s.IsDirty() },
-		"dirty":        models.RepoSummary.IsDirty,
-		"error":        func(s models.RepoSummary) bool { return s.Error != nil },
-		"git":          func(s models.RepoSummary) bool { return s.VCSType == models.VCSTypeGit },
-		"has_notes":    models.RepoSummary.HasNotes,
-		"has_pr":       func(s models.RepoSummary) bool { return s.PRInfo != nil },
-		"has_stash":    func(s models.RepoSummary) bool { return s.StashCount > 0 },
-		"has_upstream": func(s models.RepoSummary) bool { return s.Upstream != "" },
-		"jj":           func(s models.RepoSummary) bool { return s.VCSType == models.VCSTypeJJ },
+		"ahead":           func(s models.RepoSummary) bool { return s.Ahead > 0 },
+		"behind":          func(s models.RepoSummary) bool { return s.Behind > 0 },
+		"clean":           func(s models.RepoSummary) bool { return !s.IsDirty() },
+		"config_override": models.RepoSummary.HasConfigOverrides,
+		"dirty":           models.RepoSummary.IsDirty,
+		"error":           func(s models.RepoSummary) bool { return s.Error != nil },
+		"git":             func(s models.RepoSummary) bool { return s.VCSType == models.VCSTypeGit },
+		"has_notes":       models.RepoSummary.HasNotes,
+		"has_pr":          func(s models.RepoSummary) bool { return s.PRInfo != nil },
+		"has_stash":       func(s models.RepoSummary) bool { return s.StashCount > 0 },
+		"has_upstream":    func(s models.RepoSummary) bool { return s.Upstream != "" },
+		"https":           func(s models.RepoSummary) bool { return s.RemoteProtocol == "https" },
+		"jj":              func(s models.RepoSummary) bool { return s.VCSType == models.VCSTypeJJ },
+		"ssh":             func(s models.RepoSummary) bool { return s.RemoteProtocol == "ssh" },
 	}
 }
 
