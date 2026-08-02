@@ -24,6 +24,7 @@ const (
 	branchColWidth         = 15
 	statusColWidth         = 12
 	notesMarkerWidth       = 2
+	peersColWidth          = 5
 	prColWidth             = 12
 	prsColWidth            = 6
 	copierColWidth         = 16

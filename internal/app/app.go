@@ -379,6 +379,31 @@ func (m Model) PRCount() int {
 	return count
 }
 
+// PeerCheckouts returns the other discovered repos that share path's remote,
+// so parallel checkouts of one project are visible from any of them.
+func (m Model) PeerCheckouts(path string) []models.PeerCheckout {
+	summary, ok := m.summaries[path]
+	if !ok {
+		return nil
+	}
+
+	all := make([]models.RepoSummary, 0, len(m.summaries))
+	for _, s := range m.summaries {
+		all = append(all, s)
+	}
+
+	return models.FindPeerCheckouts(summary, all)
+}
+
+// RepoCheckouts returns every parallel checkout of the selected repo: sibling
+// clones found by discovery plus its own worktrees/workspaces.
+func (m Model) RepoCheckouts() []models.PeerCheckout {
+	return models.MergeCheckouts(
+		m.PeerCheckouts(m.selectedRepo),
+		models.WorktreeCheckouts(m.selectedRepo, m.worktrees),
+	)
+}
+
 // SelectedSummary returns the RepoSummary at the cursor and whether it was found.
 func (m Model) SelectedSummary() (models.RepoSummary, bool) {
 	if m.cursor >= 0 && m.cursor < len(m.filteredPaths) {

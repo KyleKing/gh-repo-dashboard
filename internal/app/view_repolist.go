@@ -138,28 +138,22 @@ func (m Model) renderTable() string {
 		return emptyStyle.Render("No repositories found")
 	}
 
-	colWidths := struct {
-		name     int
-		branch   int
-		status   int
-		pr       int
-		prs      int
-		copier   int
-		modified int
-	}{
+	colWidths := repoColWidths{
 		name:     repoNameColWidth,
 		branch:   branchColWidth,
 		status:   statusColWidth,
+		peers:    peersColWidth,
 		pr:       prColWidth,
 		prs:      prsColWidth,
 		copier:   copierColWidth,
 		modified: modifiedColWidth,
 	}
 
-	header := fmt.Sprintf("  %-*s  %-*s  %-*s  %-*s  %-*s  %-*s  %s",
+	header := fmt.Sprintf("  %-*s  %-*s  %-*s  %-*s  %-*s  %-*s  %-*s  %s",
 		colWidths.name, "NAME",
 		colWidths.branch, "BRANCH",
 		colWidths.status, "STATUS",
+		colWidths.peers, "PEERS",
 		colWidths.pr, "PR",
 		colWidths.prs, "PRs",
 		colWidths.copier, "TEMPLATE",
@@ -296,16 +290,29 @@ func notesMarker(s models.RepoSummary, base lipgloss.Style, selected bool) (stri
 	return "N" + strconv.Itoa(count), style
 }
 
-func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths struct {
+// repoColWidths holds the repo table's per-column widths.
+type repoColWidths struct {
 	name     int
 	branch   int
 	status   int
+	peers    int
 	pr       int
 	prs      int
 	copier   int
 	modified int
-},
-) string {
+}
+
+// formatPeersCell formats the parallel-checkout count for a repo, or emDash
+// when the repo is the only checkout of its remote.
+func formatPeersCell(peers []models.PeerCheckout) string {
+	if len(peers) == 0 {
+		return emDash
+	}
+
+	return "⧉" + strconv.Itoa(len(peers))
+}
+
+func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths repoColWidths) string {
 	cursorChar := " "
 	if selected {
 		cursorChar = ">"
@@ -368,17 +375,25 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths str
 	formattedBranch := fmt.Sprintf("%-*s", colWidths.branch, branch)
 	formattedStatus := fmt.Sprintf("%-*s", statusTextWidth, status)
 	formattedNotes := fmt.Sprintf("%-*s", notesMarkerWidth, truncate(notesText, notesMarkerWidth))
+	peers := m.PeerCheckouts(s.Path)
+	peersStyle := style
+	if len(peers) > 0 {
+		peersStyle = withSelection(styles.CountBadgeStyle, selected)
+	}
+	formattedPeers := fmt.Sprintf("%-*s", colWidths.peers, formatPeersCell(peers))
+
 	formattedPR := fmt.Sprintf("%-*s", colWidths.pr, pr)
 	formattedPRCount := fmt.Sprintf("%-*s", colWidths.prs, prCountStr)
 	formattedCopier := fmt.Sprintf("%-*s", colWidths.copier, copierText)
 
 	statusCell := statusStyle.Render(formattedStatus) + notesStyle.Render(formattedNotes)
 
-	row := fmt.Sprintf("%s%s  %s  %s  %s  %s  %s  %s",
+	row := fmt.Sprintf("%s%s  %s  %s  %s  %s  %s  %s  %s",
 		cursor,
 		nameStyle.Render(formattedName),
 		branchStyle.Render(formattedBranch),
 		statusCell,
+		peersStyle.Render(formattedPeers),
 		prStyle.Render(formattedPR),
 		style.Render(formattedPRCount),
 		copierStyle.Render(formattedCopier),

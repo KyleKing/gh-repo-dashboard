@@ -142,6 +142,7 @@ func (j *JJOperations) GetRepoSummary(ctx context.Context, repoPath string) (mod
 
 	remoteURL, _ := j.GetRemoteURL(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
 	summary.RemoteProtocol = detectRemoteProtocol(remoteURL)
+	summary.RemoteRepo = ExtractRepoPath(remoteURL)
 
 	return summary, nil
 }

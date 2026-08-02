@@ -29,6 +29,7 @@ type RepoSummary struct {
 
 	NotesFiles      []NoteFile
 	RemoteProtocol  string // "ssh", "https", or "" if unknown/no remote
+	RemoteRepo      string // "owner/repo" derived from the remote URL, "" if unknown/no remote
 	ConfigOverrides []GitConfigOverride
 }
 

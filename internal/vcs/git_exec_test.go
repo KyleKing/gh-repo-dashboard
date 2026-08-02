@@ -395,6 +395,27 @@ func TestGitGetRepoSummary(t *testing.T) {
 			},
 		},
 		{
+			name: "remote url populates protocol and repo",
+			canned: map[string]string{
+				"git rev-parse --abbrev-ref HEAD":                      "main",
+				"git rev-parse --abbrev-ref main@{upstream}":           "origin/main",
+				"git rev-list --left-right --count main...origin/main": "0\t0",
+				"git status --porcelain -z":                            "",
+				"git stash list":                                       "",
+				"git log -1 --format=%ct":                              "1700000000",
+				"git remote get-url origin":                            "git@github.com:acme/app.git",
+			},
+			expected: models.RepoSummary{
+				Path:           testRepoPath,
+				VCSType:        models.VCSTypeGit,
+				Branch:         "main",
+				Upstream:       "origin/main",
+				LastModified:   time.Unix(1700000000, 0),
+				RemoteProtocol: "ssh",
+				RemoteRepo:     "acme/app",
+			},
+		},
+		{
 			name: "no upstream skips ahead behind",
 			canned: map[string]string{
 				"git rev-parse --abbrev-ref HEAD": "feature",
