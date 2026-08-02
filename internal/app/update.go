@@ -204,9 +204,19 @@ func (m Model) handleReposDiscovered(msg ReposDiscoveredMsg) (tea.Model, tea.Cmd
 
 	m.updateFilteredPaths()
 
-	cmds := make([]tea.Cmd, 0, len(msg.Paths))
+	cmds := make([]tea.Cmd, 0, len(msg.Paths)+1)
 	for _, path := range msg.Paths {
 		cmds = append(cmds, loadRepoSummaryCmd(path))
+	}
+
+	// Scanning from inside a repo has nothing to list, so open it directly.
+	// esc still falls back to the one-row list.
+	if len(msg.Paths) == 1 {
+		m.selectedRepo = msg.Paths[0]
+		m.viewMode = ViewModeRepoDetail
+		m.detailTab = DetailTabBranches
+		m.detailCursor = 0
+		cmds = append(cmds, loadDetailCmd(m.selectedRepo))
 	}
 
 	return m, tea.Batch(cmds...)

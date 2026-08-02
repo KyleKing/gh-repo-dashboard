@@ -64,6 +64,40 @@ func TestReposDiscoveredMsg(t *testing.T) {
 	}
 }
 
+func TestReposDiscoveredFocusesLoneRepo(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil, 1)
+	updatedModel, _ := m.Update(ReposDiscoveredMsg{Paths: []string{testRepo1Path}})
+	m = mustModel(t, updatedModel)
+
+	if m.viewMode != ViewModeRepoDetail {
+		t.Errorf("expected the lone repo to open in detail view, got %v", m.viewMode)
+	}
+	if m.selectedRepo != testRepo1Path {
+		t.Errorf("expected selectedRepo %q, got %q", testRepo1Path, m.selectedRepo)
+	}
+	if m.detailTab != DetailTabBranches {
+		t.Errorf("expected the branches tab, got %v", m.detailTab)
+	}
+
+	backModel, _ := m.handleBackKey()
+	if mustModel(t, backModel).viewMode != ViewModeRepoList {
+		t.Error("expected esc to fall back to the repo list")
+	}
+}
+
+func TestReposDiscoveredKeepsListForMultipleRepos(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil, 1)
+	updatedModel, _ := m.Update(ReposDiscoveredMsg{Paths: []string{testRepo1Path, "/repo2"}})
+
+	if mustModel(t, updatedModel).viewMode != ViewModeRepoList {
+		t.Error("expected multiple repos to stay on the repo list")
+	}
+}
+
 func TestRepoSummaryLoadedSuccess(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
