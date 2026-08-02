@@ -44,13 +44,14 @@ func (p PeerCheckout) TrackingSummary() string {
 // FindPeerCheckouts returns the other discovered repos sharing current's remote,
 // sorted by folder name. Repos without a known remote never peer with anything,
 // since an empty remote would otherwise group every unrelated local-only repo.
-func FindPeerCheckouts(current RepoSummary, all []RepoSummary) []PeerCheckout {
-	if current.RemoteRepo == "" {
+func FindPeerCheckouts(current *RepoSummary, all []RepoSummary) []PeerCheckout {
+	if current == nil || current.RemoteRepo == "" {
 		return nil
 	}
 
 	var peers []PeerCheckout
-	for _, summary := range all {
+	for i := range all {
+		summary := &all[i]
 		if summary.Path == current.Path || summary.RemoteRepo != current.RemoteRepo {
 			continue
 		}

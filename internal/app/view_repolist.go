@@ -302,14 +302,15 @@ type repoColWidths struct {
 	modified int
 }
 
-// formatPeersCell formats the parallel-checkout count for a repo, or emDash
-// when the repo is the only checkout of its remote.
-func formatPeersCell(peers []models.PeerCheckout) string {
+// peersCell renders a repo's parallel-checkout count, or emDash when the repo
+// is the only checkout of its remote.
+func (m Model) peersCell(path string, base lipgloss.Style, selected bool) (string, lipgloss.Style) {
+	peers := m.PeerCheckouts(path)
 	if len(peers) == 0 {
-		return emDash
+		return emDash, base
 	}
 
-	return "⧉" + strconv.Itoa(len(peers))
+	return "⧉" + strconv.Itoa(len(peers)), withSelection(styles.CountBadgeStyle, selected)
 }
 
 func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths repoColWidths) string {
@@ -375,12 +376,8 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths rep
 	formattedBranch := fmt.Sprintf("%-*s", colWidths.branch, branch)
 	formattedStatus := fmt.Sprintf("%-*s", statusTextWidth, status)
 	formattedNotes := fmt.Sprintf("%-*s", notesMarkerWidth, truncate(notesText, notesMarkerWidth))
-	peers := m.PeerCheckouts(s.Path)
-	peersStyle := style
-	if len(peers) > 0 {
-		peersStyle = withSelection(styles.CountBadgeStyle, selected)
-	}
-	formattedPeers := fmt.Sprintf("%-*s", colWidths.peers, formatPeersCell(peers))
+	peersText, peersStyle := m.peersCell(s.Path, style, selected)
+	formattedPeers := fmt.Sprintf("%-*s", colWidths.peers, peersText)
 
 	formattedPR := fmt.Sprintf("%-*s", colWidths.pr, pr)
 	formattedPRCount := fmt.Sprintf("%-*s", colWidths.prs, prCountStr)

@@ -10,6 +10,7 @@ const (
 	ReviewApproved         = "approved"
 	ReviewChangesRequested = "changes requested"
 	StatusFailing          = "failing"
+	StatusPassing          = "passing"
 )
 
 // PRInfo summarizes a pull request for the repo list and detail views.
@@ -84,7 +85,7 @@ func (c ChecksStatus) Summary() string {
 		return "pending"
 	}
 	if c.Passing == c.Total {
-		return "passing"
+		return StatusPassing
 	}
 
 	return "mixed"
@@ -156,7 +157,7 @@ func (w WorkflowSummary) StatusDisplay() string {
 		return "running"
 	}
 	if w.Passing == w.Total {
-		return "passing"
+		return StatusPassing
 	}
 
 	return "mixed"

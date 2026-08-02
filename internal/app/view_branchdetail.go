@@ -87,6 +87,7 @@ func (m Model) writeBranchInfoSection(b *strings.Builder, s branchDetailStyles) 
 		s.writeInfoLine(b, "Tracking:", aheadBehindStatus(branch.Ahead, branch.Behind))
 	}
 
+	m.writeCheckoutLine(b, s)
 	m.writeDefaultBranchComparison(b, s)
 
 	if len(m.branchDetail.Commits) > 0 {
@@ -111,6 +112,29 @@ func (m Model) writeBranchInfoSection(b *strings.Builder, s branchDetailStyles) 
 			s.writeInfoLine(b, "Description:", truncate(m.branchDetail.Description, descriptionTruncLen))
 		}
 	}
+}
+
+// writeCheckoutLine reports where the branch is checked out: this working
+// directory, or the parallel checkout holding it along with that checkout's
+// own tracking and dirty state.
+func (m Model) writeCheckoutLine(b *strings.Builder, s branchDetailStyles) {
+	if m.branchDetail.Branch.IsCurrent {
+		s.writeInfoLine(b, "Checked out in:", styles.CleanStyle.Render("here"))
+		return
+	}
+
+	checkout, ok := models.CheckoutForBranch(m.RepoCheckouts(), m.branchDetail.Branch.Name)
+	if !ok {
+		return
+	}
+
+	detail := checkout.Folder() + " (" + checkout.TrackingSummary()
+	if checkout.Dirty {
+		detail += ", dirty"
+	}
+	detail += ")"
+
+	s.writeInfoLine(b, "Checked out in:", styles.WarningStyle.Render("⧉ "+detail))
 }
 
 func (m Model) writeDefaultBranchComparison(b *strings.Builder, s branchDetailStyles) {
@@ -143,7 +167,7 @@ func (m Model) writeBranchPRSection(b *strings.Builder, s branchDetailStyles) {
 		wfStatus := wf.StatusDisplay()
 		wfStyle := styles.SubtitleStyle
 		switch wfStatus {
-		case "passing":
+		case models.StatusPassing:
 			wfStyle = styles.CleanStyle
 		case models.StatusFailing:
 			wfStyle = styles.ErrorStyle
@@ -185,7 +209,7 @@ func writeBranchPRInfo(b *strings.Builder, s branchDetailStyles, pr *models.PRIn
 		checkStatus := pr.Checks.Summary()
 		checkStyle := styles.SubtitleStyle
 		switch checkStatus {
-		case "passing":
+		case models.StatusPassing:
 			checkStyle = styles.CleanStyle
 		case models.StatusFailing:
 			checkStyle = styles.ErrorStyle

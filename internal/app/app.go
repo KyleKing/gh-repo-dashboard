@@ -388,11 +388,11 @@ func (m Model) PeerCheckouts(path string) []models.PeerCheckout {
 	}
 
 	all := make([]models.RepoSummary, 0, len(m.summaries))
-	for _, s := range m.summaries {
-		all = append(all, s)
+	for key := range m.summaries {
+		all = append(all, m.summaries[key])
 	}
 
-	return models.FindPeerCheckouts(summary, all)
+	return models.FindPeerCheckouts(&summary, all)
 }
 
 // RepoCheckouts returns every parallel checkout of the selected repo: sibling

@@ -47,7 +47,7 @@ func TestFindPeerCheckouts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			peers := models.FindPeerCheckouts(tt.current, tt.all)
+			peers := models.FindPeerCheckouts(&tt.current, tt.all)
 			if len(peers) != len(tt.want) {
 				t.Fatalf("expected %d peers, got %d", len(tt.want), len(peers))
 			}
@@ -68,7 +68,7 @@ func TestFindPeerCheckoutsCarriesTracking(t *testing.T) {
 		Path: "/src/app-feature", Branch: "feature", RemoteRepo: "acme/app", Ahead: 2, Behind: 1, Unstaged: 3,
 	}
 
-	peers := models.FindPeerCheckouts(current, []models.RepoSummary{current, sibling})
+	peers := models.FindPeerCheckouts(&current, []models.RepoSummary{current, sibling})
 	if len(peers) != 1 {
 		t.Fatalf("expected 1 peer, got %d", len(peers))
 	}

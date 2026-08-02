@@ -228,7 +228,7 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 	env := vcs.GetGitHubEnv(repoPath)
 
 	out, err := runGH(ctx, repoPath, env, "pr", "list",
-		"--json", "number,title,state,url,isDraft,headRefName,baseRefName,reviewDecision",
+		"--json", "number,title,state,url,isDraft,headRefName,baseRefName,reviewDecision,statusCheckRollup",
 		"--limit", "100")
 	if err != nil {
 		cache.PRListCache.Set(cacheKey, []models.PRInfo{})
@@ -236,14 +236,15 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 	}
 
 	var prList []struct {
-		Number         int    `json:"number"`
-		Title          string `json:"title"`
-		State          string `json:"state"`
-		URL            string `json:"url"`
-		IsDraft        bool   `json:"isDraft"`
-		HeadRefName    string `json:"headRefName"`
-		BaseRefName    string `json:"baseRefName"`
-		ReviewDecision string `json:"reviewDecision"`
+		Number            int           `json:"number"`
+		Title             string        `json:"title"`
+		State             string        `json:"state"`
+		URL               string        `json:"url"`
+		IsDraft           bool          `json:"isDraft"`
+		HeadRefName       string        `json:"headRefName"`
+		BaseRefName       string        `json:"baseRefName"`
+		ReviewDecision    string        `json:"reviewDecision"`
+		StatusCheckRollup []statusCheck `json:"statusCheckRollup"`
 	}
 
 	if err := json.Unmarshal(out, &prList); err != nil {
@@ -251,7 +252,8 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 	}
 
 	result := make([]models.PRInfo, 0, len(prList))
-	for _, pr := range prList {
+	for i := range prList {
+		pr := &prList[i]
 		result = append(result, models.PRInfo{
 			Number:         pr.Number,
 			Title:          pr.Title,
@@ -261,6 +263,7 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 			HeadRef:        pr.HeadRefName,
 			BaseRef:        pr.BaseRefName,
 			ReviewDecision: pr.ReviewDecision,
+			Checks:         parseChecks(pr.StatusCheckRollup),
 		})
 	}
 

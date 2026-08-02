@@ -33,6 +33,10 @@ const (
 	visibleWindowCenter    = 2
 	branchNameTruncLen     = 20
 	upstreamTruncLen       = 20
+	branchStatusColWidth   = 10
+	branchPRColWidth       = 10
+	branchChecksColWidth   = 12
+	checkoutColWidth       = 14
 	messageTruncLen        = 40
 	worktreePathTruncLen   = 30
 	batchNameTruncLen      = 25

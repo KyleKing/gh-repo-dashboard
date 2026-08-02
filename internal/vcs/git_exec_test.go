@@ -343,15 +343,16 @@ func TestGitStatusCountMethods(t *testing.T) {
 	}
 }
 
-func TestGitGetRepoSummary(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name     string
-		canned   map[string]string
-		failures map[string]error
-		expected models.RepoSummary
-		wantErr  bool
-	}{
+type gitRepoSummaryCase struct {
+	name     string
+	canned   map[string]string
+	failures map[string]error
+	expected models.RepoSummary
+	wantErr  bool
+}
+
+func gitRepoSummaryCases() []gitRepoSummaryCase {
+	return []gitRepoSummaryCase{
 		{
 			name: "clean repo with upstream",
 			canned: map[string]string{
@@ -441,8 +442,12 @@ func TestGitGetRepoSummary(t *testing.T) {
 			wantErr: true,
 		},
 	}
+}
 
-	for _, tt := range tests {
+func TestGitGetRepoSummary(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range gitRepoSummaryCases() {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ctx := stubCommands(t, tt.canned, tt.failures)

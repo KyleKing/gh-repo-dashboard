@@ -29,6 +29,13 @@ func (m Model) renderRepoDetailBreadcrumbs() string {
 	if summary.PRInfo != nil {
 		badges = append(badges, styles.Badge(fmt.Sprintf("PR #%d", summary.PRInfo.Number), styles.PROpenStyle))
 	}
+	if checkouts := m.RepoCheckouts(); len(checkouts) > 0 {
+		label := fmt.Sprintf("⧉ %d parallel checkouts", len(checkouts))
+		if len(checkouts) == 1 {
+			label = "⧉ " + checkouts[0].Folder()
+		}
+		badges = append(badges, styles.Badge(label, styles.WarningStyle))
+	}
 	if summary.RemoteProtocol != "" {
 		badges = append(badges, styles.Badge(summary.RemoteProtocol, styles.CountBadgeStyle))
 	}
@@ -144,16 +151,44 @@ func (m Model) renderBranchList() string {
 		return emptyStyle.Render("No branches found")
 	}
 
+	prsByBranch := prsByHeadRef(m.prs)
+	checkouts := m.RepoCheckouts()
+
 	var rows []string
-	header := fmt.Sprintf("  %-20s  %-20s  %-10s  %s",
-		"BRANCH", "UPSTREAM", "STATUS", "LAST COMMIT")
+	header := fmt.Sprintf("  %-*s  %-*s  %-*s  %-*s  %-*s  %-*s  %s",
+		branchNameTruncLen, "BRANCH",
+		upstreamTruncLen, "UPSTREAM",
+		branchStatusColWidth, "STATUS",
+		branchPRColWidth, "PR",
+		branchChecksColWidth, "CHECKS",
+		checkoutColWidth, "CHECKED OUT",
+		"LAST COMMIT")
 	rows = append(rows, styles.HeaderStyle.Render(header))
 
 	for i, branch := range m.branches {
-		rows = append(rows, renderBranchRow(branch, i == m.detailCursor, m.deletableBranches[branch.Name]))
+		row := branchRow{
+			branch:    branch,
+			pr:        prsByBranch[branch.Name],
+			deletable: m.deletableBranches[branch.Name],
+			selected:  i == m.detailCursor,
+		}
+		if checkout, ok := models.CheckoutForBranch(checkouts, branch.Name); ok {
+			row.checkout = checkout.Folder()
+		}
+		rows = append(rows, renderBranchRow(row))
 	}
 
 	return strings.Join(rows, "\n")
+}
+
+// prsByHeadRef indexes open pull requests by their head branch name.
+func prsByHeadRef(prs []models.PRInfo) map[string]*models.PRInfo {
+	byRef := make(map[string]*models.PRInfo, len(prs))
+	for i := range prs {
+		byRef[prs[i].HeadRef] = &prs[i]
+	}
+
+	return byRef
 }
 
 // branchAheadBehindStatus renders a branch's ahead/behind indicator, or a
@@ -176,47 +211,117 @@ func branchAheadBehindStatus(branch models.BranchInfo) string {
 	return status
 }
 
-func renderBranchRow(branch models.BranchInfo, isSelected, deletable bool) string {
+// branchRow is one rendered row of the branch list: the branch itself plus the
+// pull request, parallel checkout, and cleanup state discovered for it.
+type branchRow struct {
+	branch    models.BranchInfo
+	pr        *models.PRInfo
+	checkout  string
+	deletable bool
+	selected  bool
+}
+
+// formatBranchPRCell renders "#N" plus a draft/review marker, or emDash when
+// the branch has no open pull request.
+func formatBranchPRCell(pr *models.PRInfo) string {
+	if pr == nil {
+		return emDash
+	}
+
+	cell := fmt.Sprintf("#%d", pr.Number)
+	switch {
+	case pr.IsDraft:
+		cell += " draft"
+	case pr.ReviewStatus() == models.ReviewApproved:
+		cell += " ✓"
+	case pr.ReviewStatus() == models.ReviewChangesRequested:
+		cell += " ✗"
+	}
+
+	return cell
+}
+
+// formatChecksCell renders a pull request's CI rollup as "passing 3/3", or
+// emDash when there is no pull request or it has no checks.
+func formatChecksCell(pr *models.PRInfo) string {
+	if pr == nil || pr.Checks.Total == 0 {
+		return emDash
+	}
+
+	return fmt.Sprintf("%s %d/%d", pr.Checks.Summary(), pr.Checks.Passing, pr.Checks.Total)
+}
+
+// checksCellStyle colors a checks cell by its rollup outcome.
+func checksCellStyle(pr *models.PRInfo, base lipgloss.Style) lipgloss.Style {
+	if pr == nil || pr.Checks.Total == 0 {
+		return base
+	}
+
+	switch pr.Checks.Summary() {
+	case models.StatusPassing:
+		return styles.CleanStyle
+	case models.StatusFailing:
+		return styles.ErrorStyle
+	default:
+		return styles.WarningStyle
+	}
+}
+
+func renderBranchRow(row branchRow) string {
 	cursor := "  "
-	if isSelected {
+	if row.selected {
 		cursor = "> "
 	}
 
-	name := truncate(branch.Name, branchNameTruncLen)
-	if branch.IsCurrent {
+	name := truncate(row.branch.Name, branchNameTruncLen)
+	if row.branch.IsCurrent {
 		name = "* " + name
 	}
-	upstream := truncate(branch.Upstream, upstreamTruncLen)
-	status := branchAheadBehindStatus(branch)
-	lastCommit := branch.RelativeLastCommit()
+
+	checkout := emDash
+	if row.branch.IsCurrent {
+		checkout = "here"
+	} else if row.checkout != "" {
+		checkout = "⧉ " + truncate(row.checkout, checkoutColWidth-2) //nolint:mnd // reserves room for the "⧉ " prefix
+	}
 
 	style := styles.TableRowStyle
-	if isSelected {
+	if row.selected {
 		style = styles.SelectedRowStyle
 	}
 
 	nameStyle := styles.BranchStyle
-	if branch.IsCurrent {
+	if row.branch.IsCurrent {
 		nameStyle = styles.PROpenStyle
 	}
-	nameStyle = withSelection(nameStyle, isSelected)
+	nameStyle = withSelection(nameStyle, row.selected)
 
-	formattedName := fmt.Sprintf("%-20s", name)
-	formattedUpstream := fmt.Sprintf("%-20s", upstream)
-	formattedStatus := fmt.Sprintf("%-10s", status)
-
-	row := fmt.Sprintf("%s%s  %s  %s  %s",
-		cursor,
-		nameStyle.Render(formattedName),
-		style.Render(formattedUpstream),
-		style.Render(formattedStatus),
-		style.Render(lastCommit),
-	)
-	if deletable {
-		row += "  " + styles.Badge("merged", styles.PROpenStyle)
+	prStyle := style
+	if row.pr != nil {
+		prStyle = withSelection(styles.PROpenStyle, row.selected)
 	}
 
-	return row
+	checkoutStyle := style
+	if row.checkout != "" && !row.branch.IsCurrent {
+		checkoutStyle = withSelection(styles.WarningStyle, row.selected)
+	}
+
+	cells := fmt.Sprintf("%-*s", branchNameTruncLen, name)
+	rendered := fmt.Sprintf("%s%s  %s  %s  %s  %s  %s  %s",
+		cursor,
+		nameStyle.Render(cells),
+		style.Render(fmt.Sprintf("%-*s", upstreamTruncLen, truncate(row.branch.Upstream, upstreamTruncLen))),
+		style.Render(fmt.Sprintf("%-*s", branchStatusColWidth, branchAheadBehindStatus(row.branch))),
+		prStyle.Render(fmt.Sprintf("%-*s", branchPRColWidth, formatBranchPRCell(row.pr))),
+		checksCellStyle(row.pr, style).Render(fmt.Sprintf("%-*s", branchChecksColWidth, formatChecksCell(row.pr))),
+		checkoutStyle.Render(fmt.Sprintf("%-*s", checkoutColWidth, checkout)),
+		style.Render(row.branch.RelativeLastCommit()),
+	)
+	if row.deletable {
+		rendered += "  " + styles.Badge("merged", styles.PROpenStyle)
+	}
+
+	return rendered
 }
 
 func (m Model) renderStashList() string {
