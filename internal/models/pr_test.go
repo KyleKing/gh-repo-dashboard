@@ -2,6 +2,7 @@ package models_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -228,5 +229,43 @@ func TestWorkflowSummaryStatusDisplay(t *testing.T) {
 				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
 		})
+	}
+}
+
+func TestCheckDetailStatusDisplay(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		check    models.CheckDetail
+		expected string
+	}{
+		{"completed uses the conclusion", models.CheckDetail{Status: "COMPLETED", Conclusion: "SUCCESS"}, "success"},
+		{"in flight uses the status", models.CheckDetail{Status: "IN_PROGRESS"}, "in progress"},
+		{"queued", models.CheckDetail{Status: "QUEUED"}, "queued"},
+		{"unknown", models.CheckDetail{}, "—"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := tt.check.StatusDisplay(); got != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, got)
+			}
+		})
+	}
+}
+
+func TestCheckDetailDuration(t *testing.T) {
+	t.Parallel()
+
+	start := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	completed := models.CheckDetail{StartedAt: start, CompletedAt: start.Add(90 * time.Second)}
+	if got := completed.Duration(); got != "1m30s" {
+		t.Errorf("expected '1m30s', got %q", got)
+	}
+
+	running := models.CheckDetail{StartedAt: start}
+	if got := running.Duration(); got != "—" {
+		t.Errorf("expected an em dash while running, got %q", got)
 	}
 }

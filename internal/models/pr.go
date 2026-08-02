@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // Display values shared by PRInfo/ChecksStatus/WorkflowSummary and the views
 // that render them, so both sides compare against the same constant.
@@ -91,19 +94,73 @@ func (c ChecksStatus) Summary() string {
 	return "mixed"
 }
 
+// CheckDetail is a single CI check on a pull request.
+type CheckDetail struct {
+	Name        string
+	Workflow    string
+	Status      string
+	Conclusion  string
+	StartedAt   time.Time
+	CompletedAt time.Time
+}
+
+// StatusDisplay returns the check's lowercased conclusion once it has
+// completed, or its in-flight status ("queued", "in progress") before then.
+func (c CheckDetail) StatusDisplay() string {
+	status := strings.ToLower(c.Status)
+	if status == "completed" && c.Conclusion != "" {
+		return strings.ToLower(c.Conclusion)
+	}
+	if status == "" {
+		return emDash
+	}
+
+	return strings.ReplaceAll(status, "_", " ")
+}
+
+// Duration renders how long the check ran, or emDash while it's still running.
+func (c CheckDetail) Duration() string {
+	if c.StartedAt.IsZero() || c.CompletedAt.IsZero() {
+		return emDash
+	}
+
+	elapsed := c.CompletedAt.Sub(c.StartedAt).Round(time.Second)
+	if elapsed < 0 {
+		return emDash
+	}
+
+	return elapsed.String()
+}
+
+// PRComment is a single issue comment on a pull request.
+type PRComment struct {
+	Author    string
+	Body      string
+	CreatedAt time.Time
+}
+
+// RelativeCreated returns a human-readable relative time for the comment.
+func (c PRComment) RelativeCreated() string {
+	return RelativeTime(c.CreatedAt)
+}
+
 // PRDetail holds the full detail view state for a single pull request.
 type PRDetail struct {
 	PRInfo
-	Body       string
-	Author     string
-	Assignees  []string
-	Reviewers  []string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	Additions  int
-	Deletions  int
-	Comments   int
-	ReviewsURL string
+	Body      string
+	Author    string
+	Assignees []string
+	Reviewers []string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Additions int
+	Deletions int
+	// Comments counts issue comments on the pull request; LatestComment is
+	// the most recent of them, nil when there are none.
+	Comments      int
+	LatestComment *PRComment
+	CheckDetails  []CheckDetail
+	ReviewsURL    string
 }
 
 // RelativeCreated returns a human-readable relative time for the pull request's creation.

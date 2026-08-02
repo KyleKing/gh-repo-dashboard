@@ -124,6 +124,81 @@ func parseChecks(checks []statusCheck) models.ChecksStatus {
 	return status
 }
 
+// prComment mirrors one entry of gh's `comments` array. The field is a list of
+// comment objects, not a count, so it's decoded as such and counted here.
+type prComment struct {
+	Author struct {
+		Login string `json:"login"`
+	} `json:"author"`
+	Body      string `json:"body"`
+	CreatedAt string `json:"createdAt"`
+}
+
+// detailedCheck mirrors one entry of gh's `statusCheckRollup` with the
+// per-check fields the PR detail view shows, beyond the rollup counts.
+type detailedCheck struct {
+	Name         string `json:"name"`
+	WorkflowName string `json:"workflowName"`
+	Status       string `json:"status"`
+	Conclusion   string `json:"conclusion"`
+	State        string `json:"state"`
+	StartedAt    string `json:"startedAt"`
+	CompletedAt  string `json:"completedAt"`
+}
+
+// latestComment returns the most recently created comment, or nil when the
+// pull request has none.
+func latestComment(comments []prComment) *models.PRComment {
+	if len(comments) == 0 {
+		return nil
+	}
+
+	latest := comments[0]
+	latestAt := parseTime(latest.CreatedAt)
+	for i := range comments[1:] {
+		c := comments[i+1]
+		if at := parseTime(c.CreatedAt); at.After(latestAt) {
+			latest, latestAt = c, at
+		}
+	}
+
+	return &models.PRComment{Author: latest.Author.Login, Body: latest.Body, CreatedAt: latestAt}
+}
+
+func parseCheckDetails(checks []detailedCheck) []models.CheckDetail {
+	details := make([]models.CheckDetail, 0, len(checks))
+	for _, c := range checks {
+		// Non-workflow checks (commit statuses) report `state` instead of
+		// `status`/`conclusion`, and carry no timings.
+		status, conclusion := c.Status, c.Conclusion
+		if status == "" && c.State != "" {
+			status, conclusion = "COMPLETED", c.State
+		}
+
+		details = append(details, models.CheckDetail{
+			Name:        c.Name,
+			Workflow:    c.WorkflowName,
+			Status:      status,
+			Conclusion:  conclusion,
+			StartedAt:   parseTime(c.StartedAt),
+			CompletedAt: parseTime(c.CompletedAt),
+		})
+	}
+
+	return details
+}
+
+// parseTime decodes an RFC 3339 timestamp, degrading to the zero time rather
+// than failing the surrounding fetch.
+func parseTime(value string) time.Time {
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return time.Time{}
+	}
+
+	return parsed
+}
+
 // GetPRDetail returns the full detail for a single pull request, using the cache when fresh.
 func GetPRDetail(ctx context.Context, repoPath string, prNumber int) (*models.PRDetail, error) {
 	cacheKey := fmt.Sprintf("%s:pr:%d", repoPath, prNumber)
@@ -134,7 +209,8 @@ func GetPRDetail(ctx context.Context, repoPath string, prNumber int) (*models.PR
 	env := vcs.GetGitHubEnv(repoPath)
 
 	prDetailFields := "number,title,state,url,isDraft,mergeStateStatus,headRefName,baseRefName,body," +
-		"author,assignees,reviewRequests,createdAt,updatedAt,additions,deletions,comments,reviewDecision"
+		"author,assignees,reviewRequests,createdAt,updatedAt,additions,deletions,comments,reviewDecision," +
+		"statusCheckRollup"
 	out, err := runGH(ctx, repoPath, env, "pr", "view", strconv.Itoa(prNumber), "--json", prDetailFields)
 	if err != nil {
 		return nil, err
@@ -159,12 +235,13 @@ func GetPRDetail(ctx context.Context, repoPath string, prNumber int) (*models.PR
 		ReviewRequests []struct {
 			Login string `json:"login"`
 		} `json:"reviewRequests"`
-		CreatedAt      string `json:"createdAt"`
-		UpdatedAt      string `json:"updatedAt"`
-		Additions      int    `json:"additions"`
-		Deletions      int    `json:"deletions"`
-		Comments       int    `json:"comments"`
-		ReviewDecision string `json:"reviewDecision"`
+		CreatedAt         string          `json:"createdAt"`
+		UpdatedAt         string          `json:"updatedAt"`
+		Additions         int             `json:"additions"`
+		Deletions         int             `json:"deletions"`
+		Comments          []prComment     `json:"comments"`
+		ReviewDecision    string          `json:"reviewDecision"`
+		StatusCheckRollup []detailedCheck `json:"statusCheckRollup"`
 	}
 
 	if err := json.Unmarshal(out, &resp); err != nil {
@@ -198,15 +275,17 @@ func GetPRDetail(ctx context.Context, repoPath string, prNumber int) (*models.PR
 			BaseRef:        resp.BaseRefName,
 			ReviewDecision: resp.ReviewDecision,
 		},
-		Body:      resp.Body,
-		Author:    resp.Author.Login,
-		Assignees: assignees,
-		Reviewers: reviewers,
-		CreatedAt: createdAt,
-		UpdatedAt: updatedAt,
-		Additions: resp.Additions,
-		Deletions: resp.Deletions,
-		Comments:  resp.Comments,
+		Body:          resp.Body,
+		Author:        resp.Author.Login,
+		Assignees:     assignees,
+		Reviewers:     reviewers,
+		CreatedAt:     createdAt,
+		UpdatedAt:     updatedAt,
+		Additions:     resp.Additions,
+		Deletions:     resp.Deletions,
+		Comments:      len(resp.Comments),
+		LatestComment: latestComment(resp.Comments),
+		CheckDetails:  parseCheckDetails(resp.StatusCheckRollup),
 	}
 
 	cache.PRDetailCache.Set(cacheKey, detail)

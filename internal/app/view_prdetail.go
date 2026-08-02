@@ -95,6 +95,76 @@ func writePRDetailDescription(b *strings.Builder, sectionStyle, valueStyle lipgl
 	b.WriteString("\n")
 }
 
+// checkStatusStyle colors a single check's status by outcome.
+func checkStatusStyle(status string) lipgloss.Style {
+	switch status {
+	case "success", models.StatusPassing:
+		return styles.CleanStyle
+	//nolint:misspell // GitHub's own conclusion value is spelled "cancelled"
+	case "failure", "error", "cancelled", "timed_out":
+		return styles.ErrorStyle
+	case "skipped", "neutral":
+		return styles.SubtitleStyle
+	default:
+		return styles.WarningStyle
+	}
+}
+
+// writePRDetailChecks writes the "Checks" section: one row per CI check with
+// its status and how long it ran. Nothing is written when the pull request has
+// no checks.
+func writePRDetailChecks(b *strings.Builder, sectionStyle lipgloss.Style, checks []models.CheckDetail) {
+	if len(checks) == 0 {
+		return
+	}
+
+	b.WriteString("\n")
+	b.WriteString(sectionStyle.Render("Checks"))
+	b.WriteString("\n")
+
+	rowPadding := lipgloss.NewStyle().PaddingLeft(infoPaddingLeft)
+	for _, check := range checks {
+		name := check.Name
+		if name == "" {
+			name = check.Workflow
+		}
+		if name == "" {
+			name = "(unnamed check)"
+		}
+		if check.Workflow != "" && check.Workflow != name {
+			name = check.Workflow + " / " + name
+		}
+
+		status := check.StatusDisplay()
+		row := fmt.Sprintf("%-*s  %s  %s",
+			checkNameColWidth, truncate(name, checkNameColWidth),
+			checkStatusStyle(status).Render(fmt.Sprintf("%-*s", checkStatusColWidth, status)),
+			styles.SubtitleStyle.Render(check.Duration()))
+		b.WriteString(rowPadding.Render(row))
+		b.WriteString("\n")
+	}
+}
+
+// writePRDetailLatestComment writes the most recent comment on the pull
+// request, or nothing when there are none.
+func writePRDetailLatestComment(
+	b *strings.Builder, sectionStyle, valueStyle lipgloss.Style, comment *models.PRComment,
+) {
+	if comment == nil {
+		return
+	}
+
+	b.WriteString("\n")
+	b.WriteString(sectionStyle.Render("Latest comment"))
+	b.WriteString("\n")
+	b.WriteString(valueStyle.Render(
+		styles.BranchStyle.Render(comment.Author) + " " +
+			styles.SubtitleStyle.Render(comment.RelativeCreated())))
+	b.WriteString("\n")
+	b.WriteString(valueStyle.Render(truncate(strings.TrimSpace(comment.Body), prCommentMaxLen)))
+	b.WriteString("\n")
+}
+
 // writePRDetailActions writes the "Actions" section's footer key hints.
 func writePRDetailActions(b *strings.Builder, sectionStyle lipgloss.Style) {
 	b.WriteString("\n")
@@ -104,6 +174,7 @@ func writePRDetailActions(b *strings.Builder, sectionStyle lipgloss.Style) {
 	actionPadding := lipgloss.NewStyle().PaddingLeft(infoPaddingLeft)
 	actions := []string{
 		styles.FooterKeyStyle.Render("o") + styles.FooterDescStyle.Render(" open in browser"),
+		styles.FooterKeyStyle.Render("M") + styles.FooterDescStyle.Render(" squash-merge"),
 		styles.FooterKeyStyle.Render("u") + styles.FooterDescStyle.Render(" copy URL"),
 		styles.FooterKeyStyle.Render("n") + styles.FooterDescStyle.Render(" copy PR number"),
 		styles.FooterKeyStyle.Render("b") + styles.FooterDescStyle.Render(" copy branch name"),
@@ -183,7 +254,9 @@ func (m Model) renderPRDetail() string {
 
 	m.writePRDetailInfo(writeLine)
 
+	writePRDetailChecks(&b, sectionStyle, m.prDetail.CheckDetails)
 	writePRDetailDescription(&b, sectionStyle, valueStyle, m.prDetail.Body)
+	writePRDetailLatestComment(&b, sectionStyle, valueStyle, m.prDetail.LatestComment)
 	writePRDetailActions(&b, sectionStyle)
 
 	contentLines := strings.Count(b.String(), "\n")

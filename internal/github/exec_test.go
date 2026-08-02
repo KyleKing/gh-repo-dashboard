@@ -188,8 +188,22 @@ func TestGetPRDetail(t *testing.T) {
 		"updatedAt": "2026-01-03T06:07:08Z",
 		"additions": 10,
 		"deletions": 3,
-		"comments": 2,
-		"reviewDecision": "CHANGES_REQUESTED"
+		"comments": [
+			{"author": {"login": "bob"}, "body": "first pass", "createdAt": "2026-01-02T10:00:00Z"},
+			{"author": {"login": "dave"}, "body": "looks good now", "createdAt": "2026-01-03T05:00:00Z"}
+		],
+		"reviewDecision": "CHANGES_REQUESTED",
+		"statusCheckRollup": [
+			{
+				"name": "ci",
+				"workflowName": "CI",
+				"status": "COMPLETED",
+				"conclusion": "SUCCESS",
+				"startedAt": "2026-01-03T05:00:00Z",
+				"completedAt": "2026-01-03T05:01:30Z"
+			},
+			{"context": "codecov", "state": "PENDING"}
+		]
 	}`)
 
 	expectedDetail := &models.PRDetail{
@@ -213,6 +227,22 @@ func TestGetPRDetail(t *testing.T) {
 		Additions: 10,
 		Deletions: 3,
 		Comments:  2,
+		LatestComment: &models.PRComment{
+			Author:    "dave",
+			Body:      "looks good now",
+			CreatedAt: time.Date(2026, 1, 3, 5, 0, 0, 0, time.UTC),
+		},
+		CheckDetails: []models.CheckDetail{
+			{
+				Name:        "ci",
+				Workflow:    "CI",
+				Status:      "COMPLETED",
+				Conclusion:  "SUCCESS",
+				StartedAt:   time.Date(2026, 1, 3, 5, 0, 0, 0, time.UTC),
+				CompletedAt: time.Date(2026, 1, 3, 5, 1, 30, 0, time.UTC),
+			},
+			{Status: "COMPLETED", Conclusion: "PENDING"},
+		},
 	}
 
 	tests := []getPRDetailCase{
