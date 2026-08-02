@@ -131,6 +131,14 @@ type PRDetailLoadedMsg struct {
 	Error    error
 }
 
+// ActionResultMsg reports the outcome of a write action (branch switch, push,
+// PR creation, or PR merge) run against a single repo.
+type ActionResultMsg struct {
+	Path    string
+	Message string
+	Success bool
+}
+
 // PRCountLoadedMsg reports the loaded pull request count for a repo.
 type PRCountLoadedMsg struct {
 	Path  string

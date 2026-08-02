@@ -90,6 +90,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case PRDetailLoadedMsg:
 		return m.handlePRDetailLoaded(msg)
 
+	case ActionResultMsg:
+		return m.handleActionResult(msg)
+
 	case PRCountLoadedMsg:
 		if m.prCount == nil {
 			m.prCount = make(map[string]int)
@@ -186,6 +189,8 @@ func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handlePRDetailKey(msg)
 	case ViewModeBatchProgress:
 		return m.handleBatchKey(msg)
+	case ViewModeConfirm:
+		return m.handleConfirmKey(msg)
 	default:
 		return m.handleKey(msg)
 	}
@@ -530,6 +535,26 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	return m.handleActionKey(msg)
+}
+
+// handleActionKey routes the write-action keys shared by the repo-detail,
+// branch-detail, and PR-detail views.
+func (m Model) handleActionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.SwitchBranch):
+		return m.startSwitchBranch()
+
+	case key.Matches(msg, m.keys.PushBranch):
+		return m.startPushBranch()
+
+	case key.Matches(msg, m.keys.CreatePR):
+		return m.startCreatePR()
+
+	case key.Matches(msg, m.keys.MergePR):
+		return m.startSquashMergePR()
+	}
+
 	return m, nil
 }
 
@@ -615,7 +640,7 @@ func (m Model) handleBranchDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	return m, nil
+	return m.handleActionKey(msg)
 }
 
 func (m Model) detailListLen() int {
@@ -770,7 +795,7 @@ func (m Model) handlePRDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	return m, nil
+	return m.handleActionKey(msg)
 }
 
 func (m Model) handleFilterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {

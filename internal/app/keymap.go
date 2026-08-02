@@ -35,6 +35,11 @@ type KeyMap struct {
 	PruneRemote   key.Binding
 	CleanupMerged key.Binding
 
+	SwitchBranch key.Binding
+	PushBranch   key.Binding
+	CreatePR     key.Binding
+	MergePR      key.Binding
+
 	CopyBranch   key.Binding
 	CopyURL      key.Binding
 	CopyPRNumber key.Binding
@@ -57,6 +62,22 @@ func DefaultKeyMap() KeyMap {
 	km.CleanupMerged = key.NewBinding(
 		key.WithKeys("C"),
 		key.WithHelp("C+obj", "cleanup"),
+	)
+	km.SwitchBranch = key.NewBinding(
+		key.WithKeys("c"),
+		key.WithHelp("c", "switch branch"),
+	)
+	km.PushBranch = key.NewBinding(
+		key.WithKeys("p"),
+		key.WithHelp("p", "push (--follow-tags)"),
+	)
+	km.CreatePR = key.NewBinding(
+		key.WithKeys("N"),
+		key.WithHelp("N", "new PR"),
+	)
+	km.MergePR = key.NewBinding(
+		key.WithKeys("M"),
+		key.WithHelp("M", "squash-merge PR"),
 	)
 	km.CopyBranch = key.NewBinding(
 		key.WithKeys("b"),
@@ -172,6 +193,7 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 		{k.Up, k.Down, k.Top, k.Bottom},
 		{k.Enter, k.Back},
 		{k.Filter, k.Sort, k.Search, k.Command, k.Repeat, k.NotesPreview},
+		{k.SwitchBranch, k.PushBranch, k.CreatePR, k.MergePR},
 		{k.Refresh, k.FetchAll, k.PruneRemote, k.CleanupMerged},
 		{k.Help, k.Quit},
 	}

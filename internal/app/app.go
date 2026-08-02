@@ -23,6 +23,7 @@ const (
 	ViewModeFilter
 	ViewModeSort
 	ViewModeBatchProgress
+	ViewModeConfirm
 )
 
 // DetailTab identifies which tab is active on the repo detail screen.
@@ -107,6 +108,7 @@ type Model struct {
 	batchTotal    int
 
 	statusMessage string
+	pendingAction *pendingAction
 
 	keys KeyMap
 	help help.Model

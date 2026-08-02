@@ -79,9 +79,9 @@ func (m Model) renderRepoDetail() string {
 	footer := "tab: switch tabs  j/k: navigate  esc: back"
 	switch m.detailTab {
 	case DetailTabBranches:
-		footer = "tab: switch tabs  j/k: navigate  enter: view branch  esc: back"
+		footer = "tab: tabs  j/k: nav  enter: branch  c: switch  p: push  N: new PR  M: merge  esc: back"
 	case DetailTabPRs:
-		footer = "tab: switch tabs  j/k: navigate  enter: view PR  esc: back"
+		footer = "tab: tabs  j/k: nav  enter: PR  M: squash-merge  esc: back"
 	default:
 		// stashes/worktrees tabs use the generic footer above
 	}

@@ -54,6 +54,8 @@ const (
 	loadingStatePad        = 2
 	branchDetailMaxCommits = 10
 	notesSeparatorWidth    = 40
+	confirmModalVPad       = 1
+	confirmModalHPad       = 3
 )
 
 // View renders the TUI for the current model state.
@@ -112,6 +114,8 @@ func (m Model) renderView() string {
 		return m.renderSortModal()
 	case ViewModeBatchProgress:
 		return m.renderBatchProgress()
+	case ViewModeConfirm:
+		return m.renderConfirmModal()
 	default:
 		return m.renderRepoList()
 	}

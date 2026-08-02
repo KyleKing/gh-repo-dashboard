@@ -257,11 +257,17 @@ func (m Model) writeBranchActionsSection(b *strings.Builder, s branchDetailStyle
 
 	actions := []string{
 		styles.FooterKeyStyle.Render("b") + actionStyle.Render(" copy branch name"),
+		styles.FooterKeyStyle.Render("c") + actionStyle.Render(" switch"),
+		styles.FooterKeyStyle.Render("p") + actionStyle.Render(" push"),
 	}
 
-	if m.branchDetail.PRInfo != nil {
+	if m.branchDetail.PRInfo == nil {
 		actions = append(actions,
-			styles.FooterKeyStyle.Render("o")+actionStyle.Render(" open PR URL"))
+			styles.FooterKeyStyle.Render("N")+actionStyle.Render(" new PR"))
+	} else {
+		actions = append(actions,
+			styles.FooterKeyStyle.Render("o")+actionStyle.Render(" open PR URL"),
+			styles.FooterKeyStyle.Render("M")+actionStyle.Render(" squash-merge"))
 	}
 
 	b.WriteString(strings.Join(actions, "  "))

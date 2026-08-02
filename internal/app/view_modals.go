@@ -49,6 +49,15 @@ func (m Model) renderHelp() string {
 			},
 		},
 		{
+			"Branch & PR Actions",
+			[]struct{ key, desc string }{
+				{"c", "Switch to the selected branch"},
+				{"p", "Push branch and its tags (--follow-tags)"},
+				{"N", "Create a PR for the selected branch"},
+				{"M", "Squash-merge the PR and delete its branch"},
+			},
+		},
+		{
 			"Batch Actions",
 			[]struct{ key, desc string }{
 				{"F", "Fetch all (filtered repos)"},
@@ -173,6 +182,33 @@ func (m Model) renderFilterModal() string {
 	b.WriteString(strings.Join(helpLines, "  "))
 
 	content := b.String()
+
+	return centerModal(m, content)
+}
+
+// renderConfirmModal asks for confirmation of a parked write action, naming
+// the repo it will run against.
+func (m Model) renderConfirmModal() string {
+	if m.pendingAction == nil {
+		return m.renderRepoList()
+	}
+
+	var b strings.Builder
+
+	b.WriteString(styles.TitleStyle.Render(m.pendingAction.prompt))
+	b.WriteString("\n\n")
+	b.WriteString(styles.TableRowStyle.Render(m.pendingAction.detail))
+	b.WriteString("\n")
+	b.WriteString(styles.SubtitleStyle.Render("in " + filepath.Base(m.selectedRepo)))
+	b.WriteString("\n\n")
+	b.WriteString(styles.FooterKeyStyle.Render("y/enter") + styles.FooterDescStyle.Render(" confirm  "))
+	b.WriteString(styles.FooterKeyStyle.Render("n/esc") + styles.FooterDescStyle.Render(" cancel"))
+
+	content := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(styles.Blue).
+		Padding(confirmModalVPad, confirmModalHPad).
+		Render(b.String())
 
 	return centerModal(m, content)
 }
