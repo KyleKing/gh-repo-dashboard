@@ -260,23 +260,9 @@ func (m Model) renderPRDetail() string {
 	writePRDetailActions(&b, sectionStyle)
 
 	contentLines := strings.Count(b.String(), "\n")
-	statusLines := 0
-	if m.statusMessage != "" {
-		statusLines = 1
-	}
-	paddingNeeded := m.height - contentLines - statusLines - statusBarHeight
+	paddingNeeded := m.height - contentLines - statusBarHeight
 	if paddingNeeded > 0 {
 		b.WriteString(strings.Repeat("\n", paddingNeeded))
-	}
-
-	if m.statusMessage != "" {
-		statusStyle := lipgloss.NewStyle().
-			Foreground(styles.Green).
-			Background(styles.Surface0).
-			Padding(0, 1)
-		b.WriteString("\n")
-		b.WriteString(statusStyle.Render(m.statusMessage))
-		b.WriteString("\n")
 	}
 
 	footer := styles.FooterKeyStyle.Render(keyEsc) + styles.FooterDescStyle.Render(" back  ") +

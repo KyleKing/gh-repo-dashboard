@@ -78,6 +78,9 @@ func (m Model) renderScreen() string {
 	if m.commandMode {
 		return overlayBottomLine(content, m.commandInput.View(), m.height)
 	}
+	if m.statusMessage != "" {
+		return overlayBottomLine(content, styles.StatusMessageStyle.Render(m.statusMessage), m.height)
+	}
 
 	return content
 }

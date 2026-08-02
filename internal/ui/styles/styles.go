@@ -123,6 +123,11 @@ var (
 	FooterDescStyle = lipgloss.NewStyle().
 			Foreground(Subtext0)
 
+	StatusMessageStyle = lipgloss.NewStyle().
+				Foreground(Green).
+				Background(Surface0).
+				Padding(0, 1)
+
 	BorderStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(Surface1)
