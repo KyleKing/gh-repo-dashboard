@@ -22,6 +22,8 @@ type MockOperations struct {
 	VCSTypeFn               func() models.VCSType
 	FetchAllFn              func(ctx context.Context, repoPath string) (bool, string, error)
 	PruneRemoteFn           func(ctx context.Context, repoPath string) (bool, string, error)
+	PushBranchFn            func(ctx context.Context, repoPath, branch string, setUpstream bool) (bool, string, error)
+	SwitchBranchFn          func(ctx context.Context, repoPath, branch string) (bool, string, error)
 	CleanupMergedBranchesFn func(ctx context.Context, repoPath string, squashMerged []string) (bool, string, error)
 }
 
@@ -157,6 +159,30 @@ func (m *MockOperations) PruneRemote(ctx context.Context, repoPath string) (bool
 	}
 
 	return true, "Pruned", nil
+}
+
+// PushBranch implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (m *MockOperations) PushBranch(
+	ctx context.Context, repoPath, branch string, setUpstream bool,
+) (bool, string, error) {
+	if m.PushBranchFn != nil {
+		return m.PushBranchFn(ctx, repoPath, branch, setUpstream)
+	}
+
+	return true, "Pushed", nil
+}
+
+// SwitchBranch implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (m *MockOperations) SwitchBranch(ctx context.Context, repoPath, branch string) (bool, string, error) {
+	if m.SwitchBranchFn != nil {
+		return m.SwitchBranchFn(ctx, repoPath, branch)
+	}
+
+	return true, "Switched", nil
 }
 
 // CleanupMergedBranches implements Operations.

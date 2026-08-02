@@ -59,7 +59,13 @@ type Mutator interface {
 	// `git branch --merged`/`jj bookmark` can't detect on their own.
 	CleanupMergedBranches(ctx context.Context, repoPath string, squashMerged []string) (bool, string, error)
 	FetchAll(ctx context.Context, repoPath string) (bool, string, error)
+	// PushBranch pushes branch to origin along with the tags reachable from
+	// it. setUpstream records the tracking link for a branch that has none.
+	PushBranch(ctx context.Context, repoPath, branch string, setUpstream bool) (bool, string, error)
 	PruneRemote(ctx context.Context, repoPath string) (bool, string, error)
+	// SwitchBranch moves the working copy onto branch. It fails rather than
+	// carrying or discarding uncommitted changes.
+	SwitchBranch(ctx context.Context, repoPath, branch string) (bool, string, error)
 }
 
 // Operations abstracts the git/jj commands used to inspect and mutate a repository.

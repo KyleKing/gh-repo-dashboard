@@ -832,6 +832,82 @@ func TestGitFetchAllAndPruneRemote(t *testing.T) {
 	}
 }
 
+func TestGitPushAndSwitchBranch(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		canned     map[string]string
+		failures   map[string]error
+		run        func(context.Context, *vcs.GitOperations) (bool, string, error)
+		expectedOK bool
+		expected   string
+	}{
+		{
+			name:   "push follows tags",
+			canned: map[string]string{"git push --follow-tags origin feature": ""},
+			run: func(ctx context.Context, g *vcs.GitOperations) (bool, string, error) {
+				return g.PushBranch(ctx, testRepoPath, "feature", false)
+			},
+			expectedOK: true,
+			expected:   "Pushed feature to origin",
+		},
+		{
+			name:   "push sets upstream when asked",
+			canned: map[string]string{"git push --follow-tags --set-upstream origin feature": ""},
+			run: func(ctx context.Context, g *vcs.GitOperations) (bool, string, error) {
+				return g.PushBranch(ctx, testRepoPath, "feature", true)
+			},
+			expectedOK: true,
+			expected:   "Pushed feature to origin",
+		},
+		{
+			name:     "push failure reports the message",
+			failures: map[string]error{"git push --follow-tags origin feature": errNetworkDown},
+			run: func(ctx context.Context, g *vcs.GitOperations) (bool, string, error) {
+				return g.PushBranch(ctx, testRepoPath, "feature", false)
+			},
+			expectedOK: false,
+			expected:   "network down",
+		},
+		{
+			name:   "switch success",
+			canned: map[string]string{"git switch feature": ""},
+			run: func(ctx context.Context, g *vcs.GitOperations) (bool, string, error) {
+				return g.SwitchBranch(ctx, testRepoPath, "feature")
+			},
+			expectedOK: true,
+			expected:   "Switched to feature",
+		},
+		{
+			name:     "switch failure reports the message",
+			failures: map[string]error{"git switch feature": errNoRemote},
+			run: func(ctx context.Context, g *vcs.GitOperations) (bool, string, error) {
+				return g.SwitchBranch(ctx, testRepoPath, "feature")
+			},
+			expectedOK: false,
+			expected:   "no remote",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := stubCommands(t, tt.canned, tt.failures)
+
+			ok, msg, err := tt.run(ctx, vcs.NewGitOperations())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ok != tt.expectedOK {
+				t.Errorf("expected ok=%v, got %v", tt.expectedOK, ok)
+			}
+			if msg != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, msg)
+			}
+		})
+	}
+}
+
 const symbolicRefKey = "git symbolic-ref refs/remotes/origin/HEAD"
 
 //nolint:dupl // same table shape as TestJJCleanupMergedBranches, different VCS output formats/literals

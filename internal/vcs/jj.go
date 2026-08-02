@@ -431,6 +431,39 @@ func (j *JJOperations) FetchAll(ctx context.Context, repoPath string) (bool, str
 	return true, "Fetched from all remotes", nil
 }
 
+// PushBranch implements Operations. Pushing a bookmark carries the tags on the
+// commits it points at, so --follow-tags has no jj equivalent.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (j *JJOperations) PushBranch(
+	ctx context.Context, repoPath, branch string, setUpstream bool,
+) (bool, string, error) {
+	args := []string{"git", "push", "-b", branch}
+	if setUpstream {
+		args = append(args, "--allow-new")
+	}
+
+	if _, err := j.runJJ(ctx, repoPath, args...); err != nil {
+		//nolint:nilerr // failure is reported through the message, not the error field
+		return false, err.Error(), nil
+	}
+
+	return true, "Pushed " + branch + " to origin", nil
+}
+
+// SwitchBranch implements Operations, moving the working copy onto the
+// bookmark's own change rather than creating a child change.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (j *JJOperations) SwitchBranch(ctx context.Context, repoPath, branch string) (bool, string, error) {
+	if _, err := j.runJJ(ctx, repoPath, "edit", branch); err != nil {
+		//nolint:nilerr // failure is reported through the message, not the error field
+		return false, err.Error(), nil
+	}
+
+	return true, "Switched to " + branch, nil
+}
+
 // PruneRemote implements Operations.
 //
 //nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)

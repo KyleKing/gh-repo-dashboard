@@ -76,6 +76,16 @@ func (m *mockVCS) CleanupMergedBranches(_ context.Context, _ string, squashMerge
 	return true, testSuccessMsg, nil
 }
 
+//nolint:gocritic // matches vcs.Mutator.PushBranch's (ok bool, msg string, err error)
+func (*mockVCS) PushBranch(_ context.Context, _, _ string, _ bool) (bool, string, error) {
+	return true, testSuccessMsg, nil
+}
+
+//nolint:gocritic // matches vcs.Mutator.SwitchBranch's (ok bool, msg string, err error)
+func (*mockVCS) SwitchBranch(_ context.Context, _, _ string) (bool, string, error) {
+	return true, testSuccessMsg, nil
+}
+
 var _ vcs.Mutator = (*mockVCS)(nil)
 
 func TestFetchAll(t *testing.T) {

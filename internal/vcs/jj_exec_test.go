@@ -579,6 +579,77 @@ func TestJJGetRemoteURL(t *testing.T) {
 	}
 }
 
+func TestJJPushAndSwitchBranch(t *testing.T) {
+	t.Parallel()
+	pushKey := jjKey("git push -b feature")
+	pushNewKey := jjKey("git push -b feature --allow-new")
+	editKey := jjKey("edit feature")
+
+	tests := []struct {
+		name       string
+		canned     map[string]string
+		failures   map[string]error
+		run        func(context.Context, *vcs.JJOperations) (bool, string, error)
+		expectedOK bool
+		expected   string
+	}{
+		{
+			name:   "push existing bookmark",
+			canned: map[string]string{pushKey: ""},
+			run: func(ctx context.Context, j *vcs.JJOperations) (bool, string, error) {
+				return j.PushBranch(ctx, testRepoPath, "feature", false)
+			},
+			expectedOK: true,
+			expected:   "Pushed feature to origin",
+		},
+		{
+			name:   "push new bookmark allows creation",
+			canned: map[string]string{pushNewKey: ""},
+			run: func(ctx context.Context, j *vcs.JJOperations) (bool, string, error) {
+				return j.PushBranch(ctx, testRepoPath, "feature", true)
+			},
+			expectedOK: true,
+			expected:   "Pushed feature to origin",
+		},
+		{
+			name:     "push failure reports the message",
+			failures: map[string]error{pushKey: errNetworkDown},
+			run: func(ctx context.Context, j *vcs.JJOperations) (bool, string, error) {
+				return j.PushBranch(ctx, testRepoPath, "feature", false)
+			},
+			expectedOK: false,
+			expected:   "network down",
+		},
+		{
+			name:   "switch edits the bookmark's change",
+			canned: map[string]string{editKey: ""},
+			run: func(ctx context.Context, j *vcs.JJOperations) (bool, string, error) {
+				return j.SwitchBranch(ctx, testRepoPath, "feature")
+			},
+			expectedOK: true,
+			expected:   "Switched to feature",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := stubCommands(t, tt.canned, tt.failures)
+
+			ok, msg, err := tt.run(ctx, vcs.NewJJOperations())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ok != tt.expectedOK {
+				t.Errorf("expected ok=%v, got %v", tt.expectedOK, ok)
+			}
+			if msg != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, msg)
+			}
+		})
+	}
+}
+
 func TestJJFetchAllAndPruneRemote(t *testing.T) {
 	t.Parallel()
 	fetchKey := jjKey("git fetch --all-remotes")

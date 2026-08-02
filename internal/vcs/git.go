@@ -459,6 +459,38 @@ func (g *GitOperations) FetchAll(ctx context.Context, repoPath string) (bool, st
 	return true, "Fetched from all remotes", nil
 }
 
+// PushBranch implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (g *GitOperations) PushBranch(
+	ctx context.Context, repoPath, branch string, setUpstream bool,
+) (bool, string, error) {
+	args := []string{"push", "--follow-tags"}
+	if setUpstream {
+		args = append(args, "--set-upstream")
+	}
+	args = append(args, "origin", branch)
+
+	if _, err := g.runGit(ctx, repoPath, args...); err != nil {
+		//nolint:nilerr // failure is reported through the message, not the error field
+		return false, err.Error(), nil
+	}
+
+	return true, "Pushed " + branch + " to origin", nil
+}
+
+// SwitchBranch implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (g *GitOperations) SwitchBranch(ctx context.Context, repoPath, branch string) (bool, string, error) {
+	if _, err := g.runGit(ctx, repoPath, "switch", branch); err != nil {
+		//nolint:nilerr // failure is reported through the message, not the error field
+		return false, err.Error(), nil
+	}
+
+	return true, "Switched to " + branch, nil
+}
+
 // PruneRemote implements Operations.
 //
 //nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
