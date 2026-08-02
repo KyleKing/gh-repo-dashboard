@@ -29,13 +29,19 @@ Move with `j` and `k`, press `enter` to open a repo, and press `?` for the
 keymap. Set `scan_paths` in the [config file](./docs/configuration.md) once and
 `gh repo-dashboard` launches from anywhere with no arguments.
 
+Run it inside a repository and it opens that repo's branches directly, listing
+each branch with its pull request, CI checks, and which sibling checkout or
+worktree currently holds it. From there `c` switches branch, `p` pushes with
+`--follow-tags`, `N` opens a pull request, and `M` squash-merges one. Each of
+those asks for confirmation first.
+
 ## What it does not do
 
-- Commit, push, merge, rebase, or stage. The only writes are `fetch`, remote
-  prune, and deleting branches already merged upstream
-- Open or create pull requests. Use `gh pr` for that
-- Replace a single-repo client. Per-repo detail is read-only, so use lazygit or
-  gitui to work inside one repo
+- Commit, stage, rebase, or resolve conflicts. The writes it does make are
+  `fetch`, remote prune, deleting branches already merged upstream, switching
+  branch, pushing, and creating or squash-merging a pull request
+- Replace a single-repo client. Use lazygit or gitui for staging, hunk-level
+  work, and history surgery
 - Replace `gh`. Pull request data comes from the `gh` CLI, and every non-GitHub
   column still works when `gh` is missing or logged out
 - Edit your notes files. It reads the configured notes files and never writes them

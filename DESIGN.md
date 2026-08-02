@@ -165,10 +165,13 @@ the cursor uses Surface0.
 
 ### View hierarchy
 
-`ViewModeRepoList` (initial) lists repositories with Name/Branch/Status/PR/Template/Modified
-columns. `ViewModeRepoDetail` (Enter) drills into branches, stashes, worktrees,
-PRs, and notes with tab switching. `ViewModeFilter` (f), `ViewModeSort` (s), and `ViewModeHelp`
-(?) are modals, and `ViewModeBatchProgress` shows a progress bar during batch runs.
+`ViewModeRepoList` (initial) lists repositories with
+Name/Branch/Status/Peers/PR/Template/Modified columns. `ViewModeRepoDetail` (Enter) drills
+into branches, stashes, worktrees, PRs, and notes with tab switching; when discovery finds
+exactly one repo it opens directly, and esc still falls back to the one-row list.
+`ViewModeFilter` (f), `ViewModeSort` (s), and `ViewModeHelp` (?) are modals,
+`ViewModeConfirm` gates every write action, and `ViewModeBatchProgress` shows a progress bar
+during batch runs.
 
 Adding a view mode: add the const in `app/app.go`, rendering in a `view_*.go`
 file (dispatched from `renderView` in `view.go`), update handling in
@@ -193,6 +196,8 @@ Adding a keybinding: register it in `keymap.go`, handle it in `handleKey()`
 - Notes detection: every configured notes filename (`.doing`, `doing.md`, `doing.txt`, `TODO.md` by default; overridable via config) present at a repo root is collected as a `models.NoteFile`, not just the first match; surfaces as a count badge in the Status column, a first-line preview toggled with `v` on the repo list, a Notes tab in repo detail rendering each file's full content delineated by name, and the `has_notes` filter/predicate with the `nr` text object; detection is a plain file check outside the VCS abstraction
 - Configuration: optional TOML at `$XDG_CONFIG_HOME/gh-repo-dashboard/config.toml` (`internal/config`) supplies scan paths, depth, notes filenames, and cache TTLs; flags take precedence
 - Command history: `ExecuteCommand` records recognized commands (capped at 50), shared by the command bar, `:history`, the `@:` repeat key, and `--script` runs
+- Parallel checkouts: repos sharing a remote (`RepoSummary.RemoteRepo`, derived from the remote URL) are peers of each other, as are a repo's own worktrees/workspaces; `models.FindPeerCheckouts` and `models.WorktreeCheckouts` build the set, surfacing as the repo list's PEERS count, a repo-detail header badge, the branch list's CHECKED OUT column, and a branch-detail line. A repo with no known remote never peers with anything, since an empty remote would group every unrelated local-only repo
+- Branch and PR actions: `c` switches branch, `p` pushes with `--follow-tags`, `N` opens a PR, and `M` squash-merges one and deletes its head branch. Everything that touches the remote is parked behind `ViewModeConfirm` (`internal/app/actions.go`) rather than running on the keypress; switching is refused up front when the branch is already checked out here or held by a parallel checkout. Results arrive as `ActionResultMsg` and reload the repo's summary and detail
 - Cancellation: use `context.Context` and cancel when leaving views or quitting to avoid goroutine leaks
 
 ## Testing
