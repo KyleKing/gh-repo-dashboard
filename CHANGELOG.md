@@ -1,3 +1,22 @@
+## v1.4.0 (2026-08-03)
+
+### Feat
+
+- **pr**: show per-check CI rows and the latest comment in PR detail
+- **app**: switch, push, open, and squash-merge from the focused repo view
+- **vcs**: add branch switch, push --follow-tags, and gh PR create/squash-merge
+- **detail**: add PR, checks, and parallel-checkout columns to the branch list
+- **app**: open the focused repo view when the scan finds a single repo
+- **repos**: surface parallel checkouts of the same remote in the repo list
+- **app**: show remote protocol and config override badges in repo detail
+- **filters**: add ssh, https, and config_override predicate atoms
+- **vcs**: detect remote protocol and diff local git config against global
+- **models**: track remote protocol and git config overrides on RepoSummary
+
+### Fix
+
+- **app**: surface status messages in every view, not just PR detail
+
 ## v1.3.3 (2026-07-31)
 
 ### Fix
