@@ -60,6 +60,14 @@ func (m Model) renderRepoListBreadcrumbs() string {
 		badges = append(badges, styles.Badge(fmt.Sprintf("%d PRs", prCount), styles.PROpenStyle))
 	}
 
+	if conflicts := m.BranchConflictCount(); conflicts > 0 {
+		label := fmt.Sprintf("%s %d branch conflicts", conflictMark, conflicts)
+		if conflicts == 1 {
+			label = conflictMark + " 1 branch conflict"
+		}
+		badges = append(badges, styles.Badge(label, styles.WarningStyle))
+	}
+
 	if m.loading {
 		progress := fmt.Sprintf("Loading %d/%d", m.loadedCount, m.loadingCount)
 		badges = append(badges, styles.Badge(progress, styles.CountBadgeStyle))
@@ -330,7 +338,39 @@ func (m Model) peersCell(path string, base lipgloss.Style, selected bool) (strin
 		return emDash, base
 	}
 
-	return "⧉" + strconv.Itoa(len(peers)), withSelection(styles.CountStyle, selected)
+	cell := "⧉" + strconv.Itoa(len(peers))
+	if m.hasBranchConflict(path) {
+		return cell + conflictMark, withSelection(styles.WarningStyle, selected)
+	}
+
+	return cell, withSelection(styles.CountStyle, selected)
+}
+
+// conflictMark flags a repo whose branch is checked out somewhere else too.
+const conflictMark = "⚠"
+
+// hasBranchConflict reports whether the repo shares its branch with one of its
+// peer checkouts, the state where a commit made in one is invisible to the
+// other.
+func (m Model) hasBranchConflict(path string) bool {
+	summary, ok := m.summaries[path]
+	if !ok {
+		return false
+	}
+
+	return models.ConflictingBranches(summary.Branch, m.PeerCheckouts(path))[summary.Branch]
+}
+
+// BranchConflictCount counts the repos sharing a branch with a peer checkout.
+func (m Model) BranchConflictCount() int {
+	count := 0
+	for _, path := range m.filteredPaths {
+		if m.hasBranchConflict(path) {
+			count++
+		}
+	}
+
+	return count
 }
 
 func (m Model) renderTableRow(s models.RepoSummary, selected bool, layout table.Layout) string {

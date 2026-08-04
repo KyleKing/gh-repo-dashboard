@@ -333,18 +333,13 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return newM, nil
 	}
 
+	if newM, handled := m.handleModeKey(msg); handled {
+		return newM, nil
+	}
+
 	switch {
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit
-
-	case key.Matches(msg, m.keys.Help):
-		if m.viewMode == ViewModeHelp {
-			m.viewMode = ViewModeRepoList
-		} else {
-			m.viewMode = ViewModeHelp
-		}
-
-		return m, nil
 
 	case key.Matches(msg, m.keys.Enter):
 		return m.handleEnterKey()
@@ -355,29 +350,15 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Refresh):
 		return m.handleRefresh()
 
-	case key.Matches(msg, m.keys.Filter):
-		m.viewMode = ViewModeFilter
-		return m, nil
-
-	case key.Matches(msg, m.keys.Sort):
-		m.viewMode = ViewModeSort
-		m.sortCursor = 0
-
-		return m, nil
-
 	case key.Matches(msg, m.keys.Search):
-		m.searching = true
-		m.searchInput.SetValue("")
-		m.searchText = ""
-		m.searchInput.Focus()
-		m.updateFilteredPaths()
-		m.cursor = 0
-
-		return m, nil
+		return m.openSearch()
 
 	case key.Matches(msg, m.keys.NotesPreview):
 		m.notesPreviewOpen = !m.notesPreviewOpen
 		return m, nil
+
+	case key.Matches(msg, m.keys.Peers):
+		return m.openCheckouts()
 
 	case key.Matches(msg, m.keys.FetchAll),
 		key.Matches(msg, m.keys.PruneRemote),
@@ -387,6 +368,47 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 	}
+
+	return m, nil
+}
+
+// handleModeKey handles the keys that only swap which full-screen mode is
+// showing. Handled is false if msg didn't match any of them.
+func (m Model) handleModeKey(msg tea.KeyMsg) (Model, bool) {
+	switch {
+	case key.Matches(msg, m.keys.Help):
+		if m.viewMode == ViewModeHelp {
+			m.viewMode = ViewModeRepoList
+		} else {
+			m.viewMode = ViewModeHelp
+		}
+
+		return m, true
+
+	case key.Matches(msg, m.keys.Filter):
+		m.viewMode = ViewModeFilter
+		return m, true
+
+	case key.Matches(msg, m.keys.Sort):
+		m.viewMode = ViewModeSort
+		m.sortCursor = 0
+
+		return m, true
+	}
+
+	return m, false
+}
+
+// openSearch starts a fresh search. The buffer and the committed query are
+// both cleared, so the prompt and the filtered list agree from the first
+// keystroke instead of appending to whatever was searched last.
+func (m Model) openSearch() (tea.Model, tea.Cmd) {
+	m.searching = true
+	m.searchInput.SetValue("")
+	m.searchText = ""
+	m.searchInput.Focus()
+	m.updateFilteredPaths()
+	m.cursor = 0
 
 	return m, nil
 }
@@ -444,6 +466,15 @@ func (m Model) handleEnterKey() (tea.Model, tea.Cmd) {
 func (m Model) handleBackKey() (tea.Model, tea.Cmd) {
 	switch m.viewMode {
 	case ViewModeRepoDetail:
+		// A jump to a peer checkout pushed the repo it came from; walk back to
+		// that repo before leaving the focused view entirely.
+		if last := len(m.repoStack) - 1; last >= 0 {
+			previous := m.repoStack[last]
+			m.repoStack = m.repoStack[:last]
+
+			return m.openRepo(previous)
+		}
+
 		m.viewMode = ViewModeRepoList
 	case ViewModeBranchDetail:
 		m.viewMode = ViewModeRepoDetail
@@ -530,8 +561,7 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case key.Matches(msg, m.keys.Back):
-		m.viewMode = ViewModeRepoList
-		return m, nil
+		return m.handleBackKey()
 
 	case key.Matches(msg, m.keys.Refresh):
 		return m.handleRefresh()
@@ -633,6 +663,9 @@ func (m Model) handleDetailEnterKey() (tea.Model, tea.Cmd) {
 
 		return m, tea.Batch(loadBranchDetailCmd(m.selectedRepo, m.selectedBranch.Name), m.spinner.Tick)
 
+	case m.detailTab == DetailTabWorktrees:
+		return m.jumpToCheckout()
+
 	case m.detailTab == DetailTabPRs && m.detailCursor < len(m.prs):
 		m.selectedPR = m.prs[m.detailCursor]
 		// Progressive loading: show basic info from the list immediately,
@@ -645,6 +678,62 @@ func (m Model) handleDetailEnterKey() (tea.Model, tea.Cmd) {
 	default:
 		return m, nil
 	}
+}
+
+// openCheckouts drills into the repo under the cursor and lands on its
+// parallel-checkout tab, so the peer set is one key away from the fleet list.
+func (m Model) openCheckouts() (tea.Model, tea.Cmd) {
+	if m.cursor >= len(m.filteredPaths) {
+		return m, nil
+	}
+
+	next, cmd := m.openRepo(m.filteredPaths[m.cursor])
+
+	opened, ok := next.(Model)
+	if !ok {
+		return next, cmd
+	}
+	opened.detailTab = DetailTabWorktrees
+
+	return opened, cmd
+}
+
+// jumpToCheckout re-roots the focused view on the parallel checkout under the
+// cursor, pushing the current repo so esc walks back out. Checkouts that
+// discovery never scanned (a worktree outside the scan paths) have no summary
+// to show, so they are left alone.
+func (m Model) jumpToCheckout() (tea.Model, tea.Cmd) {
+	checkouts := m.RepoCheckouts()
+	if m.detailCursor >= len(checkouts) {
+		return m, nil
+	}
+
+	target := checkouts[m.detailCursor].Path
+	if _, known := m.summaries[target]; !known {
+		m.statusMessage = "No scanned repo at " + target
+		return m, nil
+	}
+
+	m.repoStack = append(m.repoStack, m.selectedRepo)
+
+	return m.openRepo(target)
+}
+
+// openRepo points the focused view at a repo and clears the tab data the
+// previous one left behind.
+func (m Model) openRepo(path string) (tea.Model, tea.Cmd) {
+	m.selectedRepo = path
+	m.viewMode = ViewModeRepoDetail
+	m.detailTab = DetailTabBranches
+	m.detailCursor = 0
+	m.branches = nil
+	m.stashes = nil
+	m.worktrees = nil
+	m.prs = nil
+	m.notesFiles = nil
+	m.detailLoading = true
+
+	return m, tea.Batch(loadDetailCmd(path), m.spinner.Tick)
 }
 
 func (m Model) handleBranchDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -684,7 +773,7 @@ func (m Model) detailListLen() int {
 	case DetailTabStashes:
 		return len(m.stashes)
 	case DetailTabWorktrees:
-		return len(m.worktrees)
+		return len(m.RepoCheckouts())
 	case DetailTabPRs:
 		return len(m.prs)
 	case DetailTabNotes:

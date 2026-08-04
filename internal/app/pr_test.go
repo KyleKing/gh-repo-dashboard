@@ -57,7 +57,12 @@ func TestDetailListLenWithPRs(t *testing.T) {
 	m := New(nil, 1)
 	m.branches = make([]models.BranchInfo, 5)
 	m.stashes = make([]models.StashDetail, 3)
-	m.worktrees = make([]models.WorktreeInfo, 2)
+	m.selectedRepo = testRepo1Path
+	m.worktrees = []models.WorktreeInfo{
+		{Path: testRepo1Path, Branch: mainBranchName},
+		{Path: "/repos/app-wt-a", Branch: "feature/a"},
+		{Path: "/repos/app-wt-b", Branch: "feature/b"},
+	}
 	m.prs = []models.PRInfo{
 		{Number: 1, Title: "PR 1"},
 		{Number: 2, Title: "PR 2"},
@@ -74,9 +79,11 @@ func TestDetailListLenWithPRs(t *testing.T) {
 		t.Errorf("expected 3 stashes, got %d", m.detailListLen())
 	}
 
+	// The tab lists parallel checkouts, so the repo's own working directory is
+	// not one of them.
 	m.detailTab = DetailTabWorktrees
 	if m.detailListLen() != 2 {
-		t.Errorf("expected 2 worktrees, got %d", m.detailListLen())
+		t.Errorf("expected 2 parallel checkouts, got %d", m.detailListLen())
 	}
 
 	m.detailTab = DetailTabPRs

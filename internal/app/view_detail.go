@@ -2,8 +2,8 @@ package app
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 
@@ -138,13 +138,15 @@ func (m Model) detailFooterHints(width int) string {
 			footerHint{key: "N", desc: "new PR", priority: 6},
 			footerHint{key: "M", desc: "merge", priority: 5},
 		)
+	case DetailTabWorktrees:
+		hints = append(hints, footerHint{key: keyEnter, desc: "jump", priority: 8})
 	case DetailTabPRs:
 		hints = append(hints,
 			footerHint{key: keyEnter, desc: "PR", priority: 8},
 			footerHint{key: "M", desc: "squash-merge", priority: 5},
 		)
 	default:
-		// stashes, worktrees, and notes have no tab-specific actions
+		// stashes and notes have no tab-specific actions
 	}
 
 	parts := make([]string, 0, len(hints))
@@ -159,9 +161,9 @@ func (m Model) renderDetailTabs() string {
 	summary := m.summaries[m.selectedRepo]
 	isJJ := summary.VCSType == models.VCSTypeJJ
 
-	worktreeLabel := "Worktrees"
+	checkoutLabel := "Checkouts"
 	if isJJ {
-		worktreeLabel = "Workspaces"
+		checkoutLabel = "Workspaces"
 	}
 
 	notesCount := len(m.notesFiles)
@@ -174,7 +176,7 @@ func (m Model) renderDetailTabs() string {
 	}{
 		{tabNameBranches, "Br", DetailTabBranches, len(m.branches)},
 		{tabNameStashes, "St", DetailTabStashes, len(m.stashes)},
-		{worktreeLabel, "Wt", DetailTabWorktrees, len(m.worktrees)},
+		{checkoutLabel, "Ck", DetailTabWorktrees, len(m.RepoCheckouts())},
 		{tabNamePRs, "PR", DetailTabPRs, len(m.prs)},
 		{tabNameNotes, "No", DetailTabNotes, notesCount},
 	}
@@ -454,7 +456,7 @@ func (m Model) renderNotesTab() string {
 }
 
 // renderWorktreesPlaceholder renders the loading or empty state for the
-// worktrees tab, using jj's "workspace" wording when the repo is a jj repo.
+// checkouts tab, using jj's "workspace" wording when the repo is a jj repo.
 func (m Model) renderWorktreesPlaceholder(isJJ bool) string {
 	if isJJ {
 		if m.detailLoading {
@@ -467,57 +469,83 @@ func (m Model) renderWorktreesPlaceholder(isJJ bool) string {
 	}
 
 	if m.detailLoading {
-		return m.loadingPlaceholder("Loading worktrees")
+		return m.loadingPlaceholder("Loading checkouts")
 	}
 
-	return m.emptyPlaceholder("No worktrees found",
-		"Worktrees allow working on multiple branches simultaneously.")
+	return m.emptyPlaceholder("This is the only checkout of the repo",
+		"Sibling clones under the scan paths and this repo's own worktrees\n"+
+			"would both be listed here.")
 }
 
+// renderWorktreeList renders every parallel checkout of the selected repo:
+// sibling clones found by discovery plus this repo's own worktrees. Two
+// checkouts on one branch are flagged, because that is the state where a
+// commit made in one is invisible to the other.
 func (m Model) renderWorktreeList() string {
 	summary := m.summaries[m.selectedRepo]
-	isJJ := summary.VCSType == models.VCSTypeJJ
+	checkouts := m.RepoCheckouts()
 
-	if len(m.worktrees) == 0 {
-		return m.renderWorktreesPlaceholder(isJJ)
+	if len(checkouts) == 0 {
+		return m.renderWorktreesPlaceholder(summary.VCSType == models.VCSTypeJJ)
 	}
 
-	layout := fitDetailCols(worktreeColSpecs, m.width)
+	conflicts := models.ConflictingBranches(summary.Branch, checkouts)
+	layout := fitDetailCols(checkoutColSpecs, m.width)
 	rows := []string{detailHeader(layout)}
 
-	for i, wt := range m.worktrees {
+	for i, checkout := range checkouts {
 		selected := i == m.detailCursor
 		style := rowStyleFor(selected)
-		branchStyleLocal := withSelection(styles.BranchStyle, selected)
 
-		values := map[string]string{
-			colWorktreePath:   filepath.Base(wt.Path),
-			colWorktreeBranch: wt.Branch,
-			colWorktreeState:  worktreeState(wt),
+		branch := checkout.Branch
+		branchStyle := styles.BranchStyle
+		if conflicts[branch] {
+			// The mark rides inside the column so it survives collapse instead
+			// of being pushed past the frame's edge.
+			branch += " " + conflictMark
+			branchStyle = styles.WarningStyle
 		}
 
-		cells := renderCells(layout, values, map[string]lipgloss.Style{colWorktreeBranch: branchStyleLocal}, &style)
-		rows = append(rows, detailRow(rowCursorFor(selected), layout, cells))
+		values := map[string]string{
+			colCheckoutName:   checkout.Folder(),
+			colCheckoutKind:   checkout.Kind(),
+			colCheckoutBranch: branch,
+			colCheckoutState:  checkoutState(checkout),
+			colCheckoutCommit: relativeOrDash(checkout.LastCommit),
+		}
+		cellStyles := map[string]lipgloss.Style{
+			colCheckoutBranch: withSelection(branchStyle, selected),
+		}
+
+		rows = append(rows, detailRow(rowCursorFor(selected), layout, renderCells(layout, values, cellStyles, &style)))
 	}
 
 	return strings.Join(rows, "\n")
 }
 
-// worktreeState summarizes a worktree's bare and locked flags.
-func worktreeState(wt models.WorktreeInfo) string {
-	var flags []string
-	if wt.IsBare {
-		flags = append(flags, "bare")
-	}
-	if wt.IsLocked {
-		flags = append(flags, "locked")
+// checkoutState summarizes a checkout's tracking position, dirt, and lock.
+func checkoutState(c models.PeerCheckout) string {
+	parts := []string{}
+	if c.Dirty {
+		parts = append(parts, "dirty")
 	}
 
-	if len(flags) == 0 {
-		return "active"
+	parts = append(parts, c.TrackingSummary())
+
+	if c.IsLocked {
+		parts = append(parts, "locked")
 	}
 
-	return strings.Join(flags, ", ")
+	return strings.Join(parts, " ")
+}
+
+// relativeOrDash renders a timestamp as an age, or emDash when it is unknown.
+func relativeOrDash(t time.Time) string {
+	if t.IsZero() {
+		return emDash
+	}
+
+	return models.RelativeTime(t)
 }
 
 func (m Model) renderPRList() string {

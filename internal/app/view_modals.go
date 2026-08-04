@@ -51,6 +51,7 @@ func (m Model) renderHelp() string {
 		{
 			"Branch & PR Actions",
 			[]struct{ key, desc string }{
+				{"]", "Parallel checkouts of the selected repo"},
 				{"c", "Switch to the selected branch"},
 				{"p", "Push branch and its tags (--follow-tags)"},
 				{"N", "Create a PR for the selected branch"},

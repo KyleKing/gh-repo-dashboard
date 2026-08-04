@@ -84,7 +84,8 @@ func TestFindPeerCheckoutsCarriesTracking(t *testing.T) {
 
 func TestTrackingSummaryInSync(t *testing.T) {
 	t.Parallel()
-	if got := (models.PeerCheckout{}).TrackingSummary(); got != "✓" {
+	empty := models.PeerCheckout{}
+	if got := empty.TrackingSummary(); got != "✓" {
 		t.Errorf("expected '✓', got %q", got)
 	}
 }

@@ -65,12 +65,6 @@ and `git log` are the record.
 The local-data half of [fleet-navigation.md](docs/design/fleet-navigation.md).
 Zero API cost.
 
-- Peers panel: every checkout of the same remote with kind, branch, dirty
-  state, and last commit; Enter jumps the dashboard to that checkout on the
-  existing drill-down stack
-- Same-branch conflict flag on the panel, the repo list PEERS cell (`⧉2⚠`),
-  and a fleet-header count, so the lose-local-commits hazard is visible from
-  the top
 - `:prs` fleet map: open PRs joined against cached local branch lists (which
   checkout holds the head ref), plus local branches with commits and no open
   PR

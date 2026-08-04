@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"time"
 )
 
 // PeerCheckout is another working directory holding the same remote repository:
@@ -13,17 +14,29 @@ type PeerCheckout struct {
 	Branch     string
 	Ahead      int
 	Behind     int
+	LastCommit time.Time
 	Dirty      bool
 	IsWorktree bool
+	IsLocked   bool
+}
+
+// Kind names how the checkout relates to the repo: a sibling clone discovered
+// by the same scan, or a worktree of this one.
+func (p *PeerCheckout) Kind() string {
+	if p.IsWorktree {
+		return "worktree"
+	}
+
+	return "clone"
 }
 
 // Folder returns the checkout's directory name.
-func (p PeerCheckout) Folder() string {
+func (p *PeerCheckout) Folder() string {
 	return filepath.Base(p.Path)
 }
 
 // TrackingSummary renders the checkout's ahead/behind counts, or a checkmark when in sync.
-func (p PeerCheckout) TrackingSummary() string {
+func (p *PeerCheckout) TrackingSummary() string {
 	summary := ""
 	if p.Ahead > 0 {
 		summary += "↑" + strconv.Itoa(p.Ahead)
@@ -57,11 +70,12 @@ func FindPeerCheckouts(current *RepoSummary, all []RepoSummary) []PeerCheckout {
 		}
 
 		peers = append(peers, PeerCheckout{
-			Path:   summary.Path,
-			Branch: summary.Branch,
-			Ahead:  summary.Ahead,
-			Behind: summary.Behind,
-			Dirty:  summary.UncommittedCount() > 0,
+			Path:       summary.Path,
+			Branch:     summary.Branch,
+			Ahead:      summary.Ahead,
+			Behind:     summary.Behind,
+			LastCommit: summary.LastModified,
+			Dirty:      summary.UncommittedCount() > 0,
 		})
 	}
 
@@ -83,6 +97,7 @@ func WorktreeCheckouts(repoPath string, worktrees []WorktreeInfo) []PeerCheckout
 			Path:       wt.Path,
 			Branch:     wt.Branch,
 			IsWorktree: true,
+			IsLocked:   wt.IsLocked,
 		})
 	}
 
@@ -91,20 +106,26 @@ func WorktreeCheckouts(repoPath string, worktrees []WorktreeInfo) []PeerCheckout
 	return peers
 }
 
-// MergeCheckouts concatenates checkout lists, keeping the first entry for any
-// repeated path so a sibling clone's richer tracking data wins over a bare
-// worktree entry for the same directory.
+// MergeCheckouts concatenates checkout lists, keeping the first entry's
+// tracking data for any repeated path so a sibling clone's richer counts win
+// over a sparse worktree entry. The worktree and lock flags still carry over,
+// because a directory discovered as its own clone is a worktree all the same.
 func MergeCheckouts(lists ...[]PeerCheckout) []PeerCheckout {
-	seen := make(map[string]bool)
+	index := make(map[string]int)
 
 	var merged []PeerCheckout
 	for _, list := range lists {
 		for _, checkout := range list {
-			if seen[checkout.Path] {
+			at, seen := index[checkout.Path]
+			if !seen {
+				index[checkout.Path] = len(merged)
+				merged = append(merged, checkout)
+
 				continue
 			}
-			seen[checkout.Path] = true
-			merged = append(merged, checkout)
+
+			merged[at].IsWorktree = merged[at].IsWorktree || checkout.IsWorktree
+			merged[at].IsLocked = merged[at].IsLocked || checkout.IsLocked
 		}
 	}
 
@@ -126,6 +147,32 @@ func CheckoutForBranch(peers []PeerCheckout, branch string) (PeerCheckout, bool)
 	}
 
 	return PeerCheckout{}, false
+}
+
+// ConflictingBranches returns the branches held by more than one checkout of
+// the same repo, counting the repo's own branch. Two checkouts on one branch is
+// the state that silently loses local commits, so it is worth flagging wherever
+// a checkout is named.
+func ConflictingBranches(ownBranch string, peers []PeerCheckout) map[string]bool {
+	counts := make(map[string]int, len(peers)+1)
+	if ownBranch != "" {
+		counts[ownBranch]++
+	}
+
+	for _, peer := range peers {
+		if peer.Branch != "" {
+			counts[peer.Branch]++
+		}
+	}
+
+	conflicts := make(map[string]bool)
+	for branch, count := range counts {
+		if count > 1 {
+			conflicts[branch] = true
+		}
+	}
+
+	return conflicts
 }
 
 func sortCheckouts(peers []PeerCheckout) {

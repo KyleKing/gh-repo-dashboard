@@ -30,6 +30,7 @@ type KeyMap struct {
 	Search       key.Binding
 	Reverse      key.Binding
 	NotesPreview key.Binding
+	Peers        key.Binding
 
 	FetchAll      key.Binding
 	PruneRemote   key.Binding
@@ -98,6 +99,10 @@ func DefaultKeyMap() KeyMap {
 	km.Repeat = key.NewBinding(
 		key.WithKeys("@"),
 		key.WithHelp("@:", "repeat :command"),
+	)
+	km.Peers = key.NewBinding(
+		key.WithKeys("]"),
+		key.WithHelp("]", "parallel checkouts"),
 	)
 
 	return km

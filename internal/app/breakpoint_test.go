@@ -115,7 +115,7 @@ func TestCompactDetailTabsAbbreviate(t *testing.T) {
 	m.branches = []models.BranchInfo{{Name: "main", IsCurrent: true}}
 
 	tabs := plainText(m.renderDetailTabs())
-	for _, want := range []string{"Br 1", "St 0", "Wt 0", "PR 0", "No 0"} {
+	for _, want := range []string{"Br 1", "St 0", "Ck 0", "PR 0", "No 0"} {
 		if !strings.Contains(tabs, want) {
 			t.Errorf("compact tab bar is missing %q: %q", want, tabs)
 		}

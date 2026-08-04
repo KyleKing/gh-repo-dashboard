@@ -79,6 +79,10 @@ type Model struct {
 
 	viewMode     ViewMode
 	selectedRepo string
+
+	// repoStack records the repos a peer-checkout jump came from, so esc walks
+	// back through them before leaving the focused view.
+	repoStack    []string
 	width        int
 	height       int
 	loading      bool

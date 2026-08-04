@@ -24,9 +24,11 @@ const (
 	colStashMessage = "MESSAGE"
 	colStashDate    = "DATE"
 
-	colWorktreePath   = "PATH"
-	colWorktreeBranch = "BRANCH"
-	colWorktreeState  = "STATUS"
+	colCheckoutName   = "CHECKOUT"
+	colCheckoutKind   = "KIND"
+	colCheckoutBranch = "BRANCH"
+	colCheckoutState  = "STATUS"
+	colCheckoutCommit = "LAST COMMIT"
 
 	colPRNumber = "NUMBER"
 	colPRTitle  = "TITLE"
@@ -71,10 +73,12 @@ var (
 		{Key: colStashDate, Title: colStashDate, Min: 12, Priority: 1},
 	}
 
-	worktreeColSpecs = []table.Column{
-		{Key: colWorktreePath, Title: colWorktreePath, Min: 16, Weight: 2},
-		{Key: colWorktreeBranch, Title: colWorktreeBranch, Min: 14, Weight: 1},
-		{Key: colWorktreeState, Title: colWorktreeState, Min: 8, Priority: 1},
+	checkoutColSpecs = []table.Column{
+		{Key: colCheckoutName, Title: colCheckoutName, Min: 16, Weight: 2},
+		{Key: colCheckoutKind, Title: colCheckoutKind, Min: 8, Priority: 2},
+		{Key: colCheckoutBranch, Title: colCheckoutBranch, Min: 14, Weight: 1},
+		{Key: colCheckoutState, Title: colCheckoutState, Min: 10},
+		{Key: colCheckoutCommit, Title: colCheckoutCommit, Min: 12, Priority: 1},
 	}
 
 	prColSpecs = []table.Column{

@@ -51,8 +51,8 @@ func TestDetailTabs_LoadingStateIsDistinctFromEmpty(t *testing.T) {
 		{
 			name:        "worktrees",
 			render:      Model.renderWorktreeList,
-			wantLoading: "Loading worktrees...",
-			wantEmpty:   "No worktrees found",
+			wantLoading: "Loading checkouts...",
+			wantEmpty:   "This is the only checkout of the repo",
 		},
 		{
 			name:        "notes",
