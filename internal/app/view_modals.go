@@ -66,6 +66,16 @@ func (m Model) renderHelp() string {
 			},
 		},
 		{
+			"Command Mode",
+			[]struct{ key, desc string }{
+				{":", "Command prompt (:filter dirty and has_pr, :help)"},
+				{"@:", "Repeat the last command"},
+				{":history", "Recent commands, newest first"},
+				{"F/P/C + object", "Run an operator over a text object (Fdr fetches dirty repos)"},
+				{textObjectKeys(), textObjectNames()},
+			},
+		},
+		{
 			"General",
 			[]struct{ key, desc string }{
 				{"r/ctrl+r", "Refresh all data (clears cache)"},

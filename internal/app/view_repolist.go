@@ -409,6 +409,7 @@ func (m Model) renderFooter() string {
 		{"f", nameFilter},
 		{"s", nameSort},
 		{"/", "search"},
+		{":", "command"},
 		{"r", nameRefresh},
 		{"?", nameHelp},
 		{"q", nameQuit},

@@ -71,9 +71,6 @@ can ship while the focused view is still in design.
 The fixes from the 2026-08-03 critique plus the rendering foundation every
 later milestone draws on.
 
-- Command-layer discoverability quick wins: a `:` hint in the footer, and a
-  Command Mode section in the `?` overlay covering `:`, `@:`, and text
-  objects
 - Close the fixed critique items: NO_COLOR and the empty-state hint are done
   and need only their roadmap entries retired
 
