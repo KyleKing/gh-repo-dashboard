@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -97,6 +98,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ActionResultMsg:
 		return m.handleActionResult(msg)
+
+	case PRMapLoadedMsg:
+		if m.prMap == nil {
+			m.prMap = make(map[string]PRMapLoadedMsg)
+		}
+		m.prMap[msg.Path] = msg
+
+		return m, nil
 
 	case PRCountLoadedMsg:
 		if m.prCount == nil {
@@ -196,6 +205,8 @@ func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleBatchKey(msg)
 	case ViewModeConfirm:
 		return m.handleConfirmKey(msg)
+	case ViewModePRMap:
+		return m.handlePRMapKey(msg)
 	default:
 		return m.handleKey(msg)
 	}
@@ -397,6 +408,88 @@ func (m Model) handleModeKey(msg tea.KeyMsg) (Model, bool) {
 	}
 
 	return m, false
+}
+
+// handlePRMapKey drives the fleet map: movement, opening the repo behind a
+// row, and opening a pull request in the browser.
+func (m Model) handlePRMapKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	entries := m.buildPRMap()
+
+	switch {
+	case key.Matches(msg, m.keys.Quit):
+		return m, tea.Quit
+
+	case key.Matches(msg, m.keys.Back):
+		m.viewMode = ViewModeRepoList
+		m.prMap = nil
+		m.prMapCursor = 0
+
+		return m, nil
+
+	case key.Matches(msg, m.keys.Up):
+		m.prMapCursor = max(m.prMapCursor-1, 0)
+		return m, nil
+
+	case key.Matches(msg, m.keys.Down):
+		m.prMapCursor = min(m.prMapCursor+1, max(len(entries)-1, 0))
+		return m, nil
+
+	case key.Matches(msg, m.keys.Top):
+		m.prMapCursor = 0
+		return m, nil
+
+	case key.Matches(msg, m.keys.Bottom):
+		m.prMapCursor = max(len(entries)-1, 0)
+		return m, nil
+
+	case key.Matches(msg, m.keys.Enter):
+		return m.openPRMapRepo(entries)
+
+	case key.Matches(msg, m.keys.OpenURL):
+		if m.prMapCursor < len(entries) && entries[m.prMapCursor].HasPR() {
+			return m, openURLCmd(entries[m.prMapCursor].PR.URL)
+		}
+
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// openPRMapRepo drills into the repo behind the row under the cursor.
+func (m Model) openPRMapRepo(entries []prMapEntry) (tea.Model, tea.Cmd) {
+	if m.prMapCursor >= len(entries) {
+		return m, nil
+	}
+
+	repo := entries[m.prMapCursor].Repo
+	for _, path := range m.filteredPaths {
+		if filepath.Base(path) == repo {
+			m.prMap = nil
+			m.prMapCursor = 0
+
+			return m.openRepo(path)
+		}
+	}
+
+	return m, nil
+}
+
+// openPRMap loads every visible repo's pull requests and branch list, then
+// shows the fleet map. The pull request call is the per-repo list the detail
+// view already makes; the branch list is local git.
+func (m Model) openPRMap() (Model, tea.Cmd) {
+	m.viewMode = ViewModePRMap
+	m.prMap = make(map[string]PRMapLoadedMsg, len(m.filteredPaths))
+	m.prMapCursor = 0
+
+	cmds := make([]tea.Cmd, 0, len(m.filteredPaths)+1)
+	for _, path := range m.filteredPaths {
+		cmds = append(cmds, loadPRMapCmd(path, m.summaries[path].Upstream))
+	}
+	cmds = append(cmds, m.spinner.Tick)
+
+	return m, tea.Batch(cmds...)
 }
 
 // openSearch starts a fresh search. The buffer and the committed query are

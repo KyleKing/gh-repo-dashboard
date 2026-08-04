@@ -35,6 +35,8 @@ func (v ViewMode) String() string {
 		return nameFilter
 	case ViewModeSort:
 		return nameSort
+	case ViewModePRMap:
+		return "prmap"
 	case ViewModeBatchProgress:
 		return "batch"
 	default:

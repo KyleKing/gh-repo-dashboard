@@ -27,6 +27,7 @@ const (
 	ViewModeSort
 	ViewModeBatchProgress
 	ViewModeConfirm
+	ViewModePRMap
 )
 
 // DetailTab identifies which tab is active on the repo detail screen.
@@ -82,7 +83,13 @@ type Model struct {
 
 	// repoStack records the repos a peer-checkout jump came from, so esc walks
 	// back through them before leaving the focused view.
-	repoStack    []string
+	repoStack []string
+
+	// prMap holds the fleet map's per-repo pull requests and branch lists,
+	// keyed by repo path and populated only while ":prs" is open.
+	prMap       map[string]PRMapLoadedMsg
+	prMapCursor int
+
 	width        int
 	height       int
 	loading      bool

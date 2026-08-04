@@ -125,7 +125,7 @@ func (m Model) renderOverviewPane(summary models.RepoSummary, compact bool) stri
 func (m Model) detailFooterHints(width int) string {
 	hints := []footerHint{
 		{key: keyTab, desc: "tabs", priority: 3},
-		{key: "j/k", desc: "nav", priority: 2},
+		{key: keyNavPair, desc: descNav, priority: 2},
 		{key: keyEsc, desc: "back", priority: 9},
 	}
 

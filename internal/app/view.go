@@ -122,6 +122,8 @@ func (m Model) renderView() string {
 	switch m.viewMode {
 	case ViewModeHelp:
 		return m.renderHelp()
+	case ViewModePRMap:
+		return m.renderPRMap()
 	case ViewModeRepoDetail:
 		return m.renderRepoDetail()
 	case ViewModeBranchDetail:

@@ -128,6 +128,13 @@ func DefaultRegistry() Registry {
 			},
 		},
 		historyCommand(),
+		Command{
+			Name:        "prs",
+			Description: "Map open PRs to the local branches and checkouts that hold them",
+			Run: func(m Model, _ []string) (Model, tea.Cmd) {
+				return m.openPRMap()
+			},
+		},
 		batchCommand("prune",
 			"Prune remote refs in visible repos, optionally scoped: :prune [predicate]",
 			"Prune Remote", batchPruneRemoteCmd),

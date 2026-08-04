@@ -8,14 +8,15 @@ Architecture and domain context live in [DESIGN.md](DESIGN.md); Go and workflow
 conventions live in [AGENTS.md](AGENTS.md). Design docs backing the milestones
 below live in `docs/design/`:
 
-- [fleet-navigation.md](docs/design/fleet-navigation.md), peers, the PR-to-local
-  map, PR flows, CI, and the API budget (M16, M17)
+- [fleet-navigation.md](docs/design/fleet-navigation.md), PR flows, CI, and the
+  API budget (M17)
 
 The column engine lives in `internal/ui/table` and every table is sized by it.
 `internal/app/view_overview.go` holds the repo overview pane, mounted both by
 the wide layout's preview panel and by the focused repo view. Scenes live in
 `internal/app/scene.go` and are derived from the active tab, so other views can
-adopt the same pattern by defining their own scene list.
+adopt the same pattern by defining their own scene list. The `:prs` fleet map
+lives in `internal/app/prmap.go`.
 
 ## Vision
 
@@ -49,30 +50,15 @@ A layered pyramid:
   sequences and generate `docs/USAGE.md` (`mise run docs:usage`);
   `TestUsageDocsCurrent` fails CI when the docs go stale
 
-M1 through M15 landed through 2026-08-04 and are not tracked here. `CHANGELOG.md`
+M1 through M16 landed through 2026-08-04 and are not tracked here. `CHANGELOG.md`
 and `git log` are the record.
 
 ## Sequence at a glance
 
 | Milestone | Theme | Depends on |
 |-----------|-------|------------|
-| M16 | Peers panel, same-branch conflicts, PR-to-local map | — |
-| M17 | PR activity, PR flows, CI on the default branch | M16 |
+| M17 | PR activity, PR flows, CI on the default branch | — |
 | M18 | `--cli` fleet assessment (assess.sh replacement) | shares the CI fetch with M17 |
-
-## M16: peers and the PR-to-local map
-
-The local-data half of [fleet-navigation.md](docs/design/fleet-navigation.md).
-Zero API cost.
-
-- `:prs` fleet map: open PRs joined against cached local branch lists (which
-  checkout holds the head ref), plus local branches with commits and no open
-  PR
-
-Exit criteria: two checkouts on one branch are flagged at list, panel, and
-header level; the map answers "where is the branch for PR #N" and "which local
-branches have no PR" for the real fleet without new gh calls beyond the
-existing per-repo PR list.
 
 ## M17: PR flows and CI
 

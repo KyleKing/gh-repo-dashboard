@@ -72,6 +72,7 @@ func (m Model) renderHelp() string {
 				{":", "Command prompt (:filter dirty and has_pr, :help)"},
 				{"@:", "Repeat the last command"},
 				{":history", "Recent commands, newest first"},
+				{":prs", "Map open PRs to the branches and checkouts holding them"},
 				{"F/P/C + object", "Run an operator over a text object (Fdr fetches dirty repos)"},
 				{textObjectKeys(), textObjectNames()},
 			},

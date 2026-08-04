@@ -215,13 +215,19 @@ func (m Model) visibleRepoRange(rowHeight int) repoWindow {
 		availableLines--
 	}
 
-	visible := max(availableLines/rowHeight, 1)
+	return visibleRange(m.cursor, len(m.filteredPaths), availableLines/rowHeight)
+}
 
-	start := max(m.cursor-visible/visibleWindowCenter, 0)
+// visibleRange returns the half-open slice of a list of the given length that
+// fits visible rows, keeping the cursor near the middle.
+func visibleRange(cursor, length, visible int) repoWindow {
+	visible = max(visible, 1)
+
+	start := max(cursor-visible/visibleWindowCenter, 0)
 
 	end := start + visible
-	if end > len(m.filteredPaths) {
-		end = len(m.filteredPaths)
+	if end > length {
+		end = length
 		start = max(end-visible, 0)
 	}
 
@@ -481,6 +487,12 @@ func templateCellStyle(s models.RepoSummary, base lipgloss.Style, selected bool)
 	return base
 }
 
+// The up/down hint, shared by every footer that has one.
+const (
+	keyNavPair = "j/k"
+	descNav    = "nav"
+)
+
 // footerHint is one key hint and how readily it is dropped when the footer no
 // longer fits. Priority is the hint's value at a glance, so the lowest goes
 // first and the survivors are the keys a new user needs: enter, /, f, s, ?, q.
@@ -495,7 +507,7 @@ type footerHint struct {
 //nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
 func footerHints() []footerHint {
 	return []footerHint{
-		{key: "j/k", desc: "nav", priority: 4},
+		{key: keyNavPair, desc: descNav, priority: 4},
 		{key: keyEnter, desc: "select", priority: 8},
 		{key: "v", desc: "notes", priority: 1},
 		{key: "f", desc: nameFilter, priority: 6},
