@@ -344,7 +344,7 @@ func (m Model) peersCell(path string, base lipgloss.Style, selected bool) (strin
 		return emDash, base
 	}
 
-	cell := "⧉" + strconv.Itoa(len(peers))
+	cell := "⧉ " + strconv.Itoa(len(peers))
 	if m.hasBranchConflict(path) {
 		return cell + conflictMark, withSelection(styles.WarningStyle, selected)
 	}

@@ -261,7 +261,7 @@ func overviewPeers(peers []models.PeerCheckout) string {
 		folders = append(folders, peer.Folder())
 	}
 
-	return "⧉" + strconv.Itoa(len(peers)) + " " + strings.Join(folders, ", ")
+	return "⧉ " + strconv.Itoa(len(peers)) + " " + strings.Join(folders, ", ")
 }
 
 func overviewCount(count int) string {

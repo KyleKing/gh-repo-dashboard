@@ -72,8 +72,8 @@ func TestPeersCellFlagsSharedBranches(t *testing.T) {
 	m := peerFleet(140, 35)
 
 	shared, _ := m.peersCell("/dev/app-a", plainStyle, false)
-	if shared != "⧉1"+conflictMark {
-		t.Errorf("peers cell = %q, want %q", shared, "⧉1"+conflictMark)
+	if shared != "⧉ 1"+conflictMark {
+		t.Errorf("peers cell = %q, want %q", shared, "⧉ 1"+conflictMark)
 	}
 
 	alone, _ := m.peersCell("/dev/solo", plainStyle, false)

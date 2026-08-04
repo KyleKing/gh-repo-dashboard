@@ -40,7 +40,7 @@ func TestRepoRow_PeerCountDoesNotShiftLaterColumns(t *testing.T) {
 		t.Errorf("peer row width = %d, peerless row width = %d; rows must be equal width", got, want)
 	}
 
-	if !strings.Contains(withPeers, "⧉1") {
+	if !strings.Contains(withPeers, "⧉ 1") {
 		t.Fatalf("expected a peer count in the row, got %q", withPeers)
 	}
 }

@@ -77,7 +77,7 @@ func (m Model) compactSignals(s models.RepoSummary) []string {
 	var signals []string
 
 	if peers := m.PeerCheckouts(s.Path); len(peers) > 0 {
-		signals = append(signals, "⧉"+strconv.Itoa(len(peers)))
+		signals = append(signals, "⧉ "+strconv.Itoa(len(peers)))
 	}
 
 	if s.PRInfo != nil {
