@@ -449,7 +449,7 @@ func (m Model) renderNotesTab() string {
 		if content == "" {
 			content = "(empty file)"
 		}
-		b.WriteString(styles.TableRowStyle.Render(content))
+		b.WriteString(styles.TableRowStyle.Render(lipgloss.Wrap(content, contentWidth(m.width), "")))
 	}
 
 	return b.String()

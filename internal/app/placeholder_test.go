@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -79,6 +81,24 @@ func TestDetailTabs_LoadingStateIsDistinctFromEmpty(t *testing.T) {
 				t.Errorf("once settled, got %q, want it to contain %q", settled, tt.wantEmpty)
 			}
 		})
+	}
+}
+
+func TestNotesTab_ContentWrapsToContentWidth(t *testing.T) {
+	t.Parallel()
+
+	m := placeholderModel(false)
+	m.notesFiles = []models.NoteFileContent{
+		{Name: "doing.txt", Content: strings.Repeat("word ", 40)},
+	}
+
+	got := m.renderNotesTab()
+
+	width := contentWidth(m.width)
+	for _, line := range strings.Split(got, "\n") {
+		if w := lipgloss.Width(line); w > width {
+			t.Errorf("line %q is %d cells wide, want at most %d", line, w, width)
+		}
 	}
 }
 
