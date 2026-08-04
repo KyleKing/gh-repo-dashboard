@@ -25,7 +25,7 @@ type Column struct {
     Min      int   // never render narrower; collapse instead
     Max      int   // 0 = unbounded
     Weight   int   // share of surplus width; 0 = fixed at content width
-    Priority int   // collapse order: highest number hides first
+    Priority int   // information value; lowest positive number hides first, 0 never hides
     Align    Align // numbers right, text left
 }
 ```
@@ -37,7 +37,7 @@ Rules, in order:
    is retired
 2. Fit fixed columns at their content width, capped at `Max`
 3. Distribute surplus to weighted columns proportionally, capped at `Max`
-4. While the total exceeds the terminal width, hide the highest-`Priority`
+4. While the total exceeds the terminal width, hide the lowest-`Priority`
    column and show a one-cell `…` marker in the header region so hidden data
    is announced rather than silent
 5. Truncate cell overflow with `…`, never clip mid-cell
@@ -48,7 +48,7 @@ Ordered by information value observed with the real fleet, not by column
 position. PR (current-branch PR) is nearly always `—` on main, so it goes
 first. PEERS and TEMPLATE are the actionable fleet signals and survive longest.
 
-| Column | Priority (hides first = high) | Weight | Notes |
+| Column | Priority (hides first = low) | Weight | Notes |
 |--------|------------------------------|--------|-------|
 | NAME | never | 3 | Min 16 |
 | BRANCH | never | 2 | Min 10 |

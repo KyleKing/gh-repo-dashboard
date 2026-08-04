@@ -61,6 +61,28 @@ func TestGoldenRepoList(t *testing.T) {
 	golden.RequireEqual(t, []byte(m.renderScreen()))
 }
 
+// TestGoldenRepoListBreakpoints pins the repo list at the three terminal sizes
+// the layout is designed against, so a column-engine change that only shows up
+// under collapse or under surplus width still fails here.
+func TestGoldenRepoListBreakpoints(t *testing.T) {
+	sizes := []struct {
+		name          string
+		width, height int
+	}{
+		{"80x24", 80, 24},
+		{"120x35", 120, 35},
+		{"220x50", 220, 50},
+	}
+
+	for _, size := range sizes {
+		t.Run(size.name, func(t *testing.T) {
+			m := goldenModel()
+			m.width, m.height = size.width, size.height
+			golden.RequireEqual(t, []byte(m.renderScreen()))
+		})
+	}
+}
+
 func TestGoldenFilterModal(t *testing.T) {
 	m := goldenModel()
 	m.viewMode = ViewModeFilter

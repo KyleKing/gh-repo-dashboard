@@ -7,6 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
 
 // emDash is the placeholder rendered for empty/unknown values.
@@ -174,37 +175,8 @@ func (m Model) renderBreadcrumbs() string {
 	}
 }
 
-// truncate shortens s to at most maxLen terminal cells, appending an ellipsis
-// when there is room for one. Width is measured in rendered cells rather than
-// bytes, so multi-byte names keep table columns aligned.
+// truncate shortens s to at most maxLen terminal cells, marking the cut with
+// an ellipsis when there is room for one.
 func truncate(s string, maxLen int) string {
-	const ellipsis = "..."
-
-	if lipgloss.Width(s) <= maxLen {
-		return s
-	}
-	if maxLen <= len(ellipsis) {
-		return truncateWidth(s, maxLen)
-	}
-
-	return truncateWidth(s, maxLen-len(ellipsis)) + ellipsis
-}
-
-// truncateWidth cuts s at the last rune boundary whose rendered width still
-// fits within maxWidth.
-func truncateWidth(s string, maxWidth int) string {
-	if maxWidth <= 0 {
-		return ""
-	}
-
-	width := 0
-	for i, r := range s {
-		runeWidth := lipgloss.Width(string(r))
-		if width+runeWidth > maxWidth {
-			return s[:i]
-		}
-		width += runeWidth
-	}
-
-	return s
+	return table.Truncate(s, maxLen)
 }

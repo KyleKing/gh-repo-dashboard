@@ -71,9 +71,6 @@ can ship while the focused view is still in design.
 The fixes from the 2026-08-03 critique plus the rendering foundation every
 later milestone draws on.
 
-- Implement the column engine (`Column{Min, Max, Weight, Priority, Align}`,
-  collapse marker, ellipsis truncation) and migrate the repo list to it,
-  reordering collapse priority so PR hides first and PEERS/TEMPLATE survive
 - Command-layer discoverability quick wins: a `:` hint in the footer, and a
   Command Mode section in the `?` overlay covering `:`, `@:`, and text
   objects

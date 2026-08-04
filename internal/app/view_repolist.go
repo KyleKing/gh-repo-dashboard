@@ -9,6 +9,7 @@ import (
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
 
 func (m Model) renderRepoList() string {
@@ -272,15 +273,10 @@ func notesMarker(s models.RepoSummary, base lipgloss.Style, selected bool) (stri
 	return "N" + strconv.Itoa(count), style
 }
 
-// renderRepoHeader renders the table header for a resolved column layout.
-func renderRepoHeader(layout repoLayout) string {
-	cells := make([]string, 0, len(layout.cols))
-	for _, c := range layout.cols {
-		cells = append(cells, padCell(c.header, layout.width(c.col)))
-	}
-
-	return strings.Repeat(" ", cursorWidth) +
-		strings.Join(cells, strings.Repeat(" ", colGutter))
+// renderRepoHeader renders the table header for a resolved column layout,
+// including the marker that announces any columns collapse hid.
+func renderRepoHeader(layout table.Layout) string {
+	return strings.Repeat(" ", cursorWidth) + table.Header(layout)
 }
 
 // peersCell renders a repo's parallel-checkout count, or emDash when the repo
@@ -294,18 +290,22 @@ func (m Model) peersCell(path string, base lipgloss.Style, selected bool) (strin
 	return "⧉" + strconv.Itoa(len(peers)), withSelection(styles.CountStyle, selected)
 }
 
-func (m Model) renderTableRow(s models.RepoSummary, selected bool, layout repoLayout) string {
+func (m Model) renderTableRow(s models.RepoSummary, selected bool, layout table.Layout) string {
 	base := styles.TableRowStyle
 	if selected {
 		base = styles.SelectedRowStyle
 	}
 
-	cells := make([]string, 0, len(layout.cols))
-	for _, c := range layout.cols {
-		cells = append(cells, m.repoCell(c.col, s, layout.width(c.col), base, selected))
+	cells := make([]string, 0, len(layout.Columns)+1)
+	for _, c := range layout.Columns {
+		cells = append(cells, m.repoCell(c.Key, s, layout.Width(c.Key), base, selected))
 	}
 
-	gutter := base.Render(strings.Repeat(" ", colGutter))
+	if marker := layout.Marker(); marker != "" {
+		cells = append(cells, base.Render(strings.Repeat(" ", lipgloss.Width(marker))))
+	}
+
+	gutter := base.Render(strings.Repeat(" ", table.Gutter))
 
 	return base.Render(rowCursor(m.selectedPaths[s.Path], selected)) +
 		strings.Join(cells, gutter)
@@ -328,7 +328,7 @@ func rowCursor(marked, selected bool) string {
 
 // repoCell renders one column of a repo row, padded to exactly width cells so
 // the columns after it stay aligned.
-func (m Model) repoCell(col repoColumn, s models.RepoSummary, width int, base lipgloss.Style, selected bool) string {
+func (m Model) repoCell(col string, s models.RepoSummary, width int, base lipgloss.Style, selected bool) string {
 	switch col {
 	case colName:
 		return base.Render(padCell(s.Name(), width))

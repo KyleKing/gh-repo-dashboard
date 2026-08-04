@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
 
 // Frame geometry shared by every full-screen view. Content grows with the
@@ -56,134 +58,45 @@ func frame(content string, termWidth int) string {
 // padCell truncates text to width and pads it to exactly width display cells.
 // Padding is applied before styling so a background color fills the column.
 func padCell(text string, width int) string {
-	text = truncate(text, width)
-	if gap := width - lipgloss.Width(text); gap > 0 {
-		text += strings.Repeat(" ", gap)
-	}
-
-	return text
+	return table.Pad(text, width, table.AlignLeft)
 }
 
-// repoColumn identifies one column of the repo list table.
-type repoColumn int
-
+// Column keys for the repo list table, doubling as the rendered headers.
 const (
-	colName repoColumn = iota
-	colBranch
-	colStatus
-	colPeers
-	colPR
-	colPRs
-	colTemplate
-	colModified
+	colName     = "NAME"
+	colBranch   = "BRANCH"
+	colStatus   = "STATUS"
+	colPeers    = "PEERS"
+	colPR       = "PR"
+	colPRs      = "PRs"
+	colTemplate = "TEMPLATE"
+	colModified = "MODIFIED"
 )
-
-// colGutter is the gap rendered between two adjacent columns.
-const colGutter = 2
 
 // cursorWidth is the leading cursor plus selection-mark gutter on every row.
 const cursorWidth = 2
 
-// repoColSpec describes one repo table column: the width it needs at minimum,
-// the share of surplus width it absorbs, and how readily it is dropped when
-// the terminal is too narrow to hold every column. A dropRank of zero marks a
-// column that is never dropped; higher ranks are dropped first.
-type repoColSpec struct {
-	col      repoColumn
-	header   string
-	minWidth int
-	weight   int
-	dropRank int
-}
-
 // repoColSpecs lists the repo table's columns in render order.
 //
+// Collapse priority is information value measured against the real fleet, so
+// the lowest priority hides first: PR is nearly always emDash on a default
+// branch, while PEERS and TEMPLATE are the signals worth acting on and
+// survive longest. Name, branch, and status carry no priority and never hide.
+//
 //nolint:mnd // the numbers are this table's data: column geometry, not constants used elsewhere
-var repoColSpecs = []repoColSpec{
-	{col: colName, header: "NAME", minWidth: 12, weight: 4},
-	{col: colBranch, header: "BRANCH", minWidth: 10, weight: 3},
-	{col: colStatus, header: "STATUS", minWidth: 12},
-	{col: colPeers, header: "PEERS", minWidth: 5, dropRank: 3},
-	{col: colPR, header: "PR", minWidth: 8, weight: 2, dropRank: 2},
-	{col: colPRs, header: "PRs", minWidth: 6, dropRank: 4},
-	{col: colTemplate, header: "TEMPLATE", minWidth: 10, weight: 1, dropRank: 5},
-	{col: colModified, header: "MODIFIED", minWidth: 12, dropRank: 1},
+var repoColSpecs = []table.Column{
+	{Key: colName, Title: colName, Min: 16, Weight: 3},
+	{Key: colBranch, Title: colBranch, Min: 10, Weight: 2},
+	{Key: colStatus, Title: colStatus, Min: 12},
+	{Key: colPeers, Title: colPeers, Min: 5, Priority: 3},
+	{Key: colPR, Title: colPR, Min: 8, Priority: 1},
+	{Key: colPRs, Title: colPRs, Min: 6, Priority: 4},
+	{Key: colTemplate, Title: colTemplate, Min: 10, Weight: 1, Priority: 5},
+	{Key: colModified, Title: colModified, Min: 12, Priority: 2},
 }
 
-// repoLayout is a resolved repo table layout: the columns that fit, in render
-// order, each with its final width.
-type repoLayout struct {
-	cols   []repoColSpec
-	widths map[repoColumn]int
-}
-
-// width returns the resolved width of col, or zero when it was dropped.
-func (l repoLayout) width(col repoColumn) int {
-	return l.widths[col]
-}
-
-// layoutRepoCols fits the repo table into width. Columns are dropped by
-// descending dropRank until the remaining minimums fit, then the surplus is
-// shared between the flexible columns in proportion to their weight.
-func layoutRepoCols(width int) repoLayout {
-	cols := fittingCols(width)
-
-	widths := make(map[repoColumn]int, len(cols))
-	totalWeight := 0
-	for _, c := range cols {
-		widths[c.col] = c.minWidth
-		totalWeight += c.weight
-	}
-
-	surplus := width - minRowWidth(cols)
-	if surplus > 0 && totalWeight > 0 {
-		spent := 0
-		for _, c := range cols {
-			if c.weight == 0 {
-				continue
-			}
-			share := surplus * c.weight / totalWeight
-			widths[c.col] += share
-			spent += share
-		}
-		widths[colName] += surplus - spent
-	}
-
-	return repoLayout{cols: cols, widths: widths}
-}
-
-// fittingCols drops the most expendable columns until the remaining minimum
-// widths fit within width.
-func fittingCols(width int) []repoColSpec {
-	cols := make([]repoColSpec, len(repoColSpecs))
-	copy(cols, repoColSpecs)
-
-	for minRowWidth(cols) > width {
-		victim, rank := -1, 0
-		for i, c := range cols {
-			if c.dropRank > rank {
-				victim, rank = i, c.dropRank
-			}
-		}
-		if victim < 0 {
-			break
-		}
-		cols = append(cols[:victim], cols[victim+1:]...)
-	}
-
-	return cols
-}
-
-// minRowWidth returns the narrowest row that can hold cols: the cursor, every
-// column at its minimum, and a gutter between each pair.
-func minRowWidth(cols []repoColSpec) int {
-	total := cursorWidth
-	for i, c := range cols {
-		if i > 0 {
-			total += colGutter
-		}
-		total += c.minWidth
-	}
-
-	return total
+// layoutRepoCols fits the repo table into width, leaving room for the cursor
+// gutter that leads every row.
+func layoutRepoCols(width int) table.Layout {
+	return table.Fit(repoColSpecs, width-cursorWidth)
 }

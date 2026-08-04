@@ -69,34 +69,34 @@ func TestLayoutRepoCols_FitsWithinContentWidth(t *testing.T) {
 		width := contentWidth(termWidth)
 		layout := layoutRepoCols(width)
 
-		total := cursorWidth
-		for i, c := range layout.cols {
-			if i > 0 {
-				total += colGutter
-			}
-			total += layout.width(c.col)
-		}
-
-		if total != width {
+		if total := cursorWidth + layout.Total(); total != width {
 			t.Errorf("terminal %d: layout is %d cells, content width is %d", termWidth, total, width)
 		}
 	}
 }
 
-func TestLayoutRepoCols_DropsLowPriorityColumnsWhenNarrow(t *testing.T) {
+func TestLayoutRepoCols_HidesPRBeforeThePeerAndTemplateSignals(t *testing.T) {
 	t.Parallel()
 
 	wide := layoutRepoCols(contentWidth(200))
-	if wide.width(colTemplate) == 0 {
-		t.Error("template column should survive at 200 columns")
+	if wide.Hidden != 0 {
+		t.Errorf("hid %d columns at 200 columns, want 0", wide.Hidden)
 	}
 
-	narrow := layoutRepoCols(minRowWidth(repoColSpecs) - 1)
-	if narrow.width(colTemplate) != 0 {
-		t.Error("template column should be dropped once the row no longer fits")
+	narrow := layoutRepoCols(cursorWidth + 92)
+	if narrow.Width(colPR) != 0 {
+		t.Error("the current-branch PR column should be the first to hide")
 	}
-	if narrow.width(colName) == 0 || narrow.width(colBranch) == 0 || narrow.width(colStatus) == 0 {
-		t.Error("name, branch, and status must never be dropped")
+	if narrow.Width(colPeers) == 0 || narrow.Width(colTemplate) == 0 {
+		t.Error("peers and template are the actionable fleet signals and must outlast PR")
+	}
+	if narrow.Marker() != "…+1" {
+		t.Errorf("marker = %q, want %q", narrow.Marker(), "…+1")
+	}
+
+	cramped := layoutRepoCols(cursorWidth + 20)
+	if cramped.Width(colName) == 0 || cramped.Width(colBranch) == 0 || cramped.Width(colStatus) == 0 {
+		t.Error("name, branch, and status must never be hidden")
 	}
 }
 
@@ -124,9 +124,9 @@ func TestTruncate_MeasuresDisplayWidthNotBytes(t *testing.T) {
 		want   string
 	}{
 		{name: "ascii fits", input: "main", maxLen: 10, want: "main"},
-		{name: "ascii truncates", input: "feature/login", maxLen: 8, want: "featu..."},
+		{name: "ascii truncates", input: "feature/login", maxLen: 8, want: "feature…"},
 		{name: "multibyte fits", input: "café-ünïcode", maxLen: 12, want: "café-ünïcode"},
-		{name: "multibyte truncates on width", input: "café-ünïcode", maxLen: 8, want: "café-..."},
+		{name: "multibyte truncates on width", input: "café-ünïcode", maxLen: 8, want: "café-ün…"},
 	}
 
 	for _, tt := range tests {
