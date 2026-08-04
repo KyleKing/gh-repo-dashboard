@@ -37,7 +37,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.help.SetWidth(msg.Width)
 
-		return m, nil
+		return m, tea.Batch(m.visibleCICmds()...)
 
 	case spinner.TickMsg:
 		return m.handleSpinnerTick(msg)
@@ -60,12 +60,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case WorkflowLoadedMsg:
-		if summary, ok := m.summaries[msg.Path]; ok {
-			summary.WorkflowInfo = msg.Workflow
-			m.summaries[msg.Path] = summary
-		}
-
-		return m, nil
+		return m.handleWorkflowLoaded(msg)
 
 	case CopierInfoLoadedMsg:
 		if summary, ok := m.summaries[msg.Path]; ok {
@@ -174,21 +169,8 @@ func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.commandMode {
 		return m.handleCommandKey(msg)
 	}
-	if m.pendingRepeat {
-		m.pendingRepeat = false
-		if key.Matches(msg, m.keys.Command) {
-			return m.repeatLastCommand()
-		}
-
-		return m, nil
-	}
-	if key.Matches(msg, m.keys.Command) {
-		m.commandMode = true
-		m.commandInput.Reset()
-		m.completionCandidates = nil
-		m.commandInput.Focus()
-
-		return m, nil
+	if newM, cmd, handled := m.handleChordKey(msg); handled {
+		return newM, cmd
 	}
 	switch m.viewMode {
 	case ViewModeFilter:
@@ -267,9 +249,26 @@ func (m Model) handleRepoSummaryLoaded(msg RepoSummaryLoadedMsg) (tea.Model, tea
 	if m.loadedCount >= m.loadingCount {
 		m.loading = false
 		m.updateFilteredPaths()
+		cmds = append(cmds, m.visibleCICmds()...)
 	}
 
 	return m, tea.Batch(cmds...)
+}
+
+func (m Model) handleWorkflowLoaded(msg WorkflowLoadedMsg) (tea.Model, tea.Cmd) {
+	if summary, ok := m.summaries[msg.Path]; ok {
+		summary.WorkflowInfo = msg.Workflow
+		m.summaries[msg.Path] = summary
+	}
+
+	if msg.Branch != "" {
+		if m.ciBranch == nil {
+			m.ciBranch = make(map[string]string)
+		}
+		m.ciBranch[msg.Path] = msg.Branch
+	}
+
+	return m, nil
 }
 
 // handlePRDetailLoaded stores a loaded PR detail if it's still for the
@@ -341,7 +340,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if newM, handled := m.handleCursorKey(msg); handled {
-		return newM, nil
+		return newM, tea.Batch(newM.visibleCICmds()...)
 	}
 
 	if newM, handled := m.handleModeKey(msg); handled {
@@ -373,7 +372,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.FetchAll),
 		key.Matches(msg, m.keys.PruneRemote),
-		key.Matches(msg, m.keys.CleanupMerged):
+		key.Matches(msg, m.keys.CleanupMerged),
+		key.Matches(msg, m.keys.RefreshPRs):
 		m.pendingOperator = msg.String()
 		m.pendingObject = ""
 
@@ -456,7 +456,6 @@ func (m Model) handlePRMapKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// openPRMapRepo drills into the repo behind the row under the cursor.
 func (m Model) openPRMapRepo(entries []prMapEntry) (tea.Model, tea.Cmd) {
 	if m.prMapCursor >= len(entries) {
 		return m, nil
@@ -492,6 +491,68 @@ func (m Model) openPRMap() (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// handleChordKey resolves the keys that either complete a pending two-key
+// chord or start one: "@:" to repeat a command, "gg" to jump to the top, and
+// ":" to open the command bar.
+func (m Model) handleChordKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	switch {
+	case m.pendingRepeat:
+		m.pendingRepeat = false
+		if key.Matches(msg, m.keys.Command) {
+			model, cmd := m.repeatLastCommand()
+
+			return model, cmd, true
+		}
+
+		return m, nil, true
+
+	case m.pendingTop:
+		m.pendingTop = false
+		if key.Matches(msg, m.keys.TopPrefix) {
+			return m.moveToTop(), nil, true
+		}
+
+		return m, nil, true
+
+	case key.Matches(msg, m.keys.TopPrefix) && !m.acceptsCheckoutPR():
+		m.pendingTop = true
+		return m, nil, true
+
+	case key.Matches(msg, m.keys.Command):
+		m.commandMode = true
+		m.commandInput.Reset()
+		m.completionCandidates = nil
+		m.commandInput.Focus()
+
+		return m, nil, true
+	}
+
+	return m, nil, false
+}
+
+// acceptsCheckoutPR reports whether the current view has a pull request for
+// "g" to check out. Elsewhere "g" opens the "gg" chord for jumping to the top.
+func (m Model) acceptsCheckoutPR() bool {
+	if m.viewMode == ViewModePRDetail {
+		return true
+	}
+
+	return m.viewMode == ViewModeRepoDetail && m.detailTab == DetailTabPRs
+}
+
+func (m Model) moveToTop() Model {
+	switch m.viewMode {
+	case ViewModeRepoDetail:
+		m.detailCursor = 0
+	case ViewModePRMap:
+		m.prMapCursor = 0
+	default:
+		m.cursor = 0
+	}
+
+	return m
+}
+
 // openSearch starts a fresh search. The buffer and the committed query are
 // both cleared, so the prompt and the filtered list agree from the first
 // keystroke instead of appending to whatever was searched last.
@@ -504,6 +565,34 @@ func (m Model) openSearch() (tea.Model, tea.Cmd) {
 	m.cursor = 0
 
 	return m, nil
+}
+
+// visibleCICmds requests CI for the repos currently on screen that have not
+// been asked for yet. Nothing is fetched for rows the user has never seen,
+// which keeps a 62-repo fleet from spending 62 calls to draw one screen.
+func (m *Model) visibleCICmds() []tea.Cmd {
+	rowHeight := 1
+	if m.isCompact() {
+		rowHeight = compactRowHeight
+	}
+
+	window := m.visibleRepoRange(rowHeight)
+
+	var cmds []tea.Cmd
+	for i := window.start; i < window.end; i++ {
+		path := m.filteredPaths[i]
+		if m.ciRequested[path] {
+			continue
+		}
+
+		if m.ciRequested == nil {
+			m.ciRequested = make(map[string]bool)
+		}
+		m.ciRequested[path] = true
+		cmds = append(cmds, loadDefaultBranchCICmd(path))
+	}
+
+	return cmds
 }
 
 // handleCursorKey handles the repo-list cursor movement keys (up/down/top/
@@ -559,8 +648,6 @@ func (m Model) handleEnterKey() (tea.Model, tea.Cmd) {
 func (m Model) handleBackKey() (tea.Model, tea.Cmd) {
 	switch m.viewMode {
 	case ViewModeRepoDetail:
-		// A jump to a peer checkout pushed the repo it came from; walk back to
-		// that repo before leaving the focused view entirely.
 		if last := len(m.repoStack) - 1; last >= 0 {
 			previous := m.repoStack[last]
 			m.repoStack = m.repoStack[:last]
@@ -698,6 +785,9 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // branch-detail, and PR-detail views.
 func (m Model) handleActionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
+	case key.Matches(msg, m.keys.CheckoutPR):
+		return m.startCheckoutPR()
+
 	case key.Matches(msg, m.keys.SwitchBranch):
 		return m.startSwitchBranch()
 

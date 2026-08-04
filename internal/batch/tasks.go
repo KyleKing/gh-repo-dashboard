@@ -21,6 +21,30 @@ func FetchAll(ctx context.Context, ops vcs.Mutator, repoPath string) (bool, stri
 	return ok, msg, nil
 }
 
+// RefreshPRs is a batch.TaskFunc that drops a repo's cached pull request data
+// and re-reads it, so the fleet's PR columns reflect the remote without a
+// whole-app refresh. One gh call per repo, as the API budget requires.
+//
+//nolint:gocritic // matches the (ok bool, msg string, err error) TaskFunc shape
+func RefreshPRs(ctx context.Context, _ vcs.Mutator, repoPath string) (bool, string, error) {
+	summary, err := vcs.GetOperations(repoPath).GetRepoSummary(ctx, repoPath)
+	if err != nil {
+		return false, "no repo summary", fmt.Errorf("reading repo summary: %w", err)
+	}
+	if summary.Upstream == "" {
+		return true, "no upstream, nothing to refresh", nil
+	}
+
+	github.InvalidatePRCaches(repoPath)
+
+	prs, err := github.GetPRsForRepo(ctx, repoPath, summary.Upstream)
+	if err != nil {
+		return false, "refresh failed", fmt.Errorf("refreshing pull requests: %w", err)
+	}
+
+	return true, fmt.Sprintf("%d open PRs", len(prs)), nil
+}
+
 // PruneRemote is a batch.TaskFunc that prunes stale remote-tracking refs for a repo.
 //
 //nolint:gocritic // matches vcs.Mutator.PruneRemote's (ok bool, msg string, err error)

@@ -21,7 +21,6 @@ const (
 	widePanelMinHeight = 20
 )
 
-// breakpointFor selects the layout for a terminal of the given size.
 func breakpointFor(width, height int) breakpoint {
 	switch {
 	case width >= wideMinWidth && height >= widePanelMinHeight:
@@ -33,7 +32,6 @@ func breakpointFor(width, height int) breakpoint {
 	}
 }
 
-// String names the layout for the footer and for test failure messages.
 func (b breakpoint) String() string {
 	const standard = "standard"
 

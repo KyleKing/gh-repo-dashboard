@@ -21,9 +21,11 @@ type PRLoadedMsg struct {
 	Error  error
 }
 
-// WorkflowLoadedMsg reports a loaded workflow summary or its load error.
+// WorkflowLoadedMsg reports a loaded workflow summary or its load error, along
+// with the branch the runs belong to.
 type WorkflowLoadedMsg struct {
 	Path     string
+	Branch   string
 	Workflow *models.WorkflowSummary
 	Error    error
 }

@@ -135,6 +135,9 @@ func DefaultRegistry() Registry {
 				return m.openPRMap()
 			},
 		},
+		batchCommand("prs-refresh",
+			"Refresh PR data for visible repos, optionally scoped: :prs-refresh [predicate]",
+			taskRefreshPRs, batchRefreshPRsCmd),
 		batchCommand("prune",
 			"Prune remote refs in visible repos, optionally scoped: :prune [predicate]",
 			"Prune Remote", batchPruneRemoteCmd),

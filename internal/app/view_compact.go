@@ -11,17 +11,12 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
 
-// compactRowHeight is how many terminal lines one compact repo record covers:
-// identity on the first, signals on the second.
 const compactRowHeight = 2
 
-// compactSignalSep separates the signals on a record's second line.
 const compactSignalSep = " · "
 
-// compactIndent aligns the signal line under the record's name.
 const compactIndent = "    "
 
-// Column keys for the compact record's identity line.
 const (
 	colCompactName   = "NAME"
 	colCompactBranch = "BRANCH"

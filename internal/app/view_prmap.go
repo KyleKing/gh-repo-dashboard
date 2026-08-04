@@ -10,13 +10,12 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
 
-// Column keys for the fleet map.
 const (
 	colMapRepo     = "REPO"
 	colMapPR       = "PR"
 	colMapTitle    = "TITLE"
 	colMapState    = "STATE"
-	colMapReview   = "REVIEW"
+	colMapActivity = "ACTIVITY"
 	colMapLocation = "LOCAL"
 )
 
@@ -29,7 +28,7 @@ var prMapColSpecs = []table.Column{
 	{Key: colMapPR, Title: colMapPR, Min: 7},
 	{Key: colMapTitle, Title: colMapTitle, Min: 20, Weight: 3, Priority: 3},
 	{Key: colMapState, Title: colMapState, Min: 8, Priority: 1},
-	{Key: colMapReview, Title: colMapReview, Min: 10, Priority: 2},
+	{Key: colMapActivity, Title: colMapActivity, Min: 20, Weight: 1, Priority: 2},
 	{Key: colMapLocation, Title: colMapLocation, Min: 18, Weight: 1, Priority: 4},
 }
 
@@ -89,7 +88,7 @@ func (m Model) renderPRMapTable(entries []prMapEntry) string {
 			colMapPR:       localOnlyLabel,
 			colMapTitle:    "local branch " + entry.Branch,
 			colMapState:    emDash,
-			colMapReview:   emDash,
+			colMapActivity: emDash,
 			colMapLocation: entry.Location,
 		}
 		cellStyles := map[string]lipgloss.Style{
@@ -99,10 +98,10 @@ func (m Model) renderPRMapTable(entries []prMapEntry) string {
 		if entry.HasPR() {
 			values[colMapPR] = "#" + strconv.Itoa(entry.PR.Number)
 			values[colMapTitle] = entry.PR.Title
-			values[colMapState] = entry.PR.StatusDisplay()
-			values[colMapReview] = entry.PR.ReviewStatus()
+			values[colMapState] = prStateCell(entry.PR)
+			values[colMapActivity] = entry.PR.ActivitySummary()
 			cellStyles[colMapState] = withSelection(prStateStyle(entry.PR), selected)
-			cellStyles[colMapReview] = withSelection(prReviewStyle(entry.PR.ReviewStatus()), selected)
+			cellStyles[colMapActivity] = withSelection(styles.SubtitleStyle, selected)
 		}
 
 		if entry.Location == emDash {

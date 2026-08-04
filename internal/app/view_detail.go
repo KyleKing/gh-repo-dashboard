@@ -37,6 +37,10 @@ func (m Model) renderRepoDetailBreadcrumbs() string {
 		}
 		badges = append(badges, styles.Badge(label, styles.WarningStyle))
 	}
+	if summary.WorkflowInfo != nil && summary.WorkflowInfo.Total > 0 {
+		text, style := m.ciCell(summary, styles.CountBadgeStyle, false)
+		badges = append(badges, styles.Badge("CI "+text, style))
+	}
 	if summary.RemoteProtocol != "" {
 		badges = append(badges, styles.Badge(summary.RemoteProtocol, styles.CountBadgeStyle))
 	}
@@ -61,8 +65,6 @@ func (m Model) renderRepoDetail() string {
 	b.WriteString(m.renderBreadcrumbs())
 	b.WriteString("\n")
 
-	// The path line is the first thing to go when rows are scarce: the
-	// breadcrumb already names the repo.
 	if !compact {
 		b.WriteString(styles.SubtitleStyle.Render(truncate(summary.Path, contentWidth(m.width))))
 		b.WriteString("\n")
@@ -105,9 +107,6 @@ func (m Model) renderRepoDetail() string {
 	return b.String()
 }
 
-// renderOverviewPane mounts the repo overview above the tab bar, boxed so it
-// reads as a fixed header rather than another table. It is the same component
-// the wide repo list mounts as its preview panel.
 func (m Model) renderOverviewPane(summary models.RepoSummary, compact bool) string {
 	width := contentWidth(m.width) - overviewPaneBorder
 
@@ -143,6 +142,7 @@ func (m Model) detailFooterHints(width int) string {
 	case DetailTabPRs:
 		hints = append(hints,
 			footerHint{key: keyEnter, desc: "PR", priority: 8},
+			footerHint{key: "g", desc: "checkout", priority: 7},
 			footerHint{key: "M", desc: "squash-merge", priority: 5},
 		)
 	default:
@@ -480,7 +480,8 @@ func (m Model) renderWorktreesPlaceholder(isJJ bool) string {
 // renderWorktreeList renders every parallel checkout of the selected repo:
 // sibling clones found by discovery plus this repo's own worktrees. Two
 // checkouts on one branch are flagged, because that is the state where a
-// commit made in one is invisible to the other.
+// commit made in one is invisible to the other. The flag rides inside the
+// branch cell so collapse cannot push it past the frame's edge.
 func (m Model) renderWorktreeList() string {
 	summary := m.summaries[m.selectedRepo]
 	checkouts := m.RepoCheckouts()
@@ -500,8 +501,6 @@ func (m Model) renderWorktreeList() string {
 		branch := checkout.Branch
 		branchStyle := styles.BranchStyle
 		if conflicts[branch] {
-			// The mark rides inside the column so it survives collapse instead
-			// of being pushed past the frame's edge.
 			branch += " " + conflictMark
 			branchStyle = styles.WarningStyle
 		}
@@ -523,7 +522,6 @@ func (m Model) renderWorktreeList() string {
 	return strings.Join(rows, "\n")
 }
 
-// checkoutState summarizes a checkout's tracking position, dirt, and lock.
 func checkoutState(c models.PeerCheckout) string {
 	parts := []string{}
 	if c.Dirty {
@@ -539,7 +537,6 @@ func checkoutState(c models.PeerCheckout) string {
 	return strings.Join(parts, " ")
 }
 
-// relativeOrDash renders a timestamp as an age, or emDash when it is unknown.
 func relativeOrDash(t time.Time) string {
 	if t.IsZero() {
 		return emDash
@@ -566,16 +563,16 @@ func (m Model) renderPRList() string {
 		rowStyle := rowStyleFor(selected)
 
 		values := map[string]string{
-			colPRNumber: fmt.Sprintf("#%d", pr.Number),
-			colPRTitle:  pr.Title,
-			colPRState:  pr.StatusDisplay(),
-			colPRReview: pr.ReviewStatus(),
-			colPRBranch: pr.HeadRef,
+			colPRNumber:   fmt.Sprintf("#%d", pr.Number),
+			colPRTitle:    pr.Title,
+			colPRState:    prStateCell(pr),
+			colPRActivity: pr.ActivitySummary(),
+			colPRBranch:   pr.HeadRef,
 		}
 		cellStyles := map[string]lipgloss.Style{
-			colPRState:  withSelection(prStateStyle(pr), selected),
-			colPRReview: withSelection(prReviewStyle(pr.ReviewStatus()), selected),
-			colPRBranch: withSelection(styles.BranchStyle, selected),
+			colPRState:    withSelection(prStateStyle(pr), selected),
+			colPRActivity: withSelection(styles.SubtitleStyle, selected),
+			colPRBranch:   withSelection(styles.BranchStyle, selected),
 		}
 
 		cells := renderCells(layout, values, cellStyles, &rowStyle)
@@ -585,7 +582,6 @@ func (m Model) renderPRList() string {
 	return strings.Join(rows, "\n")
 }
 
-// prStateStyle colors a pull request's state cell by draft, merged, or closed.
 func prStateStyle(pr *models.PRInfo) lipgloss.Style {
 	switch {
 	case pr.IsDraft:
@@ -599,14 +595,12 @@ func prStateStyle(pr *models.PRInfo) lipgloss.Style {
 	}
 }
 
-// prReviewStyle colors a review cell by its decision.
-func prReviewStyle(review string) lipgloss.Style {
-	switch review {
-	case models.ReviewApproved:
-		return styles.CleanStyle
-	case models.ReviewChangesRequested:
-		return styles.ErrorStyle
-	default:
-		return styles.SubtitleStyle
+// prStateCell renders the pull request's state with its review decision
+// folded in as a glyph, since ACTIVITY took the review column's width.
+func prStateCell(pr *models.PRInfo) string {
+	if glyph := pr.ReviewGlyph(); glyph != "" {
+		return pr.StatusDisplay() + " " + glyph
 	}
+
+	return pr.StatusDisplay()
 }

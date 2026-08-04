@@ -3,4 +3,4 @@ given quiet
 when keys 1
 then view = detail
 then scene = work
-then overview = Sync=in sync vs origin/main Files=clean Peers=none Stashes=none Notes=none Template=— PRs=none open
+then overview = Sync=in sync vs origin/main Files=clean Peers=none Stashes=none Notes=none Template=— PRs=none open CI=—

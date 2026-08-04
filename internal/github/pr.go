@@ -307,7 +307,8 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 	env := vcs.GetGitHubEnv(repoPath)
 
 	out, err := runGH(ctx, repoPath, env, "pr", "list",
-		"--json", "number,title,state,url,isDraft,headRefName,baseRefName,reviewDecision,statusCheckRollup",
+		"--json", "number,title,state,url,isDraft,headRefName,baseRefName,reviewDecision,"+
+			"statusCheckRollup,comments,reviews",
 		"--limit", "100")
 	if err != nil {
 		cache.PRListCache.Set(cacheKey, []models.PRInfo{})
@@ -324,6 +325,8 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 		BaseRefName       string        `json:"baseRefName"`
 		ReviewDecision    string        `json:"reviewDecision"`
 		StatusCheckRollup []statusCheck `json:"statusCheckRollup"`
+		Comments          []prComment   `json:"comments"`
+		Reviews           []prReview    `json:"reviews"`
 	}
 
 	if err := json.Unmarshal(out, &prList); err != nil {
@@ -343,12 +346,44 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 			BaseRef:        pr.BaseRefName,
 			ReviewDecision: pr.ReviewDecision,
 			Checks:         parseChecks(pr.StatusCheckRollup),
+			Activity:       latestActivity(pr.Comments, pr.Reviews),
 		})
 	}
 
 	cache.PRListCache.Set(cacheKey, result)
 
 	return result, nil
+}
+
+type prReview struct {
+	Author struct {
+		Login string `json:"login"`
+	} `json:"author"`
+	SubmittedAt string `json:"submittedAt"`
+}
+
+// latestActivity returns the most recent comment or review across both lists,
+// or nil when the pull request has neither.
+func latestActivity(comments []prComment, reviews []prReview) *models.PRActivity {
+	var latest models.PRActivity
+
+	for _, c := range comments {
+		if at := parseTime(c.CreatedAt); at.After(latest.At) {
+			latest = models.PRActivity{Author: c.Author.Login, At: at}
+		}
+	}
+
+	for _, r := range reviews {
+		if at := parseTime(r.SubmittedAt); at.After(latest.At) {
+			latest = models.PRActivity{Author: r.Author.Login, At: at}
+		}
+	}
+
+	if latest.At.IsZero() {
+		return nil
+	}
+
+	return &latest
 }
 
 // GetPRCount returns the number of open pull requests for the repo, using the cache when fresh.

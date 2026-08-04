@@ -29,13 +29,16 @@ type KeyMap struct {
 	Sort         key.Binding
 	Search       key.Binding
 	Reverse      key.Binding
+	TopPrefix    key.Binding
 	NotesPreview key.Binding
 	Peers        key.Binding
 
 	FetchAll      key.Binding
 	PruneRemote   key.Binding
 	CleanupMerged key.Binding
+	RefreshPRs    key.Binding
 
+	CheckoutPR   key.Binding
 	SwitchBranch key.Binding
 	PushBranch   key.Binding
 	CreatePR     key.Binding
@@ -63,6 +66,14 @@ func DefaultKeyMap() KeyMap {
 	km.CleanupMerged = key.NewBinding(
 		key.WithKeys("C"),
 		key.WithHelp("C+obj", "cleanup"),
+	)
+	km.CheckoutPR = key.NewBinding(
+		key.WithKeys("g"),
+		key.WithHelp("g", "check the PR branch out here"),
+	)
+	km.RefreshPRs = key.NewBinding(
+		key.WithKeys("R"),
+		key.WithHelp("R", "refresh PR data"),
 	)
 	km.SwitchBranch = key.NewBinding(
 		key.WithKeys("c"),
@@ -137,8 +148,12 @@ func navigationKeyMap() KeyMap {
 			key.WithHelp("l/→", "right"),
 		),
 		Top: key.NewBinding(
-			key.WithKeys("g", "home"),
-			key.WithHelp("g", "top"),
+			key.WithKeys("home"),
+			key.WithHelp("gg", "top"),
+		),
+		TopPrefix: key.NewBinding(
+			key.WithKeys("g"),
+			key.WithHelp("gg", "top"),
 		),
 		Bottom: key.NewBinding(
 			key.WithKeys("G", "end"),

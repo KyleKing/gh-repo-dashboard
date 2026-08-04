@@ -8,15 +8,14 @@ Architecture and domain context live in [DESIGN.md](DESIGN.md); Go and workflow
 conventions live in [AGENTS.md](AGENTS.md). Design docs backing the milestones
 below live in `docs/design/`:
 
-- [fleet-navigation.md](docs/design/fleet-navigation.md), PR flows, CI, and the
-  API budget (M17)
 
 The column engine lives in `internal/ui/table` and every table is sized by it.
 `internal/app/view_overview.go` holds the repo overview pane, mounted both by
 the wide layout's preview panel and by the focused repo view. Scenes live in
 `internal/app/scene.go` and are derived from the active tab, so other views can
 adopt the same pattern by defining their own scene list. The `:prs` fleet map
-lives in `internal/app/prmap.go`.
+lives in `internal/app/prmap.go`. Default-branch CI is fetched lazily for
+visible rows only, tracked by `Model.ciRequested`.
 
 ## Vision
 
@@ -50,37 +49,20 @@ A layered pyramid:
   sequences and generate `docs/USAGE.md` (`mise run docs:usage`);
   `TestUsageDocsCurrent` fails CI when the docs go stale
 
-M1 through M16 landed through 2026-08-04 and are not tracked here. `CHANGELOG.md`
+M1 through M17 landed through 2026-08-04 and are not tracked here. `CHANGELOG.md`
 and `git log` are the record.
 
 ## Sequence at a glance
 
 | Milestone | Theme | Depends on |
 |-----------|-------|------------|
-| M17 | PR activity, PR flows, CI on the default branch | — |
-| M18 | `--cli` fleet assessment (assess.sh replacement) | shares the CI fetch with M17 |
-
-## M17: PR flows and CI
-
-The API-spending half of [fleet-navigation.md](docs/design/fleet-navigation.md),
-governed by its budget rules (one call per repo, GraphQL batching, TTL caches,
-lazy fetch, staleness shown as age suffixes).
-
-- ACTIVITY column (latest comment or review event: age plus author) in the PR
-  tab and fleet map, absorbing the mostly empty REVIEW width
-- `g` checks a PR branch out locally, confirm-gated and peer-aware like `c`
-- Batch PR refresh behind the `F+obj` operator pattern
-- CI on the default branch as a repo-list column, wide-panel line, and
-  focused-header badge
-
-Exit criteria: a full-fleet refresh of PR and CI data stays within tens of
-GraphQL points; cells render cache age when stale; no scroll or scene switch
-triggers a fetch for repos not visible.
+| M18 | `--cli` fleet assessment (assess.sh replacement) | — |
 
 ## M18: fleet assessment for the freshen workflow
 
-Extend `--cli` so the freshen skill can retire `assess.sh`. Unchanged from the
-earlier proposal; M17's CI fetch is the shared implementation.
+Extend `--cli` so the freshen skill can retire `assess.sh`. The default-branch
+CI fetch (`loadDefaultBranchCICmd`, `vcs.DefaultBranchHead`) is the shared
+implementation.
 
 - CI status per repo keyed by the default branch head: latest conclusion per
   workflow with timestamps, plus failing step names when red

@@ -144,8 +144,6 @@ func writePRDetailChecks(
 	}
 }
 
-// checkDisplayName qualifies a check with its workflow, falling back through
-// the fields GitHub may leave empty.
 func checkDisplayName(check models.CheckDetail) string {
 	name := check.Name
 	if name == "" {

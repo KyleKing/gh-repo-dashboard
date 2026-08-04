@@ -19,7 +19,6 @@ type scene struct {
 	tab  DetailTab
 }
 
-// scenes lists the focused view's scenes in key order.
 func scenes() []scene {
 	return []scene{
 		{key: "1", name: "work", tab: DetailTabBranches},
@@ -29,7 +28,6 @@ func scenes() []scene {
 	}
 }
 
-// sceneForKey returns the scene a number key selects.
 func sceneForKey(key string) (scene, bool) {
 	for _, s := range scenes() {
 		if s.key == key {

@@ -91,6 +91,7 @@ func operators() []operator {
 		{Key: "C", TaskName: taskCleanupMerged, Cmd: batchCleanupMergedCmd},
 		{Key: "F", TaskName: taskFetchAll, Cmd: batchFetchAllCmd},
 		{Key: "P", TaskName: "Prune Remote", Cmd: batchPruneRemoteCmd},
+		{Key: "R", TaskName: taskRefreshPRs, Cmd: batchRefreshPRsCmd},
 	}
 }
 

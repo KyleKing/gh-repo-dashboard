@@ -70,6 +70,7 @@ type Model struct {
 	completionIndex      int
 	commandHistory       []string
 	pendingRepeat        bool
+	pendingTop           bool
 
 	predicateText string
 	predicate     filters.Predicate
@@ -89,6 +90,12 @@ type Model struct {
 	// keyed by repo path and populated only while ":prs" is open.
 	prMap       map[string]PRMapLoadedMsg
 	prMapCursor int
+
+	// ciRequested marks the repos a CI fetch has already been issued for, so
+	// scrolling back over a row does not re-request it.
+	ciRequested map[string]bool
+	// ciBranch names the default branch each repo's CI runs belong to.
+	ciBranch map[string]string
 
 	width        int
 	height       int

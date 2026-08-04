@@ -234,7 +234,6 @@ func visibleRange(cursor, length, visible int) repoWindow {
 	return repoWindow{start: start, end: end}
 }
 
-// repoWindow is the half-open range of filteredPaths the list renders.
 type repoWindow struct {
 	start int
 	end   int
@@ -330,8 +329,6 @@ func notesMarker(s models.RepoSummary, base lipgloss.Style, selected bool) (stri
 	return "N" + strconv.Itoa(count), style
 }
 
-// renderRepoHeader renders the table header for a resolved column layout,
-// including the marker that announces any columns collapse hid.
 func renderRepoHeader(layout table.Layout) string {
 	return strings.Repeat(" ", cursorWidth) + table.Header(layout)
 }
@@ -350,6 +347,33 @@ func (m Model) peersCell(path string, base lipgloss.Style, selected bool) (strin
 	}
 
 	return cell, withSelection(styles.CountStyle, selected)
+}
+
+// ciCell renders the default branch's CI rollup: a check when every run
+// passed, the count of failures when not, an ellipsis while the fetch is in
+// flight, and emDash once it is known there is nothing to report.
+func (m Model) ciCell(s models.RepoSummary, base lipgloss.Style, selected bool) (string, lipgloss.Style) {
+	if s.WorkflowInfo == nil {
+		if m.ciRequested[s.Path] {
+			return "…", base
+		}
+
+		return emDash, base
+	}
+
+	wf := s.WorkflowInfo
+	switch {
+	case wf.Total == 0:
+		return emDash, base
+	case wf.Failing > 0:
+		text := "✗ " + strconv.Itoa(wf.Failing) + "/" + strconv.Itoa(wf.Total)
+
+		return text, withSelection(styles.ErrorStyle, selected)
+	case wf.InProgress > 0:
+		return "…" + strconv.Itoa(wf.InProgress), withSelection(styles.WarningStyle, selected)
+	default:
+		return "✓", withSelection(styles.CleanStyle, selected)
+	}
 }
 
 // conflictMark flags a repo whose branch is checked out somewhere else too.
@@ -435,6 +459,10 @@ func (m Model) repoCell(col string, s models.RepoSummary, width int, base lipglo
 		return base.Render(padCell(m.prCountText(s.Path), width))
 	case colTemplate:
 		return templateCellStyle(s, base, selected).Render(padCell(formatCopierCell(s, width), width))
+	case colCI:
+		text, style := m.ciCell(s, base, selected)
+
+		return style.Render(padCell(text, width))
 	case colModified:
 		return base.Render(padCell(s.RelativeModified(), width))
 	default:
@@ -560,7 +588,6 @@ func fittingHints(hints []footerHint, width int) []footerHint {
 	return kept
 }
 
-// hintsWidth is the display width of hints rendered with their gutters.
 func hintsWidth(hints []footerHint) int {
 	total := 0
 	for i, h := range hints {

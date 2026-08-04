@@ -47,6 +47,18 @@ func pushBranchCmd(repoPath, branch string, setUpstream bool) tea.Cmd {
 	}
 }
 
+// checkoutPRCmd checks a pull request out locally, fetching its head ref.
+func checkoutPRCmd(repoPath string, prNumber int) tea.Cmd {
+	return func() tea.Msg {
+		branch, err := github.CheckoutPR(context.Background(), repoPath, prNumber)
+		if err != nil {
+			return ActionResultMsg{Path: repoPath, Message: "Failed to check out PR: " + err.Error()}
+		}
+
+		return ActionResultMsg{Path: repoPath, Message: "Checked out " + branch, Success: true}
+	}
+}
+
 // createPRCmd opens a pull request for branch against base.
 func createPRCmd(repoPath, branch, base string) tea.Cmd {
 	return func() tea.Msg {
@@ -176,6 +188,29 @@ func (m Model) startSwitchBranch() (tea.Model, tea.Cmd) {
 	}
 
 	return m, switchBranchCmd(m.selectedRepo, branch.Name)
+}
+
+// startCheckoutPR checks the pull request under the cursor out locally after
+// confirmation. A branch a parallel checkout already holds is refused, for the
+// same reason switching to it is: git will not check one branch out twice.
+func (m Model) startCheckoutPR() (tea.Model, tea.Cmd) {
+	pr, ok := m.actionPR()
+	if !ok {
+		return m, statusCmd("No pull request under the cursor")
+	}
+	if peer, held := models.CheckoutForBranch(m.RepoCheckouts(), pr.HeadRef); held {
+		return m, statusCmd(pr.HeadRef + " is checked out in " + peer.Folder())
+	}
+	for _, branch := range m.branches {
+		if branch.Name == pr.HeadRef && branch.IsCurrent {
+			return m, statusCmd(pr.HeadRef + " is already checked out here")
+		}
+	}
+
+	detail := fmt.Sprintf("#%d %s → %s", pr.Number, pr.Title, pr.HeadRef)
+
+	return m.confirmAction("Check the PR branch out here?", detail,
+		checkoutPRCmd(m.selectedRepo, pr.Number))
 }
 
 // startPushBranch pushes the branch under the cursor after confirmation.

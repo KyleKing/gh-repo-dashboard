@@ -20,8 +20,7 @@ type PeerCheckout struct {
 	IsLocked   bool
 }
 
-// Kind names how the checkout relates to the repo: a sibling clone discovered
-// by the same scan, or a worktree of this one.
+// Kind reports whether the checkout is a sibling clone or a worktree.
 func (p *PeerCheckout) Kind() string {
 	if p.IsWorktree {
 		return "worktree"

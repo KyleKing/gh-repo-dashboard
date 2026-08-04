@@ -31,8 +31,6 @@ type prMapEntry struct {
 	Location string
 }
 
-// HasPR reports whether the row describes a pull request rather than a
-// local-only branch.
 func (e prMapEntry) HasPR() bool {
 	return e.PR != nil
 }
@@ -57,7 +55,6 @@ func loadPRMapCmd(path, upstream string) tea.Cmd {
 	}
 }
 
-// localOnlyLabel marks a row that has a local branch but no pull request.
 const localOnlyLabel = "(no PR)"
 
 // buildPRMap joins the loaded pull requests against the loaded branch lists,
@@ -126,8 +123,6 @@ func (m *Model) locateBranch(path, ref string) string {
 	return emDash
 }
 
-// sortPRMap orders rows by repo, then pull requests before local-only
-// branches, then by descending pull request number.
 func sortPRMap(entries []prMapEntry) {
 	sort.SliceStable(entries, func(i, j int) bool {
 		left, right := entries[i], entries[j]
@@ -147,7 +142,6 @@ func sortPRMap(entries []prMapEntry) {
 	})
 }
 
-// prMapSummary counts what the map found, for the header strip.
 func prMapSummary(entries []prMapEntry) string {
 	open, withLocal, localOnly := 0, 0, 0
 	for _, entry := range entries {

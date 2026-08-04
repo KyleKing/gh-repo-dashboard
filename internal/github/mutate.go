@@ -2,6 +2,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -25,7 +26,7 @@ func CreatePR(ctx context.Context, repoPath, branch, base string) (string, error
 		return "", err
 	}
 
-	invalidatePRCaches(repoPath)
+	InvalidatePRCaches(repoPath)
 
 	return lastLine(string(out)), nil
 }
@@ -42,15 +43,34 @@ func SquashMergePR(ctx context.Context, repoPath string, prNumber int) error {
 		return err
 	}
 
-	invalidatePRCaches(repoPath)
+	InvalidatePRCaches(repoPath)
 
 	return nil
 }
 
-// invalidatePRCaches drops every cached pull request view of a repo. The
+// CheckoutPR checks the pull request out into repoPath's working directory,
+// fetching its head ref first. Returns the local branch name gh landed on.
+func CheckoutPR(ctx context.Context, repoPath string, prNumber int) (string, error) {
+	env := vcs.GetGitHubEnv(repoPath)
+
+	if _, err := runGH(ctx, repoPath, env, "pr", "checkout", strconv.Itoa(prNumber)); err != nil {
+		return "", fmt.Errorf("checking out PR #%d: %w", prNumber, err)
+	}
+
+	InvalidatePRCaches(repoPath)
+
+	branch, err := vcs.GetOperations(repoPath).GetCurrentBranch(ctx, repoPath)
+	if err != nil {
+		return strconv.Itoa(prNumber), nil //nolint:nilerr // the checkout worked; only the name is unknown
+	}
+
+	return branch, nil
+}
+
+// InvalidatePRCaches drops every cached pull request view of a repo. The
 // per-branch and per-repo caches are keyed by upstream as well as path, so
-// they're cleared wholesale rather than by key.
-func invalidatePRCaches(repoPath string) {
+// they are cleared wholesale rather than by key.
+func InvalidatePRCaches(repoPath string) {
 	cache.PRCache.Clear()
 	cache.PRListCache.Clear()
 	cache.PRDetailCache.Clear()

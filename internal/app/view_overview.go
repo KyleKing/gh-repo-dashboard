@@ -93,8 +93,6 @@ func (m Model) renderOverview(s models.RepoSummary, opts overviewOpts) string {
 
 	lines := make([]string, 0, len(rows)+overviewHeaderLines)
 
-	// The focused view's breadcrumb already names the repo and its VCS, so the
-	// pane only introduces itself where it stands alone.
 	if opts.standalone {
 		lines = append(lines,
 			styles.HeaderStyle.Render(table.Truncate(s.Name(), width)),
@@ -130,7 +128,7 @@ type overviewOpts struct {
 }
 
 // overviewFullRows is how many rows the non-compact pane holds.
-const overviewFullRows = 7
+const overviewFullRows = 8
 
 // Row and tab labels shared between the overview pane and the tab bar, so a
 // rename cannot leave the two disagreeing.
@@ -143,13 +141,11 @@ const (
 	tabNameNotes    = "Notes"
 )
 
-// overviewRow is one label/value line of the panel.
 type overviewRow struct {
 	label string
 	value string
 }
 
-// overviewIdentity names how the repo is tracked: its VCS and remote protocol.
 func overviewIdentity(s models.RepoSummary) string {
 	parts := []string{s.VCSType.String()}
 	if s.RemoteProtocol != "" {
@@ -182,7 +178,20 @@ func (m Model) overviewRows(s models.RepoSummary, compact bool) []overviewRow {
 		overviewRow{label: tabNameNotes, value: overviewNotes(s.NotesFiles)},
 		overviewRow{label: "Template", value: formatCopierCell(s, overviewMaxWidth)},
 		overviewRow{label: tabNamePRs, value: overviewPRs(s)},
+		overviewRow{label: "CI", value: m.overviewCI(s)},
 	)
+}
+
+// overviewCI reports the default branch's CI rollup, naming the branch it
+// belongs to so the line is not mistaken for the current branch's checks.
+func (m Model) overviewCI(s models.RepoSummary) string {
+	text, _ := m.ciCell(s, plainStyle, false)
+
+	if branch := m.ciBranch[s.Path]; branch != "" {
+		return text + " on " + branch
+	}
+
+	return text
 }
 
 // overviewSync reports the branch's position against its upstream.
@@ -303,7 +312,6 @@ func joinListAndPanel(list, panel string, listW, panelW int) string {
 	return strings.Join(joined, "\n")
 }
 
-// lineAt returns lines[i], or an empty line past the end of the block.
 func lineAt(lines []string, i int) string {
 	if i < len(lines) {
 		return lines[i]

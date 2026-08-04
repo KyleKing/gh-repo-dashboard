@@ -144,17 +144,18 @@ func TestCursorMovement(t *testing.T) {
 		name       string
 		paths      []string
 		cursor     int
-		key        tea.KeyPressMsg
+		keys       []tea.KeyPressMsg
 		wantCursor int
 	}{
-		{"down moves", []string{"/a", "/b", "/c"}, 0, keyPress('j'), 1},
-		{"down clamps at bottom", []string{"/a", "/b"}, 1, keyPress('j'), 1},
-		{"up moves", []string{"/a", "/b"}, 1, keyPress('k'), 0},
-		{"up clamps at top", []string{"/a", "/b"}, 0, keyPress('k'), 0},
-		{"g goes to top", []string{"/a", "/b", "/c"}, 2, keyPress('g'), 0},
-		{"G goes to bottom", []string{"/a", "/b", "/c"}, 0, keyPress('G'), 2},
-		{"G on empty list stays 0", nil, 0, keyPress('G'), 0},
-		{"down on empty list stays 0", nil, 0, keyPress('j'), 0},
+		{"down moves", []string{"/a", "/b", "/c"}, 0, []tea.KeyPressMsg{keyPress('j')}, 1},
+		{"down clamps at bottom", []string{"/a", "/b"}, 1, []tea.KeyPressMsg{keyPress('j')}, 1},
+		{"up moves", []string{"/a", "/b"}, 1, []tea.KeyPressMsg{keyPress('k')}, 0},
+		{"up clamps at top", []string{"/a", "/b"}, 0, []tea.KeyPressMsg{keyPress('k')}, 0},
+		{"gg goes to top", []string{"/a", "/b", "/c"}, 2, []tea.KeyPressMsg{keyPress('g'), keyPress('g')}, 0},
+		{"a lone g waits for its pair", []string{"/a", "/b", "/c"}, 2, []tea.KeyPressMsg{keyPress('g')}, 2},
+		{"G goes to bottom", []string{"/a", "/b", "/c"}, 0, []tea.KeyPressMsg{keyPress('G')}, 2},
+		{"G on empty list stays 0", nil, 0, []tea.KeyPressMsg{keyPress('G')}, 0},
+		{"down on empty list stays 0", nil, 0, []tea.KeyPressMsg{keyPress('j')}, 0},
 	}
 
 	for _, tt := range tests {
@@ -163,8 +164,10 @@ func TestCursorMovement(t *testing.T) {
 			m := newListModel(tt.paths...)
 			m.cursor = tt.cursor
 
-			updatedModel, _ := m.Update(tt.key)
-			m = mustModel(t, updatedModel)
+			for _, key := range tt.keys {
+				updatedModel, _ := m.Update(key)
+				m = mustModel(t, updatedModel)
+			}
 
 			if m.cursor != tt.wantCursor {
 				t.Errorf("expected cursor %d, got %d", tt.wantCursor, m.cursor)
@@ -262,10 +265,12 @@ func TestDetailCursorMovement(t *testing.T) {
 		t.Errorf("down at bottom should clamp, got %d", m.detailCursor)
 	}
 
-	updatedModel, _ = m.Update(keyPress('g'))
-	m = mustModel(t, updatedModel)
+	for range 2 {
+		updatedModel, _ = m.Update(keyPress('g'))
+		m = mustModel(t, updatedModel)
+	}
 	if m.detailCursor != 0 {
-		t.Errorf("g should move to top, got %d", m.detailCursor)
+		t.Errorf("gg should move to top, got %d", m.detailCursor)
 	}
 
 	updatedModel, _ = m.Update(keyPress('k'))

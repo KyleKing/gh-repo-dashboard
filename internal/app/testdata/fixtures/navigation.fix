@@ -4,7 +4,7 @@ when keys j j
 then cursor = 2
 when keys G
 then cursor = 3
-when keys g
+when keys g g
 then cursor = 0
 when keys enter
 then view = detail

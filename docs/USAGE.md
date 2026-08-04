@@ -46,7 +46,7 @@ pressing `:`; bare keys act on the repo list.
 
 | Input | Result |
 |---|---|
-| press `1` | scene: work; overview: Sync=↑2 ↓1 vs origin/feat/login Files=1 staged · 3 unstaged Peers=none Stashes=4 Notes=doing.md Template=v0.9.1 → v0.10.0 PRs=#42 Add login flow |
+| press `1` | scene: work; overview: Sync=↑2 ↓1 vs origin/feat/login Files=1 staged · 3 unstaged Peers=none Stashes=4 Notes=doing.md Template=v0.9.1 → v0.10.0 PRs=#42 Add login flow CI=— |
 | press `2` | scene: review |
 | press `3` | scene: sync |
 | press `4` | scene: maintain |
@@ -56,7 +56,7 @@ pressing `:`; bare keys act on the repo list.
 
 | Input | Result |
 |---|---|
-| press `1` | opens the detail view; scene: work; overview: Sync=in sync vs origin/main Files=clean Peers=none Stashes=none Notes=none Template=— PRs=none open |
+| press `1` | opens the detail view; scene: work; overview: Sync=in sync vs origin/main Files=clean Peers=none Stashes=none Notes=none Template=— PRs=none open CI=— |
 
 ## Review command history and repeat the last command
 
@@ -73,7 +73,7 @@ pressing `:`; bare keys act on the repo list.
 |---|---|
 | press `j` `j` | cursor on row 2 |
 | press `G` | cursor on row 3 |
-| press `g` | cursor on row 0 |
+| press `g` `g` | cursor on row 0 |
 | press `enter` | opens the detail view |
 | press `esc` | opens the list view |
 

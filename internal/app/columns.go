@@ -30,11 +30,11 @@ const (
 	colCheckoutState  = "STATUS"
 	colCheckoutCommit = "LAST COMMIT"
 
-	colPRNumber = "NUMBER"
-	colPRTitle  = "TITLE"
-	colPRState  = "STATE"
-	colPRReview = "REVIEW"
-	colPRBranch = "BRANCH"
+	colPRNumber   = "NUMBER"
+	colPRTitle    = "TITLE"
+	colPRState    = "STATE"
+	colPRActivity = "ACTIVITY"
+	colPRBranch   = "BRANCH"
 
 	colCheckName     = "CHECK"
 	colCheckState    = "STATUS"
@@ -85,7 +85,7 @@ var (
 		{Key: colPRNumber, Title: colPRNumber, Min: 7},
 		{Key: colPRTitle, Title: colPRTitle, Min: 20, Weight: 3},
 		{Key: colPRState, Title: colPRState, Min: 10, Priority: 3},
-		{Key: colPRReview, Title: colPRReview, Min: 16, Priority: 1},
+		{Key: colPRActivity, Title: colPRActivity, Min: 20, Weight: 1, Priority: 1},
 		{Key: colPRBranch, Title: colPRBranch, Min: 14, Weight: 1, Priority: 2},
 	}
 
@@ -108,8 +108,6 @@ var (
 	}
 )
 
-// fitDetailCols fits a detail-tab table into the content width available at
-// termWidth, leaving room for the cursor gutter that leads every row.
 func fitDetailCols(specs []table.Column, termWidth int) table.Layout {
 	return table.Fit(specs, contentWidth(termWidth)-cursorWidth)
 }
@@ -132,8 +130,6 @@ func renderCells(
 	return cells
 }
 
-// detailHeader renders a detail-tab header row, indented past the cursor
-// gutter and carrying the marker for any columns collapse hid.
 func detailHeader(layout table.Layout) string {
 	return styles.HeaderStyle.Render(strings.Repeat(" ", cursorWidth) + table.Header(layout))
 }
@@ -167,11 +163,8 @@ func joinWithinWidth(head string, badges []string, limit int) string {
 	return line
 }
 
-// plainStyle is the unstyled base for tables that color individual cells only.
 var plainStyle = lipgloss.NewStyle()
 
-// rowStyleFor returns the base style for a table row, highlighted when it
-// holds the cursor.
 func rowStyleFor(selected bool) lipgloss.Style {
 	if selected {
 		return styles.SelectedRowStyle
@@ -180,7 +173,6 @@ func rowStyleFor(selected bool) lipgloss.Style {
 	return styles.TableRowStyle
 }
 
-// rowCursorFor returns the two-cell leader marking the selected row.
 func rowCursorFor(selected bool) string {
 	if selected {
 		return "> "

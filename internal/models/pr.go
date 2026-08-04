@@ -30,6 +30,36 @@ type PRInfo struct {
 	ReviewDecision  string       `json:"review_decision,omitempty"`
 	ApprovedBy      []string     `json:"approved_by,omitempty"`
 	ChangesRequests int          `json:"changes_requests,omitempty"`
+	Activity        *PRActivity  `json:"activity,omitempty"`
+}
+
+// PRActivity is the most recent comment or review on a pull request: the
+// signal for who a pull request is waiting on.
+type PRActivity struct {
+	Author string    `json:"author"`
+	At     time.Time `json:"at"`
+}
+
+// ActivitySummary renders the latest activity as an age and an author, or
+// emDash when the pull request has neither comments nor reviews.
+func (p *PRInfo) ActivitySummary() string {
+	if p.Activity == nil || p.Activity.At.IsZero() {
+		return emDash
+	}
+
+	return RelativeTime(p.Activity.At) + " " + p.Activity.Author
+}
+
+// ReviewGlyph marks an approval or a change request, or is empty otherwise.
+func (p *PRInfo) ReviewGlyph() string {
+	switch p.ReviewDecision {
+	case "APPROVED":
+		return "✓"
+	case "CHANGES_REQUESTED":
+		return "✗"
+	default:
+		return ""
+	}
 }
 
 // StatusDisplay returns the pull request's display status label.

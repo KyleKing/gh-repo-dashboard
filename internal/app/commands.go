@@ -21,6 +21,7 @@ import (
 const (
 	taskCleanupMerged = "Cleanup Merged"
 	taskFetchAll      = "Fetch All"
+	taskRefreshPRs    = "Refresh PRs"
 )
 
 func batchFetchAllCmd(paths []string) tea.Cmd {
@@ -29,6 +30,10 @@ func batchFetchAllCmd(paths []string) tea.Cmd {
 
 func batchPruneRemoteCmd(paths []string) tea.Cmd {
 	return batch.RunTask("Prune Remote", paths, batch.PruneRemote)
+}
+
+func batchRefreshPRsCmd(paths []string) tea.Cmd {
+	return batch.RunTask(taskRefreshPRs, paths, batch.RefreshPRs)
 }
 
 func batchCleanupMergedCmd(paths []string) tea.Cmd {
@@ -69,6 +74,27 @@ func loadPRCmd(path, _, upstream string) tea.Cmd {
 
 	return func() tea.Msg {
 		return PRLoadedMsg{Path: path, PRInfo: nil}
+	}
+}
+
+// loadDefaultBranchCICmd reads the CI runs for the repo's default branch head.
+// The branch and commit resolve from local refs, so the one gh call is the
+// whole API cost.
+func loadDefaultBranchCICmd(path string) tea.Cmd {
+	return func() tea.Msg {
+		ctx := context.Background()
+
+		def, err := vcs.DefaultBranchHead(ctx, path)
+		if err != nil {
+			return WorkflowLoadedMsg{Path: path}
+		}
+
+		summary, err := github.GetWorkflowRunsForCommit(ctx, path, def.SHA)
+		if err != nil {
+			return WorkflowLoadedMsg{Path: path, Error: err}
+		}
+
+		return WorkflowLoadedMsg{Path: path, Branch: def.Name, Workflow: summary}
 	}
 }
 

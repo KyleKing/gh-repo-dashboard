@@ -34,7 +34,7 @@ func (m Model) renderHelp() string {
 			[]struct{ key, desc string }{
 				{"j/k, Up/Down", "Move up/down"},
 				{"h/l, Left/Right", "Switch tabs (detail view)"},
-				{"g/G", "Go to top/bottom"},
+				{"gg/G", "Go to top/bottom"},
 				{"enter, space", "Select/enter"},
 				{"esc, backspace", "Go back"},
 				{keyTab, "Next tab (detail view)"},
@@ -53,6 +53,7 @@ func (m Model) renderHelp() string {
 			[]struct{ key, desc string }{
 				{"]", "Parallel checkouts of the selected repo"},
 				{"c", "Switch to the selected branch"},
+				{"g", "Check the selected PR's branch out here"},
 				{"p", "Push branch and its tags (--follow-tags)"},
 				{"N", "Create a PR for the selected branch"},
 				{"M", "Squash-merge the PR and delete its branch"},
@@ -64,6 +65,7 @@ func (m Model) renderHelp() string {
 				{"F", "Fetch all (filtered repos)"},
 				{"P", "Prune remote (filtered repos)"},
 				{"C", "Cleanup merged (filtered repos)"},
+				{"R", "Refresh PR data (filtered repos)"},
 			},
 		},
 		{
@@ -73,7 +75,7 @@ func (m Model) renderHelp() string {
 				{"@:", "Repeat the last command"},
 				{":history", "Recent commands, newest first"},
 				{":prs", "Map open PRs to the branches and checkouts holding them"},
-				{"F/P/C + object", "Run an operator over a text object (Fdr fetches dirty repos)"},
+				{"F/P/C/R + object", "Run an operator over a text object (Fdr fetches dirty repos)"},
 				{textObjectKeys(), textObjectNames()},
 			},
 		},

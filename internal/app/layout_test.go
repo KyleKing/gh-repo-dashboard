@@ -83,12 +83,12 @@ func TestLayoutRepoCols_HidesPRBeforeThePeerAndTemplateSignals(t *testing.T) {
 		t.Errorf("hid %d columns at 200 columns, want 0", wide.Hidden)
 	}
 
-	narrow := layoutRepoCols(cursorWidth + 92)
+	narrow := layoutRepoCols(cursorWidth + 102)
 	if narrow.Width(colPR) != 0 {
 		t.Error("the current-branch PR column should be the first to hide")
 	}
-	if narrow.Width(colPeers) == 0 || narrow.Width(colTemplate) == 0 {
-		t.Error("peers and template are the actionable fleet signals and must outlast PR")
+	if narrow.Width(colPeers) == 0 || narrow.Width(colTemplate) == 0 || narrow.Width(colCI) == 0 {
+		t.Error("peers, template, and CI are the actionable fleet signals and must outlast PR")
 	}
 	if narrow.Marker() != "…+1" {
 		t.Errorf("marker = %q, want %q", narrow.Marker(), "…+1")

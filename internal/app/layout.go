@@ -70,6 +70,7 @@ const (
 	colPR       = "PR"
 	colPRs      = "PRs"
 	colTemplate = "TEMPLATE"
+	colCI       = "CI"
 	colModified = "MODIFIED"
 )
 
@@ -92,6 +93,7 @@ var repoColSpecs = []table.Column{
 	{Key: colPR, Title: colPR, Min: 8, Priority: 1},
 	{Key: colPRs, Title: colPRs, Min: 6, Priority: 4},
 	{Key: colTemplate, Title: colTemplate, Min: 10, Weight: 1, Priority: 5},
+	{Key: colCI, Title: colCI, Min: 8, Priority: 6},
 	{Key: colModified, Title: colModified, Min: 12, Priority: 2},
 }
 

@@ -767,3 +767,26 @@ func ExtractRepoPath(remoteURL string) string {
 
 	return ""
 }
+
+// DefaultBranch is a repo's default branch and the commit it points at, read
+// from origin/HEAD.
+type DefaultBranch struct {
+	Name string
+	SHA  string
+}
+
+// DefaultBranchHead resolves origin/HEAD. It fails for a repo whose remote has
+// no HEAD ref, which is the case for one that has never been fetched.
+func DefaultBranchHead(ctx context.Context, repoPath string) (DefaultBranch, error) {
+	name, err := runCommand(ctx, repoPath, "git", "rev-parse", "--abbrev-ref", "origin/HEAD")
+	if err != nil {
+		return DefaultBranch{}, fmt.Errorf("resolving origin/HEAD: %w", err)
+	}
+
+	sha, err := runCommand(ctx, repoPath, "git", "rev-parse", "origin/HEAD")
+	if err != nil {
+		return DefaultBranch{}, fmt.Errorf("resolving origin/HEAD commit: %w", err)
+	}
+
+	return DefaultBranch{Name: strings.TrimPrefix(name, "origin/"), SHA: sha}, nil
+}
