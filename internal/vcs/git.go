@@ -312,7 +312,7 @@ const stashListFieldCount = 3
 
 // GetStashList implements Operations.
 func (g *GitOperations) GetStashList(ctx context.Context, repoPath string) ([]models.StashDetail, error) {
-	format := "%(reflog:short)\t%(reflog:subject)\t%(committerdate:unix)"
+	format := "%gd\t%gs\t%ct"
 	out, err := g.runGit(ctx, repoPath, "stash", "list", "--format="+format)
 	if err != nil {
 		return nil, err

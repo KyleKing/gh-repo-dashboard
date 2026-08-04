@@ -539,7 +539,7 @@ func TestGitGetBranchList(t *testing.T) {
 
 func TestGitGetStashList(t *testing.T) {
 	t.Parallel()
-	key := "git stash list --format=%(reflog:short)\t%(reflog:subject)\t%(committerdate:unix)"
+	key := "git stash list --format=%gd\t%gs\t%ct"
 
 	tests := []struct {
 		name     string

@@ -71,9 +71,6 @@ can ship while the focused view is still in design.
 The fixes from the 2026-08-03 critique plus the rendering foundation every
 later milestone draws on.
 
-- Fix `GetStashList`: `git stash list` needs log-format atoms (`%gd`, `%gs`,
-  `%ct`), not for-each-ref atoms (`internal/vcs/git.go:315`); update the
-  pinned fixture in `git_exec_test.go` that currently blesses the bug
 - Replace byte-count padding with display-width padding everywhere `fmt`
   pads user content (`lipgloss.Width`-based helper); fixes PR-tab drift under
   emoji, the `⚠` template suffix, and the `* ` current-branch misalignment
