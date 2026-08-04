@@ -103,6 +103,13 @@ var (
 			Background(Surface1).
 			Foreground(Text)
 
+	// CountStyle marks a count inside a fixed-width table cell. Unlike
+	// CountBadgeStyle it carries no padding, so it cannot widen its column
+	// and shift the columns rendered after it.
+	CountStyle = lipgloss.NewStyle().
+			Foreground(Lavender).
+			Bold(true)
+
 	NotesBadgeStyle = lipgloss.NewStyle().
 			Foreground(Teal).
 			Bold(true)

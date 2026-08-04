@@ -20,15 +20,7 @@ const (
 
 // Layout constants for the repo list table, detail panes, and batch results view.
 const (
-	repoNameColWidth       = 20
-	branchColWidth         = 15
-	statusColWidth         = 12
 	notesMarkerWidth       = 2
-	peersColWidth          = 5
-	prColWidth             = 12
-	prsColWidth            = 6
-	copierColWidth         = 16
-	modifiedColWidth       = 12
 	nonListRowHeight       = 6
 	visibleWindowCenter    = 2
 	branchNameTruncLen     = 20
@@ -53,8 +45,6 @@ const (
 	emptyStateVPad         = 2
 	emptyStateHPad         = 4
 	infoPaddingLeft        = 2
-	commitEmptyStateVPad   = 1
-	loadingStatePad        = 2
 	branchDetailMaxCommits = 10
 	notesSeparatorWidth    = 40
 	confirmModalVPad       = 1
@@ -71,18 +61,36 @@ func (m Model) View() tea.View {
 
 func (m Model) renderScreen() string {
 	if m.width == 0 {
-		return "Loading..."
+		return ""
 	}
 
 	content := m.renderView()
+	if !m.selfCentering() {
+		content = frame(content, m.width)
+	}
+
 	if m.commandMode {
-		return overlayBottomLine(content, m.commandInput.View(), m.height)
+		return overlayBottomLine(content, frame(m.commandInput.View(), m.width), m.height)
 	}
 	if m.statusMessage != "" {
-		return overlayBottomLine(content, styles.StatusMessageStyle.Render(m.statusMessage), m.height)
+		line := frame(styles.StatusMessageStyle.Render(m.statusMessage), m.width)
+
+		return overlayBottomLine(content, line, m.height)
 	}
 
 	return content
+}
+
+// selfCentering reports whether the current view already positions itself
+// within the full terminal, in which case the shared frame must not indent it
+// a second time.
+func (m Model) selfCentering() bool {
+	switch m.viewMode {
+	case ViewModeFilter, ViewModeSort, ViewModeConfirm:
+		return true
+	default:
+		return false
+	}
 }
 
 // overlayBottomLine pins line onto the last row of content, padding or
@@ -158,15 +166,37 @@ func (m Model) renderBreadcrumbs() string {
 	}
 }
 
+// truncate shortens s to at most maxLen terminal cells, appending an ellipsis
+// when there is room for one. Width is measured in rendered cells rather than
+// bytes, so multi-byte names keep table columns aligned.
 func truncate(s string, maxLen int) string {
 	const ellipsis = "..."
 
-	if len(s) <= maxLen {
+	if lipgloss.Width(s) <= maxLen {
 		return s
 	}
 	if maxLen <= len(ellipsis) {
-		return s[:maxLen]
+		return truncateWidth(s, maxLen)
 	}
 
-	return s[:maxLen-len(ellipsis)] + ellipsis
+	return truncateWidth(s, maxLen-len(ellipsis)) + ellipsis
+}
+
+// truncateWidth cuts s at the last rune boundary whose rendered width still
+// fits within maxWidth.
+func truncateWidth(s string, maxWidth int) string {
+	if maxWidth <= 0 {
+		return ""
+	}
+
+	width := 0
+	for i, r := range s {
+		runeWidth := lipgloss.Width(string(r))
+		if width+runeWidth > maxWidth {
+			return s[:i]
+		}
+		width += runeWidth
+	}
+
+	return s
 }

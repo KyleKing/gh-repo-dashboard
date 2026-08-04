@@ -3,11 +3,14 @@ package app
 
 import (
 	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
 // ViewMode identifies which screen the TUI is currently displaying.
@@ -82,6 +85,10 @@ type Model struct {
 	loadingCount int
 	loadedCount  int
 
+	detailLoading       bool
+	branchDetailLoading bool
+	spinner             spinner.Model
+
 	detailTab         DetailTab
 	detailCursor      int
 	branches          []models.BranchInfo
@@ -138,7 +145,12 @@ func New(scanPaths []string, maxDepth int) Model {
 		sorts = append(sorts, sort)
 	}
 
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
+	sp.Style = lipgloss.NewStyle().Foreground(styles.Blue)
+
 	return Model{
+		spinner:       sp,
 		scanPaths:     scanPaths,
 		maxDepth:      maxDepth,
 		summaries:     make(map[string]models.RepoSummary),
@@ -157,7 +169,17 @@ func New(scanPaths []string, maxDepth int) Model {
 
 // Init kicks off the initial repo discovery command.
 func (m Model) Init() tea.Cmd {
-	return discoverReposCmd(m.scanPaths, m.maxDepth)
+	return tea.Batch(discoverReposCmd(m.scanPaths, m.maxDepth), m.spinner.Tick)
+}
+
+// anyLoading reports whether any view is waiting on data. The spinner ticks
+// only while this holds, so a settled dashboard does not repaint on a timer.
+func (m Model) anyLoading() bool {
+	if m.viewMode == ViewModePRDetail && m.prDetail.Number == 0 {
+		return true
+	}
+
+	return m.loading || m.detailLoading || m.branchDetailLoading
 }
 
 // CurrentFilter returns the single active, non-inverted filter mode, or FilterModeAll if none is set.

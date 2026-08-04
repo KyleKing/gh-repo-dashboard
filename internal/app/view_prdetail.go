@@ -185,15 +185,12 @@ func writePRDetailActions(b *strings.Builder, sectionStyle lipgloss.Style) {
 
 // renderPRDetailLoading renders the placeholder shown before any PR detail
 // has arrived (shouldn't normally be seen, since PR info loads progressively).
-func renderPRDetailLoading(home, sep, repo string) string {
+func (m Model) renderPRDetailLoading(home, sep, repo string) string {
 	var b strings.Builder
 
 	b.WriteString(home + sep + repo + sep + styles.SubtitleStyle.Render("PR Detail"))
 	b.WriteString("\n\n")
-	loadingStyle := lipgloss.NewStyle().
-		Foreground(styles.Blue).
-		Padding(loadingStatePad)
-	b.WriteString(loadingStyle.Render("Loading PR details..."))
+	b.WriteString(m.loadingPlaceholder("Loading PR details"))
 	b.WriteString("\n\n")
 
 	footer := styles.FooterKeyStyle.Render(keyEsc) + styles.FooterDescStyle.Render(" back  ") +
@@ -213,7 +210,7 @@ func (m Model) renderPRDetail() string {
 
 	// Check if PR detail has been loaded
 	if m.prDetail.Number == 0 {
-		return renderPRDetailLoading(home, sep, repo)
+		return m.renderPRDetailLoading(home, sep, repo)
 	}
 
 	prTitle := styles.TitleStyle.Render(fmt.Sprintf("PR #%d", m.prDetail.Number))

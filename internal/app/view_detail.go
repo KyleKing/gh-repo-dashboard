@@ -57,7 +57,7 @@ func (m Model) renderRepoDetail() string {
 
 	b.WriteString(m.renderBreadcrumbs())
 	b.WriteString("\n")
-	b.WriteString(styles.SubtitleStyle.Render(summary.Path))
+	b.WriteString(styles.SubtitleStyle.Render(truncate(summary.Path, contentWidth(m.width))))
 	b.WriteString("\n\n")
 
 	b.WriteString(m.renderDetailTabs())
@@ -142,13 +142,11 @@ func (m Model) renderDetailTabs() string {
 
 func (m Model) renderBranchList() string {
 	if len(m.branches) == 0 {
-		emptyStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(styles.Surface1).
-			Padding(emptyStateVPad, emptyStateHPad).
-			Foreground(styles.Subtext0)
+		if m.detailLoading {
+			return m.loadingPlaceholder("Loading branches")
+		}
 
-		return emptyStyle.Render("No branches found")
+		return emptyPlaceholder("No branches found", "")
 	}
 
 	prsByBranch := prsByHeadRef(m.prs)
@@ -326,16 +324,13 @@ func renderBranchRow(row branchRow) string {
 
 func (m Model) renderStashList() string {
 	if len(m.stashes) == 0 {
-		emptyStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(styles.Surface1).
-			Padding(emptyStateVPad, emptyStateHPad).
-			Foreground(styles.Subtext0)
+		if m.detailLoading {
+			return m.loadingPlaceholder("Loading stashes")
+		}
 
-		noStashesMsg := "No stashes found\n\nStashes are only available for git repositories.\n" +
-			"JJ repositories use the working copy change instead."
-
-		return emptyStyle.Render(noStashesMsg)
+		return emptyPlaceholder("No stashes found",
+			"Stashes are only available for git repositories.\n"+
+				"JJ repositories use the working copy change instead.")
 	}
 
 	var rows []string
@@ -380,16 +375,12 @@ func (m Model) renderStashList() string {
 // the filenames that are detected.
 func (m Model) renderNotesTab() string {
 	if len(m.notesFiles) == 0 {
-		emptyStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(styles.Surface1).
-			Padding(emptyStateVPad, emptyStateHPad).
-			Foreground(styles.Subtext0)
+		if m.detailLoading {
+			return m.loadingPlaceholder("Loading notes")
+		}
 
-		noNotesMsg := "No notes file found\n\n" +
-			"Add a .doing, doing.md, doing.txt, or TODO.md file to the repo root."
-
-		return emptyStyle.Render(noNotesMsg)
+		return emptyPlaceholder("No notes file found",
+			"Add a .doing, doing.md, doing.txt, or TODO.md file to the repo root.")
 	}
 
 	var b strings.Builder
@@ -414,24 +405,33 @@ func (m Model) renderNotesTab() string {
 	return b.String()
 }
 
+// renderWorktreesPlaceholder renders the loading or empty state for the
+// worktrees tab, using jj's "workspace" wording when the repo is a jj repo.
+func (m Model) renderWorktreesPlaceholder(isJJ bool) string {
+	if isJJ {
+		if m.detailLoading {
+			return m.loadingPlaceholder("Loading workspaces")
+		}
+
+		return emptyPlaceholder("No workspaces found",
+			"Workspaces (jj's version of worktrees) allow working on multiple\n"+
+				"changes simultaneously in separate working directories.")
+	}
+
+	if m.detailLoading {
+		return m.loadingPlaceholder("Loading worktrees")
+	}
+
+	return emptyPlaceholder("No worktrees found",
+		"Worktrees allow working on multiple branches simultaneously.")
+}
+
 func (m Model) renderWorktreeList() string {
 	summary := m.summaries[m.selectedRepo]
 	isJJ := summary.VCSType == models.VCSTypeJJ
 
 	if len(m.worktrees) == 0 {
-		emptyStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(styles.Surface1).
-			Padding(emptyStateVPad, emptyStateHPad).
-			Foreground(styles.Subtext0)
-
-		emptyMsg := "No worktrees found\n\nWorktrees allow working on multiple branches simultaneously."
-		if isJJ {
-			emptyMsg = "No workspaces found\n\nWorkspaces (jj's version of worktrees) allow working on multiple\n" +
-				"changes simultaneously in separate working directories."
-		}
-
-		return emptyStyle.Render(emptyMsg)
+		return m.renderWorktreesPlaceholder(isJJ)
 	}
 
 	var rows []string
@@ -487,13 +487,11 @@ func (m Model) renderWorktreeList() string {
 
 func (m Model) renderPRList() string {
 	if len(m.prs) == 0 {
-		emptyStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(styles.Surface1).
-			Padding(emptyStateVPad, emptyStateHPad).
-			Foreground(styles.Subtext0)
+		if m.detailLoading {
+			return m.loadingPlaceholder("Loading pull requests")
+		}
 
-		return emptyStyle.Render("No open pull requests")
+		return emptyPlaceholder("No open pull requests", "")
 	}
 
 	var rows []string

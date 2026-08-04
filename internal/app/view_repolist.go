@@ -125,41 +125,20 @@ func appendSortBadges(parts []string, activeSorts []models.ActiveSort) []string 
 
 func (m Model) renderTable() string {
 	if len(m.filteredPaths) == 0 {
-		emptyStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(styles.Surface1).
-			Padding(emptyStateVPad, emptyStateHPad).
-			Foreground(styles.Subtext0)
-
 		if m.loading {
-			return emptyStyle.Render("Discovering repositories...")
+			return m.loadingPlaceholder("Discovering repositories")
+		}
+		if len(m.repoPaths) > 0 {
+			return emptyPlaceholder("No repositories match the active filters",
+				"Press f to change filters, / to clear the search.")
 		}
 
-		return emptyStyle.Render("No repositories found")
+		return emptyPlaceholder("No repositories found",
+			"Nothing was discovered under the configured scan paths.")
 	}
 
-	colWidths := repoColWidths{
-		name:     repoNameColWidth,
-		branch:   branchColWidth,
-		status:   statusColWidth,
-		peers:    peersColWidth,
-		pr:       prColWidth,
-		prs:      prsColWidth,
-		copier:   copierColWidth,
-		modified: modifiedColWidth,
-	}
-
-	header := fmt.Sprintf("  %-*s  %-*s  %-*s  %-*s  %-*s  %-*s  %-*s  %s",
-		colWidths.name, "NAME",
-		colWidths.branch, "BRANCH",
-		colWidths.status, "STATUS",
-		colWidths.peers, "PEERS",
-		colWidths.pr, "PR",
-		colWidths.prs, "PRs",
-		colWidths.copier, "TEMPLATE",
-		"MODIFIED",
-	)
-	header = styles.HeaderStyle.Render(header)
+	layout := layoutRepoCols(contentWidth(m.width))
+	header := styles.HeaderStyle.Render(renderRepoHeader(layout))
 
 	previewLineCount := 0
 	if m.notesPreviewOpen && m.cursor < len(m.filteredPaths) {
@@ -190,7 +169,7 @@ func (m Model) renderTable() string {
 	for i := startIdx; i < endIdx; i++ {
 		path := m.filteredPaths[i]
 		summary := m.summaries[path]
-		row := m.renderTableRow(summary, i == m.cursor, colWidths)
+		row := m.renderTableRow(summary, i == m.cursor, layout)
 		rows = append(rows, row)
 
 		if i == m.cursor && m.notesPreviewOpen {
@@ -255,18 +234,21 @@ func formatPRCell(s models.RepoSummary) string {
 	return prNum
 }
 
+// warnSuffixWidth is the room reserved for a trailing " ⚠" marker.
+const warnSuffixWidth = 2
+
 // formatCopierCell formats a repo's copier-template column: emDash if the
 // repo isn't copier-generated, the installed tag (with "→ latest" appended
 // when behind), or the installed ref plus a warning icon when it isn't a
 // semver tag at all (commit- or branch-pinned, so currency can't be judged).
-func formatCopierCell(s models.RepoSummary) string {
+func formatCopierCell(s models.RepoSummary, width int) string {
 	info := s.TemplateInfo
 	if info == nil {
 		return emDash
 	}
 
 	if !info.IsTag {
-		return truncate(info.Commit, copierColWidth-2) + " ⚠" //nolint:mnd // reserves room for the " ⚠" suffix
+		return truncate(info.Commit, width-warnSuffixWidth) + " ⚠"
 	}
 
 	if info.Behind && info.LatestTag != "" {
@@ -290,16 +272,15 @@ func notesMarker(s models.RepoSummary, base lipgloss.Style, selected bool) (stri
 	return "N" + strconv.Itoa(count), style
 }
 
-// repoColWidths holds the repo table's per-column widths.
-type repoColWidths struct {
-	name     int
-	branch   int
-	status   int
-	peers    int
-	pr       int
-	prs      int
-	copier   int
-	modified int
+// renderRepoHeader renders the table header for a resolved column layout.
+func renderRepoHeader(layout repoLayout) string {
+	cells := make([]string, 0, len(layout.cols))
+	for _, c := range layout.cols {
+		cells = append(cells, padCell(c.header, layout.width(c.col)))
+	}
+
+	return strings.Repeat(" ", cursorWidth) +
+		strings.Join(cells, strings.Repeat(" ", colGutter))
 }
 
 // peersCell renders a repo's parallel-checkout count, or emDash when the repo
@@ -310,94 +291,111 @@ func (m Model) peersCell(path string, base lipgloss.Style, selected bool) (strin
 		return emDash, base
 	}
 
-	return "⧉" + strconv.Itoa(len(peers)), withSelection(styles.CountBadgeStyle, selected)
+	return "⧉" + strconv.Itoa(len(peers)), withSelection(styles.CountStyle, selected)
 }
 
-func (m Model) renderTableRow(s models.RepoSummary, selected bool, colWidths repoColWidths) string {
+func (m Model) renderTableRow(s models.RepoSummary, selected bool, layout repoLayout) string {
+	base := styles.TableRowStyle
+	if selected {
+		base = styles.SelectedRowStyle
+	}
+
+	cells := make([]string, 0, len(layout.cols))
+	for _, c := range layout.cols {
+		cells = append(cells, m.repoCell(c.col, s, layout.width(c.col), base, selected))
+	}
+
+	gutter := base.Render(strings.Repeat(" ", colGutter))
+
+	return base.Render(rowCursor(m.selectedPaths[s.Path], selected)) +
+		strings.Join(cells, gutter)
+}
+
+// rowCursor renders the two-cell leader: the cursor arrow and the batch
+// selection mark.
+func rowCursor(marked, selected bool) string {
 	cursorChar := " "
 	if selected {
 		cursorChar = ">"
 	}
 	markChar := " "
-	if m.selectedPaths[s.Path] {
+	if marked {
 		markChar = "•"
 	}
-	cursor := cursorChar + markChar
 
-	name := truncate(s.Name(), colWidths.name)
-	branch := truncate(s.Branch, colWidths.branch)
-	status := s.StatusSummary()
-	pr := formatPRCell(s)
+	return cursorChar + markChar
+}
 
-	prCountStr := emDash
-	if count, ok := m.prCount[s.Path]; ok && count > 0 {
-		prCountStr = strconv.Itoa(count)
+// repoCell renders one column of a repo row, padded to exactly width cells so
+// the columns after it stay aligned.
+func (m Model) repoCell(col repoColumn, s models.RepoSummary, width int, base lipgloss.Style, selected bool) string {
+	switch col {
+	case colName:
+		return base.Render(padCell(s.Name(), width))
+	case colBranch:
+		return withSelection(styles.BranchStyle, selected).Render(padCell(s.Branch, width))
+	case colStatus:
+		return statusCell(s, width, base, selected)
+	case colPeers:
+		text, style := m.peersCell(s.Path, base, selected)
+
+		return style.Render(padCell(text, width))
+	case colPR:
+		return prCellStyle(s, base, selected).Render(padCell(formatPRCell(s), width))
+	case colPRs:
+		return base.Render(padCell(m.prCountText(s.Path), width))
+	case colTemplate:
+		return templateCellStyle(s, base, selected).Render(padCell(formatCopierCell(s, width), width))
+	case colModified:
+		return base.Render(padCell(s.RelativeModified(), width))
+	default:
+		return base.Render(padCell("", width))
+	}
+}
+
+// statusCell renders the status summary and the notes marker that shares its
+// column, keeping the marker right-aligned within the column.
+func statusCell(s models.RepoSummary, width int, base lipgloss.Style, selected bool) string {
+	notesText, notesStyle := notesMarker(s, base, selected)
+	style := withSelection(statusCellStyle(s, base), selected)
+
+	return style.Render(padCell(s.StatusSummary(), width-notesMarkerWidth)) +
+		notesStyle.Render(padCell(notesText, notesMarkerWidth))
+}
+
+func (m Model) prCountText(path string) string {
+	if count, ok := m.prCount[path]; ok && count > 0 {
+		return strconv.Itoa(count)
 	}
 
-	copierText := formatCopierCell(s)
-	modified := s.RelativeModified()
+	return emDash
+}
 
-	var style lipgloss.Style
-	if selected {
-		style = styles.SelectedRowStyle
-	} else {
-		style = styles.TableRowStyle
-	}
-
-	nameStyle := style
-	branchStyle := withSelection(styles.BranchStyle, selected)
-
-	var statusStyle lipgloss.Style
+func statusCellStyle(s models.RepoSummary, base lipgloss.Style) lipgloss.Style {
 	switch {
 	case s.IsDirty():
-		statusStyle = styles.DirtyStyle
+		return styles.DirtyStyle
 	case s.Status() == models.RepoStatusClean:
-		statusStyle = styles.CleanStyle
+		return styles.CleanStyle
 	default:
-		statusStyle = style
+		return base
 	}
-	statusStyle = withSelection(statusStyle, selected)
+}
 
-	prStyle := style
+func prCellStyle(s models.RepoSummary, base lipgloss.Style, selected bool) lipgloss.Style {
 	if s.PRInfo != nil {
-		prStyle = withSelection(styles.PROpenStyle, selected)
+		return withSelection(styles.PROpenStyle, selected)
 	}
 
-	copierStyle := style
+	return base
+}
+
+func templateCellStyle(s models.RepoSummary, base lipgloss.Style, selected bool) lipgloss.Style {
 	if info := s.TemplateInfo; info != nil && (!info.IsTag || info.Behind) {
-		copierStyle = withSelection(styles.WarningStyle, selected)
+		return withSelection(styles.WarningStyle, selected)
 	}
 
-	notesText, notesStyle := notesMarker(s, style, selected)
-
-	statusTextWidth := colWidths.status - notesMarkerWidth
-
-	formattedName := fmt.Sprintf("%-*s", colWidths.name, name)
-	formattedBranch := fmt.Sprintf("%-*s", colWidths.branch, branch)
-	formattedStatus := fmt.Sprintf("%-*s", statusTextWidth, status)
-	formattedNotes := fmt.Sprintf("%-*s", notesMarkerWidth, truncate(notesText, notesMarkerWidth))
-	peersText, peersStyle := m.peersCell(s.Path, style, selected)
-	formattedPeers := fmt.Sprintf("%-*s", colWidths.peers, peersText)
-
-	formattedPR := fmt.Sprintf("%-*s", colWidths.pr, pr)
-	formattedPRCount := fmt.Sprintf("%-*s", colWidths.prs, prCountStr)
-	formattedCopier := fmt.Sprintf("%-*s", colWidths.copier, copierText)
-
-	statusCell := statusStyle.Render(formattedStatus) + notesStyle.Render(formattedNotes)
-
-	row := fmt.Sprintf("%s%s  %s  %s  %s  %s  %s  %s  %s",
-		cursor,
-		nameStyle.Render(formattedName),
-		branchStyle.Render(formattedBranch),
-		statusCell,
-		peersStyle.Render(formattedPeers),
-		prStyle.Render(formattedPR),
-		style.Render(formattedPRCount),
-		copierStyle.Render(formattedCopier),
-		style.Render(modified),
-	)
-
-	return row
+	return base
 }
 
 func (m Model) renderFooter() string {

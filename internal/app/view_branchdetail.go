@@ -225,12 +225,11 @@ func (m Model) writeBranchCommitsSection(b *strings.Builder, s branchDetailStyle
 	b.WriteString("\n\n")
 
 	if len(m.branchDetail.Commits) == 0 {
-		emptyStyle := lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(styles.Surface1).
-			Padding(commitEmptyStateVPad, emptyStateHPad).
-			Foreground(styles.Subtext0)
-		b.WriteString(emptyStyle.Render("No commits found"))
+		if m.branchDetailLoading {
+			b.WriteString(m.loadingPlaceholder("Loading commits"))
+		} else {
+			b.WriteString(emptyPlaceholder("No commits found", ""))
+		}
 
 		return
 	}

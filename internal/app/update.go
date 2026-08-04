@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
@@ -36,6 +37,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.help.SetWidth(msg.Width)
 
 		return m, nil
+
+	case spinner.TickMsg:
+		return m.handleSpinnerTick(msg)
 
 	case tea.KeyMsg:
 		return m.routeKeyMsg(msg)
@@ -75,6 +79,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case BranchDetailLoadedMsg:
 		if msg.Path == m.selectedRepo {
+			m.branchDetailLoading = false
 			m.branchDetail = msg.Detail
 		}
 
@@ -273,6 +278,19 @@ func (m Model) handlePRDetailLoaded(msg PRDetailLoadedMsg) (tea.Model, tea.Cmd) 
 }
 
 // handleDetailLoaded stores the loaded repo detail (branches/stashes/
+// handleSpinnerTick advances the loading spinner. The tick chain stops once
+// nothing is loading, so an idle dashboard issues no further redraws.
+func (m Model) handleSpinnerTick(msg spinner.TickMsg) (tea.Model, tea.Cmd) {
+	if !m.anyLoading() {
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+	m.spinner, cmd = m.spinner.Update(msg)
+
+	return m, cmd
+}
+
 // worktrees/PRs) and kicks off background prefetch of the first few PR
 // details.
 func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
@@ -280,6 +298,7 @@ func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	m.detailLoading = false
 	m.branches = msg.Branches
 	m.deletableBranches = msg.DeletableBranches
 	m.stashes = msg.Stashes
@@ -407,8 +426,14 @@ func (m Model) handleEnterKey() (tea.Model, tea.Cmd) {
 	m.viewMode = ViewModeRepoDetail
 	m.detailTab = DetailTabBranches
 	m.detailCursor = 0
+	m.branches = nil
+	m.stashes = nil
+	m.worktrees = nil
+	m.prs = nil
+	m.notesFiles = nil
+	m.detailLoading = true
 
-	return m, loadDetailCmd(m.selectedRepo)
+	return m, tea.Batch(loadDetailCmd(m.selectedRepo), m.spinner.Tick)
 }
 
 // handleBackKey pops the current view back to its parent, if it has one.
@@ -595,9 +620,10 @@ func (m Model) handleDetailEnterKey() (tea.Model, tea.Cmd) {
 	case m.detailTab == DetailTabBranches && m.detailCursor < len(m.branches):
 		m.selectedBranch = m.branches[m.detailCursor]
 		m.branchDetail = models.BranchDetail{} // Clear previous detail
+		m.branchDetailLoading = true
 		m.viewMode = ViewModeBranchDetail
 
-		return m, loadBranchDetailCmd(m.selectedRepo, m.selectedBranch.Name)
+		return m, tea.Batch(loadBranchDetailCmd(m.selectedRepo, m.selectedBranch.Name), m.spinner.Tick)
 
 	case m.detailTab == DetailTabPRs && m.detailCursor < len(m.prs):
 		m.selectedPR = m.prs[m.detailCursor]
@@ -691,6 +717,7 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		m.notesFiles = nil
 		m.branchDetail = models.BranchDetail{}
 		m.prDetail = models.PRDetail{}
+		m.detailLoading = true
 
 		if m.selectedRepo != "" {
 			cmds = append(cmds, loadDetailCmd(m.selectedRepo))
@@ -702,6 +729,7 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 	case ViewModeBranchDetail:
 		// Clear branch detail when refreshing
 		m.branchDetail = models.BranchDetail{}
+		m.branchDetailLoading = true
 
 		if m.selectedRepo != "" && m.selectedBranch.Name != "" {
 			cmds = append(cmds, loadBranchDetailCmd(m.selectedRepo, m.selectedBranch.Name))
@@ -717,6 +745,10 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 
 	default:
 		// no per-view refresh behavior for this view
+	}
+
+	if m.anyLoading() {
+		cmds = append(cmds, m.spinner.Tick)
 	}
 
 	return m, tea.Batch(cmds...)
