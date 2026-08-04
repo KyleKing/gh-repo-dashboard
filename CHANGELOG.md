@@ -1,3 +1,27 @@
+## v1.5.0 (2026-08-04)
+
+### Feat
+
+- **cli**: report CI, template drift, and alerts for a fleet assessment
+- **app**: surface PR activity, PR checkout, and default-branch CI
+- **app**: map open PRs onto the branches and checkouts holding them
+- **app**: show parallel checkouts and flag shared branches
+- **app**: answer the focused repo view on arrival with an overview pane
+- **app**: mount a live preview panel beside the wide repo list
+- **app**: add breakpoint layouts and collapse the footer by priority
+- **app**: size every detail table with the column engine
+- **app**: surface command mode in the footer and help
+- **ui**: add the shared column engine and put the repo list on it
+- expand and center tables
+
+### Fix
+
+- **app**: wrap notes content to the pane width
+- **app**: space the peers glyph from its count
+- **app**: start search from an empty query
+- **app**: pad every table cell by display width
+- **vcs**: read stash list with log-format atoms
+
 ## v1.4.0 (2026-08-03)
 
 ### Feat
