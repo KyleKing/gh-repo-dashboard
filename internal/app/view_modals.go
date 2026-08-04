@@ -80,7 +80,7 @@ func (m Model) renderHelp() string {
 		b.WriteString("\n")
 		for _, k := range section.keys {
 			fmt.Fprintf(&b, "  %s  %s\n",
-				styles.HelpKeyStyle.Render(fmt.Sprintf("%-20s", k.key)),
+				styles.HelpKeyStyle.Render(padCell(k.key, helpKeyColWidth)),
 				styles.HelpDescStyle.Render(k.desc))
 		}
 		b.WriteString("\n")
@@ -111,8 +111,9 @@ func (m Model) renderFilterModal() string {
 		Foreground(styles.Subtext0).
 		Bold(true)
 
-	header := fmt.Sprintf("  %-4s  %-3s  %-15s  %s",
-		"", "Key", "Filter", "Count")
+	header := fmt.Sprintf("  %s  %s  %s  %s",
+		padCell("", modalMarkColWidth), padCell("Key", modalKeyColWidth),
+		padCell("Filter", filterLabelColWidth), "Count")
 	b.WriteString(headerStyle.Render(header))
 	b.WriteString("\n")
 
@@ -157,9 +158,9 @@ func (m Model) renderFilterModal() string {
 			Foreground(styles.Mauve).
 			Bold(true)
 
-		formattedCheck := fmt.Sprintf("%-4s", checkbox)
-		formattedKey := fmt.Sprintf("%-3s", shortKey)
-		formattedLabel := fmt.Sprintf("%-15s", label)
+		formattedCheck := padCell(checkbox, modalMarkColWidth)
+		formattedKey := padCell(shortKey, modalKeyColWidth)
+		formattedLabel := padCell(label, filterLabelColWidth)
 		formattedCount := strconv.Itoa(count)
 
 		row := fmt.Sprintf("%s%s  %s  %s  %s",
@@ -290,8 +291,8 @@ func renderSortModalRow(sortState models.ActiveSort, isSelected bool) string {
 		Foreground(styles.Mauve).
 		Bold(true)
 
-	formattedIndicator := fmt.Sprintf("%-4s", indicator)
-	formattedKey := fmt.Sprintf("%-3s", shortKey)
+	formattedIndicator := padCell(indicator, modalMarkColWidth)
+	formattedKey := padCell(shortKey, modalKeyColWidth)
 
 	return fmt.Sprintf("%s%s  %s  %s",
 		cursor,
@@ -313,8 +314,8 @@ func (m Model) renderSortModal() string {
 		Foreground(styles.Subtext0).
 		Bold(true)
 
-	header := fmt.Sprintf("  %-4s  %-3s  %s",
-		"", "Key", "Sort By")
+	header := fmt.Sprintf("  %s  %s  %s",
+		padCell("", modalMarkColWidth), padCell("Key", modalKeyColWidth), "Sort By")
 	b.WriteString(headerStyle.Render(header))
 	b.WriteString("\n")
 
@@ -377,10 +378,10 @@ func (m Model) renderBatchProgress() string {
 			if !result.Success {
 				icon = styles.ErrorStyle.Render("✗")
 			}
-			name := truncate(filepath.Base(result.Path), batchNameTruncLen)
+			name := padCell(filepath.Base(result.Path), batchNameTruncLen)
 			msg := truncate(result.Message, messageTruncLen)
 
-			row := fmt.Sprintf("  %s %-*s  %s", icon, batchNameTruncLen, name, styles.SubtitleStyle.Render(msg))
+			row := fmt.Sprintf("  %s %s  %s", icon, name, styles.SubtitleStyle.Render(msg))
 			b.WriteString(row)
 			b.WriteString("\n")
 		}

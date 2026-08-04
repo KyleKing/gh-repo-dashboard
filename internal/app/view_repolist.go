@@ -234,8 +234,8 @@ func formatPRCell(s models.RepoSummary) string {
 	return prNum
 }
 
-// warnSuffixWidth is the room reserved for a trailing " ⚠" marker.
-const warnSuffixWidth = 2
+// warnSuffix marks a template ref whose currency cannot be judged.
+const warnSuffix = " ⚠"
 
 // formatCopierCell formats a repo's copier-template column: emDash if the
 // repo isn't copier-generated, the installed tag (with "→ latest" appended
@@ -248,7 +248,7 @@ func formatCopierCell(s models.RepoSummary, width int) string {
 	}
 
 	if !info.IsTag {
-		return truncate(info.Commit, width-warnSuffixWidth) + " ⚠"
+		return truncate(info.Commit, width-lipgloss.Width(warnSuffix)) + warnSuffix
 	}
 
 	if info.Behind && info.LatestTag != "" {

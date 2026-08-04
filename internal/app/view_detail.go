@@ -153,13 +153,13 @@ func (m Model) renderBranchList() string {
 	checkouts := m.RepoCheckouts()
 
 	var rows []string
-	header := fmt.Sprintf("  %-*s  %-*s  %-*s  %-*s  %-*s  %-*s  %s",
-		branchNameTruncLen, "BRANCH",
-		upstreamTruncLen, "UPSTREAM",
-		branchStatusColWidth, "STATUS",
-		branchPRColWidth, "PR",
-		branchChecksColWidth, "CHECKS",
-		checkoutColWidth, "CHECKED OUT",
+	header := fmt.Sprintf("  %s  %s  %s  %s  %s  %s  %s",
+		padCell("BRANCH", branchNameTruncLen),
+		padCell("UPSTREAM", upstreamTruncLen),
+		padCell("STATUS", branchStatusColWidth),
+		padCell("PR", branchPRColWidth),
+		padCell("CHECKS", branchChecksColWidth),
+		padCell("CHECKED OUT", checkoutColWidth),
 		"LAST COMMIT")
 	rows = append(rows, styles.HeaderStyle.Render(header))
 
@@ -265,22 +265,29 @@ func checksCellStyle(pr *models.PRInfo, base lipgloss.Style) lipgloss.Style {
 	}
 }
 
+// Row markers whose display width padCell must account for; padCell truncates
+// the prefixed value, so the prefix never widens its column.
+const (
+	currentBranchPrefix = "* "
+	peerPrefix          = "⧉ "
+)
+
 func renderBranchRow(row branchRow) string {
 	cursor := "  "
 	if row.selected {
 		cursor = "> "
 	}
 
-	name := truncate(row.branch.Name, branchNameTruncLen)
+	name := row.branch.Name
 	if row.branch.IsCurrent {
-		name = "* " + name
+		name = currentBranchPrefix + name
 	}
 
 	checkout := emDash
 	if row.branch.IsCurrent {
 		checkout = "here"
 	} else if row.checkout != "" {
-		checkout = "⧉ " + truncate(row.checkout, checkoutColWidth-2) //nolint:mnd // reserves room for the "⧉ " prefix
+		checkout = peerPrefix + row.checkout
 	}
 
 	style := styles.TableRowStyle
@@ -304,15 +311,14 @@ func renderBranchRow(row branchRow) string {
 		checkoutStyle = withSelection(styles.WarningStyle, row.selected)
 	}
 
-	cells := fmt.Sprintf("%-*s", branchNameTruncLen, name)
 	rendered := fmt.Sprintf("%s%s  %s  %s  %s  %s  %s  %s",
 		cursor,
-		nameStyle.Render(cells),
-		style.Render(fmt.Sprintf("%-*s", upstreamTruncLen, truncate(row.branch.Upstream, upstreamTruncLen))),
-		style.Render(fmt.Sprintf("%-*s", branchStatusColWidth, branchAheadBehindStatus(row.branch))),
-		prStyle.Render(fmt.Sprintf("%-*s", branchPRColWidth, formatBranchPRCell(row.pr))),
-		checksCellStyle(row.pr, style).Render(fmt.Sprintf("%-*s", branchChecksColWidth, formatChecksCell(row.pr))),
-		checkoutStyle.Render(fmt.Sprintf("%-*s", checkoutColWidth, checkout)),
+		nameStyle.Render(padCell(name, branchNameTruncLen)),
+		style.Render(padCell(row.branch.Upstream, upstreamTruncLen)),
+		style.Render(padCell(branchAheadBehindStatus(row.branch), branchStatusColWidth)),
+		prStyle.Render(padCell(formatBranchPRCell(row.pr), branchPRColWidth)),
+		checksCellStyle(row.pr, style).Render(padCell(formatChecksCell(row.pr), branchChecksColWidth)),
+		checkoutStyle.Render(padCell(checkout, checkoutColWidth)),
 		style.Render(row.branch.RelativeLastCommit()),
 	)
 	if row.deletable {
@@ -334,8 +340,8 @@ func (m Model) renderStashList() string {
 	}
 
 	var rows []string
-	header := fmt.Sprintf("  %-8s  %-40s  %s",
-		"INDEX", "MESSAGE", "DATE")
+	header := fmt.Sprintf("  %s  %s  %s",
+		padCell("INDEX", stashIndexColWidth), padCell("MESSAGE", messageTruncLen), "DATE")
 	rows = append(rows, styles.HeaderStyle.Render(header))
 
 	for i, stash := range m.stashes {
@@ -345,7 +351,6 @@ func (m Model) renderStashList() string {
 		}
 
 		index := fmt.Sprintf("stash@{%d}", stash.Index)
-		message := truncate(stash.Message, messageTruncLen)
 		date := stash.RelativeDate()
 
 		var style lipgloss.Style
@@ -355,13 +360,10 @@ func (m Model) renderStashList() string {
 			style = styles.TableRowStyle
 		}
 
-		formattedIndex := fmt.Sprintf("%-8s", index)
-		formattedMessage := fmt.Sprintf("%-40s", message)
-
 		row := fmt.Sprintf("%s%s  %s  %s",
 			cursor,
-			style.Render(formattedIndex),
-			style.Render(formattedMessage),
+			style.Render(padCell(index, stashIndexColWidth)),
+			style.Render(padCell(stash.Message, messageTruncLen)),
 			style.Render(date),
 		)
 		rows = append(rows, row)
@@ -435,8 +437,8 @@ func (m Model) renderWorktreeList() string {
 	}
 
 	var rows []string
-	header := fmt.Sprintf("  %-30s  %-20s  %s",
-		"PATH", "BRANCH", "STATUS")
+	header := fmt.Sprintf("  %s  %s  %s",
+		padCell("PATH", worktreePathTruncLen), padCell("BRANCH", branchNameTruncLen), "STATUS")
 	rows = append(rows, styles.HeaderStyle.Render(header))
 
 	for i, wt := range m.worktrees {
@@ -445,8 +447,8 @@ func (m Model) renderWorktreeList() string {
 			cursor = "> "
 		}
 
-		path := truncate(filepath.Base(wt.Path), worktreePathTruncLen)
-		branch := truncate(wt.Branch, branchNameTruncLen)
+		path := filepath.Base(wt.Path)
+		branch := wt.Branch
 		status := ""
 		if wt.IsBare {
 			status = "bare"
@@ -468,8 +470,8 @@ func (m Model) renderWorktreeList() string {
 			style = styles.TableRowStyle
 		}
 
-		formattedPath := fmt.Sprintf("%-30s", path)
-		formattedBranch := fmt.Sprintf("%-20s", branch)
+		formattedPath := padCell(path, worktreePathTruncLen)
+		formattedBranch := padCell(branch, branchNameTruncLen)
 
 		branchStyleLocal := withSelection(styles.BranchStyle, i == m.detailCursor)
 
@@ -495,8 +497,9 @@ func (m Model) renderPRList() string {
 	}
 
 	var rows []string
-	header := fmt.Sprintf("  %-8s  %-40s  %-10s  %-18s  %s",
-		"NUMBER", "TITLE", "STATE", "REVIEW", "BRANCH")
+	header := fmt.Sprintf("  %s  %s  %s  %s  %s",
+		padCell("NUMBER", prNumberColWidth), padCell("TITLE", messageTruncLen),
+		padCell("STATE", prStateColWidth), padCell("REVIEW", prReviewColWidth), "BRANCH")
 	rows = append(rows, styles.HeaderStyle.Render(header))
 
 	for i := range m.prs {
@@ -507,10 +510,10 @@ func (m Model) renderPRList() string {
 		}
 
 		number := fmt.Sprintf("#%d", pr.Number)
-		title := truncate(pr.Title, messageTruncLen)
+		title := pr.Title
 		state := pr.StatusDisplay()
 		review := pr.ReviewStatus()
-		branch := truncate(pr.HeadRef, branchNameTruncLen)
+		branch := pr.HeadRef
 
 		var rowStyle lipgloss.Style
 		if i == m.detailCursor {
@@ -541,13 +544,13 @@ func (m Model) renderPRList() string {
 
 		branchStyleLocal := withSelection(styles.BranchStyle, i == m.detailCursor)
 
-		row := fmt.Sprintf("%s%-8s  %-40s  %s  %-18s  %s",
+		row := fmt.Sprintf("%s%s  %s  %s  %s  %s",
 			cursor,
-			rowStyle.Render(number),
-			rowStyle.Render(title),
-			stateStyle.Render(fmt.Sprintf("%-10s", state)),
-			reviewStyle.Render(review),
-			branchStyleLocal.Render(branch),
+			rowStyle.Render(padCell(number, prNumberColWidth)),
+			rowStyle.Render(padCell(title, messageTruncLen)),
+			stateStyle.Render(padCell(state, prStateColWidth)),
+			reviewStyle.Render(padCell(review, prReviewColWidth)),
+			branchStyleLocal.Render(padCell(branch, branchNameTruncLen)),
 		)
 		rows = append(rows, row)
 	}

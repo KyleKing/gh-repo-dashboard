@@ -237,9 +237,9 @@ func (m Model) writeBranchCommitsSection(b *strings.Builder, s branchDetailStyle
 	maxCommits := min(branchDetailMaxCommits, len(m.branchDetail.Commits))
 	for i := range maxCommits {
 		commit := m.branchDetail.Commits[i]
-		line := fmt.Sprintf("  %s  %-50s  %s  %s\n",
+		line := fmt.Sprintf("  %s  %s  %s  %s\n",
 			styles.SubtitleStyle.Render(commit.ShortHash),
-			truncate(commit.Subject, commitSubjectLen),
+			padCell(commit.Subject, commitSubjectLen),
 			styles.SubtitleStyle.Render(truncate(commit.Author, commitAuthorLen)),
 			styles.SubtitleStyle.Render(commit.RelativeDate()),
 		)

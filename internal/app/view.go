@@ -30,6 +30,14 @@ const (
 	branchChecksColWidth   = 12
 	checkoutColWidth       = 14
 	messageTruncLen        = 40
+	stashIndexColWidth     = 9
+	helpKeyColWidth        = 20
+	modalMarkColWidth      = 4
+	modalKeyColWidth       = 3
+	filterLabelColWidth    = 15
+	prNumberColWidth       = 8
+	prStateColWidth        = 10
+	prReviewColWidth       = 18
 	worktreePathTruncLen   = 30
 	batchNameTruncLen      = 25
 	descriptionTruncLen    = 60

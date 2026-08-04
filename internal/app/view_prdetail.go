@@ -136,9 +136,9 @@ func writePRDetailChecks(b *strings.Builder, sectionStyle lipgloss.Style, checks
 		}
 
 		status := check.StatusDisplay()
-		row := fmt.Sprintf("%-*s  %s  %s",
-			checkNameColWidth, truncate(name, checkNameColWidth),
-			checkStatusStyle(status).Render(fmt.Sprintf("%-*s", checkStatusColWidth, status)),
+		row := fmt.Sprintf("%s  %s  %s",
+			padCell(name, checkNameColWidth),
+			checkStatusStyle(status).Render(padCell(status, checkStatusColWidth)),
 			styles.SubtitleStyle.Render(check.Duration()))
 		b.WriteString(rowPadding.Render(row))
 		b.WriteString("\n")

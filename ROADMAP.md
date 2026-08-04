@@ -71,9 +71,6 @@ can ship while the focused view is still in design.
 The fixes from the 2026-08-03 critique plus the rendering foundation every
 later milestone draws on.
 
-- Replace byte-count padding with display-width padding everywhere `fmt`
-  pads user content (`lipgloss.Width`-based helper); fixes PR-tab drift under
-  emoji, the `⚠` template suffix, and the `* ` current-branch misalignment
 - Reset the search input buffer when `/` opens over a committed query
 - Implement the column engine (`Column{Min, Max, Weight, Priority, Align}`,
   collapse marker, ellipsis truncation) and migrate the repo list to it,
