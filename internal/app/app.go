@@ -126,6 +126,8 @@ func New(scanPaths []string, maxDepth int) Model {
 	ti := textinput.New()
 	ti.Placeholder = "Search repos..."
 	ti.CharLimit = 100
+	// textinput truncates its placeholder to a single rune at width zero.
+	ti.SetWidth(lipgloss.Width(ti.Placeholder))
 
 	ci := textinput.New()
 	ci.Prompt = ":"

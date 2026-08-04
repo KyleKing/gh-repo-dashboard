@@ -367,7 +367,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Search):
 		m.searching = true
+		m.searchInput.SetValue("")
+		m.searchText = ""
 		m.searchInput.Focus()
+		m.updateFilteredPaths()
+		m.cursor = 0
 
 		return m, nil
 

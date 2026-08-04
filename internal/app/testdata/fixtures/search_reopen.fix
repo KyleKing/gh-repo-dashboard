@@ -1,0 +1,11 @@
+doc: Reopening search starts from an empty query
+given standard
+when keys / d i r t enter
+then search = dirt
+then filtered = dirty dirty-pr
+when keys /
+then search =
+then filtered = behind clean dirty dirty-pr
+when keys c l e a n enter
+then search = clean
+then filtered = clean

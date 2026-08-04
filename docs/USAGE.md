@@ -73,6 +73,14 @@ pressing `:`; bare keys act on the repo list.
 |---|---|
 | press `/` `d` `i` `r` `t` `enter` | shows dirty, dirty-pr; search: dirt |
 
+## Reopening search starts from an empty query
+
+| Input | Result |
+|---|---|
+| press `/` `d` `i` `r` `t` `enter` | search: dirt; shows dirty, dirty-pr |
+| press `/` | search: (cleared); shows behind, clean, dirty, dirty-pr |
+| press `c` `l` `e` `a` `n` `enter` | search: clean; shows clean |
+
 ## Select repos by predicate, then fetch the selection
 
 | Input | Result |

@@ -71,7 +71,6 @@ can ship while the focused view is still in design.
 The fixes from the 2026-08-03 critique plus the rendering foundation every
 later milestone draws on.
 
-- Reset the search input buffer when `/` opens over a committed query
 - Implement the column engine (`Column{Min, Max, Weight, Priority, Align}`,
   collapse marker, ellipsis truncation) and migrate the repo list to it,
   reordering collapse priority so PR hides first and PEERS/TEMPLATE survive
