@@ -19,37 +19,21 @@ const (
 	featureBranchName = "feature"
 )
 
-// Layout constants for the repo list table, detail panes, and batch results view.
+// Layout constants for the detail panes and modals. Table column geometry
+// lives in columns.go and is resolved at render time by the column engine.
 const (
 	notesMarkerWidth       = 2
 	nonListRowHeight       = 6
 	visibleWindowCenter    = 2
-	branchNameTruncLen     = 20
-	upstreamTruncLen       = 20
-	branchStatusColWidth   = 10
-	branchPRColWidth       = 10
-	branchChecksColWidth   = 12
-	checkoutColWidth       = 14
-	messageTruncLen        = 40
-	stashIndexColWidth     = 9
 	helpKeyColWidth        = 20
 	modalMarkColWidth      = 4
 	modalKeyColWidth       = 3
 	filterLabelColWidth    = 15
-	prNumberColWidth       = 8
-	prStateColWidth        = 10
-	prReviewColWidth       = 18
-	worktreePathTruncLen   = 30
-	batchNameTruncLen      = 25
 	descriptionTruncLen    = 60
-	commitSubjectLen       = 50
-	commitAuthorLen        = 15
 	detailLabelWidth       = 18
 	detailLabelWidthPR     = 16
 	prBodyMaxLen           = 400
 	prCommentMaxLen        = 240
-	checkNameColWidth      = 34
-	checkStatusColWidth    = 12
 	statusBarHeight        = 2
 	emptyStateVPad         = 2
 	emptyStateHPad         = 4

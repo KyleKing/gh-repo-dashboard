@@ -74,6 +74,7 @@ func TestRenderBranchListShowsParallelCheckout(t *testing.T) {
 	t.Parallel()
 
 	m := New(nil, 1)
+	m.width = 160
 	m.selectedRepo = testRepo1Path
 	m.summaries[testRepo1Path] = models.RepoSummary{
 		Path: testRepo1Path, Branch: mainBranchName, RemoteRepo: "acme/app",

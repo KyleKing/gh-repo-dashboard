@@ -9,6 +9,7 @@ import (
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
 
 func (m Model) renderRepoDetailBreadcrumbs() string {
@@ -152,16 +153,8 @@ func (m Model) renderBranchList() string {
 	prsByBranch := prsByHeadRef(m.prs)
 	checkouts := m.RepoCheckouts()
 
-	var rows []string
-	header := fmt.Sprintf("  %s  %s  %s  %s  %s  %s  %s",
-		padCell("BRANCH", branchNameTruncLen),
-		padCell("UPSTREAM", upstreamTruncLen),
-		padCell("STATUS", branchStatusColWidth),
-		padCell("PR", branchPRColWidth),
-		padCell("CHECKS", branchChecksColWidth),
-		padCell("CHECKED OUT", checkoutColWidth),
-		"LAST COMMIT")
-	rows = append(rows, styles.HeaderStyle.Render(header))
+	layout := fitDetailCols(branchColSpecs, m.width)
+	rows := []string{detailHeader(layout)}
 
 	for i, branch := range m.branches {
 		row := branchRow{
@@ -173,7 +166,7 @@ func (m Model) renderBranchList() string {
 		if checkout, ok := models.CheckoutForBranch(checkouts, branch.Name); ok {
 			row.checkout = checkout.Folder()
 		}
-		rows = append(rows, renderBranchRow(row))
+		rows = append(rows, renderBranchRow(row, layout))
 	}
 
 	return strings.Join(rows, "\n")
@@ -272,12 +265,7 @@ const (
 	peerPrefix          = "⧉ "
 )
 
-func renderBranchRow(row branchRow) string {
-	cursor := "  "
-	if row.selected {
-		cursor = "> "
-	}
-
+func renderBranchRow(row branchRow, layout table.Layout) string {
 	name := row.branch.Name
 	if row.branch.IsCurrent {
 		name = currentBranchPrefix + name
@@ -290,37 +278,42 @@ func renderBranchRow(row branchRow) string {
 		checkout = peerPrefix + row.checkout
 	}
 
-	style := styles.TableRowStyle
-	if row.selected {
-		style = styles.SelectedRowStyle
-	}
+	style := rowStyleFor(row.selected)
 
 	nameStyle := styles.BranchStyle
 	if row.branch.IsCurrent {
 		nameStyle = styles.PROpenStyle
 	}
-	nameStyle = withSelection(nameStyle, row.selected)
 
 	prStyle := style
 	if row.pr != nil {
-		prStyle = withSelection(styles.PROpenStyle, row.selected)
+		prStyle = styles.PROpenStyle
 	}
 
 	checkoutStyle := style
 	if row.checkout != "" && !row.branch.IsCurrent {
-		checkoutStyle = withSelection(styles.WarningStyle, row.selected)
+		checkoutStyle = styles.WarningStyle
 	}
 
-	rendered := fmt.Sprintf("%s%s  %s  %s  %s  %s  %s  %s",
-		cursor,
-		nameStyle.Render(padCell(name, branchNameTruncLen)),
-		style.Render(padCell(row.branch.Upstream, upstreamTruncLen)),
-		style.Render(padCell(branchAheadBehindStatus(row.branch), branchStatusColWidth)),
-		prStyle.Render(padCell(formatBranchPRCell(row.pr), branchPRColWidth)),
-		checksCellStyle(row.pr, style).Render(padCell(formatChecksCell(row.pr), branchChecksColWidth)),
-		checkoutStyle.Render(padCell(checkout, checkoutColWidth)),
-		style.Render(row.branch.RelativeLastCommit()),
-	)
+	values := map[string]string{
+		colBranchName:  name,
+		colUpstream:    row.branch.Upstream,
+		colBranchState: branchAheadBehindStatus(row.branch),
+		colBranchPR:    formatBranchPRCell(row.pr),
+		colChecks:      formatChecksCell(row.pr),
+		colCheckedOut:  checkout,
+		colLastCommit:  row.branch.RelativeLastCommit(),
+	}
+	cellStyles := map[string]lipgloss.Style{
+		colBranchName: withSelection(nameStyle, row.selected),
+		colBranchPR:   withSelection(prStyle, row.selected),
+		colChecks:     withSelection(checksCellStyle(row.pr, style), row.selected),
+		colCheckedOut: withSelection(checkoutStyle, row.selected),
+	}
+
+	cells := renderCells(layout, values, cellStyles, &style)
+
+	rendered := detailRow(rowCursorFor(row.selected), layout, cells)
 	if row.deletable {
 		rendered += "  " + styles.Badge("merged", styles.PROpenStyle)
 	}
@@ -339,34 +332,21 @@ func (m Model) renderStashList() string {
 				"JJ repositories use the working copy change instead.")
 	}
 
-	var rows []string
-	header := fmt.Sprintf("  %s  %s  %s",
-		padCell("INDEX", stashIndexColWidth), padCell("MESSAGE", messageTruncLen), "DATE")
-	rows = append(rows, styles.HeaderStyle.Render(header))
+	layout := fitDetailCols(stashColSpecs, m.width)
+	rows := []string{detailHeader(layout)}
 
 	for i, stash := range m.stashes {
-		cursor := "  "
-		if i == m.detailCursor {
-			cursor = "> "
+		selected := i == m.detailCursor
+		style := rowStyleFor(selected)
+
+		values := map[string]string{
+			colStashIndex:   fmt.Sprintf("stash@{%d}", stash.Index),
+			colStashMessage: stash.Message,
+			colStashDate:    stash.RelativeDate(),
 		}
 
-		index := fmt.Sprintf("stash@{%d}", stash.Index)
-		date := stash.RelativeDate()
-
-		var style lipgloss.Style
-		if i == m.detailCursor {
-			style = styles.SelectedRowStyle
-		} else {
-			style = styles.TableRowStyle
-		}
-
-		row := fmt.Sprintf("%s%s  %s  %s",
-			cursor,
-			style.Render(padCell(index, stashIndexColWidth)),
-			style.Render(padCell(stash.Message, messageTruncLen)),
-			style.Render(date),
-		)
-		rows = append(rows, row)
+		cells := renderCells(layout, values, nil, &style)
+		rows = append(rows, detailRow(rowCursorFor(selected), layout, cells))
 	}
 
 	return strings.Join(rows, "\n")
@@ -436,55 +416,42 @@ func (m Model) renderWorktreeList() string {
 		return m.renderWorktreesPlaceholder(isJJ)
 	}
 
-	var rows []string
-	header := fmt.Sprintf("  %s  %s  %s",
-		padCell("PATH", worktreePathTruncLen), padCell("BRANCH", branchNameTruncLen), "STATUS")
-	rows = append(rows, styles.HeaderStyle.Render(header))
+	layout := fitDetailCols(worktreeColSpecs, m.width)
+	rows := []string{detailHeader(layout)}
 
 	for i, wt := range m.worktrees {
-		cursor := "  "
-		if i == m.detailCursor {
-			cursor = "> "
+		selected := i == m.detailCursor
+		style := rowStyleFor(selected)
+		branchStyleLocal := withSelection(styles.BranchStyle, selected)
+
+		values := map[string]string{
+			colWorktreePath:   filepath.Base(wt.Path),
+			colWorktreeBranch: wt.Branch,
+			colWorktreeState:  worktreeState(wt),
 		}
 
-		path := filepath.Base(wt.Path)
-		branch := wt.Branch
-		status := ""
-		if wt.IsBare {
-			status = "bare"
-		}
-		if wt.IsLocked {
-			if status != "" {
-				status += ", "
-			}
-			status += "locked"
-		}
-		if status == "" {
-			status = "active"
-		}
-
-		var style lipgloss.Style
-		if i == m.detailCursor {
-			style = styles.SelectedRowStyle
-		} else {
-			style = styles.TableRowStyle
-		}
-
-		formattedPath := padCell(path, worktreePathTruncLen)
-		formattedBranch := padCell(branch, branchNameTruncLen)
-
-		branchStyleLocal := withSelection(styles.BranchStyle, i == m.detailCursor)
-
-		row := fmt.Sprintf("%s%s  %s  %s",
-			cursor,
-			style.Render(formattedPath),
-			branchStyleLocal.Render(formattedBranch),
-			style.Render(status),
-		)
-		rows = append(rows, row)
+		cells := renderCells(layout, values, map[string]lipgloss.Style{colWorktreeBranch: branchStyleLocal}, &style)
+		rows = append(rows, detailRow(rowCursorFor(selected), layout, cells))
 	}
 
 	return strings.Join(rows, "\n")
+}
+
+// worktreeState summarizes a worktree's bare and locked flags.
+func worktreeState(wt models.WorktreeInfo) string {
+	var flags []string
+	if wt.IsBare {
+		flags = append(flags, "bare")
+	}
+	if wt.IsLocked {
+		flags = append(flags, "locked")
+	}
+
+	if len(flags) == 0 {
+		return "active"
+	}
+
+	return strings.Join(flags, ", ")
 }
 
 func (m Model) renderPRList() string {
@@ -496,64 +463,56 @@ func (m Model) renderPRList() string {
 		return emptyPlaceholder("No open pull requests", "")
 	}
 
-	var rows []string
-	header := fmt.Sprintf("  %s  %s  %s  %s  %s",
-		padCell("NUMBER", prNumberColWidth), padCell("TITLE", messageTruncLen),
-		padCell("STATE", prStateColWidth), padCell("REVIEW", prReviewColWidth), "BRANCH")
-	rows = append(rows, styles.HeaderStyle.Render(header))
+	layout := fitDetailCols(prColSpecs, m.width)
+	rows := []string{detailHeader(layout)}
 
 	for i := range m.prs {
 		pr := &m.prs[i]
-		cursor := "  "
-		if i == m.detailCursor {
-			cursor = "> "
+		selected := i == m.detailCursor
+		rowStyle := rowStyleFor(selected)
+
+		values := map[string]string{
+			colPRNumber: fmt.Sprintf("#%d", pr.Number),
+			colPRTitle:  pr.Title,
+			colPRState:  pr.StatusDisplay(),
+			colPRReview: pr.ReviewStatus(),
+			colPRBranch: pr.HeadRef,
+		}
+		cellStyles := map[string]lipgloss.Style{
+			colPRState:  withSelection(prStateStyle(pr), selected),
+			colPRReview: withSelection(prReviewStyle(pr.ReviewStatus()), selected),
+			colPRBranch: withSelection(styles.BranchStyle, selected),
 		}
 
-		number := fmt.Sprintf("#%d", pr.Number)
-		title := pr.Title
-		state := pr.StatusDisplay()
-		review := pr.ReviewStatus()
-		branch := pr.HeadRef
-
-		var rowStyle lipgloss.Style
-		if i == m.detailCursor {
-			rowStyle = styles.SelectedRowStyle
-		} else {
-			rowStyle = styles.TableRowStyle
-		}
-
-		stateStyle := styles.PROpenStyle
-		switch {
-		case pr.IsDraft:
-			stateStyle = styles.PRDraftStyle
-		case state == models.PRStatusMerged:
-			stateStyle = styles.PRMergedStyle
-		case state == models.PRStatusClosed:
-			stateStyle = styles.ErrorStyle
-		}
-		stateStyle = withSelection(stateStyle, i == m.detailCursor)
-
-		reviewStyle := styles.SubtitleStyle
-		switch review {
-		case models.ReviewApproved:
-			reviewStyle = styles.CleanStyle
-		case models.ReviewChangesRequested:
-			reviewStyle = styles.ErrorStyle
-		}
-		reviewStyle = withSelection(reviewStyle, i == m.detailCursor)
-
-		branchStyleLocal := withSelection(styles.BranchStyle, i == m.detailCursor)
-
-		row := fmt.Sprintf("%s%s  %s  %s  %s  %s",
-			cursor,
-			rowStyle.Render(padCell(number, prNumberColWidth)),
-			rowStyle.Render(padCell(title, messageTruncLen)),
-			stateStyle.Render(padCell(state, prStateColWidth)),
-			reviewStyle.Render(padCell(review, prReviewColWidth)),
-			branchStyleLocal.Render(padCell(branch, branchNameTruncLen)),
-		)
-		rows = append(rows, row)
+		cells := renderCells(layout, values, cellStyles, &rowStyle)
+		rows = append(rows, detailRow(rowCursorFor(selected), layout, cells))
 	}
 
 	return strings.Join(rows, "\n")
+}
+
+// prStateStyle colors a pull request's state cell by draft, merged, or closed.
+func prStateStyle(pr *models.PRInfo) lipgloss.Style {
+	switch {
+	case pr.IsDraft:
+		return styles.PRDraftStyle
+	case pr.StatusDisplay() == models.PRStatusMerged:
+		return styles.PRMergedStyle
+	case pr.StatusDisplay() == models.PRStatusClosed:
+		return styles.ErrorStyle
+	default:
+		return styles.PROpenStyle
+	}
+}
+
+// prReviewStyle colors a review cell by its decision.
+func prReviewStyle(review string) lipgloss.Style {
+	switch review {
+	case models.ReviewApproved:
+		return styles.CleanStyle
+	case models.ReviewChangesRequested:
+		return styles.ErrorStyle
+	default:
+		return styles.SubtitleStyle
+	}
 }

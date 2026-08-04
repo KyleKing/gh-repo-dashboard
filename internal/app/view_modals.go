@@ -382,14 +382,15 @@ func (m Model) renderBatchProgress() string {
 			startIdx = len(m.batchResults) - maxShow
 		}
 
+		layout := fitDetailCols(batchColSpecs, m.width)
 		for i := startIdx; i < len(m.batchResults); i++ {
 			result := m.batchResults[i]
 			icon := styles.SuccessStyle.Render("✓")
 			if !result.Success {
 				icon = styles.ErrorStyle.Render("✗")
 			}
-			name := padCell(filepath.Base(result.Path), batchNameTruncLen)
-			msg := truncate(result.Message, messageTruncLen)
+			name := padCell(filepath.Base(result.Path), layout.Width(colBatchName))
+			msg := padCell(result.Message, layout.Width(colBatchMessage))
 
 			row := fmt.Sprintf("  %s %s  %s", icon, name, styles.SubtitleStyle.Render(msg))
 			b.WriteString(row)

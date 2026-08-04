@@ -9,6 +9,7 @@ import (
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
 
 // writePRDetailInfo writes the "Pull Request" section's info lines (title,
@@ -113,7 +114,9 @@ func checkStatusStyle(status string) lipgloss.Style {
 // writePRDetailChecks writes the "Checks" section: one row per CI check with
 // its status and how long it ran. Nothing is written when the pull request has
 // no checks.
-func writePRDetailChecks(b *strings.Builder, sectionStyle lipgloss.Style, checks []models.CheckDetail) {
+func writePRDetailChecks(
+	b *strings.Builder, sectionStyle lipgloss.Style, checks []models.CheckDetail, layout table.Layout,
+) {
 	if len(checks) == 0 {
 		return
 	}
@@ -124,25 +127,39 @@ func writePRDetailChecks(b *strings.Builder, sectionStyle lipgloss.Style, checks
 
 	rowPadding := lipgloss.NewStyle().PaddingLeft(infoPaddingLeft)
 	for _, check := range checks {
-		name := check.Name
-		if name == "" {
-			name = check.Workflow
+		status := check.StatusDisplay()
+		values := map[string]string{
+			colCheckName:     checkDisplayName(check),
+			colCheckState:    status,
+			colCheckDuration: check.Duration(),
 		}
-		if name == "" {
-			name = "(unnamed check)"
-		}
-		if check.Workflow != "" && check.Workflow != name {
-			name = check.Workflow + " / " + name
+		cellStyles := map[string]lipgloss.Style{
+			colCheckState:    checkStatusStyle(status),
+			colCheckDuration: styles.SubtitleStyle,
 		}
 
-		status := check.StatusDisplay()
-		row := fmt.Sprintf("%s  %s  %s",
-			padCell(name, checkNameColWidth),
-			checkStatusStyle(status).Render(padCell(status, checkStatusColWidth)),
-			styles.SubtitleStyle.Render(check.Duration()))
-		b.WriteString(rowPadding.Render(row))
+		cells := renderCells(layout, values, cellStyles, &plainStyle)
+		b.WriteString(rowPadding.Render(table.Join(cells)))
 		b.WriteString("\n")
 	}
+}
+
+// checkDisplayName qualifies a check with its workflow, falling back through
+// the fields GitHub may leave empty.
+func checkDisplayName(check models.CheckDetail) string {
+	name := check.Name
+	if name == "" {
+		name = check.Workflow
+	}
+	if name == "" {
+		return "(unnamed check)"
+	}
+
+	if check.Workflow != "" && check.Workflow != name {
+		return check.Workflow + " / " + name
+	}
+
+	return name
 }
 
 // writePRDetailLatestComment writes the most recent comment on the pull
@@ -251,7 +268,7 @@ func (m Model) renderPRDetail() string {
 
 	m.writePRDetailInfo(writeLine)
 
-	writePRDetailChecks(&b, sectionStyle, m.prDetail.CheckDetails)
+	writePRDetailChecks(&b, sectionStyle, m.prDetail.CheckDetails, fitDetailCols(checkColSpecs, m.width))
 	writePRDetailDescription(&b, sectionStyle, valueStyle, m.prDetail.Body)
 	writePRDetailLatestComment(&b, sectionStyle, valueStyle, m.prDetail.LatestComment)
 	writePRDetailActions(&b, sectionStyle)

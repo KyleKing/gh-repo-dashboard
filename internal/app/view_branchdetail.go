@@ -234,16 +234,26 @@ func (m Model) writeBranchCommitsSection(b *strings.Builder, s branchDetailStyle
 		return
 	}
 
+	layout := fitDetailCols(commitColSpecs, m.width)
+	subtleStyles := map[string]lipgloss.Style{
+		colCommitHash:   styles.SubtitleStyle,
+		colCommitAuthor: styles.SubtitleStyle,
+		colCommitDate:   styles.SubtitleStyle,
+	}
 	maxCommits := min(branchDetailMaxCommits, len(m.branchDetail.Commits))
+
 	for i := range maxCommits {
 		commit := m.branchDetail.Commits[i]
-		line := fmt.Sprintf("  %s  %s  %s  %s\n",
-			styles.SubtitleStyle.Render(commit.ShortHash),
-			padCell(commit.Subject, commitSubjectLen),
-			styles.SubtitleStyle.Render(truncate(commit.Author, commitAuthorLen)),
-			styles.SubtitleStyle.Render(commit.RelativeDate()),
-		)
-		b.WriteString(line)
+		values := map[string]string{
+			colCommitHash:    commit.ShortHash,
+			colCommitSubject: commit.Subject,
+			colCommitAuthor:  commit.Author,
+			colCommitDate:    commit.RelativeDate(),
+		}
+
+		cells := renderCells(layout, values, subtleStyles, &plainStyle)
+		b.WriteString(detailRow("  ", layout, cells))
+		b.WriteString("\n")
 	}
 }
 

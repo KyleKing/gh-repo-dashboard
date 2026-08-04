@@ -73,8 +73,6 @@ can ship while the focused view is still in design.
 The three-layout system from
 [layout-and-density.md](docs/design/layout-and-density.md).
 
-- Migrate every remaining table (detail tabs, PR views, batch results) to the
-  engine; delete the per-view width constants
 - compact (< 100 columns): two-line repo records, stacked detail sections,
   abbreviated tab bar; 80x24 is the design target for this layout
 - standard (100-159): current layout, engine-sized
