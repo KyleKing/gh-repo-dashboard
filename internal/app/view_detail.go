@@ -56,9 +56,20 @@ func (m Model) renderRepoDetail() string {
 
 	var b strings.Builder
 
+	compact := m.isCompact()
+
 	b.WriteString(m.renderBreadcrumbs())
 	b.WriteString("\n")
-	b.WriteString(styles.SubtitleStyle.Render(truncate(summary.Path, contentWidth(m.width))))
+
+	// The path line is the first thing to go when rows are scarce: the
+	// breadcrumb already names the repo.
+	if !compact {
+		b.WriteString(styles.SubtitleStyle.Render(truncate(summary.Path, contentWidth(m.width))))
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\n")
+	b.WriteString(m.renderOverviewPane(summary, compact))
 	b.WriteString("\n\n")
 
 	b.WriteString(m.renderDetailTabs())
@@ -77,15 +88,9 @@ func (m Model) renderRepoDetail() string {
 		b.WriteString(m.renderNotesTab())
 	}
 
-	footer := "tab: switch tabs  j/k: navigate  esc: back"
-	switch m.detailTab {
-	case DetailTabBranches:
-		footer = "tab: tabs  j/k: nav  enter: branch  c: switch  p: push  N: new PR  M: merge  esc: back"
-	case DetailTabPRs:
-		footer = "tab: tabs  j/k: nav  enter: PR  M: squash-merge  esc: back"
-	default:
-		// stashes/worktrees tabs use the generic footer above
-	}
+	sceneBar := renderSceneBar(m.detailTab)
+	footer := sceneBar + "  " +
+		m.detailFooterHints(contentWidth(m.width)-lipgloss.Width(sceneBar)-table.Gutter)
 
 	contentLines := strings.Count(b.String(), "\n")
 	footerHeight := 1
@@ -98,6 +103,56 @@ func (m Model) renderRepoDetail() string {
 	b.WriteString(styles.FooterStyle.Render(footer))
 
 	return b.String()
+}
+
+// renderOverviewPane mounts the repo overview above the tab bar, boxed so it
+// reads as a fixed header rather than another table. It is the same component
+// the wide repo list mounts as its preview panel.
+func (m Model) renderOverviewPane(summary models.RepoSummary, compact bool) string {
+	width := contentWidth(m.width) - overviewPaneBorder
+
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(styles.Surface2).
+		Width(width).
+		Render(m.renderOverview(summary, overviewOpts{width: width, compact: compact}))
+}
+
+// detailFooterHints names the actions the active tab supports, dropping the
+// least useful whole hints when the scene bar leaves too little room.
+//
+//nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
+func (m Model) detailFooterHints(width int) string {
+	hints := []footerHint{
+		{key: keyTab, desc: "tabs", priority: 3},
+		{key: "j/k", desc: "nav", priority: 2},
+		{key: keyEsc, desc: "back", priority: 9},
+	}
+
+	switch m.detailTab {
+	case DetailTabBranches:
+		hints = append(hints,
+			footerHint{key: keyEnter, desc: nameBranch, priority: 8},
+			footerHint{key: "c", desc: "switch", priority: 7},
+			footerHint{key: "p", desc: "push", priority: 4},
+			footerHint{key: "N", desc: "new PR", priority: 6},
+			footerHint{key: "M", desc: "merge", priority: 5},
+		)
+	case DetailTabPRs:
+		hints = append(hints,
+			footerHint{key: keyEnter, desc: "PR", priority: 8},
+			footerHint{key: "M", desc: "squash-merge", priority: 5},
+		)
+	default:
+		// stashes, worktrees, and notes have no tab-specific actions
+	}
+
+	parts := make([]string, 0, len(hints))
+	for _, h := range fittingHints(hints, width) {
+		parts = append(parts, styles.FooterKeyStyle.Render(h.key)+styles.FooterDescStyle.Render(" "+h.desc))
+	}
+
+	return strings.Join(parts, "  ")
 }
 
 func (m Model) renderDetailTabs() string {
@@ -117,14 +172,14 @@ func (m Model) renderDetailTabs() string {
 		tab   DetailTab
 		count int
 	}{
-		{"Branches", "Br", DetailTabBranches, len(m.branches)},
-		{"Stashes", "St", DetailTabStashes, len(m.stashes)},
+		{tabNameBranches, "Br", DetailTabBranches, len(m.branches)},
+		{tabNameStashes, "St", DetailTabStashes, len(m.stashes)},
 		{worktreeLabel, "Wt", DetailTabWorktrees, len(m.worktrees)},
-		{"PRs", "PR", DetailTabPRs, len(m.prs)},
-		{"Notes", "No", DetailTabNotes, notesCount},
+		{tabNamePRs, "PR", DetailTabPRs, len(m.prs)},
+		{tabNameNotes, "No", DetailTabNotes, notesCount},
 	}
 
-	compact := breakpointFor(m.width, m.height) == breakpointCompact
+	compact := m.isCompact()
 	separator := " │ "
 	if compact {
 		separator = " · "
@@ -158,7 +213,7 @@ func (m Model) renderBranchList() string {
 			return m.loadingPlaceholder("Loading branches")
 		}
 
-		return emptyPlaceholder("No branches found", "")
+		return m.emptyPlaceholder("No branches found", "")
 	}
 
 	prsByBranch := prsByHeadRef(m.prs)
@@ -338,7 +393,7 @@ func (m Model) renderStashList() string {
 			return m.loadingPlaceholder("Loading stashes")
 		}
 
-		return emptyPlaceholder("No stashes found",
+		return m.emptyPlaceholder("No stashes found",
 			"Stashes are only available for git repositories.\n"+
 				"JJ repositories use the working copy change instead.")
 	}
@@ -372,7 +427,7 @@ func (m Model) renderNotesTab() string {
 			return m.loadingPlaceholder("Loading notes")
 		}
 
-		return emptyPlaceholder("No notes file found",
+		return m.emptyPlaceholder("No notes file found",
 			"Add a .doing, doing.md, doing.txt, or TODO.md file to the repo root.")
 	}
 
@@ -406,7 +461,7 @@ func (m Model) renderWorktreesPlaceholder(isJJ bool) string {
 			return m.loadingPlaceholder("Loading workspaces")
 		}
 
-		return emptyPlaceholder("No workspaces found",
+		return m.emptyPlaceholder("No workspaces found",
 			"Workspaces (jj's version of worktrees) allow working on multiple\n"+
 				"changes simultaneously in separate working directories.")
 	}
@@ -415,7 +470,7 @@ func (m Model) renderWorktreesPlaceholder(isJJ bool) string {
 		return m.loadingPlaceholder("Loading worktrees")
 	}
 
-	return emptyPlaceholder("No worktrees found",
+	return m.emptyPlaceholder("No worktrees found",
 		"Worktrees allow working on multiple branches simultaneously.")
 }
 
@@ -471,7 +526,7 @@ func (m Model) renderPRList() string {
 			return m.loadingPlaceholder("Loading pull requests")
 		}
 
-		return emptyPlaceholder("No open pull requests", "")
+		return m.emptyPlaceholder("No open pull requests", "")
 	}
 
 	layout := fitDetailCols(prColSpecs, m.width)

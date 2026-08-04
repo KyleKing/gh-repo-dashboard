@@ -228,7 +228,7 @@ func (m Model) writeBranchCommitsSection(b *strings.Builder, s branchDetailStyle
 		if m.branchDetailLoading {
 			b.WriteString(m.loadingPlaceholder("Loading commits"))
 		} else {
-			b.WriteString(emptyPlaceholder("No commits found", ""))
+			b.WriteString(m.emptyPlaceholder("No commits found", ""))
 		}
 
 		return

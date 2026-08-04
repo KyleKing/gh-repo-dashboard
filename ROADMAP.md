@@ -8,14 +8,14 @@ Architecture and domain context live in [DESIGN.md](DESIGN.md); Go and workflow
 conventions live in [AGENTS.md](AGENTS.md). Design docs backing the milestones
 below live in `docs/design/`:
 
-- [focused-repo-view.md](docs/design/focused-repo-view.md), the single-repo
-  overview and scenes (M15)
 - [fleet-navigation.md](docs/design/fleet-navigation.md), peers, the PR-to-local
   map, PR flows, CI, and the API budget (M16, M17)
 
 The column engine lives in `internal/ui/table` and every table is sized by it.
-`internal/app/view_overview.go` holds the repo overview pane, which the wide
-layout mounts as its preview panel and M15 mounts again as the focused view.
+`internal/app/view_overview.go` holds the repo overview pane, mounted both by
+the wide layout's preview panel and by the focused repo view. Scenes live in
+`internal/app/scene.go` and are derived from the active tab, so other views can
+adopt the same pattern by defining their own scene list.
 
 ## Vision
 
@@ -49,35 +49,16 @@ A layered pyramid:
   sequences and generate `docs/USAGE.md` (`mise run docs:usage`);
   `TestUsageDocsCurrent` fails CI when the docs go stale
 
-M1 through M14 landed through 2026-08-04 and are not tracked here. `CHANGELOG.md`
+M1 through M15 landed through 2026-08-04 and are not tracked here. `CHANGELOG.md`
 and `git log` are the record.
 
 ## Sequence at a glance
 
 | Milestone | Theme | Depends on |
 |-----------|-------|------------|
-| M15 | Focused repo view: overview pane and scenes | — |
 | M16 | Peers panel, same-branch conflicts, PR-to-local map | — |
 | M17 | PR activity, PR flows, CI on the default branch | M16 |
 | M18 | `--cli` fleet assessment (assess.sh replacement) | shares the CI fetch with M17 |
-
-M16 is deliberately independent of M15: peers and the map are fleet-level and
-can ship while the focused view is still in design.
-
-## M15: focused repo view
-
-The overview-plus-scenes design from
-[focused-repo-view.md](docs/design/focused-repo-view.md).
-
-- Overview pane summarizing sync state, files, stashes, notes, and PR
-  activity, mounted both by the focused view and the wide preview panel
-- Scene toggles `1`-`4` (work, review, sync, maintain) re-arranging the lower
-  zone; active scene named in the footer
-- Compact variant keeps Sync and Files only
-
-Exit criteria: launching inside a repo answers branch, dirty detail, peers,
-template drift, and CI without a keypress; scene switches are instant from
-cached data; fixtures cover a quiet repo and a busy one.
 
 ## M16: peers and the PR-to-local map
 

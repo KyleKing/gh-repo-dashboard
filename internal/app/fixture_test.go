@@ -139,10 +139,21 @@ func parseFixture(path string) (fixture, error) {
 
 func fixtureDataset(t *testing.T, name string) Model {
 	t.Helper()
-	if name != "standard" {
-		t.Fatalf("unknown dataset %q", name)
-	}
 
+	switch name {
+	case "standard":
+		return standardDataset()
+	case "quiet":
+		return focusedDataset(quietRepo())
+	case "busy":
+		return focusedDataset(busyRepo())
+	default:
+		t.Fatalf("unknown dataset %q", name)
+		return Model{}
+	}
+}
+
+func standardDataset() Model {
 	m := New([]string{"/repos"}, 1)
 	m.width = 100
 	m.height = 30
@@ -157,6 +168,52 @@ func fixtureDataset(t *testing.T, name string) Model {
 			PRInfo: &models.PRInfo{Number: 7}, NotesFiles: []models.NoteFile{{Name: "doing.md"}},
 		},
 	}
+	m.updateFilteredPaths()
+
+	return m
+}
+
+// quietRepo is a repo with nothing to act on: in sync, clean, no peers, no
+// stashes, no notes, no PR.
+func quietRepo() models.RepoSummary {
+	return models.RepoSummary{
+		Path: "/repos/quiet", VCSType: models.VCSTypeGit, Branch: mainBranchName,
+		Upstream: "origin/main", RemoteProtocol: "ssh", RemoteRepo: "acme/quiet",
+	}
+}
+
+// busyRepo has something to report on every overview row.
+func busyRepo() models.RepoSummary {
+	return models.RepoSummary{
+		Path: "/repos/busy", VCSType: models.VCSTypeGit, Branch: "feat/login",
+		Upstream: "origin/feat/login", RemoteProtocol: "ssh", RemoteRepo: "acme/busy",
+		Ahead: 2, Behind: 1, Staged: 1, Unstaged: 3, StashCount: 4,
+		NotesFiles:   []models.NoteFile{{Name: "doing.md", FirstLine: "wip"}},
+		TemplateInfo: &models.CopierTemplateInfo{Commit: "v0.9.1", IsTag: true, Behind: true, LatestTag: "v0.10.0"},
+		PRInfo:       &models.PRInfo{Number: 42, Title: "Add login flow", State: "OPEN", HeadRef: "feat/login"},
+	}
+}
+
+// focusedDataset opens the focused repo view on a single repo, the way
+// launching from inside a checkout does.
+func focusedDataset(summary models.RepoSummary) Model {
+	m := New([]string{summary.Path}, 1)
+	m.width = 120
+	m.height = 35
+	m.loading = false
+	m.viewMode = ViewModeRepoDetail
+	m.selectedRepo = summary.Path
+	m.repoPaths = []string{summary.Path}
+	m.summaries = map[string]models.RepoSummary{summary.Path: summary}
+	m.branches = []models.BranchInfo{{Name: summary.Branch, Upstream: summary.Upstream, IsCurrent: true}}
+	m.worktrees = []models.WorktreeInfo{{Path: summary.Path, Branch: summary.Branch}}
+	if summary.PRInfo != nil {
+		m.prs = []models.PRInfo{*summary.PRInfo}
+	}
+	for i := range summary.StashCount {
+		m.stashes = append(m.stashes, models.StashDetail{Index: i, Message: "On main: spike"})
+	}
+	m.notesFiles = nil
 	m.updateFilteredPaths()
 
 	return m
@@ -233,6 +290,10 @@ func fixtureAssertionValue(snap Snapshot, field string) (string, bool) {
 		return snap.CommandInput, true
 	case "predicate":
 		return snap.Predicate, true
+	case "overview":
+		return joinOrNone(snap.Overview), true
+	case "scene":
+		return snap.Scene, true
 	case "search":
 		return snap.Search, true
 	case "selected":

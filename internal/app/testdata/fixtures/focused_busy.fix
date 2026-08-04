@@ -1,0 +1,13 @@
+doc: A busy repo reports on every overview row, and scenes switch the lower zone
+given busy
+when keys 1
+then scene = work
+then overview = Sync=↑2 ↓1 vs origin/feat/login Files=1 staged · 3 unstaged Peers=none Stashes=4 Notes=doing.md Template=v0.9.1 → v0.10.0 PRs=#42 Add login flow
+when keys 2
+then scene = review
+when keys 3
+then scene = sync
+when keys 4
+then scene = maintain
+when keys 1
+then scene = work

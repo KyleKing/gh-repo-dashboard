@@ -136,7 +136,9 @@ func (m Model) renderListWithPreview() string {
 
 	summary := m.summaries[m.filteredPaths[m.cursor]]
 
-	return joinListAndPanel(list, m.renderOverview(summary, panel), listWidth(m.width, m.height), panel)
+	overview := m.renderOverview(summary, overviewOpts{width: panel, standalone: true})
+
+	return joinListAndPanel(list, overview, listWidth(m.width, m.height), panel)
 }
 
 func (m Model) renderTable() string {
@@ -145,15 +147,15 @@ func (m Model) renderTable() string {
 			return m.loadingPlaceholder("Discovering repositories")
 		}
 		if len(m.repoPaths) > 0 {
-			return emptyPlaceholder("No repositories match the active filters",
+			return m.emptyPlaceholder("No repositories match the active filters",
 				"Press f to change filters, / to clear the search.")
 		}
 
-		return emptyPlaceholder("No repositories found",
+		return m.emptyPlaceholder("No repositories found",
 			"Nothing was discovered under the configured scan paths.")
 	}
 
-	compact := breakpointFor(m.width, m.height) == breakpointCompact
+	compact := m.isCompact()
 	width := listWidth(m.width, m.height)
 
 	var (

@@ -521,6 +521,10 @@ func hasTextObjectPrefix(prefix string) bool {
 }
 
 func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if s, ok := sceneForKey(msg.String()); ok {
+		return m.setDetailTab(int(s.tab))
+	}
+
 	switch {
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit

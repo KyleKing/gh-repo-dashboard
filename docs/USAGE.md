@@ -42,6 +42,22 @@ pressing `:`; bare keys act on the repo list.
 | `:filter behind or has_pr` | shows behind, dirty-pr |
 | `:filter all` | shows behind, clean, dirty, dirty-pr; predicate: (cleared) |
 
+## A busy repo reports on every overview row, and scenes switch the lower zone
+
+| Input | Result |
+|---|---|
+| press `1` | scene: work; overview: Sync=↑2 ↓1 vs origin/feat/login Files=1 staged · 3 unstaged Peers=none Stashes=4 Notes=doing.md Template=v0.9.1 → v0.10.0 PRs=#42 Add login flow |
+| press `2` | scene: review |
+| press `3` | scene: sync |
+| press `4` | scene: maintain |
+| press `1` | scene: work |
+
+## A quiet repo answers its overview without a keypress
+
+| Input | Result |
+|---|---|
+| press `1` | opens the detail view; scene: work; overview: Sync=in sync vs origin/main Files=clean Peers=none Stashes=none Notes=none Template=— PRs=none open |
+
 ## Review command history and repeat the last command
 
 | Input | Result |

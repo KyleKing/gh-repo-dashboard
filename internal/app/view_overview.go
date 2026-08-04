@@ -21,6 +21,10 @@ const (
 	overviewLabelCol = 10
 )
 
+// overviewPaneBorder is the width the focused view's box border and its
+// padding take from the content.
+const overviewPaneBorder = 2
+
 // overviewMinListWidth is the width the repo list keeps for itself before any
 // is spent on a panel: the standard breakpoint's floor, which is the narrowest
 // a full eight-column table reads well at.
@@ -83,18 +87,24 @@ func frameContentWidth(termWidth, height int) int {
 // cursor never blocks on a fetch. Sections whose data has not arrived render
 // their placeholder rather than disappearing, keeping the panel's height
 // stable as data fills in.
-func (m Model) renderOverview(s models.RepoSummary, width int) string {
-	rows := m.overviewRows(s)
+func (m Model) renderOverview(s models.RepoSummary, opts overviewOpts) string {
+	width := opts.width
+	rows := m.overviewRows(s, opts.compact)
 
 	lines := make([]string, 0, len(rows)+overviewHeaderLines)
-	lines = append(lines,
-		styles.TitleStyle.Render(table.Truncate(s.Name(), width)),
-		styles.SubtitleStyle.Render(table.Truncate(overviewIdentity(s), width)),
-		"",
-		styles.BranchStyle.Render(table.Truncate(s.Branch, width))+" "+
-			styles.SubtitleStyle.Render(table.Truncate(s.StatusSummary(), width)),
-		"",
-	)
+
+	// The focused view's breadcrumb already names the repo and its VCS, so the
+	// pane only introduces itself where it stands alone.
+	if opts.standalone {
+		lines = append(lines,
+			styles.HeaderStyle.Render(table.Truncate(s.Name(), width)),
+			styles.SubtitleStyle.Render(table.Truncate(overviewIdentity(s), width)),
+			"",
+			styles.BranchStyle.Render(table.Truncate(s.Branch, width))+" "+
+				styles.SubtitleStyle.Render(table.Truncate(s.StatusSummary(), width)),
+			"",
+		)
+	}
 
 	for _, row := range rows {
 		lines = append(lines,
@@ -105,9 +115,33 @@ func (m Model) renderOverview(s models.RepoSummary, width int) string {
 	return strings.Join(lines, "\n")
 }
 
-// overviewHeaderLines is how many lines the panel's identity block occupies
+// overviewHeaderLines is how many lines the pane's identity block occupies
 // above the label/value rows.
 const overviewHeaderLines = 5
+
+// overviewOpts configures one mount of the overview pane. The standalone field
+// means the pane carries its own identity block, which the wide preview panel
+// needs (it sits beside a list, not under a breadcrumb) and the focused view
+// does not.
+type overviewOpts struct {
+	width      int
+	compact    bool
+	standalone bool
+}
+
+// overviewFullRows is how many rows the non-compact pane holds.
+const overviewFullRows = 7
+
+// Row and tab labels shared between the overview pane and the tab bar, so a
+// rename cannot leave the two disagreeing.
+const (
+	rowNameSync     = "Sync"
+	rowNameFiles    = "Files"
+	tabNameBranches = "Branches"
+	tabNameStashes  = "Stashes"
+	tabNamePRs      = "PRs"
+	tabNameNotes    = "Notes"
+)
 
 // overviewRow is one label/value line of the panel.
 type overviewRow struct {
@@ -126,15 +160,95 @@ func overviewIdentity(s models.RepoSummary) string {
 }
 
 // overviewRows builds the panel's body in a fixed order, so the same line
-// always sits at the same height whatever the repo's state.
-func (m Model) overviewRows(s models.RepoSummary) []overviewRow {
-	return []overviewRow{
-		{label: "Peers", value: overviewPeers(m.PeerCheckouts(s.Path))},
-		{label: "Stashes", value: overviewCount(s.StashCount)},
-		{label: "Notes", value: overviewNotes(s.NotesFiles)},
-		{label: "Template", value: formatCopierCell(s, overviewMaxWidth)},
-		{label: "PR", value: formatPRCell(s)},
+// always sits at the same height whatever the repo's state. Each row
+// summarizes one detail tab, so the pane doubles as a table of contents.
+//
+// The compact layout keeps only Sync and Files: at that width the rest costs
+// more rows than the answers are worth.
+func (m Model) overviewRows(s models.RepoSummary, compact bool) []overviewRow {
+	rows := make([]overviewRow, 0, overviewFullRows)
+	rows = append(rows,
+		overviewRow{label: rowNameSync, value: overviewSync(s)},
+		overviewRow{label: rowNameFiles, value: overviewFiles(s)},
+	)
+
+	if compact {
+		return rows
 	}
+
+	return append(rows,
+		overviewRow{label: "Peers", value: overviewPeers(m.PeerCheckouts(s.Path))},
+		overviewRow{label: tabNameStashes, value: overviewStashes(s)},
+		overviewRow{label: tabNameNotes, value: overviewNotes(s.NotesFiles)},
+		overviewRow{label: "Template", value: formatCopierCell(s, overviewMaxWidth)},
+		overviewRow{label: tabNamePRs, value: overviewPRs(s)},
+	)
+}
+
+// overviewSync reports the branch's position against its upstream.
+func overviewSync(s models.RepoSummary) string {
+	upstream := s.Upstream
+	if upstream == "" {
+		upstream = "no upstream"
+	}
+
+	position := "in sync"
+	switch {
+	case s.Ahead > 0 && s.Behind > 0:
+		position = "↑" + strconv.Itoa(s.Ahead) + " ↓" + strconv.Itoa(s.Behind)
+	case s.Ahead > 0:
+		position = "↑" + strconv.Itoa(s.Ahead)
+	case s.Behind > 0:
+		position = "↓" + strconv.Itoa(s.Behind)
+	}
+
+	return position + " vs " + upstream
+}
+
+// overviewFiles reports the working tree alone. Unpushed commits belong to the
+// Sync row, so a repo that is only ahead reads as clean here.
+func overviewFiles(s models.RepoSummary) string {
+	if s.UncommittedCount() == 0 {
+		return "clean"
+	}
+
+	counts := []struct {
+		count int
+		label string
+	}{
+		{s.Staged, "staged"},
+		{s.Unstaged, "unstaged"},
+		{s.Untracked, "untracked"},
+		{s.Conflicted, "conflicted"},
+	}
+
+	parts := make([]string, 0, len(counts))
+	for _, c := range counts {
+		if c.count > 0 {
+			parts = append(parts, strconv.Itoa(c.count)+" "+c.label)
+		}
+	}
+
+	return strings.Join(parts, compactSignalSep)
+}
+
+// overviewStashes counts stashes, naming jj's absence of them rather than
+// reporting zero as though the repo simply had none.
+func overviewStashes(s models.RepoSummary) string {
+	if s.VCSType == models.VCSTypeJJ {
+		return "n/a for jj"
+	}
+
+	return overviewCount(s.StashCount)
+}
+
+// overviewPRs reports the pull request open on the current branch.
+func overviewPRs(s models.RepoSummary) string {
+	if s.PRInfo == nil {
+		return "none open"
+	}
+
+	return formatPRCell(s) + " " + s.PRInfo.Title
 }
 
 func overviewPeers(peers []models.PeerCheckout) string {

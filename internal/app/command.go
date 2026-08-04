@@ -15,6 +15,7 @@ import (
 // key-help labels.
 const (
 	nameAll      = "all"
+	nameBranch   = "branch"
 	nameFilter   = "filter"
 	nameHelp     = "help"
 	nameQuit     = "quit"
@@ -91,7 +92,7 @@ func filterModeNames() map[string]models.FilterMode {
 
 func sortModeNames() map[string]models.SortMode {
 	return map[string]models.SortMode{
-		"branch":   models.SortModeBranch,
+		nameBranch: models.SortModeBranch,
 		"modified": models.SortModeModified,
 		"name":     models.SortModeName,
 		nameStatus: models.SortModeStatus,

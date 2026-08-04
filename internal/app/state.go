@@ -15,6 +15,8 @@ type Snapshot struct {
 	BatchTask     string   `json:"batch_task,omitempty"`
 	BatchTotal    int      `json:"batch_total,omitempty"`
 	StatusMessage string   `json:"status_message,omitempty"`
+	Scene         string   `json:"scene,omitempty"`
+	Overview      []string `json:"overview,omitempty"`
 }
 
 func (v ViewMode) String() string {
@@ -24,7 +26,7 @@ func (v ViewMode) String() string {
 	case ViewModeRepoDetail:
 		return "detail"
 	case ViewModeBranchDetail:
-		return "branch"
+		return nameBranch
 	case ViewModePRDetail:
 		return "pr"
 	case ViewModeHelp:
@@ -66,5 +68,44 @@ func (m Model) Snapshot() Snapshot {
 		BatchTask:     m.batchTask,
 		BatchTotal:    m.batchTotal,
 		StatusMessage: m.statusMessage,
+		Scene:         m.activeScene(),
+		Overview:      m.overviewSummary(),
 	}
+}
+
+// activeScene names the focused view's current scene, or is empty outside that
+// view and on the one tab no scene owns.
+func (m Model) activeScene() string {
+	if m.viewMode != ViewModeRepoDetail {
+		return ""
+	}
+
+	for _, s := range scenes() {
+		if s.tab == m.detailTab {
+			return s.name
+		}
+	}
+
+	return ""
+}
+
+// overviewSummary renders the focused view's overview rows as "label=value"
+// pairs, so a fixture can assert what the pane answers on arrival.
+func (m Model) overviewSummary() []string {
+	if m.viewMode != ViewModeRepoDetail {
+		return nil
+	}
+
+	summary, ok := m.summaries[m.selectedRepo]
+	if !ok {
+		return nil
+	}
+
+	rows := m.overviewRows(summary, m.isCompact())
+	pairs := make([]string, 0, len(rows))
+	for _, row := range rows {
+		pairs = append(pairs, row.label+"="+row.value)
+	}
+
+	return pairs
 }
