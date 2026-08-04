@@ -4,6 +4,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -16,8 +17,11 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 	"github.com/kyleking/gh-repo-dashboard/internal/cli"
 	"github.com/kyleking/gh-repo-dashboard/internal/config"
+	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
+
+var errEmptyRoster = errors.New("names no repos that exist on disk")
 
 var (
 	version = "dev"
@@ -101,6 +105,25 @@ Flags:
 
 // resolveScanPaths picks the scan roots: positional args, then config, then the
 // enclosing repo, then the current directory.
+// ResolveRoster picks the repo roster: a mani.yaml when one is named, and the
+// usual scan-path resolution otherwise. Roster entries are repo directories,
+// which discovery returns as-is at any depth.
+func resolveRoster(maniPath string, args []string, cfg config.Config) ([]string, error) {
+	if maniPath == "" {
+		return resolveScanPaths(args, cfg)
+	}
+
+	roster, err := discovery.ManiPaths(maniPath)
+	if err != nil {
+		return nil, fmt.Errorf("reading the roster: %w", err)
+	}
+	if len(roster) == 0 {
+		return nil, fmt.Errorf("%s: %w", maniPath, errEmptyRoster)
+	}
+
+	return roster, nil
+}
+
 func resolveScanPaths(args []string, cfg config.Config) ([]string, error) {
 	if len(args) > 0 {
 		return args, nil
@@ -140,9 +163,14 @@ func main() {
 	showVersion := flag.Bool("version", false, "Show version information")
 	depth := flag.Int("depth", 1, "Maximum directory depth to scan")
 	cliMode := flag.Bool("cli", false, "Print repo summaries as JSON instead of the TUI (cached GitHub data only)")
-	fresh := flag.Bool("fresh", false, "With -cli, fetch fresh GitHub PR data instead of relying on the cache")
+	fresh := flag.Bool("fresh", false,
+		"With -cli, fetch fresh GitHub PR and CI data instead of relying on the cache")
+	fetch := flag.Bool("fetch", false,
+		"With -cli, git fetch each repo first so ahead/behind compares against the remote")
 	filterExpr := flag.String("filter", "",
 		"With -cli, narrow output by a predicate expression (e.g. 'dirty and has_notes')")
+	maniPath := flag.String("mani", "",
+		"Read the repo roster from a mani.yaml instead of scanning directories")
 	scriptPath := flag.String("script", "",
 		"Run :command lines from the given file (or - for stdin) instead of the TUI")
 	flag.Parse()
@@ -164,7 +192,7 @@ func main() {
 	}
 	applyConfig(cfg, depth)
 
-	scanPaths, err := resolveScanPaths(flag.Args(), cfg)
+	scanPaths, err := resolveRoster(*maniPath, flag.Args(), cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -177,7 +205,8 @@ func main() {
 	}
 
 	if *cliMode {
-		if err := cli.Run(context.Background(), os.Stdout, absPathList, *depth, *fresh, *filterExpr); err != nil {
+		opts := cli.Options{MaxDepth: *depth, Fresh: *fresh, Fetch: *fetch, Predicate: *filterExpr}
+		if err := cli.Run(context.Background(), os.Stdout, absPathList, opts); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}

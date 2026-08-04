@@ -23,9 +23,14 @@ same grammar works in `--filter` on the command line and in `:select where`.
 
 Precedence runs `not`, then `and`, then `or`, and parentheses group.
 
-The atoms are `ahead`, `behind`, `clean`, `dirty`, `error`, `git`, `has_notes`,
-`has_pr`, `has_stash`, `has_upstream`, and `jj`. A malformed expression reports a
-parse error rather than silently matching nothing.
+The atoms are `ahead`, `behind`, `clean`, `config_override`, `dirty`, `error`,
+`git`, `has_notes`, `has_pr`, `has_stash`, `has_upstream`, `https`, `jj`, `ssh`,
+and `template_drift`. A malformed expression reports a parse error rather than
+silently matching nothing.
+
+`template_drift` matches a copier-generated repo that is behind its template's
+latest tag, or pinned to a commit or branch rather than a tag, where currency
+cannot be judged at all.
 
 `:filter all` clears both the mode and any predicate.
 

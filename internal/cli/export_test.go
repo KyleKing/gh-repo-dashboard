@@ -17,6 +17,16 @@ func NewGitHubClient(
 	return githubClient{prForBranch: prForBranch, prsForRepo: prsForRepo}
 }
 
+// NewGitHubClientWithCI builds a githubClient that also answers CI lookups.
+func NewGitHubClientWithCI(
+	defaultCI func(ctx context.Context, repoPath string) (*models.DefaultBranchCI, error),
+) githubClient {
+	return githubClient{defaultCI: defaultCI}
+}
+
+// LookupCI exposes the unexported lookupCI helper to black-box tests.
+var LookupCI = lookupCI
+
 // LookupPR exposes the unexported lookupPR helper to black-box tests.
 var LookupPR = lookupPR
 

@@ -12,6 +12,7 @@ const (
 	PRStatusClosed         = "CLOSED"
 	ReviewApproved         = "approved"
 	ReviewChangesRequested = "changes requested"
+	StatusCompleted        = "completed"
 	StatusFailing          = "failing"
 	StatusPassing          = "passing"
 )
@@ -138,7 +139,7 @@ type CheckDetail struct {
 // completed, or its in-flight status ("queued", "in progress") before then.
 func (c CheckDetail) StatusDisplay() string {
 	status := strings.ToLower(c.Status)
-	if status == "completed" && c.Conclusion != "" {
+	if status == StatusCompleted && c.Conclusion != "" {
 		return strings.ToLower(c.Conclusion)
 	}
 	if status == "" {
@@ -216,11 +217,56 @@ type WorkflowRun struct {
 
 // StatusDisplay returns the workflow run's display status label.
 func (w WorkflowRun) StatusDisplay() string {
-	if w.Status == "completed" {
+	if w.Status == StatusCompleted {
 		return w.Conclusion
 	}
 
 	return w.Status
+}
+
+// DefaultBranchCI is the CI state of a repo's default branch head: the latest
+// run of each workflow on that commit.
+type DefaultBranchCI struct {
+	Branch    string          `json:"branch"`
+	SHA       string          `json:"sha"`
+	Workflows []CIWorkflowRun `json:"workflows"`
+}
+
+// Conclusion rolls the workflows up into one word: failing if any failed,
+// pending while any is still going, passing when all succeeded, and emDash
+// when the commit has no runs at all.
+func (c *DefaultBranchCI) Conclusion() string {
+	if len(c.Workflows) == 0 {
+		return emDash
+	}
+
+	pending := false
+	for i := range c.Workflows {
+		switch {
+		case c.Workflows[i].Conclusion == "failure":
+			return StatusFailing
+		case c.Workflows[i].Status != StatusCompleted:
+			pending = true
+		}
+	}
+
+	if pending {
+		return "pending"
+	}
+
+	return StatusPassing
+}
+
+// CIWorkflowRun is one workflow's latest run on a commit.
+type CIWorkflowRun struct {
+	ID          int64     `json:"id"`
+	Workflow    string    `json:"workflow"`
+	Status      string    `json:"status"`
+	Conclusion  string    `json:"conclusion"`
+	URL         string    `json:"url"`
+	StartedAt   time.Time `json:"started_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	FailingJobs []string  `json:"failing_jobs,omitempty"`
 }
 
 // WorkflowSummary aggregates the CI workflow runs for a commit.

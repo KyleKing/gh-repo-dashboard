@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kyleking/gh-repo-dashboard/internal/copier"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
@@ -49,7 +50,15 @@ type Repo struct {
 	LastModified  *time.Time        `json:"last_modified,omitempty"`
 	PR            *models.PRInfo    `json:"pr,omitempty"`
 	PRCount       *int              `json:"pr_count,omitempty"`
-	Error         string            `json:"error,omitempty"`
+
+	TemplateSrc      string                  `json:"template_src,omitempty"`
+	TemplateVersion  string                  `json:"template_version,omitempty"`
+	TemplateLatest   string                  `json:"template_latest,omitempty"`
+	TemplateDrift    bool                    `json:"template_drift"`
+	CI               *models.DefaultBranchCI `json:"ci,omitempty"`
+	DependabotAlerts map[string]int          `json:"dependabot_alerts,omitempty"`
+
+	Error string `json:"error,omitempty"`
 }
 
 // githubClient holds the gh-backed fetchers used only when fresh retrieval is
@@ -57,39 +66,56 @@ type Repo struct {
 type githubClient struct {
 	prForBranch func(ctx context.Context, repoPath, branch, upstream string) (*models.PRInfo, error)
 	prsForRepo  func(ctx context.Context, repoPath, upstream string) ([]models.PRInfo, error)
+	defaultCI   func(ctx context.Context, repoPath string) (*models.DefaultBranchCI, error)
+	alerts      func(ctx context.Context, repoPath, remoteRepo string) map[string]int
 }
 
 func defaultGitHubClient() githubClient {
 	return githubClient{
 		prForBranch: github.GetPRForBranch,
 		prsForRepo:  github.GetPRsForRepo,
+		defaultCI:   github.GetDefaultBranchCI,
+		alerts:      github.DependabotAlerts,
 	}
 }
 
+// Options configures one --cli run.
+//
+// Fresh permits network reads (pull requests, CI); without it the output is
+// whatever the in-process cache already holds. Fetch runs a git fetch first,
+// so ahead/behind counts compare against the remote rather than the last
+// local fetch.
+type Options struct {
+	MaxDepth  int
+	Fresh     bool
+	Fetch     bool
+	Predicate string
+}
+
 // Run discovers repos under scanPaths and writes their summaries as JSON to w.
-// GitHub data is served from the cache only, unless fresh is set. A non-empty
-// predicate expression (e.g. "dirty and has_notes") narrows the output.
-func Run(ctx context.Context, w io.Writer, scanPaths []string, maxDepth int, fresh bool, predicate string) error {
+func Run(ctx context.Context, w io.Writer, scanPaths []string, opts Options) error {
 	var pred filters.Predicate
-	if predicate != "" {
-		parsed, err := filters.ParsePredicate(predicate)
+	if opts.Predicate != "" {
+		parsed, err := filters.ParsePredicate(opts.Predicate)
 		if err != nil {
 			return fmt.Errorf("invalid --filter predicate: %w", err)
 		}
 		pred = parsed
 	}
 
-	paths := discovery.DiscoverRepos(scanPaths, maxDepth)
+	paths := discovery.DiscoverRepos(scanPaths, opts.MaxDepth)
 	out := Output{
 		GeneratedAt: time.Now().UTC(),
 		ScanPaths:   scanPaths,
-		Repos:       collectRepos(ctx, defaultGitHubClient(), paths, fresh, pred),
+		Repos:       collectRepos(ctx, defaultGitHubClient(), paths, opts, pred),
 	}
 
 	return writeOutput(w, out)
 }
 
-func collectRepos(ctx context.Context, client githubClient, paths []string, fresh bool, pred filters.Predicate) []Repo {
+func collectRepos(
+	ctx context.Context, client githubClient, paths []string, opts Options, pred filters.Predicate,
+) []Repo {
 	repos := make([]*Repo, len(paths))
 	sem := make(chan struct{}, maxConcurrentRepos)
 
@@ -100,7 +126,7 @@ func collectRepos(ctx context.Context, client githubClient, paths []string, fres
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			repos[i] = loadRepo(ctx, client, path, fresh, pred)
+			repos[i] = loadRepo(ctx, client, path, opts, pred)
 		}()
 	}
 	wg.Wait()
@@ -117,8 +143,16 @@ func collectRepos(ctx context.Context, client githubClient, paths []string, fres
 
 // loadRepo builds the Repo for path, or nil when pred is set and the repo's
 // summary doesn't match it.
-func loadRepo(ctx context.Context, client githubClient, path string, fresh bool, pred filters.Predicate) *Repo {
+func loadRepo(ctx context.Context, client githubClient, path string, opts Options, pred filters.Predicate) *Repo {
 	ops := vcs.GetOperations(path)
+
+	if opts.Fetch {
+		if mutator, ok := ops.(vcs.Mutator); ok {
+			//nolint:errcheck // a repo with no reachable remote still reports its local state
+			_, _, _ = mutator.FetchAll(ctx, path)
+		}
+	}
+
 	summary, err := ops.GetRepoSummary(ctx, path)
 	if err != nil {
 		summary = models.RepoSummary{Path: path, VCSType: vcs.DetectVCSType(path), Error: err}
@@ -137,8 +171,10 @@ func loadRepo(ctx context.Context, client githubClient, path string, fresh bool,
 	// Worktrees are a best-effort extra column: a failure just reports zero.
 	worktrees, _ := ops.GetWorktreeList(ctx, path) //nolint:errcheck // best-effort, see comment above
 	summary.NotesFiles = models.DetectNotes(path)
-	pr := lookupPR(ctx, client, path, summary.Branch, summary.Upstream, fresh)
-	prCount := lookupPRCount(ctx, client, path, summary.Upstream, fresh)
+	//nolint:errcheck // absence just leaves the template fields empty
+	summary.TemplateInfo, _ = copier.GetTemplateInfo(ctx, path)
+	pr := lookupPR(ctx, client, path, summary.Branch, summary.Upstream, opts.Fresh)
+	prCount := lookupPRCount(ctx, client, path, summary.Upstream, opts.Fresh)
 	summary.PRInfo = pr
 
 	if pred != nil && !pred(summary) {
@@ -146,8 +182,27 @@ func loadRepo(ctx context.Context, client githubClient, path string, fresh bool,
 	}
 
 	repo := newRepo(&summary, len(worktrees), pr, prCount)
+	repo.CI = lookupCI(ctx, client, path, opts.Fresh)
+	if opts.Fresh && client.alerts != nil {
+		repo.DependabotAlerts = client.alerts(ctx, path, summary.RemoteRepo)
+	}
 
 	return &repo
+}
+
+// lookupCI reads the default branch's CI, which always costs a network call
+// and so is gated behind Fresh like the pull request data.
+func lookupCI(ctx context.Context, client githubClient, repoPath string, fresh bool) *models.DefaultBranchCI {
+	if !fresh || client.defaultCI == nil {
+		return nil
+	}
+
+	ci, err := client.defaultCI(ctx, repoPath)
+	if err != nil {
+		return nil
+	}
+
+	return ci
 }
 
 func newRepo(summary *models.RepoSummary, worktreeCount int, pr *models.PRInfo, prCount *int) Repo {
@@ -170,6 +225,13 @@ func newRepo(summary *models.RepoSummary, worktreeCount int, pr *models.PRInfo, 
 		NotesFiles:    summary.NotesFiles,
 		PR:            pr,
 		PRCount:       prCount,
+	}
+
+	if info := summary.TemplateInfo; info != nil {
+		repo.TemplateSrc = info.SrcPath
+		repo.TemplateVersion = info.Commit
+		repo.TemplateLatest = info.LatestTag
+		repo.TemplateDrift = info.Behind || !info.IsTag
 	}
 
 	if !summary.LastModified.IsZero() {

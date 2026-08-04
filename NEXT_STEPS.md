@@ -6,6 +6,13 @@ each names a symbol rather than a line number, so grep for it.
 
 ## Correctness
 
+`--cli` does not emit `is_template` or `has_freshen_txt`, which `assess.sh` did.
+Both are conventions of the freshen workflow rather than facts about a repo: one
+is a substring test on the directory name, the other the presence of a
+`freshen.txt` marker. A consumer can derive both from the `name` field and a
+file check, so they were deliberately left out of the general tool. Revisit only
+if a second consumer wants them.
+
 `--cli` without `--fresh` can never return PR data. The cache is in-memory only,
 so every process starts cold and `pr`/`pr_count` are always omitted; all 62 repos
 returned null for both in the original review run, and nothing in the tree calls

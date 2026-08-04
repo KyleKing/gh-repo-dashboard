@@ -37,6 +37,9 @@ func atoms() map[string]Predicate {
 		"https":           func(s models.RepoSummary) bool { return s.RemoteProtocol == "https" },
 		"jj":              func(s models.RepoSummary) bool { return s.VCSType == models.VCSTypeJJ },
 		"ssh":             func(s models.RepoSummary) bool { return s.RemoteProtocol == "ssh" },
+		"template_drift": func(s models.RepoSummary) bool {
+			return s.TemplateInfo != nil && (s.TemplateInfo.Behind || !s.TemplateInfo.IsTag)
+		},
 	}
 }
 

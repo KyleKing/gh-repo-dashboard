@@ -1,13 +1,9 @@
 # Roadmap
 
-Phased, shippable milestones for gh-repo-dashboard. Each milestone stands on its
-own and can be released independently; the roadmap can stop at any point without
-leaving the app half-migrated.
-
+Where gh-repo-dashboard is going, and the shape of what it already has.
 Architecture and domain context live in [DESIGN.md](DESIGN.md); Go and workflow
-conventions live in [AGENTS.md](AGENTS.md). Design docs backing the milestones
-below live in `docs/design/`:
-
+conventions live in [AGENTS.md](AGENTS.md); the design docs the shipped work was
+built from live in `docs/design/`.
 
 The column engine lives in `internal/ui/table` and every table is sized by it.
 `internal/app/view_overview.go` holds the repo overview pane, mounted both by
@@ -49,38 +45,9 @@ A layered pyramid:
   sequences and generate `docs/USAGE.md` (`mise run docs:usage`);
   `TestUsageDocsCurrent` fails CI when the docs go stale
 
-M1 through M17 landed through 2026-08-04 and are not tracked here. `CHANGELOG.md`
-and `git log` are the record.
-
-## Sequence at a glance
-
-| Milestone | Theme | Depends on |
-|-----------|-------|------------|
-| M18 | `--cli` fleet assessment (assess.sh replacement) | — |
-
-## M18: fleet assessment for the freshen workflow
-
-Extend `--cli` so the freshen skill can retire `assess.sh`. The default-branch
-CI fetch (`loadDefaultBranchCICmd`, `vcs.DefaultBranchHead`) is the shared
-implementation.
-
-- CI status per repo keyed by the default branch head: latest conclusion per
-  workflow with timestamps, plus failing step names when red
-- Copier awareness: `template_src` and `template_version` fields and a drift
-  predicate (`template_version != latest`)
-- Roster input: accept mani.yaml as a scan source alongside configured paths
-
-Known gaps to close before retiring the script (from reading `assess.sh`
-against this proposal): the script fetches before counting ahead/behind, so
-`--cli` needs an opt-in fetch or a documented difference; and the script emits
-`dependabot_alerts` (open counts by severity, `{}` on denied access), which the
-three additions above do not cover. `NEXT_STEPS.md` records further
-verification notes: `is_template` and `has_freshen_txt`, the
-`WorkflowSummary` shape mismatch, and the undefined meaning of `--fresh` for
-non-PR data.
-
-Out of scope: waiting or polling. The snapshot stays one-shot; the caller owns
-retry cadence.
+M1 through M18 landed through 2026-08-04 and are not tracked here; `CHANGELOG.md`
+and `git log` are the record. No milestone is open, so the lists below are the
+whole backlog.
 
 ## Deferred features
 

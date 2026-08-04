@@ -151,7 +151,7 @@ func TestRepoJSONShape(t *testing.T) {
 			}, 0, nil, nil),
 			expected: `{"path":"/repos/demo","name":"demo","vcs":"git","branch":"main",` +
 				`"ahead":0,"behind":0,"staged":0,"unstaged":0,"untracked":0,"conflicted":0,` +
-				`"dirty":false,"status":"clean","stash_count":0,"worktree_count":0}`,
+				`"dirty":false,"status":"clean","stash_count":0,"worktree_count":0,"template_drift":false}`,
 		},
 		{
 			name: "full repo includes pr and counts",
@@ -181,7 +181,7 @@ func TestRepoJSONShape(t *testing.T) {
 				`"pr":{"number":42,"title":"Add feature","state":"OPEN",` +
 				`"url":"https://example.com/pr/42","is_draft":false,"head_ref":"feature",` +
 				`"base_ref":"main","checks":{"total":2,"passing":1,"failing":0,"pending":1,"skipped":0}},` +
-				`"pr_count":3}`,
+				`"pr_count":3,"template_drift":false}`,
 		},
 	}
 
@@ -245,7 +245,8 @@ func TestRunFilterPredicate(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := cli.Run(context.Background(), &buf, []string{root}, 1, false, "dirty"); err != nil {
+	opts := cli.Options{MaxDepth: 1, Predicate: "dirty"}
+	if err := cli.Run(context.Background(), &buf, []string{root}, opts); err != nil {
 		t.Fatal(err)
 	}
 
@@ -266,7 +267,7 @@ func TestRunFilterPredicate(t *testing.T) {
 func TestRunFilterInvalidPredicate(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
-	err := cli.Run(context.Background(), &buf, []string{t.TempDir()}, 1, false, "dirty and")
+	err := cli.Run(context.Background(), &buf, []string{t.TempDir()}, cli.Options{MaxDepth: 1, Predicate: "dirty and"})
 	if err == nil {
 		t.Fatal("expected error for invalid predicate")
 	}
@@ -283,5 +284,73 @@ func runGitCmd(t *testing.T, dir string, args ...string) {
 	}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git %v: %v\n%s", args, err, out)
+	}
+}
+
+func TestLookupCIIsGatedByFresh(t *testing.T) {
+	t.Parallel()
+
+	calls := 0
+	client := cli.NewGitHubClientWithCI(
+		func(_ context.Context, _ string) (*models.DefaultBranchCI, error) {
+			calls++
+			return &models.DefaultBranchCI{Branch: "main"}, nil
+		})
+
+	if got := cli.LookupCI(context.Background(), client, "/repos/app", false); got != nil {
+		t.Errorf("CI = %+v without --fresh, want nil; the read always costs a network call", got)
+	}
+	if calls != 0 {
+		t.Errorf("made %d CI calls without --fresh, want 0", calls)
+	}
+
+	if got := cli.LookupCI(context.Background(), client, "/repos/app", true); got == nil {
+		t.Error("CI is nil with --fresh, want the fetched summary")
+	}
+	if calls != 1 {
+		t.Errorf("made %d CI calls with --fresh, want 1 per repo", calls)
+	}
+}
+
+func TestRepoCarriesTemplateDrift(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		info      *models.CopierTemplateInfo
+		wantDrift bool
+	}{
+		{name: "no template", info: nil},
+		{
+			name: "up to date",
+			info: &models.CopierTemplateInfo{Commit: "v1.0.0", IsTag: true},
+		},
+		{
+			name:      "behind the latest tag",
+			info:      &models.CopierTemplateInfo{Commit: "v1.0.0", IsTag: true, Behind: true, LatestTag: "v1.1.0"},
+			wantDrift: true,
+		},
+		{
+			name:      "pinned to a commit, so currency is unknowable",
+			info:      &models.CopierTemplateInfo{Commit: "abc1234"},
+			wantDrift: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			summary := models.RepoSummary{Path: "/repos/app", TemplateInfo: tt.info}
+			repo := cli.NewRepo(&summary, 0, nil, nil)
+
+			if repo.TemplateDrift != tt.wantDrift {
+				t.Errorf("template_drift = %v, want %v", repo.TemplateDrift, tt.wantDrift)
+			}
+
+			if tt.info != nil && repo.TemplateVersion != tt.info.Commit {
+				t.Errorf("template_version = %q, want %q", repo.TemplateVersion, tt.info.Commit)
+			}
+		})
 	}
 }
