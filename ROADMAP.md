@@ -5,7 +5,17 @@ own and can be released independently; the roadmap can stop at any point without
 leaving the app half-migrated.
 
 Architecture and domain context live in [DESIGN.md](DESIGN.md); Go and workflow
-conventions live in [AGENTS.md](AGENTS.md).
+conventions live in [AGENTS.md](AGENTS.md). Design docs backing the milestones
+below live in `docs/design/`:
+
+- [2026-08-03-usability-critique.md](docs/design/2026-08-03-usability-critique.md),
+  the PTY critique that grounds M13 and M14
+- [layout-and-density.md](docs/design/layout-and-density.md), the column engine
+  and breakpoint system (M13, M14)
+- [focused-repo-view.md](docs/design/focused-repo-view.md), the single-repo
+  overview and scenes (M15)
+- [fleet-navigation.md](docs/design/fleet-navigation.md), peers, the PR-to-local
+  map, PR flows, CI, and the API budget (M16, M17)
 
 ## Vision
 
@@ -16,6 +26,12 @@ dirty repos) driven either by keys or a `:command` mode with predicates
 makes behavior testable without keyboard simulation, documentable from fixtures,
 and scriptable headlessly.
 
+The 2026-08 direction adds a second axis: the same data at three densities.
+A compact narrow layout with its own UX, the standard table, and a wide layout
+that spends surplus width on a live preview panel, with a focused single-repo
+view that answers "what is the state of the repo I am standing in" without any
+drilling.
+
 The external `tui-commander` package extraction is deferred until a second TUI
 actually shares the code (extract on second use).
 
@@ -25,10 +41,10 @@ A layered pyramid:
 
 - Direct state-transition tests are the base layer: fast, dependency-free, and
   where most new tests land
-- teatest golden files are a thin regression layer over a few stable screens (repo
-  list, filter modal, detail, batch progress). Kept deliberately small so snapshots
-  do not go brittle. Run under a build tag (`go test -tags=golden ./...`, `-update`
-  to refresh)
+- teatest golden files are a thin regression layer over a few stable screens.
+  From M14 on, the golden set is per breakpoint (80x24, 120x35, 220x50) rather
+  than per view at one size. Run under a build tag (`go test -tags=golden
+  ./...`, `-update` to refresh)
 - Fixture-based tests (`internal/app/testdata/fixtures/*.fix`) script command
   sequences and generate `docs/USAGE.md` (`mise run docs:usage`);
   `TestUsageDocsCurrent` fails CI when the docs go stale
@@ -36,124 +52,161 @@ A layered pyramid:
 M1 through M12 landed through 2026-07-05 and are not tracked here. `CHANGELOG.md`
 and `git log` are the record.
 
-## Proposed: fleet assessment for the freshen workflow
+## Sequence at a glance
 
-The freshen skill (multi-repo maintenance in `~/.claude/skills/freshen/`) needs a
-per-repo snapshot before it dispatches work: local git state, CI conclusions on
-the default branch, and where the repo sits relative to its copier template. Today
-that lives in a bundled shell script (`assess.sh`) that shells out to git, gh, yq,
-and jq per repo. `--cli` already emits the local half of that snapshot as JSON, so
-the script duplicates repo discovery and status logic this codebase already has.
+| Milestone | Theme | Depends on |
+|-----------|-------|------------|
+| M13 | Correctness fixes and the column engine | — |
+| M14 | Breakpoint layouts: compact, standard, wide preview panel | M13 |
+| M15 | Focused repo view: overview pane and scenes | M14 |
+| M16 | Peers panel, same-branch conflicts, PR-to-local map | M13 (engine); M14 for wide rendering |
+| M17 | PR activity, PR flows, CI on the default branch | M16 |
+| M18 | `--cli` fleet assessment (assess.sh replacement) | shares the CI fetch with M17 |
 
-Options considered:
+M16 is deliberately independent of M15: peers and the map are fleet-level and
+can ship while the focused view is still in design.
 
-1. Extend `--cli`. The gaps are additive fields on the existing `Repo` struct, and
-   the CI fetch already exists in `internal/github/workflow.go` (TUI-only today)
-2. A dedicated fleet tool. Rejected: it would re-implement discovery, status, and
-   PR enrichment for one consumer
-3. Keep the shell script. Works, but every field it computes outside `--cli` is
-   untested and unfilterable
+## M13: correctness and the column engine
 
-Decision: extend `--cli` with three additions, then retire the script:
+The fixes from the 2026-08-03 critique plus the rendering foundation every
+later milestone draws on.
 
-- CI status per repo, keyed by the default branch head rather than a commit SHA.
-  Latest conclusion per workflow with timestamps, plus failing step names when
-  red, so the caller can triage without a second round-trip
-- Copier awareness: parse `.copier-answers.yml` into `template_src` and
-  `template_version`, and let a predicate express drift
-  (`template_version != latest`)
-- Roster input: accept mani.yaml as a scan source alongside the configured scan
-  paths, so the fleet definition stays in one file
+- Fix `GetStashList`: `git stash list` needs log-format atoms (`%gd`, `%gs`,
+  `%ct`), not for-each-ref atoms (`internal/vcs/git.go:315`); update the
+  pinned fixture in `git_exec_test.go` that currently blesses the bug
+- Replace byte-count padding with display-width padding everywhere `fmt`
+  pads user content (`lipgloss.Width`-based helper); fixes PR-tab drift under
+  emoji, the `⚠` template suffix, and the `* ` current-branch misalignment
+- Reset the search input buffer when `/` opens over a committed query
+- Implement the column engine (`Column{Min, Max, Weight, Priority, Align}`,
+  collapse marker, ellipsis truncation) and migrate the repo list to it,
+  reordering collapse priority so PR hides first and PEERS/TEMPLATE survive
+- Command-layer discoverability quick wins: a `:` hint in the footer, and a
+  Command Mode section in the `?` overlay covering `:`, `@:`, and text
+  objects
+- Close the fixed critique items: NO_COLOR and the empty-state hint are done
+  and need only their roadmap entries retired
 
-Sketch of the added JSON, on the existing `Repo` shape:
+Exit criteria: stash tab shows real stashes; a PR tab full of emoji titles
+renders aligned at 80 and 220 columns; engine unit tests cover surplus
+distribution, collapse order, and wide-glyph measurement; repo-list golden
+frames exist at 80/120/220.
 
-```json
-{
-  "ci": [{"workflow": "CI", "conclusion": "failure", "failed_steps": ["lint"],
-          "completed_at": "..."}],
-  "template_src": "gh:KyleKing/my_go_template",
-  "template_version": "v0.4.3"
-}
-```
+## M14: breakpoint layouts
+
+The three-layout system from
+[layout-and-density.md](docs/design/layout-and-density.md).
+
+- Migrate every remaining table (detail tabs, PR views, batch results) to the
+  engine; delete the per-view width constants
+- compact (< 100 columns): two-line repo records, stacked detail sections,
+  abbreviated tab bar; 80x24 is the design target for this layout
+- standard (100-159): current layout, engine-sized
+- wide (>= 160): repo list plus a live preview panel of the selected repo,
+  rendered from cached summaries, never blocking on fetch
+- Footer collapses by priority instead of clipping
+
+Exit criteria: no view hard-clips at 80x24; the wide panel updates on j/k with
+no added latency on cached repos; golden frames per breakpoint for repo list,
+Branches tab, and PR tab; a 220 → 80 → 220 resize fixture reproduces the
+original frame.
+
+## M15: focused repo view
+
+The overview-plus-scenes design from
+[focused-repo-view.md](docs/design/focused-repo-view.md).
+
+- Overview pane summarizing sync state, files, stashes, notes, and PR
+  activity, mounted both by the focused view and the wide preview panel
+- Scene toggles `1`-`4` (work, review, sync, maintain) re-arranging the lower
+  zone; active scene named in the footer
+- Compact variant keeps Sync and Files only
+
+Exit criteria: launching inside a repo answers branch, dirty detail, peers,
+template drift, and CI without a keypress; scene switches are instant from
+cached data; fixtures cover a quiet repo and a busy one.
+
+## M16: peers and the PR-to-local map
+
+The local-data half of [fleet-navigation.md](docs/design/fleet-navigation.md).
+Zero API cost.
+
+- Peers panel: every checkout of the same remote with kind, branch, dirty
+  state, and last commit; Enter jumps the dashboard to that checkout on the
+  existing drill-down stack
+- Same-branch conflict flag on the panel, the repo list PEERS cell (`⧉2⚠`),
+  and a fleet-header count, so the lose-local-commits hazard is visible from
+  the top
+- `:prs` fleet map: open PRs joined against cached local branch lists (which
+  checkout holds the head ref), plus local branches with commits and no open
+  PR
+
+Exit criteria: two checkouts on one branch are flagged at list, panel, and
+header level; the map answers "where is the branch for PR #N" and "which local
+branches have no PR" for the real fleet without new gh calls beyond the
+existing per-repo PR list.
+
+## M17: PR flows and CI
+
+The API-spending half of [fleet-navigation.md](docs/design/fleet-navigation.md),
+governed by its budget rules (one call per repo, GraphQL batching, TTL caches,
+lazy fetch, staleness shown as age suffixes).
+
+- ACTIVITY column (latest comment or review event: age plus author) in the PR
+  tab and fleet map, absorbing the mostly empty REVIEW width
+- `g` checks a PR branch out locally, confirm-gated and peer-aware like `c`
+- Batch PR refresh behind the `F+obj` operator pattern
+- CI on the default branch as a repo-list column, wide-panel line, and
+  focused-header badge
+
+Exit criteria: a full-fleet refresh of PR and CI data stays within tens of
+GraphQL points; cells render cache age when stale; no scroll or scene switch
+triggers a fetch for repos not visible.
+
+## M18: fleet assessment for the freshen workflow
+
+Extend `--cli` so the freshen skill can retire `assess.sh`. Unchanged from the
+earlier proposal; M17's CI fetch is the shared implementation.
+
+- CI status per repo keyed by the default branch head: latest conclusion per
+  workflow with timestamps, plus failing step names when red
+- Copier awareness: `template_src` and `template_version` fields and a drift
+  predicate (`template_version != latest`)
+- Roster input: accept mani.yaml as a scan source alongside configured paths
+
+Known gaps to close before retiring the script (from reading `assess.sh`
+against this proposal): the script fetches before counting ahead/behind, so
+`--cli` needs an opt-in fetch or a documented difference; and the script emits
+`dependabot_alerts` (open counts by severity, `{}` on denied access), which the
+three additions above do not cover. `NEXT_STEPS.md` records further
+verification notes: `is_template` and `has_freshen_txt`, the
+`WorkflowSummary` shape mismatch, and the undefined meaning of `--fresh` for
+non-PR data.
 
 Out of scope: waiting or polling. The snapshot stays one-shot; the caller owns
-retry cadence. Batch mutations (fetch, prune, cleanup) already exist behind the
-TUI and are not part of assessment.
-
-Two gaps the proposal above does not cover, both found by reading
-`~/.claude/skills/freshen/scripts/assess.sh` against it. Close them before
-retiring the script:
-
-- `assess.sh:23` runs `git -C "$dir" fetch --quiet` before it counts
-  ahead/behind, so its counts are against freshly updated remote refs. `--cli` is
-  read-only and never fetches, so a straight swap silently changes the meaning of
-  `ahead`/`behind` to "against whatever `origin/<branch>` was last time you
-  fetched". Either add an opt-in fetch to `--cli` or state the difference where
-  callers will see it
-- `assess.sh:42` also emits `dependabot_alerts`, open counts grouped by
-  `security_advisory.severity` from `repos/{slug}/dependabot/alerts`, with a
-  fallback to `{}` when the endpoint denies access (archived repos). The three
-  additions listed above do not mention it, so a `--cli` that shipped exactly
-  them would still leave the caller making a second round-trip
-
-## Proposed: TUI polish from the 2026-07 critique
-
-From a `tui-critique` pass over 63 real repos. Every item below was re-verified
-against the source on 2026-07-27 and is still unfixed. Ordered by severity.
-
-- P1 `statusColWidth` is a hardcoded `12` (`internal/app/view.go:25`) and
-  `renderTableRow` pads with `fmt.Sprintf("%-*s", statusTextWidth, status)`
-  (`view_repolist.go:369`), which pads short statuses but never truncates long
-  ones. Name and branch cells do call `truncate()`; status is the one column
-  without that safety net, so any status over 12 characters (`+1 ~10 ?2 ↑1N` is
-  14) desyncs every column to its right for that row. Call `truncate()` on
-  `status`, or size the column from the real max width
-- P1 `NO_COLOR` is not implemented: no reference to it anywhere in `internal/`,
-  and `NO_COLOR=1` output is identical to a full-color run. Status meaning is
-  color-only in practice. Likely a lipgloss/termenv color-profile configuration
-  fix rather than a redesign, since the `+`/`↑`/`↓`/`?` glyphs already carry the
-  meaning
-- P2 Command mode has no discoverability. A bare `:` prompt shows no completion
-  list, no argument hint, and no footer change, and the `?` help screen never
-  mentions `:`, `@:` repeat, or text objects despite `command.go` and
-  `textobject.go` being first-class systems
-- P2 The empty state is a bare `"No repositories found"`
-  (`view_repolist.go:138`) with no next step. Name the path and depth that were
-  scanned and point at `--depth`
-- P3 Narrow terminals silently clip the PR/PRs/Template/Modified columns and part
-  of the footer's own `? help q quit` hints, with no truncation indicator and no
-  minimum-size gate. Priority-collapse the data columns before the footer hints
-- P3 optional: the app has zero motion anywhere (static
-  `"Discovering repositories..."`, a static-fill batch gauge). Deliberate
-  restraint or unaddressed is undecided; settle that before treating a spinner as
-  a backlog item
-
-Open questions the critique raised that Kyle has not answered: whether both P1s
-are wanted now or one can wait, whether command-mode discoverability should be a
-footer hint or a help-screen line or both, and whether 80x24 is a support target
-at all (DESIGN.md states no minimum either way).
+retry cadence.
 
 ## Deferred features
 
 Low priority; pick up when convenient.
 
 - Full Catppuccin themes replacing the current textual themes
+- Motion policy: the app has zero animation (static discovery text, static
+  batch gauge). Decide deliberate restraint or add a spinner during M14 while
+  the render path is open
+- Notes preview shows the first line of the file, which is usually a date
+  heading; skip headings and blanks so the peek carries content
 - Deep-DRY items from the code-health survey, to do opportunistically when work
   next touches these files: a shared repo-enrichment path for `cli.loadRepo`,
-  `app.newScriptModel`, and app's summary/detail loading (same GetRepoSummary →
-  worktrees → DetectNotes → PR-lookup sequence, differing only in cache policy),
-  and guard/update helpers for the five `*LoadedMsg` handlers repeating the
-  selected-repo check and summary read-modify-write
-- Surface deletable-branch counts in the repo list from cache-resident data and a
-  `has_deletable` predicate (M9 leftovers), plus gh-poi-style branch pinning
+  `app.newScriptModel`, and app's summary/detail loading, and guard/update
+  helpers for the five `*LoadedMsg` handlers
+- Surface deletable-branch counts in the repo list from cache-resident data and
+  a `has_deletable` predicate (M9 leftovers), plus gh-poi-style branch pinning
 - `internal/app`'s test files stay whitebox (`package app`,
-  `//nolint:testpackage`) rather than converting to `app_test`. `Model` has 35+
-  unexported fields that tests construct and inspect directly across hundreds of
-  call sites; a blackbox conversion would mean exporting most of `Model`'s
-  internals via `export_test.go`, eroding encapsulation for state that's
-  intentionally private. Revisit only if these tests are rewritten to drive
-  `Model` through its exported `Update`/command-mode surface instead of direct
-  field access
+  `//nolint:testpackage`); revisit only if tests are rewritten to drive `Model`
+  through its exported surface
+- Command-mode completion (a completion list under the `:` prompt); M13 ships
+  discoverability hints only
 
 ## Parked ideas
 
@@ -162,3 +215,5 @@ Captured from earlier planning, not on the line:
 - Macro registers (`:record @a` / `:replay @a`); persistence and
   record-while-recording edge cases cost more than scripts deliver
 - Watch/auto-refresh mode
+- Claude session awareness (badging repos with recent agent sessions);
+  revisit if parallel-agent workflows make it earn a column
