@@ -25,7 +25,7 @@ func (m Model) renderRepoList() string {
 		b.WriteString("\n\n")
 	}
 
-	b.WriteString(m.renderTable())
+	b.WriteString(m.renderListWithPreview())
 
 	footer := m.renderFooter()
 	footerHeight := 1
@@ -124,6 +124,21 @@ func appendSortBadges(parts []string, activeSorts []models.ActiveSort) []string 
 	return parts
 }
 
+// renderListWithPreview renders the repo table, mounting the overview panel
+// beside it when the terminal is wide enough to carry one.
+func (m Model) renderListWithPreview() string {
+	list := m.renderTable()
+
+	panel := panelWidth(m.width, m.height)
+	if panel == 0 || len(m.filteredPaths) == 0 || m.cursor >= len(m.filteredPaths) {
+		return list
+	}
+
+	summary := m.summaries[m.filteredPaths[m.cursor]]
+
+	return joinListAndPanel(list, m.renderOverview(summary, panel), listWidth(m.width, m.height), panel)
+}
+
 func (m Model) renderTable() string {
 	if len(m.filteredPaths) == 0 {
 		if m.loading {
@@ -139,15 +154,16 @@ func (m Model) renderTable() string {
 	}
 
 	compact := breakpointFor(m.width, m.height) == breakpointCompact
+	width := listWidth(m.width, m.height)
 
 	var (
 		rows      []string
 		rowHeight = 1
 	)
 
-	layout := layoutRepoCols(contentWidth(m.width))
+	layout := layoutRepoCols(width)
 	if compact {
-		layout = table.Fit(compactColSpecs, contentWidth(m.width)-cursorWidth)
+		layout = table.Fit(compactColSpecs, width-cursorWidth)
 		rowHeight = compactRowHeight
 	} else {
 		rows = append(rows, styles.HeaderStyle.Render(renderRepoHeader(layout)))

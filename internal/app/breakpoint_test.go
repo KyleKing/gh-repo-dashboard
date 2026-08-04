@@ -90,7 +90,7 @@ func TestCompactLayoutFitsEightyColumns(t *testing.T) {
 	limit := contentWidth(80)
 
 	for i, line := range strings.Split(m.renderScreen(), "\n") {
-		if got := lipgloss.Width(line); got > limit+frameLeftPad(80)*2 {
+		if got := lipgloss.Width(line); got > limit+frameLeftPad(80, contentWidth(80))*2 {
 			t.Errorf("line %d is %d cells wide at 80 columns: %q", i, got, plainText(line))
 		}
 	}

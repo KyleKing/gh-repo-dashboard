@@ -147,10 +147,10 @@ func TestTruncate_MeasuresDisplayWidthNotBytes(t *testing.T) {
 func TestFrame_CentersContentAndLeavesBlankLinesEmpty(t *testing.T) {
 	t.Parallel()
 
-	framed := frame("abc\n\ndef", 200)
+	framed := frame("abc\n\ndef", 200, contentWidth(200))
 	lines := strings.Split(framed, "\n")
 
-	pad := frameLeftPad(200)
+	pad := frameLeftPad(200, contentWidth(200))
 	if pad == 0 {
 		t.Fatal("expected a non-zero indent at 200 columns")
 	}

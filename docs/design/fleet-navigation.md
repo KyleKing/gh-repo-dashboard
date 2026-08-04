@@ -42,8 +42,8 @@ Reached with `:prs` (and a repo-list keybinding once it proves out).
 ```
  Open PRs across 62 repos          14 open · 3 with local branch · 2 local-only branches
   REPO               PR     TITLE                        CI      REVIEW      ACTIVITY   LOCAL
-> mdit-py-plugins    #151   TEST(#143): add category...   ✓ 9/10  —           1w  you    here: kyle/xss-and-attrs
-  mdit-py-plugins    #150   FIX: escape user conten...   ✓ 11/12 —           1w  cjs    peer: yak-shears
+> mdit-py-plugins    #151   TEST(#143): add category…     ✓ 9/10  —           1w  you    here: kyle/xss-and-attrs
+  mdit-py-plugins    #150   FIX: escape user content…     ✓ 11/12 —           1w  cjs    peer: yak-shears
   calcipy            #88    feat: new lint rules         ✗ 2/9   changes     3d  bot    —
   (no PR)            —      local branch fix/texmath     —       —           —          here: fix/texmath-redos
  enter open PR  g checkout locally  o browser  s sections  esc back

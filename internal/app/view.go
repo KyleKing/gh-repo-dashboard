@@ -57,21 +57,34 @@ func (m Model) renderScreen() string {
 		return ""
 	}
 
+	frameW := m.frameWidth()
+
 	content := m.renderView()
 	if !m.selfCentering() {
-		content = frame(content, m.width)
+		content = frame(content, m.width, frameW)
 	}
 
 	if m.commandMode {
-		return overlayBottomLine(content, frame(m.commandInput.View(), m.width), m.height)
+		return overlayBottomLine(content, frame(m.commandInput.View(), m.width, frameW), m.height)
 	}
 	if m.statusMessage != "" {
-		line := frame(styles.StatusMessageStyle.Render(m.statusMessage), m.width)
+		line := frame(styles.StatusMessageStyle.Render(m.statusMessage), m.width, frameW)
 
 		return overlayBottomLine(content, line, m.height)
 	}
 
 	return content
+}
+
+// frameWidth is the width the frame centers and pads to. Only the repo list
+// widens past the single-column content width, and only to carry the preview
+// panel beside it.
+func (m Model) frameWidth() int {
+	if m.viewMode == ViewModeRepoList {
+		return frameContentWidth(m.width, m.height)
+	}
+
+	return contentWidth(m.width)
 }
 
 // selfCentering reports whether the current view already positions itself

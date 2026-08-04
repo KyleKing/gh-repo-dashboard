@@ -10,6 +10,22 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+// breakpointSizes are the three terminal sizes the layout is designed against:
+// one per breakpoint, each named for the golden file it produces.
+func breakpointSizes() []struct {
+	name          string
+	width, height int
+} {
+	return []struct {
+		name          string
+		width, height int
+	}{
+		{"80x24", 80, 24},
+		{"120x35", 120, 35},
+		{"220x50", 220, 50},
+	}
+}
+
 func goldenModel() Model {
 	m := New([]string{"/Users/dev"}, 1)
 	m.width = 100
@@ -65,21 +81,48 @@ func TestGoldenRepoList(t *testing.T) {
 // the layout is designed against, so a column-engine change that only shows up
 // under collapse or under surplus width still fails here.
 func TestGoldenRepoListBreakpoints(t *testing.T) {
-	sizes := []struct {
-		name          string
-		width, height int
-	}{
-		{"80x24", 80, 24},
-		{"120x35", 120, 35},
-		{"220x50", 220, 50},
-	}
-
-	for _, size := range sizes {
+	for _, size := range breakpointSizes() {
 		t.Run(size.name, func(t *testing.T) {
 			m := goldenModel()
 			m.width, m.height = size.width, size.height
 			golden.RequireEqual(t, []byte(m.renderScreen()))
 		})
+	}
+}
+
+// TestGoldenDetailTabBreakpoints pins the two busiest detail tabs at each
+// breakpoint, so a column-collapse change shows up as a frame diff.
+func TestGoldenDetailTabBreakpoints(t *testing.T) {
+	tabs := []struct {
+		name string
+		tab  DetailTab
+	}{
+		{"branches", DetailTabBranches},
+		{"prs", DetailTabPRs},
+	}
+
+	for _, size := range breakpointSizes() {
+		for _, tab := range tabs {
+			t.Run(tab.name+"-"+size.name, func(t *testing.T) {
+				m := goldenModel()
+				m.width, m.height = size.width, size.height
+				m.viewMode = ViewModeRepoDetail
+				m.selectedRepo = "/Users/dev/bravo"
+				m.detailTab = tab.tab
+				m.branches = []models.BranchInfo{
+					{Name: mainBranchName, Upstream: "origin/main", LastCommit: time.Now().Add(-2 * time.Hour)},
+					{
+						Name: "feature/login", Upstream: "origin/feature/login", Ahead: 2,
+						LastCommit: time.Now().Add(-10 * time.Minute), IsCurrent: true,
+					},
+				}
+				m.prs = []models.PRInfo{
+					{Number: 42, Title: "Add login flow", State: "OPEN", HeadRef: "feature/login"},
+					{Number: 7, Title: "Bump the template to v0.10.0", State: "OPEN", IsDraft: true, HeadRef: "chore/template"},
+				}
+				golden.RequireEqual(t, []byte(m.renderScreen()))
+			})
+		}
 	}
 }
 

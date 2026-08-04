@@ -8,17 +8,14 @@ Architecture and domain context live in [DESIGN.md](DESIGN.md); Go and workflow
 conventions live in [AGENTS.md](AGENTS.md). Design docs backing the milestones
 below live in `docs/design/`:
 
-- [2026-08-03-usability-critique.md](docs/design/2026-08-03-usability-critique.md),
-  the PTY critique that grounds M14
-- [layout-and-density.md](docs/design/layout-and-density.md), the column engine
-  and breakpoint system (M14)
 - [focused-repo-view.md](docs/design/focused-repo-view.md), the single-repo
   overview and scenes (M15)
 - [fleet-navigation.md](docs/design/fleet-navigation.md), peers, the PR-to-local
   map, PR flows, CI, and the API budget (M16, M17)
 
-The column engine landed in `internal/ui/table`; M14 moves the remaining
-tables onto it.
+The column engine lives in `internal/ui/table` and every table is sized by it.
+`internal/app/view_overview.go` holds the repo overview pane, which the wide
+layout mounts as its preview panel and M15 mounts again as the focused view.
 
 ## Vision
 
@@ -45,41 +42,27 @@ A layered pyramid:
 - Direct state-transition tests are the base layer: fast, dependency-free, and
   where most new tests land
 - teatest golden files are a thin regression layer over a few stable screens.
-  From M14 on, the golden set is per breakpoint (80x24, 120x35, 220x50) rather
-  than per view at one size. Run under a build tag (`go test -tags=golden
-  ./...`, `-update` to refresh)
+  The golden set is per breakpoint (80x24, 120x35, 220x50) rather than per view
+  at one size. Run under a build tag (`go test -tags=golden ./...`, `-update`
+  to refresh)
 - Fixture-based tests (`internal/app/testdata/fixtures/*.fix`) script command
   sequences and generate `docs/USAGE.md` (`mise run docs:usage`);
   `TestUsageDocsCurrent` fails CI when the docs go stale
 
-M1 through M13 landed through 2026-08-04 and are not tracked here. `CHANGELOG.md`
+M1 through M14 landed through 2026-08-04 and are not tracked here. `CHANGELOG.md`
 and `git log` are the record.
 
 ## Sequence at a glance
 
 | Milestone | Theme | Depends on |
 |-----------|-------|------------|
-| M14 | Breakpoint layouts: compact, standard, wide preview panel | — |
-| M15 | Focused repo view: overview pane and scenes | M14 |
-| M16 | Peers panel, same-branch conflicts, PR-to-local map | M14 for wide rendering |
+| M15 | Focused repo view: overview pane and scenes | — |
+| M16 | Peers panel, same-branch conflicts, PR-to-local map | — |
 | M17 | PR activity, PR flows, CI on the default branch | M16 |
 | M18 | `--cli` fleet assessment (assess.sh replacement) | shares the CI fetch with M17 |
 
 M16 is deliberately independent of M15: peers and the map are fleet-level and
 can ship while the focused view is still in design.
-
-## M14: breakpoint layouts
-
-The three-layout system from
-[layout-and-density.md](docs/design/layout-and-density.md).
-
-- wide (>= 160): repo list plus a live preview panel of the selected repo,
-  rendered from cached summaries, never blocking on fetch
-
-Exit criteria: no view hard-clips at 80x24; the wide panel updates on j/k with
-no added latency on cached repos; golden frames per breakpoint for repo list,
-Branches tab, and PR tab; a 220 → 80 → 220 resize fixture reproduces the
-original frame.
 
 ## M15: focused repo view
 
@@ -162,8 +145,7 @@ Low priority; pick up when convenient.
 
 - Full Catppuccin themes replacing the current textual themes
 - Motion policy: the app has zero animation (static discovery text, static
-  batch gauge). Decide deliberate restraint or add a spinner during M14 while
-  the render path is open
+  batch gauge). Decide deliberate restraint or add a spinner
 - Notes preview shows the first line of the file, which is usually a date
   heading; skip headings and blanks so the peek carries content
 - Deep-DRY items from the code-health survey, to do opportunistically when work
