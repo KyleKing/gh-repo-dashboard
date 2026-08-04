@@ -144,6 +144,25 @@ func detailRow(cursor string, layout table.Layout, cells []string) string {
 	return cursor + table.Join(cells)
 }
 
+// joinWithinWidth appends badges to head while they fit in limit display
+// cells, dropping the rest rather than letting the line run off the frame.
+// Badges are ordered most-important-first by their callers.
+func joinWithinWidth(head string, badges []string, limit int) string {
+	line := head
+	gap := "  "
+
+	for _, badge := range badges {
+		candidate := line + gap + badge
+		if lipgloss.Width(candidate) > limit {
+			break
+		}
+
+		line, gap = candidate, " "
+	}
+
+	return line
+}
+
 // plainStyle is the unstyled base for tables that color individual cells only.
 var plainStyle = lipgloss.NewStyle()
 

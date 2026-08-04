@@ -73,12 +73,8 @@ can ship while the focused view is still in design.
 The three-layout system from
 [layout-and-density.md](docs/design/layout-and-density.md).
 
-- compact (< 100 columns): two-line repo records, stacked detail sections,
-  abbreviated tab bar; 80x24 is the design target for this layout
-- standard (100-159): current layout, engine-sized
 - wide (>= 160): repo list plus a live preview panel of the selected repo,
   rendered from cached summaries, never blocking on fetch
-- Footer collapses by priority instead of clipping
 
 Exit criteria: no view hard-clips at 80x24; the wide panel updates on j/k with
 no added latency on cached repos; golden frames per breakpoint for repo list,

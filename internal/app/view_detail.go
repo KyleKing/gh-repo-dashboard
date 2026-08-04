@@ -45,7 +45,7 @@ func (m Model) renderRepoDetailBreadcrumbs() string {
 		badges = append(badges, styles.Badge(text, styles.WarningStyle))
 	}
 
-	return home + sep + repo + "  " + strings.Join(badges, " ")
+	return joinWithinWidth(home+sep+repo, badges, contentWidth(m.width))
 }
 
 func (m Model) renderRepoDetail() string {
@@ -113,19 +113,30 @@ func (m Model) renderDetailTabs() string {
 
 	tabs := []struct {
 		name  string
+		short string
 		tab   DetailTab
 		count int
 	}{
-		{"Branches", DetailTabBranches, len(m.branches)},
-		{"Stashes", DetailTabStashes, len(m.stashes)},
-		{worktreeLabel, DetailTabWorktrees, len(m.worktrees)},
-		{"PRs", DetailTabPRs, len(m.prs)},
-		{"Notes", DetailTabNotes, notesCount},
+		{"Branches", "Br", DetailTabBranches, len(m.branches)},
+		{"Stashes", "St", DetailTabStashes, len(m.stashes)},
+		{worktreeLabel, "Wt", DetailTabWorktrees, len(m.worktrees)},
+		{"PRs", "PR", DetailTabPRs, len(m.prs)},
+		{"Notes", "No", DetailTabNotes, notesCount},
+	}
+
+	compact := breakpointFor(m.width, m.height) == breakpointCompact
+	separator := " │ "
+	if compact {
+		separator = " · "
 	}
 
 	var parts []string
 	for _, t := range tabs {
 		label := fmt.Sprintf("%s (%d)", t.name, t.count)
+		if compact {
+			label = fmt.Sprintf("%s %d", t.short, t.count)
+		}
+
 		if t.tab == m.detailTab {
 			parts = append(parts, styles.TabActiveStyle.Render(label))
 		} else {
@@ -133,7 +144,7 @@ func (m Model) renderDetailTabs() string {
 		}
 	}
 
-	tabRow := strings.Join(parts, styles.TabSeparatorStyle.Render(" │ "))
+	tabRow := strings.Join(parts, styles.TabSeparatorStyle.Render(separator))
 
 	ruleWidth := lipgloss.Width(tabRow)
 	rule := styles.SubtitleStyle.Render(strings.Repeat("─", ruleWidth))

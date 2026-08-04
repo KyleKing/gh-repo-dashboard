@@ -32,7 +32,7 @@ func (m Model) renderBranchDetailBreadcrumbs() string {
 		badges = append(badges, styles.Badge(fmt.Sprintf("↓%d", m.branchDetail.Branch.Behind), styles.BehindStyle))
 	}
 
-	return home + sep + repo + sep + branch + "  " + strings.Join(badges, " ")
+	return joinWithinWidth(home+sep+repo+sep+branch, badges, contentWidth(m.width))
 }
 
 // branchDetailStyles are the shared styles used across renderBranchDetail's sections.

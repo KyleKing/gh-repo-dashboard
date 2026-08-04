@@ -65,7 +65,7 @@ func (m Model) renderRepoListBreadcrumbs() string {
 		badges = append(badges, styles.Badge(progress, styles.CountBadgeStyle))
 	}
 
-	return title + "  " + strings.Join(badges, " ")
+	return joinWithinWidth(title, badges, contentWidth(m.width))
 }
 
 func (m Model) renderStatusBar() string {
@@ -138,40 +138,31 @@ func (m Model) renderTable() string {
 			"Nothing was discovered under the configured scan paths.")
 	}
 
+	compact := breakpointFor(m.width, m.height) == breakpointCompact
+
+	var (
+		rows      []string
+		rowHeight = 1
+	)
+
 	layout := layoutRepoCols(contentWidth(m.width))
-	header := styles.HeaderStyle.Render(renderRepoHeader(layout))
-
-	previewLineCount := 0
-	if m.notesPreviewOpen && m.cursor < len(m.filteredPaths) {
-		previewLineCount = len(m.summaries[m.filteredPaths[m.cursor]].NotesFiles)
+	if compact {
+		layout = table.Fit(compactColSpecs, contentWidth(m.width)-cursorWidth)
+		rowHeight = compactRowHeight
+	} else {
+		rows = append(rows, styles.HeaderStyle.Render(renderRepoHeader(layout)))
 	}
 
-	availableHeight := m.height - nonListRowHeight - previewLineCount
-	if m.searching {
-		availableHeight--
-	}
-
-	startIdx := m.cursor - availableHeight/visibleWindowCenter
-	if startIdx < 0 {
-		startIdx = 0
-	}
-
-	endIdx := startIdx + availableHeight
-	if endIdx > len(m.filteredPaths) {
-		endIdx = len(m.filteredPaths)
-		if endIdx-availableHeight >= 0 {
-			startIdx = endIdx - availableHeight
-		}
-	}
-
-	var rows []string
-	rows = append(rows, header)
-
-	for i := startIdx; i < endIdx; i++ {
+	window := m.visibleRepoRange(rowHeight)
+	for i := window.start; i < window.end; i++ {
 		path := m.filteredPaths[i]
 		summary := m.summaries[path]
-		row := m.renderTableRow(summary, i == m.cursor, layout)
-		rows = append(rows, row)
+
+		if compact {
+			rows = append(rows, m.renderCompactRow(summary, i == m.cursor, layout))
+		} else {
+			rows = append(rows, m.renderTableRow(summary, i == m.cursor, layout))
+		}
 
 		if i == m.cursor && m.notesPreviewOpen {
 			if preview := renderNotesPreview(summary); preview != "" {
@@ -181,6 +172,40 @@ func (m Model) renderTable() string {
 	}
 
 	return strings.Join(rows, "\n")
+}
+
+// visibleRepoRange returns the half-open slice of filteredPaths that fits the
+// window, keeping the cursor near the middle. The rowHeight argument is how
+// many terminal lines one record covers, so the compact layout scrolls by
+// records rather than by lines.
+func (m Model) visibleRepoRange(rowHeight int) repoWindow {
+	previewLineCount := 0
+	if m.notesPreviewOpen && m.cursor < len(m.filteredPaths) {
+		previewLineCount = len(m.summaries[m.filteredPaths[m.cursor]].NotesFiles)
+	}
+
+	availableLines := m.height - nonListRowHeight - previewLineCount
+	if m.searching {
+		availableLines--
+	}
+
+	visible := max(availableLines/rowHeight, 1)
+
+	start := max(m.cursor-visible/visibleWindowCenter, 0)
+
+	end := start + visible
+	if end > len(m.filteredPaths) {
+		end = len(m.filteredPaths)
+		start = max(end-visible, 0)
+	}
+
+	return repoWindow{start: start, end: end}
+}
+
+// repoWindow is the half-open range of filteredPaths the list renders.
+type repoWindow struct {
+	start int
+	end   int
 }
 
 // renderNotesPreview renders one line per detected notes file, showing its
@@ -398,38 +423,83 @@ func templateCellStyle(s models.RepoSummary, base lipgloss.Style, selected bool)
 	return base
 }
 
+// footerHint is one key hint and how readily it is dropped when the footer no
+// longer fits. Priority is the hint's value at a glance, so the lowest goes
+// first and the survivors are the keys a new user needs: enter, /, f, s, ?, q.
+type footerHint struct {
+	key      string
+	desc     string
+	priority int
+}
+
+// footerHints lists every repo-list hint in render order.
+//
+//nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
+func footerHints() []footerHint {
+	return []footerHint{
+		{key: "j/k", desc: "nav", priority: 4},
+		{key: keyEnter, desc: "select", priority: 8},
+		{key: "v", desc: "notes", priority: 1},
+		{key: "f", desc: nameFilter, priority: 6},
+		{key: "s", desc: nameSort, priority: 5},
+		{key: "/", desc: "search", priority: 7},
+		{key: ":", desc: "command", priority: 3},
+		{key: "r", desc: nameRefresh, priority: 2},
+		{key: "?", desc: nameHelp, priority: 9},
+		{key: "q", desc: nameQuit, priority: 10},
+	}
+}
+
 func (m Model) renderFooter() string {
-	bindings := []struct {
-		key  string
-		desc string
-	}{
-		{"j/k", "nav"},
-		{keyEnter, "select"},
-		{"v", "notes"},
-		{"f", nameFilter},
-		{"s", nameSort},
-		{"/", "search"},
-		{":", "command"},
-		{"r", nameRefresh},
-		{"?", nameHelp},
-		{"q", nameQuit},
-	}
-
-	parts := make([]string, 0, len(bindings))
-	for _, b := range bindings {
-		parts = append(parts,
-			styles.FooterKeyStyle.Render(b.key)+
-				styles.FooterDescStyle.Render(" "+b.desc))
-	}
-
-	footer := strings.Join(parts, "  ")
-
+	prefix := ""
 	if m.pendingOperator != "" {
 		hint := m.pendingOperator + m.pendingObject
 		pendingHint := " pending (ar/br/dr/pr/sr, " + m.pendingOperator + m.pendingOperator + "=all, esc cancels)"
-		pending := styles.FooterKeyStyle.Render(hint) + styles.FooterDescStyle.Render(pendingHint)
-		footer = pending + "  " + footer
+		prefix = styles.FooterKeyStyle.Render(hint) + styles.FooterDescStyle.Render(pendingHint) + "  "
 	}
 
-	return footer
+	hints := fittingHints(footerHints(), contentWidth(m.width)-lipgloss.Width(prefix))
+
+	parts := make([]string, 0, len(hints))
+	for _, h := range hints {
+		parts = append(parts,
+			styles.FooterKeyStyle.Render(h.key)+
+				styles.FooterDescStyle.Render(" "+h.desc))
+	}
+
+	return prefix + strings.Join(parts, "  ")
+}
+
+// fittingHints drops the lowest-priority hints until the rendered footer fits
+// in width, so the line ends on a whole hint instead of a clipped one.
+func fittingHints(hints []footerHint, width int) []footerHint {
+	kept := make([]footerHint, len(hints))
+	copy(kept, hints)
+
+	for len(kept) > 1 && hintsWidth(kept) > width {
+		victim := 0
+		for i, h := range kept {
+			if h.priority < kept[victim].priority {
+				victim = i
+			}
+		}
+
+		kept = append(kept[:victim], kept[victim+1:]...)
+	}
+
+	return kept
+}
+
+// hintsWidth is the display width of hints rendered with their gutters.
+func hintsWidth(hints []footerHint) int {
+	total := 0
+	for i, h := range hints {
+		if i > 0 {
+			total += table.Gutter
+		}
+
+		total += lipgloss.Width(h.key) + 1 + lipgloss.Width(h.desc)
+	}
+
+	return total
 }
