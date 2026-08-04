@@ -9,13 +9,16 @@ conventions live in [AGENTS.md](AGENTS.md). Design docs backing the milestones
 below live in `docs/design/`:
 
 - [2026-08-03-usability-critique.md](docs/design/2026-08-03-usability-critique.md),
-  the PTY critique that grounds M13 and M14
+  the PTY critique that grounds M14
 - [layout-and-density.md](docs/design/layout-and-density.md), the column engine
-  and breakpoint system (M13, M14)
+  and breakpoint system (M14)
 - [focused-repo-view.md](docs/design/focused-repo-view.md), the single-repo
   overview and scenes (M15)
 - [fleet-navigation.md](docs/design/fleet-navigation.md), peers, the PR-to-local
   map, PR flows, CI, and the API budget (M16, M17)
+
+The column engine landed in `internal/ui/table`; M14 moves the remaining
+tables onto it.
 
 ## Vision
 
@@ -49,35 +52,21 @@ A layered pyramid:
   sequences and generate `docs/USAGE.md` (`mise run docs:usage`);
   `TestUsageDocsCurrent` fails CI when the docs go stale
 
-M1 through M12 landed through 2026-07-05 and are not tracked here. `CHANGELOG.md`
+M1 through M13 landed through 2026-08-04 and are not tracked here. `CHANGELOG.md`
 and `git log` are the record.
 
 ## Sequence at a glance
 
 | Milestone | Theme | Depends on |
 |-----------|-------|------------|
-| M13 | Correctness fixes and the column engine | — |
-| M14 | Breakpoint layouts: compact, standard, wide preview panel | M13 |
+| M14 | Breakpoint layouts: compact, standard, wide preview panel | — |
 | M15 | Focused repo view: overview pane and scenes | M14 |
-| M16 | Peers panel, same-branch conflicts, PR-to-local map | M13 (engine); M14 for wide rendering |
+| M16 | Peers panel, same-branch conflicts, PR-to-local map | M14 for wide rendering |
 | M17 | PR activity, PR flows, CI on the default branch | M16 |
 | M18 | `--cli` fleet assessment (assess.sh replacement) | shares the CI fetch with M17 |
 
 M16 is deliberately independent of M15: peers and the map are fleet-level and
 can ship while the focused view is still in design.
-
-## M13: correctness and the column engine
-
-The fixes from the 2026-08-03 critique plus the rendering foundation every
-later milestone draws on.
-
-- Close the fixed critique items: NO_COLOR and the empty-state hint are done
-  and need only their roadmap entries retired
-
-Exit criteria: stash tab shows real stashes; a PR tab full of emoji titles
-renders aligned at 80 and 220 columns; engine unit tests cover surplus
-distribution, collapse order, and wide-glyph measurement; repo-list golden
-frames exist at 80/120/220.
 
 ## M14: breakpoint layouts
 
