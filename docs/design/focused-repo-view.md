@@ -1,92 +1,144 @@
-# Focused repo view
+# Focused repo view: panel grid and universal find
 
-Redesign of the single-repo experience: the screen shown when discovery finds
-one repo (launching from inside a checkout) and when drilling into a repo from
-the list. Scope: ROADMAP M15. Layout primitives come from
-[layout-and-density.md](layout-and-density.md).
+Second-generation design for the single-repo experience, replacing both the
+tab bar and the scene presets that shipped with M15. Scope: ROADMAP M20.
+Layout primitives come from [layout-and-density.md](layout-and-density.md).
 
-## Problem
+## Problem with the shipped version
 
-The richest question the tool can answer is "what is the state of the repo I am
-standing in", and today the answer is one branch row under a tab bar. Peers,
-notes, template drift, stash age, CI, and PR activity all exist in the data
-model and none of them render on arrival.
+Tabs hide four of the five data sets behind a keypress, and scenes paper over
+that by re-mapping tabs to scenarios. Both are modes: the user has to remember
+where they are and what `1`-`4` mean. The 2026-08-04 review also found the
+scene layer half-invisible (absent from help) and its per-scene tables
+diverging from their designs. The fix is structural: show everything at once
+and spend interaction on acting, not on revealing.
 
 ## Inspiration, and what to take
 
-- lazygit: persistent panels build spatial memory; every pane is actionable in
-  place. Take the always-visible status pane and per-pane keybindings
-- k9s: breadcrumb drill-down plus `:` jumps; header carries live context
-  (cluster, counts). Take the dense header strip and the idea that the list
-  IS the interface
-- mactop / btop: mode toggles that re-purpose the same screen for different
-  questions. Take single-key scenario presets rather than more tabs
-- gh-dash: sectioned lists defined by queries, each section with its own
-  actions. Take the "sections are saved questions" framing for the PR pane
+- lazygit: a grid of always-visible panels, each showing real content even
+  when unfocused, with the focused panel expanded and a large detail pane
+  rendering the selected item. Take the whole shape
+- Telescope: typed queries reach any object; results render with a preview
+  and Enter acts. Take the prefix grammar and the act-on-result model,
+  extended to act on the whole result set, fleet-wide
+- mini.files and magit informed earlier drafts; both lost to the panel grid
+  because folds and column drilling cost an interaction per reveal
 
-## Structure
+## Panel grid
 
-Three stacked zones. The overview pane is the same component the wide-layout
-preview panel mounts, rendered here at full width.
+Every data set is a bordered panel, all visible at once. Focus moves between
+panels; the focused panel grows and the others shrink but never collapse
+below a content line, so nothing is ever hidden behind a mode.
 
 ```
- gh-repo-dashboard   git · ssh · ⧉ 0 peers                            main ↑1 · clean
- ~/Developer/kyleking/gh-repo-dashboard          template v0.9.1 → v0.10.0   CI ✓ main
-┌─ Overview ──────────────────────────────────────────────────────────────────────────┐
-│ Sync      main ↑1 vs origin/main · last commit 9 mins ago (feat: expand and center) │
-│ Files     clean                                                                     │
-│ Stashes   2 · latest "wip: spike" 3 days ago                                        │
-│ Notes     none                                                                      │
-│ PRs       none open · last merged #42 "fix(app): surface status" 2 days ago         │
-└─────────────────────────────────────────────────────────────────────────────────────┘
-  Branches (1)  │  Stashes (2)  │  Worktrees (1)  │  PRs (0)  │  Notes (0)
-  BRANCH        UPSTREAM   STATUS   PR   CHECKS   CHECKED OUT   LAST COMMIT
-> * main        ·          ↑1       —    —        here          9 mins ago
- tab panes  1-4 scenes  enter drill  c switch  p push  N new PR  esc back  ? help
+ gh-repo-dashboard   git · ssh   main ↑1 · clean   template ✓   CI ✓ main
+┌─1 Status ───────────────────────┐┌─ main ──────────────────────────────────────┐
+│ ↑1 vs origin/main               ││ 9 mins ago   feat: expand and center tables │
+│ clean · 2 stashes · notes: none ││ upstream origin/main (↑1) · PR — · CI ✓     │
+└─────────────────────────────────┘│                                             │
+┌─2 Branches (2) ─────────────────┐│ recent commits                              │
+│ > * main    ↑1    here    9m    ││   d2c794a feat: expand and center tables    │
+│     fix/ci  ✓     —       5d    ││   7aa6be7 bump: version 1.3.3 → 1.4.0       │
+└─────────────────────────────────┘│   91b30a1 docs: cover the focused repo view │
+┌─3 PRs (1) ──────────────────────┐│                                             │
+│ #11 bump mise-action      OPEN  ││                                             │
+└─────────────────────────────────┘│                                             │
+┌─4 Peers (0) ─┬─5 Stashes (2) ───┐│                                             │
+│ none         │ wip: spike    3d ││                                             │
+└──────────────┴──────────────────┘└─────────────────────────────────────────────┘
+ 1-5 panels  j/k nav  enter act  space find  ? help
 ```
 
-Every overview line is a summary of a tab, so the pane doubles as a table of
-contents: the cursor can move into the overview and Enter jumps to the
-corresponding tab. Rows with nothing to say render dim and short (`Notes
-none`), keeping quiet repos quiet.
+- The left column stacks the side panels; the right pane always renders the
+  detail of the selected item in the focused panel (branch → commits and PR
+  state, PR → description and latest comment, stash → diffstat, note → file
+  body). This replaces per-tab detail screens
+- `1`-`5` jump straight to a panel (the keys freed by retiring scenes);
+  `h`/`l` or `[`/`]` cycle. `j`/`k` stay within the focused panel
+- Each panel's actions are its existing tab actions unchanged (`c` switch,
+  `p` push, `N` new PR, `M` merge, `g` checkout PR); the footer shows the
+  focused panel's keys
+- Panels render for git and jj alike; jj drops the Stashes panel entirely
+  instead of showing an n/a hint
 
-## Scenes (mactop-style toggles)
+## Relevance-driven sizing
 
-Number keys swap the lower zone between presets tuned to a scenario. Tabs
-remain the raw material; scenes are curated arrangements of them, so the
-implementation is a mapping from scene to (tab, sort, columns), not a new view
-system.
+Default space follows actionable state, not a fixed split. Each panel gets a
+relevance score from cached data: dirty files or conflicted peers score high,
+open PRs with recent activity score high, clean or empty sets score minimum.
+Height is distributed by score through the existing column-engine weight
+logic applied vertically. Focus overrides: the focused panel always gets its
+full content up to the available height. A quiet repo therefore reads as a
+small stack of one-liners plus a large detail pane; a busy repo arrives with
+its problems already expanded.
 
-| Key | Scene | Lower zone shows |
-|-----|-------|------------------|
-| 1 | work (default) | Branches tab, current branch first |
-| 2 | review | PRs with checks, review state, and latest-comment age; Enter opens PR detail |
-| 3 | sync | Peers and worktrees: every checkout of this remote, its branch, dirty state, ahead/behind, with same-branch conflicts flagged ([fleet-navigation.md](fleet-navigation.md)) |
-| 4 | maintain | Template drift, notes files, stash list, and `:cleanup --dry-run` preview counts |
+## Universal find (the palette)
 
-The active scene renders in the footer (`[1 work] 2 review 3 sync 4 maintain`)
-so modal state is never ambiguous. Scenes only exist in the focused view;
-the fleet list keeps its single layout.
+`space` opens a query line. A one-letter prefix narrows the type; bare text
+searches everything. The same palette works in the fleet list, where scope
+defaults to all repos; in the focused view scope defaults to this repo and
+`*` widens to the fleet.
+
+| Query | Matches |
+|-------|---------|
+| `#12` | PR number 12 (any state) |
+| `b fix` | branches matching "fix" |
+| `s wip` | stash messages |
+| `n todo` | notes file names and first lines |
+| `r dash` | repos (fleet scope) |
+| `escape user` | everything: titles, branches, messages |
+
+```
+ find: #12                                      scope: all repos · 3 matches
+ > mdit-py-plugins    #124  fix: inline double dollar to be rende…  OPEN
+   calcipy            #12   feat: composable extras                 MERGED
+   gh-sweep           #12   chore: bump mise-action                 OPEN
+┌─ #124 ─────────────────────────────────────────────────────────────────┐
+│ author camoz · updated 2 months ago · +12 -3                           │
+│ head: fork camoz/master → master · no local branch                     │
+└────────────────────────────────────────────────────────────────────────┘
+ enter open  tab mark  ! act on set  esc close
+```
+
+Acting on the result set is the point, not just previewing it:
+
+- Enter runs the type's default action on the highlighted row (branch →
+  focus it in its panel, PR → open detail, repo → drill in)
+- `tab` marks rows; with no marks, `!` targets every match. `!` opens the
+  action menu for the set: type-appropriate verbs (checkout, open in
+  browser, fetch) when the set is homogeneous, batch operators when the set
+  is repos
+- A repo result set commits to the existing selected-repos text object, so
+  `F`/`P`/`C`/`R` compose with it exactly like `sr` today. "Which repos have
+  PR 12" becomes: `space`, `#12`, `!`, pick the verb
+
+The palette is the discoverability answer the `:` prompt never was: every
+object is reachable by typing what you remember about it.
 
 ## Compact behavior
 
-At compact width the overview pane keeps only Sync and Files lines and the
-header drops the path line. Scenes still work; their tables render in the
-compact two-line record style.
+Below the compact breakpoint the grid becomes a single stack: the detail pane
+moves inline under the focused panel and unfocused panels compress to their
+title line plus one content line. `1`-`5` and the palette work unchanged.
 
 ## Performance
 
-Nothing on this screen may block on the network. The overview renders from
-`RepoSummary` and cache-resident data immediately; CI and PR-activity lines
-show `…` placeholders filled by the same Tea message flow the list uses.
-Scene switches reuse already-loaded tab data; the review scene triggers at
-most one gh call per repo visit (see the API budget in
-[fleet-navigation.md](fleet-navigation.md)).
+Unchanged budget from [fleet-navigation.md](fleet-navigation.md): panels
+render from cached summaries immediately, network-backed cells (`CI`, PR
+activity) fill in via the existing message flow, and the palette queries only
+cache-resident data (no fetch on keystroke, fleet-wide included).
+
+## Migration
+
+Tabs and scenes are removed in the same milestone; their tables become the
+panels and the freed number keys become panel jumps. Fixtures covering scenes
+are rewritten against panels, and the wide fleet list's preview pane keeps
+mounting the overview component, which becomes the Status panel here.
 
 ## Open questions
 
-- Whether the overview cursor (Enter jumps to tab) is worth its complexity in
-  v1, or the pane starts static with scenes carrying all navigation
-- Whether scene state persists per repo or resets to work on every entry
-- jj repos: the sync scene maps worktrees to workspaces cleanly, but stash
-  lines render `—`; decide whether the row hides or shows the mapping note
+- Whether the detail pane deserves its own focus state (scrolling long PR
+  descriptions) in v1, or scrolls with a dedicated key from the side panel
+- Palette opening key: `space` conflicts with the list's select binding in
+  the fleet view; `space` may stay focused-view-only with `;` fleet-side
+- Whether relevance scores need user weighting (config) or ship fixed

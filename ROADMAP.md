@@ -46,8 +46,117 @@ A layered pyramid:
   `TestUsageDocsCurrent` fails CI when the docs go stale
 
 M1 through M18 landed through 2026-08-04 and are not tracked here; `CHANGELOG.md`
-and `git log` are the record. No milestone is open, so the lists below are the
-whole backlog.
+and `git log` are the record. M19, M20, and the lists below are the whole
+backlog; M19 ships first because M20 rebuilds the view M19's fixes land in.
+
+## M19: correctness fixes from the 2026-08-04 review
+
+A PTY review of `bbc6cdb` (220x50, 80x24, live resizes, a sandbox fleet of
+hostile repos plus the real fleet) verified each of these in source. Ordered by
+severity; the cleanup trio comes first because it is the only destructive one.
+
+### Cleanup safety (do first)
+
+- Batch cleanup runs without confirmation: `Car` deleted-branch-scanned all 8
+  sandbox repos instantly. Single-repo writes (`c`, `p`, `M`) gate on
+  `ViewModeConfirm`; the operator and `:cleanup` paths call `runBatchCommand`
+  (`internal/app/command.go`) straight into the task. Add the same gate,
+  naming the repo count
+- `mergedBranchNames` (`internal/vcs/git.go:552`) strips `* ` from
+  `git branch --merged` output, so the checked-out branch becomes a deletion
+  candidate (observed: "Failed to delete … feat/…" on the current branch), and
+  a detached HEAD emits the literal `(HEAD detached at 85d16a3)` line as a
+  branch name passed to `git branch -d`. The `+ ` prefix (checked out in
+  another worktree) is not stripped either. Parse with
+  `for-each-ref refs/heads --merged` or filter the porcelain markers
+- `CleanupMergedBranches` returns `true` even when every deletion failed, so
+  batch rows render `✓` beside "Failed to delete" (`internal/vcs/git.go`,
+  final return). Success must reflect the failed list
+
+### Data correctness
+
+- `strings.TrimSpace` on all git output (`internal/vcs/exec.go:34`) eats the
+  leading space of the first `git status --porcelain -z` entry, so an
+  unstaged ` M` file that sorts first is counted as staged. A repo with
+  1 staged, 1 unstaged, and 1 untracked file renders `+2 ?1` and
+  "2 staged · 1 untracked". Skews every status cell, `IsDirty`, and `-cli`
+  JSON. Stop trimming porcelain output (or trim only trailing newlines)
+- A failed CI fetch leaves the `…` placeholder forever:
+  `handleWorkflowLoaded` (`internal/app/update.go:258`) ignores `msg.Error`,
+  so archived repos (`dev-boards_archived`) and repos without a GitHub remote
+  show a permanent spinner. Render `—` (or `?` with the error in a status
+  line) on error
+- `:prs` maps fork PRs to local branches by name alone: `locateBranch`
+  (`internal/app/prmap.go:106`) matches `HeadRef` against local branch names,
+  so mdit-py-plugins #63 and #124 (forks with head branch `master`) claim
+  "here: master". Needs `headRepositoryOwner` from `gh pr list` in the join
+- `:prs` double-counts a branch shared between a clone and its worktree
+  (peer-beta and peer-beta-wt each contributed a `shared-branch` row); dedupe
+  by repo identity, not checkout path
+
+### Signal quality
+
+- Same-branch conflict noise: `ConflictingBranches`
+  (`internal/models/checkout.go:155`) has no default-branch special case, so
+  backup clones sitting on `main` produce "⚠ 12 branch conflicts" on the real
+  fleet and drown the lose-local-commits signal. Flag the default branch only
+  when a conflicting checkout is dirty or ahead
+- `:prs` local-only rows: 11 of "17 local-only branches" are `main` ahead of
+  origin (`internal/app/prmap.go:88` skips only `Ahead == 0`). Exclude the
+  default branch, or give it its own quieter section
+- Header scope mixing: after a filter, "2/8 repos" and the conflict count
+  follow the filter while "3 dirty" stays fleet-wide. Pick one scope for all
+  header counts
+- The compact two-line record drops the `⚠` that the wide PEERS cell renders
+  after `⧉ 2`
+- Peers KIND is viewpoint-relative: peer-beta-wt reads "worktree" from its
+  parent and "clone" from peer-alpha; label from the checkout's own nature
+
+### Copy and small UX
+
+- "Sync in sync vs no upstream" (`internal/app/view_overview.go:198`) is
+  contradictory; with no upstream say "no upstream", and for a repo with zero
+  commits say "no commits"
+- The breadcrumb labels an ahead-only clean repo "dirty" (`IsDirty` includes
+  `Ahead > 0`); the badge should distinguish unpushed from uncommitted
+- The maintain scene shows the jj-only stash hint ("Stashes are only
+  available for git repositories") to git repos with zero stashes; jj's Files
+  line says "unstaged" where jj has no staging area
+- Detached HEAD is invisible inside the focused view: the list shows
+  `(85d16a3)` but the branch tab marks no current branch and the header drops
+  the commit
+- Scenes `1`-`4` are missing from the `?` overlay; the review scene lacks the
+  CHECKS column its design promised; the empty repo's compact record renders
+  a bare `—` second line; PR descriptions clip mid-word; `⬆️` (emoji + VS16)
+  still shifts a `:prs` row by one cell (width-measure edge case)
+
+## M20: panel grid and universal find
+
+The tabless focused view from
+[focused-repo-view.md](docs/design/focused-repo-view.md), replacing both the
+tab bar and the scene presets.
+
+- lazygit-style grid: every data set is an always-visible panel showing real
+  content when unfocused; the focused panel expands and a persistent detail
+  pane renders the selected item (branch commits, PR description and latest
+  comment, stash diffstat, note body)
+- Relevance-driven sizing: panel height follows actionable state (dirty
+  files, conflicted peers, active PRs) from cached data; clean sections
+  compress to a line
+- Universal find: `space` opens a typed-prefix palette (`#12` PR number,
+  `b fix` branches, `s wip` stashes, `r dash` repos, bare text everything),
+  scoped to the repo in the focused view and the fleet from the list. Result
+  sets are actionable: `tab` marks, `!` opens type-appropriate verbs, and a
+  repo set commits to the selected-repos text object so batch operators
+  compose with it
+- Tabs and scenes retire in the same milestone; number keys become panel
+  jumps, scene fixtures are rewritten against panels, and jj drops the
+  Stashes panel instead of hinting
+
+Exit criteria: a busy repo arrives with its problems expanded and a quiet one
+reads as one-liners plus detail; `space`, `#12`, `!` answers "which repos
+have PR 12" and offers actions; no keypress is needed to see any section's
+content; goldens cover the grid at all three breakpoints.
 
 ## Deferred features
 
