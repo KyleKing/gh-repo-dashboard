@@ -1,3 +1,17 @@
+## v1.6.0 (2026-08-05)
+
+### Feat
+
+- **app**: add universal find across the fleet
+- **app**: replace the focused view's tabs with a panel grid
+
+### Fix
+
+- say what the state actually is
+- keep fleet signals scoped and viewpoint-independent
+- correct CI, fork, and shared-checkout signals
+- make branch cleanup safe and status counts faithful
+
 ## v1.5.0 (2026-08-04)
 
 ### Feat
