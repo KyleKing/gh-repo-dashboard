@@ -179,3 +179,19 @@ func (m Model) renderBreadcrumbs() string {
 func truncate(s string, maxLen int) string {
 	return table.Truncate(s, maxLen)
 }
+
+// truncateWords shortens s to at most maxLen terminal cells, backing up to the
+// last word boundary so prose ends on a word instead of part of one.
+func truncateWords(s string, maxLen int) string {
+	clipped := table.Truncate(s, maxLen)
+	if clipped == s {
+		return s
+	}
+
+	body := strings.TrimSuffix(clipped, table.Ellipsis)
+	if i := strings.LastIndexAny(body, " \t\n"); i > 0 {
+		body = body[:i]
+	}
+
+	return strings.TrimRight(body, " \t\n") + table.Ellipsis
+}

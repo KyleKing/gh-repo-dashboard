@@ -72,7 +72,17 @@ func (g *GitOperations) GetRepoSummary(ctx context.Context, repoPath string) (mo
 
 	branch, err := g.GetCurrentBranch(ctx, repoPath)
 	if err != nil {
-		return summary, err
+		// A repo with no commits has a branch but no revision to resolve, so
+		// rev-parse fails where symbolic-ref still answers.
+		unborn, refErr := g.runGit(ctx, repoPath, "symbolic-ref", "--short", "HEAD")
+		if refErr != nil {
+			return summary, err
+		}
+
+		summary.Branch = unborn
+		summary.NoCommits = true
+
+		return summary, nil
 	}
 	summary.Branch = branch
 
@@ -124,7 +134,7 @@ func (g *GitOperations) GetCurrentBranch(ctx context.Context, repoPath string) (
 			return "HEAD", nil
 		}
 
-		return fmt.Sprintf("(%s)", hash), nil
+		return models.DetachedBranchLabel(hash), nil
 	}
 
 	return out, nil

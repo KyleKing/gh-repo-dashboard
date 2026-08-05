@@ -96,7 +96,7 @@ func (m Model) writeBranchInfoSection(b *strings.Builder, s branchDetailStyles) 
 		s.writeInfoLine(b, "Author:", lastCommit.Author)
 	}
 
-	fileChanges := m.branchDetail.FileChangesSummary()
+	fileChanges := m.branchDetail.FileChangesSummary(m.summaries[m.selectedRepo].VCSType)
 	fileStyle := s.info
 	if m.branchDetail.UncommittedCount() > 0 {
 		fileStyle = lipgloss.NewStyle().Foreground(styles.Peach).PaddingLeft(infoPaddingLeft)

@@ -143,3 +143,51 @@ func TestFocusedViewFitsEightyByTwentyFour(t *testing.T) {
 		}
 	}
 }
+
+func TestFocusedHeaderShowsDetachedHEAD(t *testing.T) {
+	t.Parallel()
+
+	m := focusedModel(140, 35)
+	summary := m.summaries["/dev/alpha"]
+	summary.Branch = models.DetachedBranchLabel("85d16a3")
+	m.summaries["/dev/alpha"] = summary
+
+	header := plainText(m.renderRepoDetailBreadcrumbs())
+	for _, want := range []string{"detached", "85d16a3"} {
+		if !strings.Contains(header, want) {
+			t.Errorf("focused header %q is missing %q; a detached HEAD must not be silent", header, want)
+		}
+	}
+}
+
+func TestReviewSceneCarriesTheChecksColumn(t *testing.T) {
+	t.Parallel()
+
+	m := focusedModel(160, 40)
+	m.detailTab = DetailTabPRs
+	m.prs = []models.PRInfo{{
+		Number: 9, Title: "Add a thing", State: "OPEN", HeadRef: "feature/thing",
+		Checks: models.ChecksStatus{Total: 3, Passing: 2, Failing: 1},
+	}}
+
+	rendered := plainText(m.renderPRList())
+	for _, want := range []string{"CHECKS", "failing 2/3"} {
+		if !strings.Contains(rendered, want) {
+			t.Errorf("PR table is missing %q:\n%s", want, rendered)
+		}
+	}
+}
+
+func TestHelpNamesTheSceneKeys(t *testing.T) {
+	t.Parallel()
+
+	help := plainText(focusedModel(140, 40).renderHelp())
+	if !strings.Contains(help, sceneKeyRange()) {
+		t.Errorf("help overlay does not name the scene keys %q", sceneKeyRange())
+	}
+	for _, s := range scenes() {
+		if !strings.Contains(help, s.name) {
+			t.Errorf("help overlay is missing scene %q; the layer must be discoverable", s.name)
+		}
+	}
+}

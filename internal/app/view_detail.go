@@ -24,8 +24,11 @@ func (m Model) renderRepoDetailBreadcrumbs() string {
 
 	var badges []string
 	badges = append(badges, styles.Badge(summary.VCSType.String(), styles.CountBadgeStyle))
-	if summary.IsDirty() {
-		badges = append(badges, styles.Badge("dirty", styles.FilterBadgeStyle))
+	if summary.IsDetached() {
+		badges = append(badges, styles.Badge("detached "+summary.Branch, styles.WarningStyle))
+	}
+	if label := summary.DirtyLabel(); label != "" {
+		badges = append(badges, styles.Badge(label, styles.FilterBadgeStyle))
 	}
 	if summary.PRInfo != nil {
 		badges = append(badges, styles.Badge(fmt.Sprintf("PR #%d", summary.PRInfo.Number), styles.PROpenStyle))
@@ -395,9 +398,12 @@ func (m Model) renderStashList() string {
 			return m.loadingPlaceholder("Loading stashes")
 		}
 
-		return m.emptyPlaceholder("No stashes found",
-			"Stashes are only available for git repositories.\n"+
-				"JJ repositories use the working copy change instead.")
+		if m.summaries[m.selectedRepo].VCSType == models.VCSTypeJJ {
+			return m.emptyPlaceholder("No stashes",
+				"jj has no stash: the working copy is already a change.")
+		}
+
+		return m.emptyPlaceholder("No stashes", "Nothing has been stashed here.")
 	}
 
 	layout := fitDetailCols(stashColSpecs, m.width)
@@ -566,11 +572,13 @@ func (m Model) renderPRList() string {
 			colPRNumber:   fmt.Sprintf("#%d", pr.Number),
 			colPRTitle:    pr.Title,
 			colPRState:    prStateCell(pr),
+			colChecks:     formatChecksCell(pr),
 			colPRActivity: pr.ActivitySummary(),
 			colPRBranch:   pr.HeadRef,
 		}
 		cellStyles := map[string]lipgloss.Style{
 			colPRState:    withSelection(prStateStyle(pr), selected),
+			colChecks:     withSelection(checksCellStyle(pr, rowStyle), selected),
 			colPRActivity: withSelection(styles.SubtitleStyle, selected),
 			colPRBranch:   withSelection(styles.BranchStyle, selected),
 		}

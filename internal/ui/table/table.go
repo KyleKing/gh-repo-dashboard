@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/rivo/uniseg"
 )
 
 // Align selects which side of its column a cell's text sits against.
@@ -222,20 +223,28 @@ func Truncate(text string, width int) string {
 	return clip(text, width-markWidth) + Ellipsis
 }
 
-// clip cuts text at the last rune boundary that still fits in width.
+// clip cuts text at the last grapheme-cluster boundary that still fits in
+// width. Clusters, not runes: an emoji presentation sequence like "⬆️" is a
+// base rune plus a zero-width variation selector, so measuring the two
+// separately reports one cell for something the terminal paints in two, and
+// cutting between them changes the glyph.
 func clip(text string, width int) string {
 	if width <= 0 {
 		return ""
 	}
 
 	used := 0
-	for i, r := range text {
-		w := lipgloss.Width(string(r))
+	rest := text
+	for rest != "" {
+		cluster, remainder, _, _ := uniseg.FirstGraphemeClusterInString(rest, -1)
+
+		w := lipgloss.Width(cluster)
 		if used+w > width {
-			return text[:i]
+			return text[:len(text)-len(rest)]
 		}
 
 		used += w
+		rest = remainder
 	}
 
 	return text

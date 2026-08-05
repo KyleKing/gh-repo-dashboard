@@ -42,7 +42,7 @@ func TestDetailTabs_LoadingStateIsDistinctFromEmpty(t *testing.T) {
 			name:        "stashes",
 			render:      Model.renderStashList,
 			wantLoading: "Loading stashes...",
-			wantEmpty:   "No stashes found",
+			wantEmpty:   "No stashes",
 		},
 		{
 			name:        "pull requests",

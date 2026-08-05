@@ -194,11 +194,15 @@ func (m Model) overviewCI(s models.RepoSummary) string {
 	return text
 }
 
-// overviewSync reports the branch's position against its upstream.
+// overviewSync reports the branch's position against its upstream. With no
+// upstream there is nothing to be in sync with, so the row says so rather than
+// claiming a position against a remote that does not exist.
 func overviewSync(s models.RepoSummary) string {
-	upstream := s.Upstream
-	if upstream == "" {
-		upstream = "no upstream"
+	switch {
+	case s.NoCommits:
+		return "no commits"
+	case s.Upstream == "":
+		return "no upstream"
 	}
 
 	position := "in sync"
@@ -211,7 +215,7 @@ func overviewSync(s models.RepoSummary) string {
 		position = "↓" + strconv.Itoa(s.Behind)
 	}
 
-	return position + " vs " + upstream
+	return position + " vs " + s.Upstream
 }
 
 // overviewFiles reports the working tree alone. Unpushed commits belong to the
@@ -226,7 +230,7 @@ func overviewFiles(s models.RepoSummary) string {
 		label string
 	}{
 		{s.Staged, "staged"},
-		{s.Unstaged, "unstaged"},
+		{s.Unstaged, models.ModifiedFilesLabel(s.VCSType)},
 		{s.Untracked, "untracked"},
 		{s.Conflicted, "conflicted"},
 	}

@@ -35,6 +35,30 @@ type RepoSummary struct {
 	// git worktree or jj workspace. It makes a linked checkout recognizable
 	// from anywhere, not just from the parent that listed it.
 	ParentPath string
+	// NoCommits marks a repo whose branch has no commits yet, which has no
+	// upstream for a different reason than a branch that was never pushed.
+	NoCommits bool
+}
+
+// IsDetached reports whether the repo's HEAD points at a commit rather than a
+// branch.
+func (r RepoSummary) IsDetached() bool {
+	return IsDetachedBranch(r.Branch)
+}
+
+// DirtyLabel names why IsDirty is true, since uncommitted files and unpushed
+// commits need different work to resolve. Empty when the repo is neither.
+func (r RepoSummary) DirtyLabel() string {
+	switch {
+	case r.UncommittedCount() > 0 && r.Ahead > 0:
+		return "uncommitted, unpushed"
+	case r.UncommittedCount() > 0:
+		return "uncommitted"
+	case r.Ahead > 0:
+		return "unpushed"
+	default:
+		return ""
+	}
 }
 
 // IsLinkedCheckout reports whether the repo is a git worktree or jj workspace

@@ -54,10 +54,6 @@ func (m Model) renderCompactRow(s models.RepoSummary, selected bool, layout tabl
 		table.Join(renderCells(layout, values, cellStyles, &base))
 
 	signals := m.compactSignals(s)
-	if len(signals) == 0 {
-		signals = []string{emDash}
-	}
-
 	signalWidth := contentWidth(m.width) - len(compactIndent)
 	signalLine := styles.SubtitleStyle.Render(
 		compactIndent + table.Truncate(strings.Join(signals, compactSignalSep), signalWidth))
@@ -97,6 +93,14 @@ func (m Model) compactSignals(s models.RepoSummary) []string {
 
 	if notes := len(s.NotesFiles); notes > 0 {
 		signals = append(signals, strconv.Itoa(notes)+" "+plural(notes, "note", "notes"))
+	}
+
+	if s.LastModified.IsZero() {
+		if len(signals) == 0 {
+			return []string{"nothing to report"}
+		}
+
+		return signals
 	}
 
 	return append(signals, s.RelativeModified())

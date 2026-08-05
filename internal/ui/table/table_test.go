@@ -203,3 +203,28 @@ func TestTruncateNeverSplitsAWideGlyph(t *testing.T) {
 		t.Errorf("truncated CJK text is %d cells wide, want at most 7", got)
 	}
 }
+
+func TestPadKeepsEmojiPresentationRowsAligned(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		text  string
+		width int
+	}{
+		{"emoji plus variation selector fits", "⬆️ bump mise-action", 12},
+		{"cut lands on the emoji", "⬆️ bump", 3},
+		{"cut lands inside the cluster", "⬆️ bump", 2},
+		{"plain text", "bump mise-action", 7},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			padded := table.Pad(tt.text, tt.width, table.AlignLeft)
+			if got := lipgloss.Width(padded); got != tt.width {
+				t.Errorf("Pad(%q, %d) measures %d cells, want %d: %q", tt.text, tt.width, got, tt.width, padded)
+			}
+		})
+	}
+}

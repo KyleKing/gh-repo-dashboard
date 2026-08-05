@@ -84,7 +84,8 @@ var (
 	prColSpecs = []table.Column{
 		{Key: colPRNumber, Title: colPRNumber, Min: 7},
 		{Key: colPRTitle, Title: colPRTitle, Min: 20, Weight: 3},
-		{Key: colPRState, Title: colPRState, Min: 10, Priority: 3},
+		{Key: colPRState, Title: colPRState, Min: 10, Priority: 4},
+		{Key: colChecks, Title: colChecks, Min: 12, Priority: 3},
 		{Key: colPRActivity, Title: colPRActivity, Min: 20, Weight: 1, Priority: 1},
 		{Key: colPRBranch, Title: colPRBranch, Min: 14, Weight: 1, Priority: 2},
 	}

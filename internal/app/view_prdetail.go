@@ -77,8 +77,8 @@ func (m Model) writePRDetailInfo(writeLine func(label, value string)) {
 	}
 }
 
-// writePRDetailDescription writes the "Description" section (truncated to
-// prBodyMaxLen), or nothing if the PR has no body.
+// writePRDetailDescription writes the "Description" section, truncated to
+// prBodyMaxLen on a word boundary, or nothing if the PR has no body.
 func writePRDetailDescription(b *strings.Builder, sectionStyle, valueStyle lipgloss.Style, body string) {
 	if body == "" {
 		return
@@ -88,11 +88,7 @@ func writePRDetailDescription(b *strings.Builder, sectionStyle, valueStyle lipgl
 	b.WriteString(sectionStyle.Render("Description"))
 	b.WriteString("\n")
 
-	desc := body
-	if len(desc) > prBodyMaxLen {
-		desc = desc[:prBodyMaxLen] + "..."
-	}
-	b.WriteString(valueStyle.Render(desc))
+	b.WriteString(valueStyle.Render(truncateWords(body, prBodyMaxLen)))
 	b.WriteString("\n")
 }
 
@@ -176,7 +172,7 @@ func writePRDetailLatestComment(
 		styles.BranchStyle.Render(comment.Author) + " " +
 			styles.SubtitleStyle.Render(comment.RelativeCreated())))
 	b.WriteString("\n")
-	b.WriteString(valueStyle.Render(truncate(strings.TrimSpace(comment.Body), prCommentMaxLen)))
+	b.WriteString(valueStyle.Render(truncateWords(strings.TrimSpace(comment.Body), prCommentMaxLen)))
 	b.WriteString("\n")
 }
 

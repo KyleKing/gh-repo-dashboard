@@ -15,6 +15,18 @@ const emDash = "—"
 // wherever a repo's real default branch has not been resolved from its remote.
 var DefaultBranchNames = []string{"main", "master", "trunk"}
 
+// DetachedBranchLabel formats a detached HEAD's short commit as the branch
+// label shown wherever a branch name would go.
+func DetachedBranchLabel(shortHash string) string {
+	return "(" + shortHash + ")"
+}
+
+// IsDetachedBranch reports whether label came from DetachedBranchLabel, so
+// views can say "detached" rather than treating the commit as a branch name.
+func IsDetachedBranch(label string) bool {
+	return len(label) > 2 && strings.HasPrefix(label, "(") && strings.HasSuffix(label, ")")
+}
+
 // IsDefaultBranchName reports whether name is one of DefaultBranchNames.
 func IsDefaultBranchName(name string) bool {
 	for _, candidate := range DefaultBranchNames {
@@ -74,14 +86,26 @@ func (b BranchDetail) UncommittedCount() int {
 	return b.Staged + b.Unstaged + b.Untracked + b.Conflicted
 }
 
-// FileChangesSummary renders a human-readable summary of uncommitted file changes.
-func (b BranchDetail) FileChangesSummary() string {
+// ModifiedFilesLabel names tracked files changed but not committed. Since jj
+// has no staging area, calling them "unstaged" there describes a distinction
+// the VCS does not make.
+func ModifiedFilesLabel(vcsType VCSType) string {
+	if vcsType == VCSTypeJJ {
+		return "changed"
+	}
+
+	return "unstaged"
+}
+
+// FileChangesSummary renders a human-readable summary of uncommitted file
+// changes, wording them for vcsType.
+func (b BranchDetail) FileChangesSummary(vcsType VCSType) string {
 	parts := []string{}
 	if b.Staged > 0 {
 		parts = append(parts, fmt.Sprintf("%d staged", b.Staged))
 	}
 	if b.Unstaged > 0 {
-		parts = append(parts, fmt.Sprintf("%d unstaged", b.Unstaged))
+		parts = append(parts, fmt.Sprintf("%d %s", b.Unstaged, ModifiedFilesLabel(vcsType)))
 	}
 	if b.Untracked > 0 {
 		parts = append(parts, fmt.Sprintf("%d untracked", b.Untracked))

@@ -28,6 +28,23 @@ func scenes() []scene {
 	}
 }
 
+// sceneKeyRange and sceneNames describe the scene keys for the help overlay,
+// derived from the same list the footer bar draws.
+func sceneKeyRange() string {
+	all := scenes()
+
+	return all[0].key + "-" + all[len(all)-1].key
+}
+
+func sceneNames() string {
+	names := make([]string, 0, len(scenes()))
+	for _, s := range scenes() {
+		names = append(names, s.name)
+	}
+
+	return "Scenes: " + strings.Join(names, ", ")
+}
+
 func sceneForKey(key string) (scene, bool) {
 	for _, s := range scenes() {
 		if s.key == key {

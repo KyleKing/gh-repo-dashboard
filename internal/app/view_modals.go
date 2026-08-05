@@ -38,6 +38,7 @@ func (m Model) renderHelp() string {
 				{"enter, space", "Select/enter"},
 				{"esc, backspace", "Go back"},
 				{keyTab, "Next tab (detail view)"},
+				{sceneKeyRange(), sceneNames()},
 			},
 		},
 		{
