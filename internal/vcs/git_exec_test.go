@@ -343,6 +343,57 @@ func TestGitStatusCountMethods(t *testing.T) {
 	}
 }
 
+func TestGitStatusCounts_PorcelainEdgeCases(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                                    string
+		porcelain                               string
+		staged, unstaged, untracked, conflicted int
+	}{
+		{
+			name:      "leading unstaged entry keeps its status space",
+			porcelain: " M a.txt\x00M  b.txt\x00?? c.txt\x00",
+			staged:    1,
+			unstaged:  1,
+			untracked: 1,
+		},
+		{
+			name:      "rename origin path is not a second entry",
+			porcelain: "R  new.go\x00old.go\x00",
+			staged:    1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := stubCommands(t, map[string]string{"git status --porcelain -z": tt.porcelain}, nil)
+
+			g := vcs.NewGitOperations()
+			counts := []struct {
+				name     string
+				fn       func(context.Context, string) (int, error)
+				expected int
+			}{
+				{"staged", g.GetStagedCount, tt.staged},
+				{"unstaged", g.GetUnstagedCount, tt.unstaged},
+				{"untracked", g.GetUntrackedCount, tt.untracked},
+				{"conflicted", g.GetConflictedCount, tt.conflicted},
+			}
+
+			for _, c := range counts {
+				got, err := c.fn(ctx, testRepoPath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got != c.expected {
+					t.Errorf("%s: expected %d, got %d", c.name, c.expected, got)
+				}
+			}
+		})
+	}
+}
+
 type gitRepoSummaryCase struct {
 	name     string
 	canned   map[string]string
@@ -910,24 +961,55 @@ func TestGitPushAndSwitchBranch(t *testing.T) {
 
 const symbolicRefKey = "git symbolic-ref refs/remotes/origin/HEAD"
 
+// mergedRefsKey is the command key CleanupMergedBranches uses to list the
+// branches merged into branch.
+func mergedRefsKey(branch string) string {
+	return "git for-each-ref --format=%(refname:short) --merged " + branch + " refs/heads"
+}
+
+type cleanupCase struct {
+	name         string
+	canned       map[string]string
+	failures     map[string]error
+	squashMerged []string
+	expectedOK   bool
+	expected     string
+}
+
 //nolint:dupl // same table shape as TestJJCleanupMergedBranches, different VCS output formats/literals
+func runCleanupCases(t *testing.T, tests []cleanupCase) {
+	t.Helper()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := stubCommands(t, tt.canned, tt.failures)
+
+			g := vcs.NewGitOperations()
+			ok, msg, err := g.CleanupMergedBranches(ctx, testRepoPath, tt.squashMerged)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ok != tt.expectedOK {
+				t.Errorf("expected ok=%v, got %v", tt.expectedOK, ok)
+			}
+			if msg != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, msg)
+			}
+		})
+	}
+}
+
 func TestGitCleanupMergedBranches(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		name         string
-		canned       map[string]string
-		failures     map[string]error
-		squashMerged []string
-		expectedOK   bool
-		expected     string
-	}{
+	runCleanupCases(t, []cleanupCase{
 		{
 			name: "deletes merged branches via origin/HEAD",
 			canned: map[string]string{
-				symbolicRefKey:             "refs/remotes/origin/main",
-				"git branch --merged main": "  feature\n* main\n  old-fix",
-				"git branch -d feature":    "",
-				"git branch -d old-fix":    "",
+				symbolicRefKey:          "refs/remotes/origin/main",
+				mergedRefsKey("main"):   "feature\nmain\nold-fix",
+				"git branch -d feature": "",
+				"git branch -d old-fix": "",
 			},
 			expectedOK: true,
 			expected:   "Deleted 2 branches: feature, old-fix",
@@ -936,7 +1018,7 @@ func TestGitCleanupMergedBranches(t *testing.T) {
 			name: "falls back to main when origin/HEAD is unset",
 			canned: map[string]string{
 				"git rev-parse --verify main": "abc123",
-				"git branch --merged main":    "  feature\n* main",
+				mergedRefsKey("main"):         "feature\nmain",
 				"git branch -d feature":       "",
 			},
 			failures: map[string]error{
@@ -948,9 +1030,9 @@ func TestGitCleanupMergedBranches(t *testing.T) {
 		{
 			name: "protects local trunk branch alongside the resolved default",
 			canned: map[string]string{
-				symbolicRefKey:             "refs/remotes/origin/main",
-				"git branch --merged main": "  feature\n* main\n  trunk",
-				"git branch -d feature":    "",
+				symbolicRefKey:          "refs/remotes/origin/main",
+				mergedRefsKey("main"):   "feature\nmain\ntrunk",
+				"git branch -d feature": "",
 			},
 			expectedOK: true,
 			expected:   "Deleted 1 branches: feature",
@@ -959,7 +1041,7 @@ func TestGitCleanupMergedBranches(t *testing.T) {
 			name: "falls back to master",
 			canned: map[string]string{
 				"git rev-parse --verify master": "abc123",
-				"git branch --merged master":    "* master",
+				mergedRefsKey("master"):         "master",
 			},
 			failures: map[string]error{
 				symbolicRefKey:                errNoSuchRemote,
@@ -984,31 +1066,45 @@ func TestGitCleanupMergedBranches(t *testing.T) {
 				symbolicRefKey: "refs/remotes/origin/main",
 			},
 			failures: map[string]error{
-				"git branch --merged main": errBoom,
+				mergedRefsKey("main"): errBoom,
 			},
 			expectedOK: false,
 			expected:   "boom",
 		},
-	}
+	})
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			ctx := stubCommands(t, tt.canned, tt.failures)
+func TestGitCleanupMergedBranchesGuards(t *testing.T) {
+	t.Parallel()
 
-			g := vcs.NewGitOperations()
-			ok, msg, err := g.CleanupMergedBranches(ctx, testRepoPath, tt.squashMerged)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if ok != tt.expectedOK {
-				t.Errorf("expected ok=%v, got %v", tt.expectedOK, ok)
-			}
-			if msg != tt.expected {
-				t.Errorf("expected %q, got %q", tt.expected, msg)
-			}
-		})
-	}
+	const worktreeListKey = "git worktree list --porcelain"
+
+	runCleanupCases(t, []cleanupCase{
+		{
+			name: "skips branches checked out here or in a worktree",
+			canned: map[string]string{
+				symbolicRefKey:                    "refs/remotes/origin/main",
+				mergedRefsKey("main"):             "feature\nheld\nwt-branch",
+				"git rev-parse --abbrev-ref HEAD": "held",
+				worktreeListKey:                   "worktree /tmp/wt\nHEAD abc\nbranch refs/heads/wt-branch\n",
+				"git branch -d feature":           "",
+			},
+			expectedOK: true,
+			expected:   "Deleted 1 branches: feature",
+		},
+		{
+			name: "reports failure when a deletion fails",
+			canned: map[string]string{
+				symbolicRefKey:        "refs/remotes/origin/main",
+				mergedRefsKey("main"): "feature",
+			},
+			failures: map[string]error{
+				"git branch -d feature": errBoom,
+			},
+			expectedOK: false,
+			expected:   "Failed to delete 1 branches: feature (boom)",
+		},
+	})
 }
 
 // forEachRefKey is the git for-each-ref command key used by GetBranchList,
@@ -1028,7 +1124,7 @@ func TestGitCleanupMergedBranchesSquashMerged(t *testing.T) {
 			name: "deletes squash-merged branches with -D",
 			canned: map[string]string{
 				symbolicRefKey:                    "refs/remotes/origin/main",
-				"git branch --merged main":        "* main",
+				mergedRefsKey("main"):             "main",
 				"git rev-parse --abbrev-ref HEAD": "main",
 				"git worktree list --porcelain":   "",
 				forEachRefKey:                     "squashed\t\t\t1700000000\t\tabc\nmain\t\t\t1700000000\t*\tdef",
@@ -1041,7 +1137,7 @@ func TestGitCleanupMergedBranchesSquashMerged(t *testing.T) {
 			name: "skips squash-merged branch that's the current branch",
 			canned: map[string]string{
 				symbolicRefKey:                    "refs/remotes/origin/main",
-				"git branch --merged main":        "* main",
+				mergedRefsKey("main"):             "main",
 				"git rev-parse --abbrev-ref HEAD": "squashed",
 				"git worktree list --porcelain":   "",
 				forEachRefKey:                     "squashed\t\t\t1700000000\t*\tabc",

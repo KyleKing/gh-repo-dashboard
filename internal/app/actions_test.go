@@ -56,9 +56,11 @@ func TestConfirmRunsPendingAction(t *testing.T) {
 	m.pendingAction = &pendingAction{
 		prompt:     "Push branch?",
 		returnMode: ViewModeRepoDetail,
-		cmd: func() tea.Msg {
-			ran = true
-			return nil
+		run: func(m Model) (Model, tea.Cmd) {
+			return m, func() tea.Msg {
+				ran = true
+				return nil
+			}
 		},
 	}
 
@@ -85,9 +87,11 @@ func TestCancelDiscardsPendingAction(t *testing.T) {
 	m.viewMode = ViewModeConfirm
 	m.pendingAction = &pendingAction{
 		returnMode: ViewModeRepoDetail,
-		cmd: func() tea.Msg {
-			ran = true
-			return nil
+		run: func(m Model) (Model, tea.Cmd) {
+			return m, func() tea.Msg {
+				ran = true
+				return nil
+			}
 		},
 	}
 

@@ -20,6 +20,18 @@ func withCommandRunner(ctx context.Context, fn commandRunner) context.Context {
 }
 
 func runCommand(ctx context.Context, dir, name string, args ...string) (string, error) {
+	out, err := runCommandRaw(ctx, dir, name, args...)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(out), nil
+}
+
+// runCommandRaw returns stdout verbatim. Parsers of NUL-delimited output need
+// it: the leading byte of the first record carries meaning (a porcelain status
+// code's unstaged column is a leading space) that runCommand's trim eats.
+func runCommandRaw(ctx context.Context, dir, name string, args ...string) (string, error) {
 	if fn, ok := ctx.Value(commandRunnerKey{}).(commandRunner); ok {
 		return fn(ctx, dir, name, args...)
 	}
@@ -31,5 +43,5 @@ func runCommand(ctx context.Context, dir, name string, args ...string) (string, 
 		return "", fmt.Errorf("running %s: %w", name, err)
 	}
 
-	return strings.TrimSpace(string(out)), nil
+	return string(out), nil
 }

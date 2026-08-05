@@ -12,11 +12,13 @@ import (
 )
 
 // pendingAction is a write action awaiting confirmation, along with the view
-// to return to once it's confirmed or canceled.
+// to return to once it's confirmed or canceled. An empty scope means the
+// action runs against the selected repo.
 type pendingAction struct {
 	prompt     string
 	detail     string
-	cmd        tea.Cmd
+	scope      string
+	run        func(Model) (Model, tea.Cmd)
 	returnMode ViewMode
 }
 
@@ -88,10 +90,21 @@ func squashMergePRCmd(repoPath string, prNumber int) tea.Cmd {
 
 // confirmAction parks cmd behind a confirmation prompt instead of running it.
 func (m Model) confirmAction(prompt, detail string, cmd tea.Cmd) (tea.Model, tea.Cmd) {
+	return m.confirmRun(prompt, detail, "", func(m Model) (Model, tea.Cmd) {
+		return m, cmd
+	})
+}
+
+// confirmRun parks a whole model transition behind a confirmation prompt, for
+// actions that change view state as well as firing a command.
+func (m Model) confirmRun(
+	prompt, detail, scope string, run func(Model) (Model, tea.Cmd),
+) (Model, tea.Cmd) {
 	m.pendingAction = &pendingAction{
 		prompt:     prompt,
 		detail:     detail,
-		cmd:        cmd,
+		scope:      scope,
+		run:        run,
 		returnMode: m.viewMode,
 	}
 	m.viewMode = ViewModeConfirm
@@ -113,7 +126,7 @@ func (m Model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "y", "Y", keyEnter:
-		return m, action.cmd
+		return action.run(m)
 	default:
 		m.statusMessage = "Canceled"
 		return m, clearStatusAfterDelay()

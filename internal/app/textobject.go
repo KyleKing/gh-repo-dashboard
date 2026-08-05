@@ -80,15 +80,18 @@ func (m Model) resolveTextObject(obj TextObject) []string {
 	return paths
 }
 
+// operator is a batch verb. Destructive marks the ones that delete refs, which
+// are confirmed before they run.
 type operator struct {
-	Key      string
-	TaskName string
-	Cmd      func([]string) tea.Cmd
+	Key         string
+	TaskName    string
+	Destructive bool
+	Cmd         func([]string) tea.Cmd
 }
 
 func operators() []operator {
 	return []operator{
-		{Key: "C", TaskName: taskCleanupMerged, Cmd: batchCleanupMergedCmd},
+		{Key: "C", TaskName: taskCleanupMerged, Destructive: true, Cmd: batchCleanupMergedCmd},
 		{Key: "F", TaskName: taskFetchAll, Cmd: batchFetchAllCmd},
 		{Key: "P", TaskName: "Prune Remote", Cmd: batchPruneRemoteCmd},
 		{Key: "R", TaskName: taskRefreshPRs, Cmd: batchRefreshPRsCmd},

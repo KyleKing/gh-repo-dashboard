@@ -93,18 +93,27 @@ func TestOperatorComposition(t *testing.T) {
 		keys          string
 		expectedTask  string
 		expectedTotal int
+		confirms      bool
 	}{
-		{"fetch dirty", "Fdr", "Fetch All (dirty)", 2},
-		{"fetch behind", "Fbr", "Fetch All (behind)", 1},
-		{"cleanup with PRs", "Cpr", "Cleanup Merged (with PRs)", 1},
-		{"prune all", "Par", "Prune Remote (all)", 4},
-		{"doubled operator", "FF", "Fetch All", 4},
+		{"fetch dirty", "Fdr", "Fetch All (dirty)", 2, false},
+		{"fetch behind", "Fbr", "Fetch All (behind)", 1, false},
+		{"cleanup with PRs", "Cpr", "Cleanup Merged (with PRs)", 1, true},
+		{"prune all", "Par", "Prune Remote (all)", 4, false},
+		{"doubled operator", "FF", "Fetch All", 4, false},
+		{"doubled cleanup", "CC", "Cleanup Merged", 4, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			m := operatorModel()
 			m2, cmd := pressKeys(t, m, tt.keys)
+			if tt.confirms {
+				if m2.viewMode != ViewModeConfirm {
+					t.Fatalf("expected a confirmation before deleting, got %v", m2.viewMode)
+				}
+				confirmed, next := m2.handleConfirmKey(keyPress('y'))
+				m2, cmd = mustModel(t, confirmed), next
+			}
 			if m2.viewMode != ViewModeBatchProgress {
 				t.Fatalf("expected batch progress view, got %v", m2.viewMode)
 			}

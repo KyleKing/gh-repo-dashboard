@@ -79,9 +79,12 @@ the branch itself was never merged. Write operations used by batch tasks
 (`FetchAll`, `PruneRemote`, `CleanupMergedBranches`) return `(success bool, message
 string)` for UI feedback. `CleanupMergedBranches(ctx, repoPath, squashMerged
 []string)` additionally takes the caller-verified squash-merged branch names: git
-deletes them with `-D` (skipping the current branch and any branch checked out in
-a worktree) alongside true-merges deleted with `-d`, and reports per-branch
-failures in the result message rather than swallowing them. `GitOperations` and
+deletes them with `-D` alongside true-merges deleted with `-d`, reports per-branch
+failures in the result message, and returns success only when every deletion
+succeeded. Both paths skip the current branch and anything checked out in a
+worktree. Merged branches come from `for-each-ref --merged`, not `git branch
+--merged`, whose porcelain marks (`* `, `+ `, and a detached-HEAD line) are not
+branch names. `GitOperations` and
 `JJOperations` each also expose a `PreviewMergedBranches` method (outside the
 `Mutator` interface, since it's read-only) that reports what cleanup would delete
 without deleting anything, backing the `:cleanup --dry-run` command.
@@ -101,6 +104,9 @@ failure (failures are highlighted, not fatal). Progress is reported via Tea mess
 
 Batch operations are read-only by default; write operations require an explicit
 keybinding. Scope is always the filtered set, making the blast radius explicit.
+Tasks that delete refs are parked behind `ViewModeConfirm` first, naming the
+repos and the count, whether they were started by the operator keys, `:cleanup`,
+or a text object.
 
 `batch.CleanupMerged` and `batch.PreviewCleanup` detect squash-merged branches by
 comparing `internal/github.GetMergedPRHeads` (cached merged PR head OIDs) against

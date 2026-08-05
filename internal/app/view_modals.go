@@ -202,7 +202,7 @@ func (m Model) renderFilterModal() string {
 }
 
 // renderConfirmModal asks for confirmation of a parked write action, naming
-// the repo it will run against.
+// what it will run against.
 func (m Model) renderConfirmModal() string {
 	if m.pendingAction == nil {
 		return m.renderRepoList()
@@ -214,7 +214,11 @@ func (m Model) renderConfirmModal() string {
 	b.WriteString("\n\n")
 	b.WriteString(styles.TableRowStyle.Render(m.pendingAction.detail))
 	b.WriteString("\n")
-	b.WriteString(styles.SubtitleStyle.Render("in " + filepath.Base(m.selectedRepo)))
+	scope := m.pendingAction.scope
+	if scope == "" {
+		scope = "in " + filepath.Base(m.selectedRepo)
+	}
+	b.WriteString(styles.SubtitleStyle.Render(scope))
 	b.WriteString("\n\n")
 	b.WriteString(styles.FooterKeyStyle.Render("y/enter") + styles.FooterDescStyle.Render(" confirm  "))
 	b.WriteString(styles.FooterKeyStyle.Render("n/esc") + styles.FooterDescStyle.Render(" cancel"))

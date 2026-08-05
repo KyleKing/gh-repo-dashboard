@@ -310,14 +310,17 @@ func batchCommand(name, description, taskName string, taskCmd func([]string) tea
 			return predicateCandidates(prefix)
 		},
 		Run: func(m Model, args []string) (Model, tea.Cmd) {
-			return runBatchCommand(m, args, taskName, taskCmd)
+			return runBatchCommand(m, args, taskName, false, taskCmd)
 		},
 	}
 }
 
 // runBatchCommand scopes paths to the visible repos, narrows them by an
 // optional predicate expression, and starts the batch task on the result.
-func runBatchCommand(m Model, args []string, taskName string, taskCmd func([]string) tea.Cmd) (Model, tea.Cmd) {
+// Destructive tasks are confirmed first.
+func runBatchCommand(
+	m Model, args []string, taskName string, destructive bool, taskCmd func([]string) tea.Cmd,
+) (Model, tea.Cmd) {
 	paths := m.filteredPaths
 	label := taskName
 	if len(args) > 0 {
@@ -338,7 +341,7 @@ func runBatchCommand(m Model, args []string, taskName string, taskCmd func([]str
 		return m, statusCmd("No repos match")
 	}
 
-	return m.startBatchTaskOn(label, paths, taskCmd)
+	return m.confirmBatchTask(label, destructive, paths, taskCmd)
 }
 
 // dryRunFlag is the ":cleanup" flag that previews deletions instead of
@@ -370,19 +373,21 @@ func cleanupCommand() Command {
 		Run: func(m Model, args []string) (Model, tea.Cmd) {
 			taskName := taskCleanupMerged
 			taskCmd := batchCleanupMergedCmd
+			destructive := true
 
 			rest := make([]string, 0, len(args))
 			for _, arg := range args {
 				if arg == dryRunFlag {
 					taskName = "Cleanup Merged (dry run)"
 					taskCmd = batchPreviewCleanupCmd
+					destructive = false
 
 					continue
 				}
 				rest = append(rest, arg)
 			}
 
-			return runBatchCommand(m, rest, taskName, taskCmd)
+			return runBatchCommand(m, rest, taskName, destructive, taskCmd)
 		},
 	}
 }

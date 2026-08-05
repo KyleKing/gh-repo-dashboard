@@ -577,5 +577,5 @@ func (j *JJOperations) CleanupMergedBranches(
 		deleted = append(deleted, bookmark.name)
 	}
 
-	return true, cleanupMessage("bookmarks", deleted, failed), nil
+	return len(failed) == 0, cleanupMessage("bookmarks", deleted, failed), nil
 }

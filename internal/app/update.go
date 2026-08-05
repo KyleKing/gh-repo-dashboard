@@ -690,7 +690,7 @@ func (m Model) handleOperatorPendingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case keyStr == m.pendingOperator && m.pendingObject == "":
 		m.pendingOperator = ""
-		return m.startBatchTaskOn(op.TaskName, m.filteredPaths, op.Cmd)
+		return m.confirmBatchTask(op.TaskName, op.Destructive, m.filteredPaths, op.Cmd)
 	}
 
 	m.pendingObject += keyStr
@@ -718,7 +718,7 @@ func (m Model) handleOperatorPendingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, statusCmd("No repos match " + obj.Name)
 	}
 
-	return m.startBatchTaskOn(fmt.Sprintf("%s (%s)", op.TaskName, obj.Name), paths, op.Cmd)
+	return m.confirmBatchTask(fmt.Sprintf("%s (%s)", op.TaskName, obj.Name), op.Destructive, paths, op.Cmd)
 }
 
 func hasTextObjectPrefix(prefix string) bool {
@@ -1403,6 +1403,44 @@ func (m *Model) updateFilteredPaths() {
 			m.cursor = 0
 		}
 	}
+}
+
+// confirmBatchTask gates a batch run that deletes things behind the same
+// confirmation single-repo writes get, naming how many repos it covers.
+// Read-only tasks start immediately.
+func (m Model) confirmBatchTask(
+	taskName string, destructive bool, paths []string, taskCmd func([]string) tea.Cmd,
+) (Model, tea.Cmd) {
+	if !destructive || len(paths) == 0 {
+		return m.startBatchTaskOn(taskName, paths, taskCmd)
+	}
+
+	scope := fmt.Sprintf("across %d repos", len(paths))
+	if len(paths) == 1 {
+		scope = "in " + filepath.Base(paths[0])
+	}
+
+	return m.confirmRun(taskName+"?", repoNameList(paths), scope, func(m Model) (Model, tea.Cmd) {
+		return m.startBatchTaskOn(taskName, paths, taskCmd)
+	})
+}
+
+// repoNameList names the repos an action covers, abbreviating a long set so
+// the confirmation stays one line.
+func repoNameList(paths []string) string {
+	const shown = 4
+
+	names := make([]string, 0, shown)
+	for _, path := range paths[:min(shown, len(paths))] {
+		names = append(names, filepath.Base(path))
+	}
+
+	list := strings.Join(names, ", ")
+	if len(paths) > shown {
+		list += fmt.Sprintf(" +%d more", len(paths)-shown)
+	}
+
+	return list
 }
 
 func (m Model) startBatchTaskOn(taskName string, paths []string, taskCmd func([]string) tea.Cmd) (Model, tea.Cmd) {

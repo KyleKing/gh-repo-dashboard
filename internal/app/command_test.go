@@ -197,21 +197,45 @@ func TestExecuteCommandFetch(t *testing.T) {
 	}
 }
 
-func TestExecuteCommandCleanup(t *testing.T) {
+func TestExecuteCommandCleanupConfirmsFirst(t *testing.T) {
 	t.Parallel()
 	m := commandModel()
 	m2, cmd := m.ExecuteCommand("cleanup")
-	if m2.viewMode != ViewModeBatchProgress {
-		t.Errorf("expected ViewModeBatchProgress, got %v", m2.viewMode)
+	if m2.viewMode != ViewModeConfirm {
+		t.Fatalf("expected ViewModeConfirm, got %v", m2.viewMode)
 	}
-	if m2.batchTask != "Cleanup Merged" {
-		t.Errorf("expected task name %q, got %q", "Cleanup Merged", m2.batchTask)
+	if cmd != nil {
+		t.Error("expected no batch cmd before confirmation")
 	}
-	if !m2.batchRunning || m2.batchTotal != 2 {
-		t.Errorf("expected batch running over 2 repos, got running=%v total=%d", m2.batchRunning, m2.batchTotal)
+	if m2.pendingAction == nil || m2.pendingAction.scope != "across 2 repos" {
+		t.Fatalf("expected the prompt to name the repo count, got %+v", m2.pendingAction)
+	}
+
+	confirmed, cmd := m2.handleConfirmKey(keyPress('y'))
+	m3 := mustModel(t, confirmed)
+	if m3.viewMode != ViewModeBatchProgress {
+		t.Errorf("expected ViewModeBatchProgress, got %v", m3.viewMode)
+	}
+	if m3.batchTask != "Cleanup Merged" {
+		t.Errorf("expected task name %q, got %q", "Cleanup Merged", m3.batchTask)
+	}
+	if !m3.batchRunning || m3.batchTotal != 2 {
+		t.Errorf("expected batch running over 2 repos, got running=%v total=%d", m3.batchRunning, m3.batchTotal)
 	}
 	if cmd == nil {
 		t.Error("expected batch cmd")
+	}
+}
+
+func TestExecuteCommandCleanupCanceled(t *testing.T) {
+	t.Parallel()
+	m := commandModel()
+	m2, _ := m.ExecuteCommand("cleanup")
+
+	canceled, _ := m2.handleConfirmKey(keyPress('n'))
+	m3 := mustModel(t, canceled)
+	if m3.batchRunning {
+		t.Error("expected a canceled cleanup never to start")
 	}
 }
 
@@ -428,7 +452,7 @@ func TestRepeatWithEmptyHistory(t *testing.T) {
 	}
 }
 
-func TestRepeatPendingCancelledByOtherKey(t *testing.T) {
+func TestRepeatPendingCanceledByOtherKey(t *testing.T) {
 	t.Parallel()
 	m := operatorModel()
 	m, _ = m.ExecuteCommand("filter dirty")

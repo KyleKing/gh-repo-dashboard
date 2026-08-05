@@ -37,15 +37,30 @@ func (*GitOperations) VCSType() models.VCSType {
 func (*GitOperations) runGit(ctx context.Context, repoPath string, args ...string) (string, error) {
 	out, err := runCommand(ctx, repoPath, "git", args...)
 	if err != nil {
-		exitErr := &exec.ExitError{}
-		if errors.As(err, &exitErr) {
-			return "", fmt.Errorf("git %s: %s: %w", strings.Join(args, " "), string(exitErr.Stderr), ErrCommandFailed)
-		}
-
-		return "", err
+		return "", gitError(args, err)
 	}
 
 	return out, nil
+}
+
+// runGitRaw runs git without trimming its output, for NUL-delimited formats
+// whose first record can legitimately start with a space.
+func (*GitOperations) runGitRaw(ctx context.Context, repoPath string, args ...string) (string, error) {
+	out, err := runCommandRaw(ctx, repoPath, "git", args...)
+	if err != nil {
+		return "", gitError(args, err)
+	}
+
+	return out, nil
+}
+
+func gitError(args []string, err error) error {
+	exitErr := &exec.ExitError{}
+	if errors.As(err, &exitErr) {
+		return fmt.Errorf("git %s: %s: %w", strings.Join(args, " "), string(exitErr.Stderr), ErrCommandFailed)
+	}
+
+	return err
 }
 
 // GetRepoSummary implements Operations.
@@ -183,21 +198,26 @@ func classifyPorcelainEntry(x, y byte) statusCounts {
 	}
 }
 
-func (g *GitOperations) getStatusCounts(ctx context.Context, repoPath string) statusCounts {
+// parsePorcelainZ tallies `git status --porcelain -z` records. The output must
+// arrive untrimmed: an unstaged-only record starts with a space that is its
+// staged status column. Rename and copy records are followed by a second
+// NUL-terminated path, which is skipped rather than read as another record.
+func parsePorcelainZ(out string) statusCounts {
 	var counts statusCounts
 
-	out, err := g.runGit(ctx, repoPath, "status", "--porcelain", "-z")
-	if err != nil {
-		return counts
-	}
-
 	entries := strings.Split(out, "\x00")
-	for _, entry := range entries {
+	for i := 0; i < len(entries); i++ {
+		entry := entries[i]
 		if len(entry) < porcelainStatusCodeLen {
 			continue
 		}
 
-		entryCounts := classifyPorcelainEntry(entry[0], entry[1])
+		x, y := entry[0], entry[1]
+		if x == 'R' || x == 'C' {
+			i++
+		}
+
+		entryCounts := classifyPorcelainEntry(x, y)
 		counts.staged += entryCounts.staged
 		counts.unstaged += entryCounts.unstaged
 		counts.untracked += entryCounts.untracked
@@ -205,6 +225,15 @@ func (g *GitOperations) getStatusCounts(ctx context.Context, repoPath string) st
 	}
 
 	return counts
+}
+
+func (g *GitOperations) getStatusCounts(ctx context.Context, repoPath string) statusCounts {
+	out, err := g.runGitRaw(ctx, repoPath, "status", "--porcelain", "-z")
+	if err != nil {
+		return statusCounts{}
+	}
+
+	return parsePorcelainZ(out)
 }
 
 // GetStagedCount reports the number of staged files.
@@ -547,21 +576,27 @@ func (g *GitOperations) PreviewMergedBranches(ctx context.Context, repoPath stri
 	return mainBranch, merged, nil
 }
 
-// mergedBranchNames lists local branches fully merged into mainBranch,
-// excluding mainBranch/master itself.
+// mergedBranchNames lists deletable local branches fully merged into
+// mainBranch, excluding mainBranch/master itself and anything checked out
+// here or in a linked worktree. It reads refs directly rather than parsing
+// `git branch --merged`, whose porcelain marks the current branch with "* ",
+// worktree checkouts with "+ ", and a detached HEAD with a "(HEAD detached
+// at …)" line that is no branch at all.
 func (g *GitOperations) mergedBranchNames(ctx context.Context, repoPath, mainBranch string) ([]string, error) {
-	out, err := g.runGit(ctx, repoPath, "branch", "--merged", mainBranch)
+	out, err := g.runGit(ctx, repoPath,
+		"for-each-ref", "--format=%(refname:short)", "--merged", mainBranch, "refs/heads")
 	if err != nil {
 		return nil, err
 	}
 
+	checkedOut := g.checkedOutBranches(ctx, repoPath)
+
 	var names []string
 	scanner := bufio.NewScanner(strings.NewReader(out))
 	for scanner.Scan() {
-		branch := strings.TrimSpace(scanner.Text())
-		branch = strings.TrimPrefix(branch, "* ")
+		branch := scanner.Text()
 
-		if branch == mainBranch || IsDefaultBranchName(branch) || branch == "" {
+		if branch == "" || branch == mainBranch || IsDefaultBranchName(branch) || checkedOut[branch] {
 			continue
 		}
 
@@ -569,6 +604,27 @@ func (g *GitOperations) mergedBranchNames(ctx context.Context, repoPath, mainBra
 	}
 
 	return names, nil
+}
+
+// checkedOutBranches returns the branches git refuses to delete because they
+// are checked out, here or in a linked worktree.
+func (g *GitOperations) checkedOutBranches(ctx context.Context, repoPath string) map[string]bool {
+	names := make(map[string]bool)
+
+	if current, err := g.GetCurrentBranch(ctx, repoPath); err == nil && current != "" {
+		names[current] = true
+	}
+
+	worktrees, err := g.GetWorktreeList(ctx, repoPath)
+	if err != nil {
+		return names
+	}
+
+	for _, wt := range worktrees {
+		names[wt.Branch] = true
+	}
+
+	return names
 }
 
 // localBranchNames returns the set of local branch names, keyed for
@@ -596,18 +652,12 @@ func (g *GitOperations) localBranchNames(ctx context.Context, repoPath string) (
 func (g *GitOperations) deleteSquashMerged(
 	ctx context.Context, repoPath string, squashMerged []string,
 ) ([]string, []string) {
-	currentBranch, _ := g.GetCurrentBranch(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
-	worktrees, _ := g.GetWorktreeList(ctx, repoPath)      //nolint:errcheck // best-effort, see comment above
 	localBranches, _ := g.localBranchNames(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
-
-	checkedOut := make(map[string]bool, len(worktrees))
-	for _, wt := range worktrees {
-		checkedOut[wt.Branch] = true
-	}
+	checkedOut := g.checkedOutBranches(ctx, repoPath)
 
 	var deleted, failed []string
 	for _, branch := range squashMerged {
-		if branch == currentBranch || checkedOut[branch] || !localBranches[branch] {
+		if checkedOut[branch] || !localBranches[branch] {
 			continue
 		}
 
@@ -674,7 +724,7 @@ func (g *GitOperations) CleanupMergedBranches(
 		failed = append(failed, squashFailed...)
 	}
 
-	return true, cleanupMessage("branches", deleted, failed), nil
+	return len(failed) == 0, cleanupMessage("branches", deleted, failed), nil
 }
 
 // detectRemoteProtocol classifies a remote URL as "ssh" or "https", or ""
