@@ -388,7 +388,15 @@ func (m Model) hasBranchConflict(path string) bool {
 		return false
 	}
 
-	return models.ConflictingBranches(summary.Branch, m.PeerCheckouts(path))[summary.Branch]
+	return models.ConflictingBranches(ownCheckoutOf(&summary), m.PeerCheckouts(path))[summary.Branch]
+}
+
+// ownCheckoutOf adapts a summary into the checkout form the conflict check
+// compares its peers against.
+func ownCheckoutOf(summary *models.RepoSummary) *models.PeerCheckout {
+	own := models.OwnCheckout(summary)
+
+	return &own
 }
 
 // BranchConflictCount counts the repos sharing a branch with a peer checkout.

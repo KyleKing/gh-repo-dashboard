@@ -11,6 +11,21 @@ import (
 // emDash is the placeholder rendered for empty/unknown values.
 const emDash = "—"
 
+// DefaultBranchNames are the conventional primary branch names, assumed
+// wherever a repo's real default branch has not been resolved from its remote.
+var DefaultBranchNames = []string{"main", "master", "trunk"}
+
+// IsDefaultBranchName reports whether name is one of DefaultBranchNames.
+func IsDefaultBranchName(name string) bool {
+	for _, candidate := range DefaultBranchNames {
+		if name == candidate {
+			return true
+		}
+	}
+
+	return false
+}
+
 // BranchInfo summarizes a single branch's tracking state.
 type BranchInfo struct {
 	Name       string

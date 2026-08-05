@@ -26,6 +26,16 @@ func CheckoutIdentity(repoPath string) string {
 	return repoPath
 }
 
+// linkedParent returns the repo repoPath borrows its refs from, or "" when
+// repoPath is a standalone checkout.
+func linkedParent(repoPath string) string {
+	if parent := CheckoutIdentity(repoPath); parent != repoPath {
+		return parent
+	}
+
+	return ""
+}
+
 // gitWorktreeParent reads a linked worktree's ".git" file, which holds
 // "gitdir: <parent>/.git/worktrees/<name>".
 func gitWorktreeParent(repoPath string) (string, bool) {

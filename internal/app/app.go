@@ -402,23 +402,23 @@ func (m *Model) ResetSorts() {
 	}
 }
 
-// DirtyCount returns the number of repos with uncommitted changes.
+// DirtyCount returns the number of visible repos with uncommitted changes.
 func (m Model) DirtyCount() int {
-	count := 0
-	for path := range m.summaries {
-		if m.summaries[path].IsDirty() {
-			count++
-		}
-	}
-
-	return count
+	return m.countVisible(func(s models.RepoSummary) bool { return s.IsDirty() })
 }
 
-// PRCount returns the number of repos with an associated pull request.
+// PRCount returns the number of visible repos with an associated pull request.
 func (m Model) PRCount() int {
+	return m.countVisible(func(s models.RepoSummary) bool { return s.PRInfo != nil })
+}
+
+// countVisible counts the filtered repos matching match. Every header count
+// shares this scope, so a filter narrows all of them together rather than
+// leaving one fleet-wide number beside a filtered one.
+func (m Model) countVisible(match func(models.RepoSummary) bool) int {
 	count := 0
-	for path := range m.summaries {
-		if m.summaries[path].PRInfo != nil {
+	for _, path := range m.filteredPaths {
+		if summary, ok := m.summaries[path]; ok && match(summary) {
 			count++
 		}
 	}

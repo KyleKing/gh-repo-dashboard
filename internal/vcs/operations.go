@@ -13,19 +13,17 @@ var ErrCommandFailed = errors.New("command failed")
 // ErrUnexpectedOutput wraps a CLI output that didn't match the expected format.
 var ErrUnexpectedOutput = errors.New("unexpected command output")
 
-// defaultMainBranch, masterBranch, and trunkBranch are the conventional
-// primary branch names assumed when scanning for merged branches to clean up.
+// defaultMainBranch and masterBranch are the branch names probed for when a
+// repo's remote does not advertise a default.
 const (
 	defaultMainBranch = "main"
 	masterBranch      = "master"
-	trunkBranch       = "trunk"
 )
 
 // IsDefaultBranchName reports whether name is one of the conventional
-// default-branch names (main, master, trunk) that cleanup should never treat
-// as a feature branch.
+// default-branch names that cleanup should never treat as a feature branch.
 func IsDefaultBranchName(name string) bool {
-	return name == defaultMainBranch || name == masterBranch || name == trunkBranch
+	return models.IsDefaultBranchName(name)
 }
 
 // StatusReader answers summary-level queries about a repository's current state.

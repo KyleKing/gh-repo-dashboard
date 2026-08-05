@@ -20,7 +20,9 @@ type PeerCheckout struct {
 	IsLocked   bool
 }
 
-// Kind reports whether the checkout is a sibling clone or a worktree.
+// Kind reports whether the checkout is a sibling clone or a worktree. It
+// describes the checkout itself, not the vantage point it is listed from, so a
+// worktree reads the same whether its parent or an unrelated clone names it.
 func (p *PeerCheckout) Kind() string {
 	if p.IsWorktree {
 		return "worktree"
@@ -68,19 +70,26 @@ func FindPeerCheckouts(current *RepoSummary, all []RepoSummary) []PeerCheckout {
 			continue
 		}
 
-		peers = append(peers, PeerCheckout{
-			Path:       summary.Path,
-			Branch:     summary.Branch,
-			Ahead:      summary.Ahead,
-			Behind:     summary.Behind,
-			LastCommit: summary.LastModified,
-			Dirty:      summary.UncommittedCount() > 0,
-		})
+		peers = append(peers, OwnCheckout(summary))
 	}
 
 	sortCheckouts(peers)
 
 	return peers
+}
+
+// OwnCheckout describes a repo's own working directory as a checkout, so it
+// can be compared against its peers on the same footing.
+func OwnCheckout(s *RepoSummary) PeerCheckout {
+	return PeerCheckout{
+		Path:       s.Path,
+		Branch:     s.Branch,
+		Ahead:      s.Ahead,
+		Behind:     s.Behind,
+		LastCommit: s.LastModified,
+		Dirty:      s.UncommittedCount() > 0,
+		IsWorktree: s.IsLinkedCheckout(),
+	}
 }
 
 // WorktreeCheckouts converts a repo's worktree list into peer checkouts,
@@ -149,24 +158,36 @@ func CheckoutForBranch(peers []PeerCheckout, branch string) (PeerCheckout, bool)
 }
 
 // ConflictingBranches returns the branches held by more than one checkout of
-// the same repo, counting the repo's own branch. Two checkouts on one branch is
-// the state that silently loses local commits, so it is worth flagging wherever
-// a checkout is named.
-func ConflictingBranches(ownBranch string, peers []PeerCheckout) map[string]bool {
-	counts := make(map[string]int, len(peers)+1)
-	if ownBranch != "" {
-		counts[ownBranch]++
+// the same repo, counting the repo's own. Two checkouts on one branch is the
+// state that silently loses local commits, so it is worth flagging wherever a
+// checkout is named.
+//
+// The default branch is the exception: backup clones and idle worktrees park
+// on main, and flagging every one of them buries the real signal. It counts
+// only once some checkout of it has work the others cannot see.
+func ConflictingBranches(own *PeerCheckout, peers []PeerCheckout) map[string]bool {
+	all := make([]PeerCheckout, 0, len(peers)+1)
+	if own != nil && own.Branch != "" {
+		all = append(all, *own)
 	}
-
 	for _, peer := range peers {
 		if peer.Branch != "" {
-			counts[peer.Branch]++
+			all = append(all, peer)
+		}
+	}
+
+	counts := make(map[string]int, len(all))
+	unsynced := make(map[string]bool, len(all))
+	for _, checkout := range all {
+		counts[checkout.Branch]++
+		if checkout.Dirty || checkout.Ahead > 0 {
+			unsynced[checkout.Branch] = true
 		}
 	}
 
 	conflicts := make(map[string]bool)
 	for branch, count := range counts {
-		if count > 1 {
+		if count > 1 && (unsynced[branch] || !IsDefaultBranchName(branch)) {
 			conflicts[branch] = true
 		}
 	}

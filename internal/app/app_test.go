@@ -301,13 +301,30 @@ func TestModelDirtyCount(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.summaries = map[string]models.RepoSummary{
-		testRepo1Path: {Staged: 1},
-		"/repo2":      {Ahead: 2},
-		"/repo3":      {},
+		testRepo1Path: {Path: testRepo1Path, Staged: 1},
+		"/repo2":      {Path: "/repo2", Ahead: 2},
+		"/repo3":      {Path: "/repo3"},
 	}
+	m.filteredPaths = []string{testRepo1Path, "/repo2", "/repo3"}
 
 	if m.DirtyCount() != 2 {
 		t.Errorf("expected 2 dirty, got %d", m.DirtyCount())
+	}
+}
+
+func TestHeaderCountsShareTheFilterScope(t *testing.T) {
+	t.Parallel()
+
+	m := commandModel()
+	m.width, m.height = 140, 35
+
+	filtered, _ := m.ExecuteCommand("filter dirty")
+	header := plainText(filtered.renderRepoListBreadcrumbs())
+
+	for _, want := range []string{"1/2 repos", "1 dirty"} {
+		if !strings.Contains(header, want) {
+			t.Errorf("header %q is missing %q; every count must follow the filter", header, want)
+		}
 	}
 }
 
@@ -315,10 +332,11 @@ func TestModelPRCount(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.summaries = map[string]models.RepoSummary{
-		testRepo1Path: {PRInfo: &models.PRInfo{Number: 1}},
-		"/repo2":      {PRInfo: &models.PRInfo{Number: 2}},
-		"/repo3":      {},
+		testRepo1Path: {Path: testRepo1Path, PRInfo: &models.PRInfo{Number: 1}},
+		"/repo2":      {Path: "/repo2", PRInfo: &models.PRInfo{Number: 2}},
+		"/repo3":      {Path: "/repo3"},
 	}
+	m.filteredPaths = []string{testRepo1Path, "/repo2", "/repo3"}
 
 	if m.PRCount() != 2 {
 		t.Errorf("expected 2 PRs, got %d", m.PRCount())

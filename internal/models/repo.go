@@ -31,6 +31,16 @@ type RepoSummary struct {
 	RemoteProtocol  string // "ssh", "https", or "" if unknown/no remote
 	RemoteRepo      string // "owner/repo" derived from the remote URL, "" if unknown/no remote
 	ConfigOverrides []GitConfigOverride
+	// ParentPath is the repo this one borrows its refs from, set only for a
+	// git worktree or jj workspace. It makes a linked checkout recognizable
+	// from anywhere, not just from the parent that listed it.
+	ParentPath string
+}
+
+// IsLinkedCheckout reports whether the repo is a git worktree or jj workspace
+// of another checkout rather than a standalone clone.
+func (r RepoSummary) IsLinkedCheckout() bool {
+	return r.ParentPath != ""
 }
 
 // HasNotes reports whether any notes file was detected at the repo's root.

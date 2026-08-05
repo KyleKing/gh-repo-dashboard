@@ -490,7 +490,7 @@ func (m Model) renderWorktreeList() string {
 		return m.renderWorktreesPlaceholder(summary.VCSType == models.VCSTypeJJ)
 	}
 
-	conflicts := models.ConflictingBranches(summary.Branch, checkouts)
+	conflicts := models.ConflictingBranches(ownCheckoutOf(&summary), checkouts)
 	layout := fitDetailCols(checkoutColSpecs, m.width)
 	rows := []string{detailHeader(layout)}
 

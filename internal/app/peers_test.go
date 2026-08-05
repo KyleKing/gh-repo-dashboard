@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
 
 // peerFleet returns two clones of one remote sharing a branch, plus a worktree
@@ -47,22 +48,45 @@ func peerFleet(width, height int) Model {
 func TestConflictingBranchesCountsTheRepoItself(t *testing.T) {
 	t.Parallel()
 
+	own := models.PeerCheckout{Path: "/dev/app-a", Branch: "feature/side"}
 	peers := []models.PeerCheckout{
 		{Path: "/dev/app-b", Branch: "main"},
 		{Path: "/dev/app-a-wt", Branch: "feature/side"},
 	}
 
-	conflicts := models.ConflictingBranches("main", peers)
-	if !conflicts["main"] {
-		t.Error("two checkouts on main is the conflict this flag exists for")
+	conflicts := models.ConflictingBranches(&own, peers)
+	if !conflicts["feature/side"] {
+		t.Error("two checkouts on one feature branch is the conflict this flag exists for")
 	}
 
-	if conflicts["feature/side"] {
+	if conflicts["main"] {
 		t.Error("a branch held by exactly one checkout is not a conflict")
 	}
 
-	if got := len(models.ConflictingBranches("", peers)); got != 0 {
+	if got := len(models.ConflictingBranches(nil, peers)); got != 0 {
 		t.Errorf("an unknown own branch produced %d conflicts, want 0", got)
+	}
+}
+
+func TestConflictingBranchesExemptsAnIdleDefaultBranch(t *testing.T) {
+	t.Parallel()
+
+	idle := models.PeerCheckout{Path: "/dev/app-b", Branch: mainBranchName}
+	own := models.PeerCheckout{Path: "/dev/app-a", Branch: mainBranchName}
+
+	if models.ConflictingBranches(&own, []models.PeerCheckout{idle})[mainBranchName] {
+		t.Error("backup clones parked on main are ordinary, not a conflict")
+	}
+
+	own.Ahead = 1
+	if !models.ConflictingBranches(&own, []models.PeerCheckout{idle})[mainBranchName] {
+		t.Error("unpushed commits on a shared main are invisible to the other checkout")
+	}
+
+	own.Ahead = 0
+	idle.Dirty = true
+	if !models.ConflictingBranches(&own, []models.PeerCheckout{idle})[mainBranchName] {
+		t.Error("uncommitted work on a shared main is the same hazard")
 	}
 }
 
@@ -79,6 +103,44 @@ func TestPeersCellFlagsSharedBranches(t *testing.T) {
 	alone, _ := m.peersCell("/dev/solo", plainStyle, false)
 	if alone != emDash {
 		t.Errorf("a repo with no peers renders %q, want %q", alone, emDash)
+	}
+}
+
+func TestCompactRecordCarriesTheConflictMark(t *testing.T) {
+	t.Parallel()
+
+	m := peerFleet(70, 24)
+	layout := table.Fit(compactColSpecs, 70)
+
+	shared := plainText(m.renderCompactRow(m.summaries["/dev/app-a"], false, layout))
+	if !strings.Contains(shared, peerPrefix+"1 "+conflictMark) {
+		t.Errorf("compact record drops the conflict the wide PEERS cell shows:\n%s", shared)
+	}
+
+	alone := plainText(m.renderCompactRow(m.summaries["/dev/solo"], false, layout))
+	if strings.Contains(alone, conflictMark) {
+		t.Errorf("a repo with no peers has nothing to conflict with:\n%s", alone)
+	}
+}
+
+func TestCheckoutKindDoesNotDependOnWhoIsLooking(t *testing.T) {
+	t.Parallel()
+
+	worktree := models.RepoSummary{Path: "/dev/app-wt", RemoteRepo: "acme/app", ParentPath: "/dev/app"}
+	clone := models.RepoSummary{Path: "/dev/app-b", RemoteRepo: "acme/app"}
+	unrelated := models.RepoSummary{Path: "/dev/app-c", RemoteRepo: "acme/app"}
+
+	peers := models.FindPeerCheckouts(&unrelated, []models.RepoSummary{worktree, clone})
+	kinds := map[string]string{}
+	for i := range peers {
+		kinds[peers[i].Folder()] = peers[i].Kind()
+	}
+
+	if kinds["app-wt"] != "worktree" {
+		t.Errorf("app-wt reads as %q from an unrelated clone, want worktree", kinds["app-wt"])
+	}
+	if kinds["app-b"] != "clone" {
+		t.Errorf("app-b reads as %q, want clone", kinds["app-b"])
 	}
 }
 
