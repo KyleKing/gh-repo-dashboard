@@ -90,15 +90,16 @@ func TestGoldenRepoListBreakpoints(t *testing.T) {
 	}
 }
 
-// TestGoldenDetailTabBreakpoints pins the two busiest detail tabs at each
-// breakpoint, so a column-collapse change shows up as a frame diff.
-func TestGoldenDetailTabBreakpoints(t *testing.T) {
+// TestGoldenPanelGridBreakpoints pins the panel grid at each breakpoint with
+// focus on each of the two busiest panels, so a sizing or collapse change
+// shows up as a frame diff.
+func TestGoldenPanelGridBreakpoints(t *testing.T) {
 	tabs := []struct {
 		name string
-		tab  DetailTab
+		tab  panelID
 	}{
-		{"branches", DetailTabBranches},
-		{"prs", DetailTabPRs},
+		{"branches", panelBranches},
+		{"prs", panelPRs},
 	}
 
 	for _, size := range breakpointSizes() {
@@ -108,7 +109,7 @@ func TestGoldenDetailTabBreakpoints(t *testing.T) {
 				m.width, m.height = size.width, size.height
 				m.viewMode = ViewModeRepoDetail
 				m.selectedRepo = "/Users/dev/bravo"
-				m.detailTab = tab.tab
+				m.focusedPanel = tab.tab
 				m.branches = []models.BranchInfo{
 					{Name: mainBranchName, Upstream: "origin/main", LastCommit: time.Now().Add(-2 * time.Hour)},
 					{
@@ -137,7 +138,7 @@ func TestGoldenRepoDetail(t *testing.T) {
 	m := goldenModel()
 	m.viewMode = ViewModeRepoDetail
 	m.selectedRepo = "/Users/dev/bravo"
-	m.detailTab = DetailTabBranches
+	m.focusedPanel = panelBranches
 	m.branches = []models.BranchInfo{
 		{Name: mainBranchName, Upstream: "origin/main", LastCommit: time.Now().Add(-2 * time.Hour)},
 		{Name: "feature/login", Upstream: "origin/feature/login", Ahead: 2, LastCommit: time.Now().Add(-10 * time.Minute), IsCurrent: true},

@@ -53,23 +53,19 @@ func TestReviewDecisionFoldsIntoTheStateCell(t *testing.T) {
 	}
 }
 
-func TestPRTabShowsActivityInsteadOfReview(t *testing.T) {
+func TestPRPanelShowsActivityInsteadOfReview(t *testing.T) {
 	t.Parallel()
 
 	m := detailTableModel(160)
 	m.prs[0].Activity = &models.PRActivity{Author: "cjs", At: time.Now().Add(-3 * time.Hour)}
 
-	rendered := plainText(m.renderPRList())
-	if !strings.Contains(rendered, "ACTIVITY") {
-		t.Errorf("PR tab has no ACTIVITY column:\n%s", rendered)
+	rendered := plainText(renderPanel(m, panelPRs))
+	if !strings.Contains(rendered, "cjs") || !strings.Contains(rendered, "3 hours ago") {
+		t.Errorf("PR panel does not name who the PR is waiting on:\n%s", rendered)
 	}
 
-	if strings.Contains(rendered, "REVIEW") {
-		t.Errorf("REVIEW should have given its width to ACTIVITY:\n%s", rendered)
-	}
-
-	if !strings.Contains(rendered, "cjs") {
-		t.Errorf("PR tab does not name who the PR is waiting on:\n%s", rendered)
+	if strings.Contains(rendered, models.ReviewApproved) {
+		t.Errorf("the review decision should have given its width to activity:\n%s", rendered)
 	}
 }
 
@@ -78,7 +74,7 @@ func TestCheckoutPRRefusesABranchAPeerHolds(t *testing.T) {
 
 	m := peerFleet(140, 35)
 	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabPRs
+	m.focusedPanel = panelPRs
 	m.prs = []models.PRInfo{{Number: 3, Title: "Peer work", State: "OPEN", HeadRef: "feature/side"}}
 	m.worktrees = []models.WorktreeInfo{{Path: "/dev/app-a-wt", Branch: "feature/side"}}
 
@@ -102,7 +98,7 @@ func TestCheckoutPRConfirmsBeforeSwitching(t *testing.T) {
 
 	m := peerFleet(140, 35)
 	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabPRs
+	m.focusedPanel = panelPRs
 	m.prs = []models.PRInfo{{Number: 4, Title: "New work", State: "OPEN", HeadRef: "feature/fresh"}}
 
 	next, _ := m.startCheckoutPR()

@@ -2,6 +2,7 @@
 package app
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -411,18 +412,16 @@ func TestViewModeConstants(t *testing.T) {
 	}
 }
 
-func TestDetailTabConstants(t *testing.T) {
+func TestPanelKeysAreContiguousFromOne(t *testing.T) {
 	t.Parallel()
-	tabs := []DetailTab{
-		DetailTabBranches,
-		DetailTabStashes,
-		DetailTabWorktrees,
-		DetailTabPRs,
-	}
 
-	for i, tab := range tabs {
-		if int(tab) != i {
-			t.Errorf("expected DetailTab %d to have value %d", tab, i)
+	m := New(nil, 1)
+	m.width, m.height = 160, 45
+	panels := m.panelSet(60)
+
+	for i, p := range panels {
+		if p.key != strconv.Itoa(i+1) {
+			t.Errorf("panel %q has key %q, want %d", p.title, p.key, i+1)
 		}
 	}
 }

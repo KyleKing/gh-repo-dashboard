@@ -350,6 +350,18 @@ func (g *GitOperations) GetBranchList(ctx context.Context, repoPath string) ([]m
 // stash-list format below (reflog short name, subject, date).
 const stashListFieldCount = 3
 
+// StashDiffstat summarizes what one stash changes, for the focused view's
+// detail pane. Read-only and git-only, so it sits outside the Operations
+// interface alongside PreviewMergedBranches.
+func (g *GitOperations) StashDiffstat(ctx context.Context, repoPath string, index int) (string, error) {
+	out, err := g.runGit(ctx, repoPath, "stash", "show", "--stat", "--no-color", fmt.Sprintf("stash@{%d}", index))
+	if err != nil {
+		return "", err
+	}
+
+	return out, nil
+}
+
 // GetStashList implements Operations.
 func (g *GitOperations) GetStashList(ctx context.Context, repoPath string) ([]models.StashDetail, error) {
 	format := "%gd\t%gs\t%ct"

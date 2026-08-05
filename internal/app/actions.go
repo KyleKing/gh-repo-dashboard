@@ -154,8 +154,8 @@ func (m Model) actionBranch() (models.BranchInfo, bool) {
 		return m.selectedBranch, m.selectedBranch.Name != ""
 	}
 
-	if m.detailTab == DetailTabBranches && m.detailCursor < len(m.branches) {
-		return m.branches[m.detailCursor], true
+	if branch, ok := m.selectedPanelBranch(); ok {
+		return branch, true
 	}
 
 	return models.BranchInfo{}, false
@@ -167,7 +167,7 @@ func (m Model) actionPR() (models.PRInfo, bool) {
 	switch {
 	case m.viewMode == ViewModePRDetail && m.prDetail.Number > 0:
 		return m.prDetail.PRInfo, true
-	case m.viewMode == ViewModeRepoDetail && m.detailTab == DetailTabPRs && m.detailCursor < len(m.prs):
+	case m.viewMode == ViewModeRepoDetail && m.focusedPanel == panelPRs && m.detailCursor < len(m.prs):
 		return m.prs[m.detailCursor], true
 	}
 

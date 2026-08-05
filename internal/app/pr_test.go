@@ -10,48 +10,6 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
-func TestPRTabNavigation(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.detailTab = DetailTabBranches
-
-	m.detailTab = DetailTab((int(m.detailTab) + 1) % 4)
-	if m.detailTab != DetailTabStashes {
-		t.Errorf("expected DetailTabStashes, got %v", m.detailTab)
-	}
-
-	m.detailTab = DetailTab((int(m.detailTab) + 1) % 4)
-	if m.detailTab != DetailTabWorktrees {
-		t.Errorf("expected DetailTabWorktrees, got %v", m.detailTab)
-	}
-
-	m.detailTab = DetailTab((int(m.detailTab) + 1) % 4)
-	if m.detailTab != DetailTabPRs {
-		t.Errorf("expected DetailTabPRs, got %v", m.detailTab)
-	}
-
-	m.detailTab = DetailTab((int(m.detailTab) + 1) % 4)
-	if m.detailTab != DetailTabBranches {
-		t.Errorf("expected DetailTabBranches (wrapped), got %v", m.detailTab)
-	}
-}
-
-func TestPRTabBackwardNavigation(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.detailTab = DetailTabBranches
-
-	newTab := int(m.detailTab) - 1
-	if newTab < 0 {
-		newTab = 3
-	}
-	m.detailTab = DetailTab(newTab)
-
-	if m.detailTab != DetailTabPRs {
-		t.Errorf("expected DetailTabPRs (wrapped), got %v", m.detailTab)
-	}
-}
-
 func TestDetailListLenWithPRs(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
@@ -69,24 +27,24 @@ func TestDetailListLenWithPRs(t *testing.T) {
 		{Number: 3, Title: "PR 3"},
 	}
 
-	m.detailTab = DetailTabBranches
+	m.focusedPanel = panelBranches
 	if m.detailListLen() != 5 {
 		t.Errorf("expected 5 branches, got %d", m.detailListLen())
 	}
 
-	m.detailTab = DetailTabStashes
+	m.focusedPanel = panelStashes
 	if m.detailListLen() != 3 {
 		t.Errorf("expected 3 stashes, got %d", m.detailListLen())
 	}
 
 	// The tab lists parallel checkouts, so the repo's own working directory is
 	// not one of them.
-	m.detailTab = DetailTabWorktrees
+	m.focusedPanel = panelPeers
 	if m.detailListLen() != 2 {
 		t.Errorf("expected 2 parallel checkouts, got %d", m.detailListLen())
 	}
 
-	m.detailTab = DetailTabPRs
+	m.focusedPanel = panelPRs
 	if m.detailListLen() != 3 {
 		t.Errorf("expected 3 PRs, got %d", m.detailListLen())
 	}
@@ -307,7 +265,7 @@ func TestRenderPRListEmpty(t *testing.T) {
 	m := New(nil, 1)
 	m.prs = []models.PRInfo{}
 
-	output := m.renderPRList()
+	output := renderPanel(m, panelPRs)
 	if output == "" {
 		t.Error("empty PR list should render a message")
 	}
@@ -325,7 +283,7 @@ func TestRenderPRListWithPRs(t *testing.T) {
 		{Number: 789, Title: "Draft PR", State: "OPEN", IsDraft: true, HeadRef: "feature-3"},
 	}
 
-	output := m.renderPRList()
+	output := renderPanel(m, panelPRs)
 	if output == "" {
 		t.Error("PR list should render content")
 	}
@@ -744,7 +702,7 @@ func TestPRDetailClearedOnNavigation(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabPRs
+	m.focusedPanel = panelPRs
 	m.selectedRepo = testRepoPath
 	m.prs = []models.PRInfo{
 		{Number: 123, Title: "Test PR", State: "OPEN", HeadRef: featureBranchName, BaseRef: mainBranchName},
@@ -822,7 +780,7 @@ func TestPRDetailProgressiveLoading(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabPRs
+	m.focusedPanel = panelPRs
 	m.selectedRepo = testRepoPath
 	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
 

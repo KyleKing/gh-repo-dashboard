@@ -77,8 +77,8 @@ func TestReposDiscoveredFocusesLoneRepo(t *testing.T) {
 	if m.selectedRepo != testRepo1Path {
 		t.Errorf("expected selectedRepo %q, got %q", testRepo1Path, m.selectedRepo)
 	}
-	if m.detailTab != DetailTabBranches {
-		t.Errorf("expected the branches tab, got %v", m.detailTab)
+	if m.focusedPanel != panelBranches {
+		t.Errorf("expected the branches tab, got %v", m.focusedPanel)
 	}
 
 	backModel, _ := m.handleBackKey()

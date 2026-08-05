@@ -2,5 +2,5 @@ doc: A quiet repo answers its overview without a keypress
 given quiet
 when keys 1
 then view = detail
-then scene = work
+then panel = status
 then overview = Sync=in sync vs origin/main Files=clean Peers=none Stashes=none Notes=none Template=— PRs=none open CI=—

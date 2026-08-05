@@ -30,21 +30,6 @@ const (
 	ViewModePRMap
 )
 
-// DetailTab identifies which tab is active on the repo detail screen.
-type DetailTab int
-
-// DetailTab values.
-const (
-	DetailTabBranches DetailTab = iota
-	DetailTabStashes
-	DetailTabWorktrees
-	DetailTabPRs
-	DetailTabNotes
-)
-
-// detailTabCount is the number of DetailTab values, used to cycle tabs.
-const detailTabCount = 5
-
 // Model is the root Bubble Tea model holding all TUI state.
 type Model struct {
 	scanPaths []string
@@ -110,7 +95,10 @@ type Model struct {
 	branchDetailLoading bool
 	spinner             spinner.Model
 
-	detailTab         DetailTab
+	// focusedPanel is which panel of the focused repo view has the cursor.
+	// Every panel stays on screen; focus only decides where j/k land and what
+	// the detail pane describes.
+	focusedPanel      panelID
 	detailCursor      int
 	branches          []models.BranchInfo
 	deletableBranches map[string]bool
@@ -121,10 +109,13 @@ type Model struct {
 	selectedBranch models.BranchInfo
 	branchDetail   models.BranchDetail
 
-	prs        []models.PRInfo
-	prCount    map[string]int
-	selectedPR models.PRInfo
-	prDetail   models.PRDetail
+	prs     []models.PRInfo
+	prCount map[string]int
+	// stashDiffstat caches each stash's diffstat by index, filled lazily as
+	// the panel cursor lands on one.
+	stashDiffstat map[int]string
+	selectedPR    models.PRInfo
+	prDetail      models.PRDetail
 
 	filterCursor int
 	sortCursor   int

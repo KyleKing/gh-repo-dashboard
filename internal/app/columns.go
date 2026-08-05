@@ -67,29 +67,6 @@ var (
 		{Key: colLastCommit, Title: colLastCommit, Min: 12, Priority: 2},
 	}
 
-	stashColSpecs = []table.Column{
-		{Key: colStashIndex, Title: colStashIndex, Min: 9},
-		{Key: colStashMessage, Title: colStashMessage, Min: 20, Weight: 1},
-		{Key: colStashDate, Title: colStashDate, Min: 12, Priority: 1},
-	}
-
-	checkoutColSpecs = []table.Column{
-		{Key: colCheckoutName, Title: colCheckoutName, Min: 16, Weight: 2},
-		{Key: colCheckoutKind, Title: colCheckoutKind, Min: 8, Priority: 2},
-		{Key: colCheckoutBranch, Title: colCheckoutBranch, Min: 14, Weight: 1},
-		{Key: colCheckoutState, Title: colCheckoutState, Min: 10},
-		{Key: colCheckoutCommit, Title: colCheckoutCommit, Min: 12, Priority: 1},
-	}
-
-	prColSpecs = []table.Column{
-		{Key: colPRNumber, Title: colPRNumber, Min: 7},
-		{Key: colPRTitle, Title: colPRTitle, Min: 20, Weight: 3},
-		{Key: colPRState, Title: colPRState, Min: 10, Priority: 4},
-		{Key: colChecks, Title: colChecks, Min: 12, Priority: 3},
-		{Key: colPRActivity, Title: colPRActivity, Min: 20, Weight: 1, Priority: 1},
-		{Key: colPRBranch, Title: colPRBranch, Min: 14, Weight: 1, Priority: 2},
-	}
-
 	checkColSpecs = []table.Column{
 		{Key: colCheckName, Title: colCheckName, Min: 20, Weight: 3},
 		{Key: colCheckState, Title: colCheckState, Min: 12},

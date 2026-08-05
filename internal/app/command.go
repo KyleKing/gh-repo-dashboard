@@ -219,7 +219,7 @@ func selectCommand() Command {
 					prefix = args[0]
 				}
 
-				return namesMatching(map[string]struct{}{nameAll: {}, "none": {}, "where": {}}, prefix)
+				return namesMatching(map[string]struct{}{nameAll: {}, overviewEmpty: {}, "where": {}}, prefix)
 			}
 
 			return predicateCandidates(args[len(args)-1])

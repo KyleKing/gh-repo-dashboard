@@ -21,10 +21,6 @@ const (
 	overviewLabelCol = 10
 )
 
-// overviewPaneBorder is the width the focused view's box border and its
-// padding take from the content.
-const overviewPaneBorder = 2
-
 // overviewMinListWidth is the width the repo list keeps for itself before any
 // is spent on a panel: the standard breakpoint's floor, which is the narrowest
 // a full eight-column table reads well at.
@@ -130,8 +126,8 @@ type overviewOpts struct {
 // overviewFullRows is how many rows the non-compact pane holds.
 const overviewFullRows = 8
 
-// Row and tab labels shared between the overview pane and the tab bar, so a
-// rename cannot leave the two disagreeing.
+// Row and panel labels shared between the overview pane and the panel grid, so
+// a rename cannot leave the two disagreeing.
 const (
 	rowNameSync     = "Sync"
 	rowNameFiles    = "Files"
@@ -157,7 +153,7 @@ func overviewIdentity(s models.RepoSummary) string {
 
 // overviewRows builds the panel's body in a fixed order, so the same line
 // always sits at the same height whatever the repo's state. Each row
-// summarizes one detail tab, so the pane doubles as a table of contents.
+// summarizes one panel, so the pane doubles as a table of contents.
 //
 // The compact layout keeps only Sync and Files: at that width the rest costs
 // more rows than the answers are worth.

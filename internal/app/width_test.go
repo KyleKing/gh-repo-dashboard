@@ -86,7 +86,7 @@ func TestBranchListAlignsUnderWideGlyphs(t *testing.T) {
 			{Name: "plain-ascii"},
 		}
 
-		return m.renderBranchList()
+		return renderPanel(m, panelBranches)
 	})
 }
 
@@ -102,7 +102,7 @@ func TestStashListAlignsUnderWideGlyphs(t *testing.T) {
 			{Index: 1, Message: "On main: plain ascii message", Date: now},
 		}
 
-		return m.renderStashList()
+		return renderPanel(m, panelStashes)
 	})
 }
 
@@ -117,7 +117,7 @@ func TestPRListAlignsUnderWideGlyphs(t *testing.T) {
 			{Number: 333, Title: "draft " + glyph, State: "OPEN", IsDraft: true, HeadRef: "feature-3"},
 		}
 
-		return m.renderPRList()
+		return renderPanel(m, panelPRs)
 	})
 }
 
@@ -131,7 +131,7 @@ func TestWorktreeListAlignsUnderWideGlyphs(t *testing.T) {
 			{Path: "/repos/app-" + glyph, Branch: "feat/" + glyph},
 		}
 
-		return m.renderWorktreeList()
+		return renderPanel(m, panelPeers)
 	})
 }
 

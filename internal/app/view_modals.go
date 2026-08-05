@@ -33,12 +33,11 @@ func (m Model) renderHelp() string {
 			"Navigation",
 			[]struct{ key, desc string }{
 				{"j/k, Up/Down", "Move up/down"},
-				{"h/l, Left/Right", "Switch tabs (detail view)"},
 				{"gg/G", "Go to top/bottom"},
-				{"enter, space", "Select/enter"},
+				{keyEnter, "Select/enter"},
 				{"esc, backspace", "Go back"},
-				{keyTab, "Next tab (detail view)"},
-				{sceneKeyRange(), sceneNames()},
+				{"h/l, " + keyTab, "Move between panels (focused view)"},
+				{"1-6", "Jump straight to a panel"},
 			},
 		},
 		{

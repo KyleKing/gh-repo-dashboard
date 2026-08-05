@@ -162,7 +162,7 @@ func TestCheckoutListNamesKindAndConflict(t *testing.T) {
 	t.Parallel()
 
 	m := peerFleet(160, 40)
-	rendered := plainText(m.renderWorktreeList())
+	rendered := plainText(renderPanel(m, panelPeers))
 
 	for _, want := range []string{"app-a-wt", "worktree", "feature/side", "app-b", "clone", "main " + conflictMark} {
 		if !strings.Contains(rendered, want) {
@@ -180,7 +180,7 @@ func TestEnterJumpsToACheckoutAndEscReturns(t *testing.T) {
 
 	m := peerFleet(140, 35)
 	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabWorktrees
+	m.focusedPanel = panelPeers
 
 	// The checkouts sort by folder name: app-a-wt, then app-b.
 	m.detailCursor = 1
@@ -233,8 +233,8 @@ func TestBracketOpensTheCheckoutsTab(t *testing.T) {
 		t.Fatalf("] returned %T, want Model", next)
 	}
 
-	if opened.viewMode != ViewModeRepoDetail || opened.detailTab != DetailTabWorktrees {
+	if opened.viewMode != ViewModeRepoDetail || opened.focusedPanel != panelPeers {
 		t.Errorf("] landed in %v on tab %v, want the focused view's checkouts tab",
-			opened.viewMode, opened.detailTab)
+			opened.viewMode, opened.focusedPanel)
 	}
 }

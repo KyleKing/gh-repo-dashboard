@@ -53,10 +53,10 @@ func TestDetailTablesFitEveryBreakpoint(t *testing.T) {
 	t.Parallel()
 
 	tables := map[string]func(Model) string{
-		"branches":  Model.renderBranchList,
-		"stashes":   Model.renderStashList,
-		"worktrees": Model.renderWorktreeList,
-		"prs":       Model.renderPRList,
+		"branches":  panelRenderer(panelBranches),
+		"stashes":   panelRenderer(panelStashes),
+		"worktrees": panelRenderer(panelPeers),
+		"prs":       panelRenderer(panelPRs),
 	}
 
 	for _, termWidth := range []int{80, 120, 220} {

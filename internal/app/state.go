@@ -1,6 +1,9 @@
 package app
 
-import "path/filepath"
+import (
+	"path/filepath"
+	"strings"
+)
 
 // Snapshot is a serializable projection of the model's observable state,
 // used by the fixture harness and suitable for scripting output.
@@ -15,7 +18,7 @@ type Snapshot struct {
 	BatchTask     string   `json:"batch_task,omitempty"`
 	BatchTotal    int      `json:"batch_total,omitempty"`
 	StatusMessage string   `json:"status_message,omitempty"`
-	Scene         string   `json:"scene,omitempty"`
+	Panel         string   `json:"panel,omitempty"`
 	Overview      []string `json:"overview,omitempty"`
 }
 
@@ -70,21 +73,22 @@ func (m Model) Snapshot() Snapshot {
 		BatchTask:     m.batchTask,
 		BatchTotal:    m.batchTotal,
 		StatusMessage: m.statusMessage,
-		Scene:         m.activeScene(),
+		Panel:         m.focusedPanelName(),
 		Overview:      m.overviewSummary(),
 	}
 }
 
-// activeScene names the focused view's current scene, or is empty outside that
-// view and on the one tab no scene owns.
-func (m Model) activeScene() string {
+// focusedPanelName names the panel holding the cursor in the focused view, or
+// is empty outside that view.
+func (m Model) focusedPanelName() string {
 	if m.viewMode != ViewModeRepoDetail {
 		return ""
 	}
 
-	for _, s := range scenes() {
-		if s.tab == m.detailTab {
-			return s.name
+	panels := m.panelSet(contentWidth(m.width))
+	for _, p := range panels {
+		if p.id == m.focusedPanel {
+			return strings.ToLower(p.title)
 		}
 	}
 

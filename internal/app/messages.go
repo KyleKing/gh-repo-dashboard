@@ -125,6 +125,15 @@ type PRListLoadedMsg struct {
 	Error error
 }
 
+// StashDiffstatLoadedMsg reports one stash's diffstat for the focused view's
+// detail pane. A failed read arrives as an empty diffstat so the pane settles
+// instead of waiting forever.
+type StashDiffstatLoadedMsg struct {
+	Path     string
+	Index    int
+	Diffstat string
+}
+
 // PRDetailLoadedMsg reports the loaded detail for a single pull request.
 type PRDetailLoadedMsg struct {
 	Path     string

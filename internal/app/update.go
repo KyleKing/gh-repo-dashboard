@@ -91,6 +91,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case PRDetailLoadedMsg:
 		return m.handlePRDetailLoaded(msg)
 
+	case StashDiffstatLoadedMsg:
+		if msg.Path == m.selectedRepo {
+			if m.stashDiffstat == nil {
+				m.stashDiffstat = make(map[int]string)
+			}
+			m.stashDiffstat[msg.Index] = msg.Diffstat
+		}
+
+		return m, nil
+
 	case ActionResultMsg:
 		return m.handleActionResult(msg)
 
@@ -217,7 +227,7 @@ func (m Model) handleReposDiscovered(msg ReposDiscoveredMsg) (tea.Model, tea.Cmd
 	if len(msg.Paths) == 1 {
 		m.selectedRepo = msg.Paths[0]
 		m.viewMode = ViewModeRepoDetail
-		m.detailTab = DetailTabBranches
+		m.focusedPanel = panelBranches
 		m.detailCursor = 0
 		cmds = append(cmds, loadDetailCmd(m.selectedRepo))
 	}
@@ -295,7 +305,6 @@ func (m Model) handlePRDetailLoaded(msg PRDetailLoadedMsg) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
-// handleDetailLoaded stores the loaded repo detail (branches/stashes/
 // handleSpinnerTick advances the loading spinner. The tick chain stops once
 // nothing is loading, so an idle dashboard issues no further redraws.
 func (m Model) handleSpinnerTick(msg spinner.TickMsg) (tea.Model, tea.Cmd) {
@@ -309,8 +318,9 @@ func (m Model) handleSpinnerTick(msg spinner.TickMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// worktrees/PRs) and kicks off background prefetch of the first few PR
-// details.
+// handleDetailLoaded stores the loaded repo detail (branches, stashes,
+// worktrees, PRs, notes), fills the detail pane for whatever the cursor
+// already sits on, and prefetches the first few PR details.
 func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
 	if msg.Path != m.selectedRepo {
 		return m, nil
@@ -326,15 +336,12 @@ func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
 
 	prefetchCount := min(prDetailPrefetchCount, len(msg.PRs))
 
-	var cmds []tea.Cmd
+	cmds := []tea.Cmd{m.panelDetailCmd()}
 	for i := range prefetchCount {
 		cmds = append(cmds, prefetchPRDetailCmd(msg.Path, msg.PRs[i].Number))
 	}
-	if len(cmds) > 0 {
-		return m, tea.Batch(cmds...)
-	}
 
-	return m, nil
+	return m, tea.Batch(cmds...)
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -545,7 +552,7 @@ func (m Model) acceptsCheckoutPR() bool {
 		return true
 	}
 
-	return m.viewMode == ViewModeRepoDetail && m.detailTab == DetailTabPRs
+	return m.viewMode == ViewModeRepoDetail && m.focusedPanel == panelPRs
 }
 
 func (m Model) moveToTop() Model {
@@ -640,13 +647,16 @@ func (m Model) handleEnterKey() (tea.Model, tea.Cmd) {
 
 	m.selectedRepo = m.filteredPaths[m.cursor]
 	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabBranches
+	m.focusedPanel = panelBranches
 	m.detailCursor = 0
 	m.branches = nil
 	m.stashes = nil
 	m.worktrees = nil
 	m.prs = nil
 	m.notesFiles = nil
+	m.stashDiffstat = nil
+	m.branchDetail = models.BranchDetail{}
+	m.prDetail = models.PRDetail{}
 	m.detailLoading = true
 
 	return m, tea.Batch(loadDetailCmd(m.selectedRepo), m.spinner.Tick)
@@ -740,8 +750,9 @@ func hasTextObjectPrefix(prefix string) bool {
 }
 
 func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if s, ok := sceneForKey(msg.String()); ok {
-		return m.setDetailTab(int(s.tab))
+	panels := m.panelSet(contentWidth(m.width))
+	if p, ok := panelForKey(panels, msg.String()); ok {
+		return m.focusPanel(p.id)
 	}
 
 	switch {
@@ -755,10 +766,10 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleRefresh()
 
 	case key.Matches(msg, m.keys.Tab), key.Matches(msg, m.keys.Right):
-		return m.setDetailTab(int(m.detailTab) + 1)
+		return m.cyclePanel(panels, 1)
 
 	case key.Matches(msg, m.keys.Left):
-		return m.setDetailTab(int(m.detailTab) - 1)
+		return m.cyclePanel(panels, -1)
 
 	case key.Matches(msg, m.keys.Up):
 		return m.moveDetailCursor(-1)
@@ -812,22 +823,27 @@ func (m Model) handleActionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// setDetailTab switches the repo-detail tab to tabIndex (wrapping around),
-// resets the row cursor, and prefetches the first PR if landing on the PR tab.
-func (m Model) setDetailTab(tabIndex int) (tea.Model, tea.Cmd) {
-	tabIndex = ((tabIndex % detailTabCount) + detailTabCount) % detailTabCount
-	m.detailTab = DetailTab(tabIndex)
+// focusPanel moves the cursor to a panel and resets its row selection.
+func (m Model) focusPanel(id panelID) (tea.Model, tea.Cmd) {
+	m.focusedPanel = id
 	m.detailCursor = 0
 
-	if m.detailTab == DetailTabPRs && len(m.prs) > 0 {
-		return m, prefetchPRDetailCmd(m.selectedRepo, m.prs[0].Number)
-	}
-
-	return m, nil
+	return m, m.panelDetailCmd()
 }
 
-// moveDetailCursor moves the repo-detail row cursor by delta (clamped to the
-// current tab's list bounds) and prefetches the newly selected PR's detail.
+// cyclePanel moves focus delta panels along the grid, wrapping around.
+func (m Model) cyclePanel(panels []panelContent, delta int) (tea.Model, tea.Cmd) {
+	if len(panels) == 0 {
+		return m, nil
+	}
+
+	next := (panelIndex(panels, m.focusedPanel) + delta + len(panels)) % len(panels)
+
+	return m.focusPanel(panels[next].id)
+}
+
+// moveDetailCursor moves the focused panel's row cursor by delta, clamped to
+// that panel's list, and loads whatever the detail pane now needs.
 func (m Model) moveDetailCursor(delta int) (tea.Model, tea.Cmd) {
 	newIdx := m.detailCursor + delta
 	if newIdx < 0 || newIdx > m.detailListLen()-1 {
@@ -835,18 +851,47 @@ func (m Model) moveDetailCursor(delta int) (tea.Model, tea.Cmd) {
 	}
 
 	m.detailCursor = newIdx
-	if m.detailTab == DetailTabPRs && m.detailCursor < len(m.prs) {
-		return m, prefetchPRDetailCmd(m.selectedRepo, m.prs[m.detailCursor].Number)
+
+	return m, m.panelDetailCmd()
+}
+
+// panelDetailCmd fetches whatever the detail pane needs for the newly
+// selected item, and nothing when the pane can render from cached data.
+func (m Model) panelDetailCmd() tea.Cmd {
+	switch {
+	case m.focusedPanel == panelPRs && m.detailCursor < len(m.prs):
+		pr := m.prs[m.detailCursor]
+		if m.prDetail.Number == pr.Number {
+			return nil
+		}
+
+		return loadPRDetailCmd(m.selectedRepo, pr.Number)
+
+	case m.focusedPanel == panelBranches && m.detailCursor < len(m.branches):
+		branch := m.branches[m.detailCursor]
+		if m.branchDetail.Branch.Name == branch.Name {
+			return nil
+		}
+
+		return loadBranchDetailCmd(m.selectedRepo, branch.Name)
+
+	case m.focusedPanel == panelStashes && m.detailCursor < len(m.stashes):
+		index := m.stashes[m.detailCursor].Index
+		if _, loaded := m.stashDiffstat[index]; loaded {
+			return nil
+		}
+
+		return loadStashDiffstatCmd(m.selectedRepo, index)
 	}
 
-	return m, nil
+	return nil
 }
 
 // handleDetailEnterKey opens the branch-detail or PR-detail view for the
 // currently selected row.
 func (m Model) handleDetailEnterKey() (tea.Model, tea.Cmd) {
 	switch {
-	case m.detailTab == DetailTabBranches && m.detailCursor < len(m.branches):
+	case m.focusedPanel == panelBranches && m.detailCursor < len(m.branches):
 		m.selectedBranch = m.branches[m.detailCursor]
 		m.branchDetail = models.BranchDetail{} // Clear previous detail
 		m.branchDetailLoading = true
@@ -854,10 +899,10 @@ func (m Model) handleDetailEnterKey() (tea.Model, tea.Cmd) {
 
 		return m, tea.Batch(loadBranchDetailCmd(m.selectedRepo, m.selectedBranch.Name), m.spinner.Tick)
 
-	case m.detailTab == DetailTabWorktrees:
+	case m.focusedPanel == panelPeers:
 		return m.jumpToCheckout()
 
-	case m.detailTab == DetailTabPRs && m.detailCursor < len(m.prs):
+	case m.focusedPanel == panelPRs && m.detailCursor < len(m.prs):
 		m.selectedPR = m.prs[m.detailCursor]
 		// Progressive loading: show basic info from the list immediately,
 		// full details (author, assignees, etc.) load async.
@@ -884,7 +929,7 @@ func (m Model) openCheckouts() (tea.Model, tea.Cmd) {
 	if !ok {
 		return next, cmd
 	}
-	opened.detailTab = DetailTabWorktrees
+	opened.focusedPanel = panelPeers
 
 	return opened, cmd
 }
@@ -915,13 +960,16 @@ func (m Model) jumpToCheckout() (tea.Model, tea.Cmd) {
 func (m Model) openRepo(path string) (tea.Model, tea.Cmd) {
 	m.selectedRepo = path
 	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabBranches
+	m.focusedPanel = panelBranches
 	m.detailCursor = 0
 	m.branches = nil
 	m.stashes = nil
 	m.worktrees = nil
 	m.prs = nil
 	m.notesFiles = nil
+	m.stashDiffstat = nil
+	m.branchDetail = models.BranchDetail{}
+	m.prDetail = models.PRDetail{}
 	m.detailLoading = true
 
 	return m, tea.Batch(loadDetailCmd(path), m.spinner.Tick)
@@ -958,16 +1006,18 @@ func (m Model) handleBranchDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) detailListLen() int {
-	switch m.detailTab {
-	case DetailTabBranches:
+	switch m.focusedPanel {
+	case panelBranches:
 		return len(m.branches)
-	case DetailTabStashes:
+	case panelStashes:
 		return len(m.stashes)
-	case DetailTabWorktrees:
+	case panelPeers:
 		return len(m.RepoCheckouts())
-	case DetailTabPRs:
+	case panelPRs:
 		return len(m.prs)
-	case DetailTabNotes:
+	case panelNotes:
+		return len(m.notesFiles)
+	case panelStatus:
 		return 0
 	}
 

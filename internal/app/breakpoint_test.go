@@ -107,22 +107,17 @@ func TestStandardLayoutKeepsTheColumnHeader(t *testing.T) {
 	}
 }
 
-func TestCompactDetailTabsAbbreviate(t *testing.T) {
+func TestCompactGridStacksEveryPanel(t *testing.T) {
 	t.Parallel()
 
 	m := compactModel(80, 24)
 	m.selectedRepo = "/dev/alpha"
-	m.branches = []models.BranchInfo{{Name: "main", IsCurrent: true}}
+	m.branches = []models.BranchInfo{{Name: mainBranchName, IsCurrent: true}}
 
-	tabs := plainText(m.renderDetailTabs())
-	for _, want := range []string{"Br 1", "St 0", "Ck 0", "PR 0", "No 0"} {
-		if !strings.Contains(tabs, want) {
-			t.Errorf("compact tab bar is missing %q: %q", want, tabs)
+	grid := plainText(m.renderPanelGrid())
+	for _, want := range []string{"1 Status", "2 Branches (1)", "3 PRs (0)", "4 Peers (0)"} {
+		if !strings.Contains(grid, want) {
+			t.Errorf("compact grid is missing %q:\n%s", want, grid)
 		}
-	}
-
-	m.width, m.height = 120, 35
-	if got := plainText(m.renderDetailTabs()); !strings.Contains(got, "Branches (1)") {
-		t.Errorf("standard tab bar should spell the tab names out: %q", got)
 	}
 }

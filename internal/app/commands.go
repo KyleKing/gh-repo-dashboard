@@ -236,6 +236,24 @@ func prefetchPRDetailCmd(repoPath string, prNumber int) tea.Cmd {
 	}
 }
 
+// loadStashDiffstatCmd reads one stash's diffstat. Since jj has no stashes,
+// the call is git-only and a non-git repo simply reports nothing.
+func loadStashDiffstatCmd(repoPath string, index int) tea.Cmd {
+	return func() tea.Msg {
+		msg := StashDiffstatLoadedMsg{Path: repoPath, Index: index}
+
+		git, ok := vcs.GetOperations(repoPath).(*vcs.GitOperations)
+		if !ok {
+			return msg
+		}
+
+		//nolint:errcheck // a stash we cannot read reports an empty diffstat
+		msg.Diffstat, _ = git.StashDiffstat(context.Background(), repoPath, index)
+
+		return msg
+	}
+}
+
 func copyToClipboardCmd(text string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()

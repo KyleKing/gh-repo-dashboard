@@ -13,7 +13,7 @@ func TestPrefetchOnCursorMovement(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabPRs
+	m.focusedPanel = panelPRs
 	m.selectedRepo = testRepoPath
 	m.prs = []models.PRInfo{
 		{Number: 1, Title: "PR 1"},
@@ -49,40 +49,25 @@ func TestPrefetchOnCursorMovement(t *testing.T) {
 	}
 }
 
-func TestPrefetchOnTabSwitch(t *testing.T) {
+func TestFocusingThePRPanelLoadsItsDetail(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabBranches
+	m.focusedPanel = panelBranches
 	m.selectedRepo = testRepoPath
 	m.prs = []models.PRInfo{
 		{Number: 10, Title: "First PR"},
 		{Number: 20, Title: "Second PR"},
 	}
 
-	// Switch to PR tab
-	msg := tea.KeyPressMsg{Code: tea.KeyTab}
-	updatedModel, _ := m.Update(msg)
+	updatedModel, cmd := m.Update(keyPress('3'))
 	m = mustModel(t, updatedModel)
 
-	if m.detailTab != DetailTabStashes {
-		t.Error("first tab should move to stashes")
+	if m.focusedPanel != panelPRs {
+		t.Fatalf("key 3 focused %v, want the PRs panel", m.focusedPanel)
 	}
-
-	// Tab again to worktrees
-	updatedModel, _ = m.Update(msg)
-	m = mustModel(t, updatedModel)
-
-	// Tab to PRs
-	updatedModel, cmd := m.Update(msg)
-	m = mustModel(t, updatedModel)
-
-	if m.detailTab != DetailTabPRs {
-		t.Error("should be on PR tab")
-	}
-
 	if cmd == nil {
-		t.Error("switching to PR tab should trigger prefetch for first PR")
+		t.Error("focusing the PRs panel should load the selected PR's detail for the pane")
 	}
 }
 
@@ -203,29 +188,26 @@ func TestNavigatePRDetailAtBoundaries(t *testing.T) {
 	}
 }
 
-func TestPrefetchNotTriggeredOnNonPRTabs(t *testing.T) {
+func TestPanelsWithNoDetailFetchIssueNoCommand(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabBranches
+	m.focusedPanel = panelPeers
 	m.selectedRepo = testRepoPath
-	m.branches = []models.BranchInfo{
-		{Name: mainBranchName},
-		{Name: featureBranchName},
+	m.summaries = map[string]models.RepoSummary{
+		testRepoPath: {Path: testRepoPath, RemoteRepo: "acme/app"},
+		"/other":     {Path: "/other", RemoteRepo: "acme/app", Branch: "feature"},
+		"/third":     {Path: "/third", RemoteRepo: "acme/app", Branch: "spike"},
 	}
-	m.detailCursor = 0
 
-	// Move down on branch tab
-	msg := tea.KeyPressMsg{Code: tea.KeyDown}
-	updatedModel, cmd := m.Update(msg)
+	updatedModel, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	m = mustModel(t, updatedModel)
 
 	if m.detailCursor != 1 {
-		t.Error("cursor should move")
+		t.Fatalf("cursor at %d, want it to move", m.detailCursor)
 	}
-
 	if cmd != nil {
-		t.Error("moving cursor on non-PR tab should not trigger prefetch")
+		t.Error("a peer checkout renders from cached data, so moving onto one fetches nothing")
 	}
 }
 

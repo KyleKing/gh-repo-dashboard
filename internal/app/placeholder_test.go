@@ -23,64 +23,20 @@ func placeholderModel(loading bool) Model {
 	return m
 }
 
-func TestDetailTabs_LoadingStateIsDistinctFromEmpty(t *testing.T) {
+func TestEmptyPanelsDistinguishLoadingFromNothing(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name        string
-		render      func(Model) string
-		wantLoading string
-		wantEmpty   string
-	}{
-		{
-			name:        "branches",
-			render:      Model.renderBranchList,
-			wantLoading: "Loading branches...",
-			wantEmpty:   "No branches found",
-		},
-		{
-			name:        "stashes",
-			render:      Model.renderStashList,
-			wantLoading: "Loading stashes...",
-			wantEmpty:   "No stashes",
-		},
-		{
-			name:        "pull requests",
-			render:      Model.renderPRList,
-			wantLoading: "Loading pull requests...",
-			wantEmpty:   "No open pull requests",
-		},
-		{
-			name:        "worktrees",
-			render:      Model.renderWorktreeList,
-			wantLoading: "Loading checkouts...",
-			wantEmpty:   "This is the only checkout of the repo",
-		},
-		{
-			name:        "notes",
-			render:      Model.renderNotesTab,
-			wantLoading: "Loading notes...",
-			wantEmpty:   "No notes file found",
-		},
-	}
+	ids := []panelID{panelBranches, panelStashes, panelPRs, panelPeers, panelNotes}
+	for _, id := range ids {
+		loading := plainText(renderPanel(placeholderModel(true), id))
+		if !strings.Contains(loading, "loading") {
+			t.Errorf("panel %v while loading reads %q, want it to say so", id, loading)
+		}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			loading := tt.render(placeholderModel(true))
-			if !strings.Contains(loading, tt.wantLoading) {
-				t.Errorf("while loading, got %q, want it to contain %q", loading, tt.wantLoading)
-			}
-			if strings.Contains(loading, tt.wantEmpty) {
-				t.Errorf("while loading, %q must not claim %q", loading, tt.wantEmpty)
-			}
-
-			settled := tt.render(placeholderModel(false))
-			if !strings.Contains(settled, tt.wantEmpty) {
-				t.Errorf("once settled, got %q, want it to contain %q", settled, tt.wantEmpty)
-			}
-		})
+		settled := plainText(renderPanel(placeholderModel(false), id))
+		if !strings.Contains(settled, "none") {
+			t.Errorf("panel %v once settled reads %q, want it to report nothing found", id, settled)
+		}
 	}
 }
 
@@ -92,7 +48,7 @@ func TestNotesTab_ContentWrapsToContentWidth(t *testing.T) {
 		{Name: "doing.txt", Content: strings.Repeat("word ", 40)},
 	}
 
-	got := m.renderNotesTab()
+	got := renderPanel(m, panelNotes)
 
 	width := contentWidth(m.width)
 	for _, line := range strings.Split(got, "\n") {

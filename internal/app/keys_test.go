@@ -100,7 +100,7 @@ func TestEnterOpensRepoDetail(t *testing.T) {
 	t.Parallel()
 	m := newListModel("/alpha", "/beta")
 	m.cursor = 1
-	m.detailTab = DetailTabPRs
+	m.focusedPanel = panelPRs
 	m.detailCursor = 3
 
 	updatedModel, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -112,7 +112,7 @@ func TestEnterOpensRepoDetail(t *testing.T) {
 	if m.selectedRepo != "/beta" {
 		t.Errorf("expected selectedRepo /beta, got %q", m.selectedRepo)
 	}
-	if m.detailTab != DetailTabBranches || m.detailCursor != 0 {
+	if m.focusedPanel != panelBranches || m.detailCursor != 0 {
 		t.Error("entering detail should reset tab and cursor")
 	}
 	if cmd == nil {
@@ -207,36 +207,36 @@ func TestBackNavigationChain(t *testing.T) {
 	}
 }
 
-func TestDetailTabCycling(t *testing.T) {
+func TestPanelCycling(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 
-	expected := []DetailTab{DetailTabStashes, DetailTabWorktrees, DetailTabPRs, DetailTabNotes, DetailTabBranches}
+	expected := []panelID{panelBranches, panelPRs, panelPeers, panelStashes, panelNotes, panelStatus}
 	for i, want := range expected {
 		updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 		m = mustModel(t, updatedModel)
-		if m.detailTab != want {
-			t.Errorf("tab press %d: expected %v, got %v", i+1, want, m.detailTab)
+		if m.focusedPanel != want {
+			t.Errorf("tab press %d: expected %v, got %v", i+1, want, m.focusedPanel)
 		}
 	}
 }
 
-func TestDetailTabLeftWrapsBackward(t *testing.T) {
+func TestPanelLeftWrapsBackward(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabBranches
+	m.focusedPanel = panelStatus
 	m.detailCursor = 2
 
 	updatedModel, _ := m.Update(keyPress('h'))
 	m = mustModel(t, updatedModel)
 
-	if m.detailTab != DetailTabNotes {
-		t.Errorf("left from first tab should wrap to Notes, got %v", m.detailTab)
+	if m.focusedPanel != panelNotes {
+		t.Errorf("left from the first panel should wrap to the last, got %v", m.focusedPanel)
 	}
 	if m.detailCursor != 0 {
-		t.Errorf("tab switch should reset detail cursor, got %d", m.detailCursor)
+		t.Errorf("moving focus should reset the row cursor, got %d", m.detailCursor)
 	}
 }
 
@@ -244,7 +244,7 @@ func TestDetailCursorMovement(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabBranches
+	m.focusedPanel = panelBranches
 	m.branches = []models.BranchInfo{{Name: "a"}, {Name: "b"}, {Name: "c"}}
 
 	updatedModel, _ := m.Update(keyPress('j'))
@@ -284,7 +284,7 @@ func TestDetailBottomOnEmptyTab(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabStashes
+	m.focusedPanel = panelStashes
 
 	updatedModel, _ := m.Update(keyPress('G'))
 	m = mustModel(t, updatedModel)
@@ -299,7 +299,7 @@ func TestDetailEnterOpensBranchDetail(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.selectedRepo = testRepo1Path
-	m.detailTab = DetailTabBranches
+	m.focusedPanel = panelBranches
 	m.detailCursor = 1
 	m.branches = []models.BranchInfo{{Name: mainBranchName}, {Name: featureBranchName}}
 	m.branchDetail = models.BranchDetail{Branch: models.BranchInfo{Name: "stale"}}

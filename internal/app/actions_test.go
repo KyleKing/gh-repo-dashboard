@@ -15,7 +15,7 @@ import (
 func detailModel() Model {
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
-	m.detailTab = DetailTabBranches
+	m.focusedPanel = panelBranches
 	m.selectedRepo = testRepo1Path
 	m.summaries[testRepo1Path] = models.RepoSummary{Path: testRepo1Path, Branch: mainBranchName}
 	m.branches = []models.BranchInfo{

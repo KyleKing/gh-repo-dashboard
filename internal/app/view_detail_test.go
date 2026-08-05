@@ -90,7 +90,7 @@ func TestRenderBranchListShowsParallelCheckout(t *testing.T) {
 		{Number: 42, HeadRef: featureBranchName, Checks: models.ChecksStatus{Total: 2, Passing: 2}},
 	}
 
-	rendered := m.renderBranchList()
+	rendered := renderPanel(m, panelBranches)
 
 	if !strings.Contains(rendered, "app-feature") {
 		t.Errorf("expected the peer checkout folder in the branch list:\n%s", rendered)
