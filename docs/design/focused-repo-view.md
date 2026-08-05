@@ -135,10 +135,15 @@ panels and the freed number keys become panel jumps. Fixtures covering scenes
 are rewritten against panels, and the wide fleet list's preview pane keeps
 mounting the overview component, which becomes the Status panel here.
 
-## Open questions
+## What shipped
 
-- Whether the detail pane deserves its own focus state (scrolling long PR
-  descriptions) in v1, or scrolls with a dedicated key from the side panel
-- Palette opening key: `space` conflicts with the list's select binding in
-  the fleet view; `space` may stay focused-view-only with `;` fleet-side
-- Whether relevance scores need user weighting (config) or ship fixed
+The open questions resolved as follows:
+
+- The detail pane has no focus state of its own. It truncates to the height it
+  is given, and long PR descriptions are cut on a word boundary. A scroll key
+  can be added when a real description outgrows the pane
+- `space` opens the palette in the focused view and `;` opens it fleet-side,
+  because the list already spends `space` on selection
+- Relevance scores ship fixed. They are three tiers (idle, present, urgent)
+  rather than a tunable weight, which is enough to separate a busy panel from
+  a quiet one without a config surface to explain
