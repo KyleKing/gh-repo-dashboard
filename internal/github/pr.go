@@ -307,8 +307,8 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 	env := vcs.GetGitHubEnv(repoPath)
 
 	out, err := runGH(ctx, repoPath, env, "pr", "list",
-		"--json", "number,title,state,url,isDraft,headRefName,baseRefName,reviewDecision,"+
-			"statusCheckRollup,comments,reviews",
+		"--json", "number,title,state,url,isDraft,headRefName,headRepositoryOwner,baseRefName,"+
+			"reviewDecision,statusCheckRollup,comments,reviews",
 		"--limit", "100")
 	if err != nil {
 		cache.PRListCache.Set(cacheKey, []models.PRInfo{})
@@ -316,13 +316,16 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 	}
 
 	var prList []struct {
-		Number            int           `json:"number"`
-		Title             string        `json:"title"`
-		State             string        `json:"state"`
-		URL               string        `json:"url"`
-		IsDraft           bool          `json:"isDraft"`
-		HeadRefName       string        `json:"headRefName"`
-		BaseRefName       string        `json:"baseRefName"`
+		Number              int    `json:"number"`
+		Title               string `json:"title"`
+		State               string `json:"state"`
+		URL                 string `json:"url"`
+		IsDraft             bool   `json:"isDraft"`
+		HeadRefName         string `json:"headRefName"`
+		BaseRefName         string `json:"baseRefName"`
+		HeadRepositoryOwner struct {
+			Login string `json:"login"`
+		} `json:"headRepositoryOwner"`
 		ReviewDecision    string        `json:"reviewDecision"`
 		StatusCheckRollup []statusCheck `json:"statusCheckRollup"`
 		Comments          []prComment   `json:"comments"`
@@ -343,6 +346,7 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 			URL:            pr.URL,
 			IsDraft:        pr.IsDraft,
 			HeadRef:        pr.HeadRefName,
+			HeadRepoOwner:  pr.HeadRepositoryOwner.Login,
 			BaseRef:        pr.BaseRefName,
 			ReviewDecision: pr.ReviewDecision,
 			Checks:         parseChecks(pr.StatusCheckRollup),

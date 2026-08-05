@@ -26,12 +26,31 @@ type PRInfo struct {
 	IsDraft         bool         `json:"is_draft"`
 	Mergeable       string       `json:"mergeable,omitempty"`
 	HeadRef         string       `json:"head_ref"`
+	HeadRepoOwner   string       `json:"head_repo_owner,omitempty"`
 	BaseRef         string       `json:"base_ref"`
 	Checks          ChecksStatus `json:"checks"`
 	ReviewDecision  string       `json:"review_decision,omitempty"`
 	ApprovedBy      []string     `json:"approved_by,omitempty"`
 	ChangesRequests int          `json:"changes_requests,omitempty"`
 	Activity        *PRActivity  `json:"activity,omitempty"`
+}
+
+// FromFork reports whether the pull request's head branch lives in someone
+// else's fork rather than in owner's own repository. A fork's head ref shares
+// a namespace with local branches ("master" is common), so a name match alone
+// is not evidence the branch is here.
+func (p PRInfo) FromFork(owner string) bool {
+	return p.HeadRepoOwner != "" && owner != "" && !strings.EqualFold(p.HeadRepoOwner, owner)
+}
+
+// HeadLabel names where the head branch lives, qualifying it with the owner
+// when the pull request comes from a fork.
+func (p PRInfo) HeadLabel(owner string) string {
+	if p.FromFork(owner) {
+		return p.HeadRepoOwner + ":" + p.HeadRef
+	}
+
+	return p.HeadRef
 }
 
 // PRActivity is the most recent comment or review on a pull request: the

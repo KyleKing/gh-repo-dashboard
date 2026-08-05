@@ -94,6 +94,9 @@ type Model struct {
 	// ciRequested marks the repos a CI fetch has already been issued for, so
 	// scrolling back over a row does not re-request it.
 	ciRequested map[string]bool
+	// ciSettled marks the repos whose CI fetch has come back, successfully or
+	// not, so a failed fetch stops reading as one still in flight.
+	ciSettled map[string]bool
 	// ciBranch names the default branch each repo's CI runs belong to.
 	ciBranch map[string]string
 

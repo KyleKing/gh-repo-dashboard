@@ -354,7 +354,7 @@ func (m Model) peersCell(path string, base lipgloss.Style, selected bool) (strin
 // flight, and emDash once it is known there is nothing to report.
 func (m Model) ciCell(s models.RepoSummary, base lipgloss.Style, selected bool) (string, lipgloss.Style) {
 	if s.WorkflowInfo == nil {
-		if m.ciRequested[s.Path] {
+		if m.ciRequested[s.Path] && !m.ciSettled[s.Path] {
 			return "…", base
 		}
 

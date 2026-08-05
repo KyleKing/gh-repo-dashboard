@@ -15,10 +15,12 @@ func TestCICellStates(t *testing.T) {
 		name      string
 		workflow  *models.WorkflowSummary
 		requested bool
+		settled   bool
 		want      string
 	}{
 		{name: "not yet requested", want: emDash},
 		{name: "request in flight", requested: true, want: "…"},
+		{name: "failed fetch stops spinning", requested: true, settled: true, want: emDash},
 		{name: "no runs for the commit", workflow: &models.WorkflowSummary{}, requested: true, want: emDash},
 		{
 			name:     "all passing",
@@ -40,12 +42,28 @@ func TestCICellStates(t *testing.T) {
 
 			m := New(nil, 1)
 			m.ciRequested = map[string]bool{"/dev/app": tt.requested}
+			m.ciSettled = map[string]bool{"/dev/app": tt.settled}
 			summary := models.RepoSummary{Path: "/dev/app", WorkflowInfo: tt.workflow}
 
 			if got, _ := m.ciCell(summary, plainStyle, false); got != tt.want {
 				t.Errorf("ciCell = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestFailedCIFetchSettlesTheCell(t *testing.T) {
+	t.Parallel()
+
+	m := New([]string{"/dev"}, 1)
+	m.summaries = map[string]models.RepoSummary{"/dev/app": {Path: "/dev/app", Branch: mainBranchName}}
+	m.ciRequested = map[string]bool{"/dev/app": true}
+
+	updated, _ := m.Update(WorkflowLoadedMsg{Path: "/dev/app", Error: errGHFailed})
+	m = mustModel(t, updated)
+
+	if got, _ := m.ciCell(m.summaries["/dev/app"], plainStyle, false); got != emDash {
+		t.Errorf("ciCell after a failed fetch = %q, want %q; the placeholder must not spin forever", got, emDash)
 	}
 }
 

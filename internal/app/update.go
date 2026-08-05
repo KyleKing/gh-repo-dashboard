@@ -255,11 +255,19 @@ func (m Model) handleRepoSummaryLoaded(msg RepoSummaryLoadedMsg) (tea.Model, tea
 	return m, tea.Batch(cmds...)
 }
 
+// handleWorkflowLoaded records a CI fetch's outcome. A repo with no GitHub
+// remote, or one whose runs cannot be read, arrives with no workflow and is
+// marked settled so its cell stops showing the in-flight placeholder.
 func (m Model) handleWorkflowLoaded(msg WorkflowLoadedMsg) (tea.Model, tea.Cmd) {
 	if summary, ok := m.summaries[msg.Path]; ok {
 		summary.WorkflowInfo = msg.Workflow
 		m.summaries[msg.Path] = summary
 	}
+
+	if m.ciSettled == nil {
+		m.ciSettled = make(map[string]bool)
+	}
+	m.ciSettled[msg.Path] = true
 
 	if msg.Branch != "" {
 		if m.ciBranch == nil {

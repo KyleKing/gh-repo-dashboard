@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -29,6 +30,9 @@ type prMapEntry struct {
 	PR       *models.PRInfo
 	Branch   string
 	Location string
+	// HasLocal marks a row whose head ref is checked out somewhere in the
+	// fleet. A fork's head ref is not, however much its name looks local.
+	HasLocal bool
 }
 
 func (e prMapEntry) HasPR() bool {
@@ -64,42 +68,75 @@ const localOnlyLabel = "(no PR)"
 func (m *Model) buildPRMap() []prMapEntry {
 	var entries []prMapEntry
 
+	seen := make(map[string]bool, len(m.filteredPaths))
 	for _, path := range m.filteredPaths {
 		data, loaded := m.prMap[path]
 		if !loaded {
 			continue
 		}
 
-		repo := filepath.Base(path)
-		claimed := make(map[string]bool, len(data.PRs))
-
-		for i := range data.PRs {
-			pr := &data.PRs[i]
-			claimed[pr.HeadRef] = true
-			entries = append(entries, prMapEntry{
-				Repo:     repo,
-				PR:       pr,
-				Branch:   pr.HeadRef,
-				Location: m.locateBranch(path, pr.HeadRef),
-			})
+		identity := vcs.CheckoutIdentity(path)
+		if seen[identity] {
+			continue
 		}
+		seen[identity] = true
 
-		for _, branch := range data.Branches {
-			if claimed[branch.Name] || branch.Ahead == 0 {
-				continue
-			}
-
-			entries = append(entries, prMapEntry{
-				Repo:     repo,
-				Branch:   branch.Name,
-				Location: "here: " + branch.Name,
-			})
-		}
+		entries = append(entries, m.repoPRMapEntries(path, data)...)
 	}
 
 	sortPRMap(entries)
 
 	return entries
+}
+
+// repoPRMapEntries builds one repo's rows: a row per open pull request, then
+// its local branches that no pull request accounts for.
+func (m *Model) repoPRMapEntries(path string, data PRMapLoadedMsg) []prMapEntry {
+	repo := filepath.Base(path)
+	owner := repoOwner(m.summaries[path].RemoteRepo)
+	defaultBranch := findDefaultBranch(data.Branches)
+
+	entries := make([]prMapEntry, 0, len(data.PRs)+len(data.Branches))
+	claimed := make(map[string]bool, len(data.PRs))
+
+	for i := range data.PRs {
+		pr := &data.PRs[i]
+		location := "fork: " + pr.HeadRepoOwner
+		if !pr.FromFork(owner) {
+			claimed[pr.HeadRef] = true
+			location = m.locateBranch(path, pr.HeadRef)
+		}
+
+		entries = append(entries, prMapEntry{
+			Repo:     repo,
+			PR:       pr,
+			Branch:   pr.HeadLabel(owner),
+			Location: location,
+			HasLocal: !pr.FromFork(owner) && location != emDash,
+		})
+	}
+
+	for _, branch := range data.Branches {
+		if claimed[branch.Name] || branch.Ahead == 0 || branch.Name == defaultBranch {
+			continue
+		}
+
+		entries = append(entries, prMapEntry{
+			Repo:     repo,
+			Branch:   branch.Name,
+			Location: "here: " + branch.Name,
+			HasLocal: true,
+		})
+	}
+
+	return entries
+}
+
+// repoOwner is the owner half of a "owner/name" remote path.
+func repoOwner(remoteRepo string) string {
+	owner, _, _ := strings.Cut(remoteRepo, "/")
+
+	return owner
 }
 
 // locateBranch names the checkout holding ref: this repo, a peer checkout, or
@@ -150,7 +187,7 @@ func prMapSummary(entries []prMapEntry) string {
 			localOnly++
 		default:
 			open++
-			if entry.Location != emDash {
+			if entry.HasLocal {
 				withLocal++
 			}
 		}
