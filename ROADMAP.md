@@ -6,12 +6,12 @@ conventions live in [AGENTS.md](AGENTS.md); the design docs the shipped work was
 built from live in `docs/design/`.
 
 The column engine lives in `internal/ui/table` and every table is sized by it.
-`internal/app/view_overview.go` holds the repo overview pane, mounted both by
-the wide layout's preview panel and by the focused repo view. Scenes live in
-`internal/app/scene.go` and are derived from the active tab, so other views can
-adopt the same pattern by defining their own scene list. The `:prs` fleet map
-lives in `internal/app/prmap.go`. Default-branch CI is fetched lazily for
-visible rows only, tracked by `Model.ciRequested`.
+`internal/app/view_overview.go` holds the repo overview pane, mounted by the
+wide layout's preview panel. The focused repo view is a panel grid
+(`panels.go`, `view_panels.go`) and the universal find is `palette.go` and
+`view_palette.go`. The `:prs` fleet map lives in `internal/app/prmap.go`.
+Default-branch CI is fetched lazily for visible rows only, tracked by
+`Model.ciRequested`.
 
 ## Vision
 
@@ -45,36 +45,8 @@ A layered pyramid:
   sequences and generate `docs/USAGE.md` (`mise run docs:usage`);
   `TestUsageDocsCurrent` fails CI when the docs go stale
 
-M1 through M19 landed through 2026-08-05 and are not tracked here; `CHANGELOG.md`
-and `git log` are the record. M20 and the lists below are the whole backlog.
-
-## M20: panel grid and universal find
-
-The tabless focused view from
-[focused-repo-view.md](docs/design/focused-repo-view.md), replacing both the
-tab bar and the scene presets.
-
-- lazygit-style grid: every data set is an always-visible panel showing real
-  content when unfocused; the focused panel expands and a persistent detail
-  pane renders the selected item (branch commits, PR description and latest
-  comment, stash diffstat, note body)
-- Relevance-driven sizing: panel height follows actionable state (dirty
-  files, conflicted peers, active PRs) from cached data; clean sections
-  compress to a line
-- Universal find: `space` opens a typed-prefix palette (`#12` PR number,
-  `b fix` branches, `s wip` stashes, `r dash` repos, bare text everything),
-  scoped to the repo in the focused view and the fleet from the list. Result
-  sets are actionable: `tab` marks, `!` opens type-appropriate verbs, and a
-  repo set commits to the selected-repos text object so batch operators
-  compose with it
-- Tabs and scenes retire in the same milestone; number keys become panel
-  jumps, scene fixtures are rewritten against panels, and jj drops the
-  Stashes panel instead of hinting
-
-Exit criteria: a busy repo arrives with its problems expanded and a quiet one
-reads as one-liners plus detail; `space`, `#12`, `!` answers "which repos
-have PR 12" and offers actions; no keypress is needed to see any section's
-content; goldens cover the grid at all three breakpoints.
+M1 through M20 landed through 2026-08-05 and are not tracked here; `CHANGELOG.md`
+and `git log` are the record. The lists below are the whole backlog.
 
 ## Deferred features
 
@@ -83,8 +55,6 @@ Low priority; pick up when convenient.
 - Full Catppuccin themes replacing the current textual themes
 - Motion policy: the app has zero animation (static discovery text, static
   batch gauge). Decide deliberate restraint or add a spinner
-- Notes preview shows the first line of the file, which is usually a date
-  heading; skip headings and blanks so the peek carries content
 - Deep-DRY items from the code-health survey, to do opportunistically when work
   next touches these files: a shared repo-enrichment path for `cli.loadRepo`,
   `app.newScriptModel`, and app's summary/detail loading, and guard/update

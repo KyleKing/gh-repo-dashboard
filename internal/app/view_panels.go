@@ -735,7 +735,7 @@ func panelFooter(panels []panelContent, focused, width int) string {
 	hints := []footerHint{
 		{key: keys, desc: "panels", priority: panelHintPriority},
 		{key: keyNavPair, desc: descNav, priority: panelHintPriority - navHintStep},
-		{key: "space", desc: "find", priority: panelHintPriority - navHintStep*2},
+		{key: "space", desc: nameFind, priority: panelHintPriority - navHintStep*2},
 		{key: keyEsc, desc: "back", priority: panelHintPriority - navHintStep*3},
 	}
 

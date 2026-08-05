@@ -104,3 +104,13 @@ pressing `:`; bare keys act on the repo list.
 |---|---|
 | `:select where dirty` | selects dirty, dirty-pr |
 | press `F` `s` `r` | opens the batch view; starts batch Fetch All (selected); over 2 repos |
+
+## Find across the fleet, then commit the result set to a batch operator
+
+| Input | Result |
+|---|---|
+| press `;` | opens the find view |
+| press `d` `i` `r` `t` `y` | find: dirty; matches: repo:dirty repo:dirty-pr |
+| press `!` | opens the find view |
+| press `s` | selects dirty, dirty-pr |
+| press `F` `s` `r` | opens the batch view; starts batch Fetch All (selected); over 2 repos |

@@ -28,6 +28,7 @@ const (
 	ViewModeBatchProgress
 	ViewModeConfirm
 	ViewModePRMap
+	ViewModePalette
 )
 
 // Model is the root Bubble Tea model holding all TUI state.
@@ -117,6 +118,15 @@ type Model struct {
 	selectedPR    models.PRInfo
 	prDetail      models.PRDetail
 
+	// Universal find state. The palette answers from cached data only, so it
+	// holds no results of its own: they are recomputed from the query.
+	paletteInput      textinput.Model
+	paletteCursor     int
+	paletteMarks      map[string]bool
+	paletteFleetScope bool
+	paletteActions    bool
+	paletteReturnMode ViewMode
+
 	filterCursor int
 	sortCursor   int
 
@@ -144,6 +154,11 @@ func New(scanPaths []string, maxDepth int) Model {
 	ci := textinput.New()
 	ci.Prompt = ":"
 	ci.CharLimit = 200
+
+	pi := textinput.New()
+	pi.Prompt = ""
+	pi.CharLimit = 100
+	pi.SetWidth(paletteInputWidth)
 
 	activeFilters := make([]models.ActiveFilter, 0, len(models.AllFilterModes()))
 	for _, mode := range models.AllFilterModes() {
@@ -173,6 +188,7 @@ func New(scanPaths []string, maxDepth int) Model {
 		activeSorts:   sorts,
 		searchInput:   ti,
 		commandInput:  ci,
+		paletteInput:  pi,
 		registry:      DefaultRegistry(),
 		viewMode:      ViewModeRepoList,
 		loading:       true,
@@ -180,6 +196,10 @@ func New(scanPaths []string, maxDepth int) Model {
 		help:          help.New(),
 	}
 }
+
+// paletteInputWidth is the find line's typing room; results wrap below it, so
+// the line itself never needs the full frame.
+const paletteInputWidth = 40
 
 // Init kicks off the initial repo discovery command.
 func (m Model) Init() tea.Cmd {

@@ -294,6 +294,10 @@ func fixtureAssertionValue(snap Snapshot, field string) (string, bool) {
 		return joinOrNone(snap.Overview), true
 	case "panel":
 		return snap.Panel, true
+	case "find":
+		return snap.Find, true
+	case "matches":
+		return joinOrNone(snap.FindMatches), true
 	case "search":
 		return snap.Search, true
 	case "selected":

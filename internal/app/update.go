@@ -199,6 +199,8 @@ func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleConfirmKey(msg)
 	case ViewModePRMap:
 		return m.handlePRMapKey(msg)
+	case ViewModePalette:
+		return m.handlePaletteKey(msg)
 	default:
 		return m.handleKey(msg)
 	}
@@ -368,6 +370,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Enter):
 		return m.handleEnterKey()
+
+	case key.Matches(msg, m.keys.Find):
+		return m.openPalette()
 
 	case key.Matches(msg, m.keys.Back):
 		return m.handleBackKey()
@@ -788,6 +793,9 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 		return m, nil
+
+	case key.Matches(msg, m.keys.Find):
+		return m.openPalette()
 
 	case key.Matches(msg, m.keys.Enter):
 		return m.handleDetailEnterKey()

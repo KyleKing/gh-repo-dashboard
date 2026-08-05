@@ -38,6 +38,7 @@ func (m Model) renderHelp() string {
 				{"esc, backspace", "Go back"},
 				{"h/l, " + keyTab, "Move between panels (focused view)"},
 				{"1-6", "Jump straight to a panel"},
+				{"space, ;", "Universal find (#12 PRs, b/s/n/r types, * fleet-wide)"},
 			},
 		},
 		{

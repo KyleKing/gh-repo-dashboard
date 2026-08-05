@@ -20,6 +20,7 @@ type KeyMap struct {
 	Top    key.Binding
 	Bottom key.Binding
 	Enter  key.Binding
+	Find   key.Binding
 	Back   key.Binding
 	Tab    key.Binding
 
@@ -162,6 +163,12 @@ func navigationKeyMap() KeyMap {
 		Enter: key.NewBinding(
 			key.WithKeys(keyEnter, "space"),
 			key.WithHelp(keyEnter, "select"),
+		),
+		// The fleet list already spends space on selection, so ";" opens the
+		// palette there and space opens it in the focused view.
+		Find: key.NewBinding(
+			key.WithKeys(";", "space"),
+			key.WithHelp(";", "find"),
 		),
 		Back: key.NewBinding(
 			key.WithKeys(keyEsc, "backspace"),

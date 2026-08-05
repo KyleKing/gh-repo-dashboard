@@ -32,9 +32,21 @@ already checked out here or in a parallel checkout.
 
 ## Views
 
-The repository list is the starting view. `enter` opens the repo detail view,
-which has tabs for Branches, Stashes, Worktrees (Workspaces on jj), PRs, and
-Notes. `tab` and `l` move to the next tab, `h` moves to the previous one.
+The repository list is the starting view. `enter` opens the focused repo view: a
+grid of panels for Status, Branches, PRs, Peers, Stashes, and Notes, all visible
+at once, beside a detail pane that renders whatever the cursor sits on. A jj repo
+has no Stashes panel. `1`-`6` jump straight to a panel, `tab` and `l` move to the
+next one, `h` to the previous, and `j`/`k` move within the focused panel. Panel
+height follows how much a section has to say, so a busy repo arrives with its
+problems already open.
+
+`space` opens the universal find, scoped to the repo you are in (`;` opens it
+fleet-wide from the list, and `*` widens a repo-scoped query). Type `#12` for a
+pull request number, `b`, `s`, `n`, or `r` plus a space to narrow to branches,
+stashes, notes, or repos, or plain text to search everything. `enter` opens the
+highlighted result where it lives, `tab` marks rows, and `!` offers verbs for the
+whole set, including committing its repos to the selected-repos text object so
+batch operators compose with the find.
 
 Launched from inside a repository, the scan finds only that one repo and the
 detail view opens straight away. `esc` still steps back to the one-row list.
@@ -78,11 +90,11 @@ The STATUS column shows the working tree as symbols:
 
 Alongside it, `N` marks a repo with one notes file and `N3` a repo with three.
 Press `v` to toggle a first-line preview of those files under the cursor, or open
-the Notes tab for their full contents.
+the repo and focus its Notes panel for the full contents.
 
 The list has no symbols for stash counts, worktree counts, or workflow runs.
-Those appear in the repo detail tabs, and the branch detail pane spells workflow
-status out as words, such as `passing (3/4 passing)`. The PR detail view lists
+Those appear in the focused view's panels, and the branch detail pane spells
+workflow status out as words, such as `passing (3/4 passing)`. The PR detail view lists
 each check by name with its status and run time, plus the most recent comment on
 the pull request.
 

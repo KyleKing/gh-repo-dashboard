@@ -19,6 +19,8 @@ type Snapshot struct {
 	BatchTotal    int      `json:"batch_total,omitempty"`
 	StatusMessage string   `json:"status_message,omitempty"`
 	Panel         string   `json:"panel,omitempty"`
+	Find          string   `json:"find,omitempty"`
+	FindMatches   []string `json:"find_matches,omitempty"`
 	Overview      []string `json:"overview,omitempty"`
 }
 
@@ -40,6 +42,8 @@ func (v ViewMode) String() string {
 		return nameSort
 	case ViewModePRMap:
 		return "prmap"
+	case ViewModePalette:
+		return nameFind
 	case ViewModeBatchProgress:
 		return "batch"
 	default:
@@ -74,8 +78,27 @@ func (m Model) Snapshot() Snapshot {
 		BatchTotal:    m.batchTotal,
 		StatusMessage: m.statusMessage,
 		Panel:         m.focusedPanelName(),
+		Find:          m.paletteInput.Value(),
+		FindMatches:   m.findMatchLabels(),
 		Overview:      m.overviewSummary(),
 	}
+}
+
+// findMatchLabels lists what the open palette currently matches, so a fixture
+// can assert the find without simulating its rendering.
+func (m Model) findMatchLabels() []string {
+	if m.viewMode != ViewModePalette {
+		return nil
+	}
+
+	results := m.findResults()
+
+	labels := make([]string, 0, len(results))
+	for i := range results {
+		labels = append(labels, results[i].kindName()+":"+results[i].label)
+	}
+
+	return labels
 }
 
 // focusedPanelName names the panel holding the cursor in the focused view, or

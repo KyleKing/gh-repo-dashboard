@@ -25,7 +25,9 @@ replays `:command` lines from a file or stdin.
 │   │   ├── app.go           # Model definition, Init
 │   │   ├── update.go        # Update function (message handling)
 │   │   ├── view.go          # Shared rendering scaffolding
-│   │   ├── view_*.go        # Per-view-mode rendering (repolist, detail, modals, ...)
+│   │   ├── view_*.go        # Per-view-mode rendering (repolist, panels, palette, ...)
+│   │   ├── panels.go        # Focused view's panel model and vertical sizing
+│   │   ├── palette.go       # Universal find's query grammar and result types
 │   │   ├── keymap.go        # Key bindings
 │   │   ├── command.go       # :command registry and commands
 │   │   ├── commands.go      # tea.Cmd constructors
@@ -172,12 +174,34 @@ the cursor uses Surface0.
 ### View hierarchy
 
 `ViewModeRepoList` (initial) lists repositories with
-Name/Branch/Status/Peers/PR/Template/Modified columns. `ViewModeRepoDetail` (Enter) drills
-into branches, stashes, worktrees, PRs, and notes with tab switching; when discovery finds
-exactly one repo it opens directly, and esc still falls back to the one-row list.
+Name/Branch/Status/Peers/PR/Template/Modified columns. `ViewModeRepoDetail` (Enter) is a
+grid of always-visible panels (Status, Branches, PRs, Peers, Stashes, Notes) beside a
+detail pane rendering whatever the cursor sits on; when discovery finds exactly one repo
+it opens directly, and esc still falls back to the one-row list. `ViewModePalette`
+(`space` in the focused view, `;` in the list) is the universal find.
 `ViewModeFilter` (f), `ViewModeSort` (s), and `ViewModeHelp` (?) are modals,
 `ViewModeConfirm` gates every write action, and `ViewModeBatchProgress` shows a progress bar
 during batch runs.
+
+### Panel grid
+
+`internal/app/panels.go` holds the panel model and the vertical size math;
+`view_panels.go` builds each panel's rows from the Model and renders the grid.
+Panel height follows a relevance score derived from cached data alone, with the
+focused panel served first so its selection stays visible, and no panel ever
+compresses below its border plus one content line. A jj repo has no Stashes
+panel rather than one explaining its own absence. Below the compact breakpoint
+the grid becomes a single stack that scrolls to keep the focused panel and its
+detail on screen.
+
+### Universal find
+
+`internal/app/palette.go` parses the query grammar (`#12` a PR number, a
+one-letter prefix for branches/stashes/notes/repos, `*` to widen the scope, bare
+text for everything) and `view_palette.go` answers it from cache-resident data
+only, so no keystroke costs a fetch. `tab` marks rows, `!` opens the verbs for
+the target set, and selecting a repo set commits it to the selected-repos text
+object so `F`/`P`/`C`/`R` compose with a find.
 
 Adding a view mode: add the const in `app/app.go`, rendering in a `view_*.go`
 file (dispatched from `renderView` in `view.go`), update handling in
@@ -199,10 +223,11 @@ Adding a keybinding: register it in `keymap.go`, handle it in `handleKey()`
 
 - Progressive loading: the repo list appears immediately with placeholder data while goroutines load each `RepoSummary` concurrently and the table updates incrementally via Tea messages, never blocking on slow git operations
 - Caching: a generic TTL cache with mutex protection backs `prCache`, `branchCache`, and `summaryCache`; refresh clears all caches
-- Notes detection: every configured notes filename (`.doing`, `doing.md`, `doing.txt`, `TODO.md` by default; overridable via config) present at a repo root is collected as a `models.NoteFile`, not just the first match; surfaces as a count badge in the Status column, a first-line preview toggled with `v` on the repo list, a Notes tab in repo detail rendering each file's full content delineated by name, and the `has_notes` filter/predicate with the `nr` text object; detection is a plain file check outside the VCS abstraction
+- Notes detection (surfacing as a Notes panel in the focused view): every configured notes filename (`.doing`, `doing.md`, `doing.txt`, `TODO.md` by default; overridable via config) present at a repo root is collected as a `models.NoteFile`, not just the first match; surfaces as a count badge in the Status column, a first-line preview toggled with `v` on the repo list, the focused view's Notes panel with the file body in the detail pane, and the `has_notes` filter/predicate with the `nr` text object; detection is a plain file check outside the VCS abstraction
 - Configuration: optional TOML at `$XDG_CONFIG_HOME/gh-repo-dashboard/config.toml` (`internal/config`) supplies scan paths, depth, notes filenames, and cache TTLs; flags take precedence
 - Command history: `ExecuteCommand` records recognized commands (capped at 50), shared by the command bar, `:history`, the `@:` repeat key, and `--script` runs
 - Parallel checkouts: repos sharing a remote (`RepoSummary.RemoteRepo`, derived from the remote URL) are peers of each other, as are a repo's own worktrees/workspaces; `models.FindPeerCheckouts` and `models.WorktreeCheckouts` build the set, surfacing as the repo list's PEERS count, a repo-detail header badge, the branch list's CHECKED OUT column, and a branch-detail line. A repo with no known remote never peers with anything, since an empty remote would group every unrelated local-only repo
+- Universal find: `space` (focused view) or `;` (fleet list) opens a typed-prefix palette over cache-resident data; `tab` marks rows, `!` runs a verb on the set, and a repo set commits to the selected-repos text object so batch operators compose with it
 - Branch and PR actions: `c` switches branch, `p` pushes with `--follow-tags`, `N` opens a PR, and `M` squash-merges one and deletes its head branch. Everything that touches the remote is parked behind `ViewModeConfirm` (`internal/app/actions.go`) rather than running on the keypress; switching is refused up front when the branch is already checked out here or held by a parallel checkout. Results arrive as `ActionResultMsg` and reload the repo's summary and detail
 - Cancellation: use `context.Context` and cancel when leaving views or quitting to avoid goroutine leaks
 

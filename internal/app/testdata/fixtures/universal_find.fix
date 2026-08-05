@@ -1,0 +1,15 @@
+doc: Find across the fleet, then commit the result set to a batch operator
+given standard
+when keys ;
+then view = find
+when keys d i r t y
+then find = dirty
+then matches = repo:dirty repo:dirty-pr
+when keys !
+then view = find
+when keys s
+then selected = dirty dirty-pr
+when keys F s r
+then view = batch
+then task = Fetch All (selected)
+then total = 2

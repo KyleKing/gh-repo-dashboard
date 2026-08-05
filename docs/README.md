@@ -41,7 +41,7 @@ colocated repository, one holding both `.git` and `.jj`, through jj.
 - TTL caching for pull request data, workflow status, and VCS reads
 - Multi-repo filters, predicate expressions, fuzzy search, and reversible sorts
 - Batch fetch, prune, and merged-branch cleanup over whatever is filtered
-- Per-repo notes files shown as a badge, a preview line, and a detail tab
+- Per-repo notes files shown as a badge, a preview line, and a Notes panel
 - Worktree and workspace detection, plus git stash counts
 - Copier template version, showing the installed tag and whether it is behind
 - Catppuccin Macchiato theme, which uses color only for actionable elements
