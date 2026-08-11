@@ -51,11 +51,20 @@ type DetailReader interface {
 // (success, message) alongside an error so callers can surface per-repo feedback
 // in the UI even when the operation itself didn't error.
 type Mutator interface {
+	// ApplyStash restores a stash's changes into the working copy without
+	// removing it, so a mistaken apply costs nothing.
+	ApplyStash(ctx context.Context, repoPath string, index int) (bool, string, error)
 	// CleanupMergedBranches deletes local branches fully merged into the
 	// default branch, plus any names in squashMerged: branches the caller has
 	// already verified (via merged PR head OIDs) as squash-merged, which
 	// `git branch --merged`/`jj bookmark` can't detect on their own.
 	CleanupMergedBranches(ctx context.Context, repoPath string, squashMerged []string) (bool, string, error)
+	// DeleteBranch removes one local branch. It refuses a branch that is not
+	// fully merged unless force is set, which only a caller that has verified
+	// the branch is squash-merged should pass.
+	DeleteBranch(ctx context.Context, repoPath, branch string, force bool) (bool, string, error)
+	// DropStash discards a stash. Nothing recovers it, so callers confirm first.
+	DropStash(ctx context.Context, repoPath string, index int) (bool, string, error)
 	FetchAll(ctx context.Context, repoPath string) (bool, string, error)
 	// PushBranch pushes branch to origin along with the tags reachable from
 	// it. setUpstream records the tracking link for a branch that has none.

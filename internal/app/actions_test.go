@@ -276,3 +276,57 @@ func TestPanelActionMenuRunsAVerbAndClosesOnAnythingElse(t *testing.T) {
 		t.Errorf("backing out should stay in the grid, got %v", backedOut.viewMode)
 	}
 }
+
+// Everything that destroys work is parked behind a confirmation, and applying a
+// stash is not one of those things because the stash survives it.
+func TestDestructivePanelVerbsAskFirst(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		panel       panelID
+		verb        rune
+		wantConfirm bool
+	}{
+		{name: "deleting a branch asks", panel: panelBranches, verb: 'd', wantConfirm: true},
+		{name: "dropping a stash asks", panel: panelStashes, verb: 'd', wantConfirm: true},
+		{name: "applying a stash does not", panel: panelStashes, verb: 'a', wantConfirm: false},
+		{name: "pruning the remote asks", panel: panelStatus, verb: 'p', wantConfirm: true},
+		{name: "fetching does not", panel: panelStatus, verb: 'f', wantConfirm: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			m := focusedModel(160, 45)
+			m.focusedPanel = tt.panel
+			m.branches = []models.BranchInfo{{Name: "spike/unheld"}}
+			m.panelActions = true
+
+			ranModel, _ := m.handleDetailKey(keyPress(tt.verb))
+			ran := mustModel(t, ranModel)
+
+			if got := ran.viewMode == ViewModeConfirm; got != tt.wantConfirm {
+				t.Errorf("confirmation shown = %v, want %v", got, tt.wantConfirm)
+			}
+		})
+	}
+}
+
+// A branch git cannot delete is refused before the confirmation, so the prompt
+// never offers something that is going to fail.
+func TestDeleteBranchRefusesACheckedOutBranch(t *testing.T) {
+	t.Parallel()
+
+	m := focusedModel(160, 45)
+	m.focusedPanel = panelBranches
+	m.branches = []models.BranchInfo{{Name: mainBranchName, IsCurrent: true}}
+
+	next, cmd := m.startDeleteBranch()
+	if mustModel(t, next).viewMode == ViewModeConfirm {
+		t.Error("deleting the checked-out branch should be refused, not confirmed")
+	}
+	if cmd == nil {
+		t.Error("the refusal should say why")
+	}
+}

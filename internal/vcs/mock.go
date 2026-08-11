@@ -25,6 +25,44 @@ type MockOperations struct {
 	PushBranchFn            func(ctx context.Context, repoPath, branch string, setUpstream bool) (bool, string, error)
 	SwitchBranchFn          func(ctx context.Context, repoPath, branch string) (bool, string, error)
 	CleanupMergedBranchesFn func(ctx context.Context, repoPath string, squashMerged []string) (bool, string, error)
+	DeleteBranchFn          func(ctx context.Context, repoPath, branch string, force bool) (bool, string, error)
+	ApplyStashFn            func(ctx context.Context, repoPath string, index int) (bool, string, error)
+	DropStashFn             func(ctx context.Context, repoPath string, index int) (bool, string, error)
+}
+
+// DeleteBranch implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (m *MockOperations) DeleteBranch(
+	ctx context.Context, repoPath, branch string, force bool,
+) (bool, string, error) {
+	if m.DeleteBranchFn != nil {
+		return m.DeleteBranchFn(ctx, repoPath, branch, force)
+	}
+
+	return true, "Deleted " + branch, nil
+}
+
+// ApplyStash implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (m *MockOperations) ApplyStash(ctx context.Context, repoPath string, index int) (bool, string, error) {
+	if m.ApplyStashFn != nil {
+		return m.ApplyStashFn(ctx, repoPath, index)
+	}
+
+	return true, "Applied", nil
+}
+
+// DropStash implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (m *MockOperations) DropStash(ctx context.Context, repoPath string, index int) (bool, string, error) {
+	if m.DropStashFn != nil {
+		return m.DropStashFn(ctx, repoPath, index)
+	}
+
+	return true, "Dropped", nil
 }
 
 // GetRepoSummary implements Operations.

@@ -465,6 +465,34 @@ func (j *JJOperations) SwitchBranch(ctx context.Context, repoPath, branch string
 	return true, "Switched to " + branch, nil
 }
 
+// DeleteBranch implements Operations. Bookmarks carry no merged/unmerged
+// distinction for the delete itself, so force changes nothing here.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (j *JJOperations) DeleteBranch(ctx context.Context, repoPath, branch string, _ bool) (bool, string, error) {
+	if _, err := j.runJJ(ctx, repoPath, "bookmark", "delete", branch); err != nil {
+		//nolint:nilerr // failure is reported through the message, not the error field
+		return false, err.Error(), nil
+	}
+
+	return true, "Deleted " + branch, nil
+}
+
+// ApplyStash implements Operations. JJ has no stash: a change is already a
+// change, so there is nothing to restore.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (*JJOperations) ApplyStash(_ context.Context, _ string, _ int) (bool, string, error) {
+	return false, "JJ has no stashes", nil
+}
+
+// DropStash implements Operations. See ApplyStash.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (*JJOperations) DropStash(_ context.Context, _ string, _ int) (bool, string, error) {
+	return false, "JJ has no stashes", nil
+}
+
 // PruneRemote implements Operations.
 //
 //nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)

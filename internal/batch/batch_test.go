@@ -86,6 +86,21 @@ func (*mockVCS) SwitchBranch(_ context.Context, _, _ string) (bool, string, erro
 	return true, testSuccessMsg, nil
 }
 
+//nolint:gocritic // matches vcs.Mutator.DeleteBranch's (ok bool, msg string, err error)
+func (*mockVCS) DeleteBranch(_ context.Context, _, _ string, _ bool) (bool, string, error) {
+	return true, testSuccessMsg, nil
+}
+
+//nolint:gocritic // matches vcs.Mutator.ApplyStash's (ok bool, msg string, err error)
+func (*mockVCS) ApplyStash(_ context.Context, _ string, _ int) (bool, string, error) {
+	return true, testSuccessMsg, nil
+}
+
+//nolint:gocritic // matches vcs.Mutator.DropStash's (ok bool, msg string, err error)
+func (*mockVCS) DropStash(_ context.Context, _ string, _ int) (bool, string, error) {
+	return true, testSuccessMsg, nil
+}
+
 var _ vcs.Mutator = (*mockVCS)(nil)
 
 func TestFetchAll(t *testing.T) {

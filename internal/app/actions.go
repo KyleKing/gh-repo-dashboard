@@ -314,6 +314,7 @@ func panelActionsFor(id panelID) []panelAction {
 		}
 	case panelBranches:
 		return []panelAction{
+			{key: "d", name: "delete", run: Model.startDeleteBranch},
 			{key: "n", name: "new PR", run: Model.startCreatePR},
 			{key: "o", name: "open on remote", run: Model.openBranchURL},
 			{key: "p", name: "push", run: Model.startPushBranch},
@@ -338,10 +339,98 @@ func panelActionsFor(id panelID) []panelAction {
 			{key: "y", name: nameCopyPath, run: Model.copyNotePath},
 		}
 	case panelStashes:
-		return nil
+		return []panelAction{
+			{key: "a", name: "apply here", run: Model.startApplyStash},
+			{key: "d", name: "drop", run: Model.startDropStash},
+		}
 	}
 
 	return nil
+}
+
+// startDeleteBranch deletes the branch under the cursor after confirmation.
+// Deletion is refused for the branch checked out here or held by a peer, since
+// git will not delete either. A branch the squash-merge detection has already
+// vouched for is forced, because git alone cannot see that it was merged.
+func (m Model) startDeleteBranch() (tea.Model, tea.Cmd) {
+	branch, ok := m.actionBranch()
+	if !ok {
+		return m, nil
+	}
+	if branch.IsCurrent {
+		return m, statusCmd(branch.Name + " is checked out here")
+	}
+	if peer, held := models.CheckoutForBranch(m.RepoCheckouts(), branch.Name); held {
+		return m, statusCmd(branch.Name + " is checked out in " + peer.Folder())
+	}
+
+	force := m.deletableBranches[branch.Name]
+	detail := branch.Name
+	if force {
+		detail += " (squash-merged, forces the delete)"
+	}
+
+	return m.confirmAction("Delete branch?", detail,
+		deleteBranchCmd(m.selectedRepo, branch.Name, force))
+}
+
+// startApplyStash restores the selected stash into the working copy. It applies
+// rather than pops, so the stash survives a mistake and needs no confirmation.
+func (m Model) startApplyStash() (tea.Model, tea.Cmd) {
+	stash, ok := m.selectedPanelStash()
+	if !ok {
+		return m, nil
+	}
+
+	return m, applyStashCmd(m.selectedRepo, stash.Index)
+}
+
+// startDropStash discards the selected stash after confirmation. Nothing
+// recovers a dropped stash.
+func (m Model) startDropStash() (tea.Model, tea.Cmd) {
+	stash, ok := m.selectedPanelStash()
+	if !ok {
+		return m, nil
+	}
+
+	return m.confirmAction("Drop stash?", stash.Message+" (cannot be undone)",
+		dropStashCmd(m.selectedRepo, stash.Index))
+}
+
+func deleteBranchCmd(repoPath, branch string, force bool) tea.Cmd {
+	return func() tea.Msg {
+		ops := vcs.GetOperations(repoPath)
+		ok, msg, err := ops.DeleteBranch(context.Background(), repoPath, branch, force)
+		if err != nil {
+			return ActionResultMsg{Path: repoPath, Message: err.Error()}
+		}
+
+		return ActionResultMsg{Path: repoPath, Message: msg, Success: ok}
+	}
+}
+
+func applyStashCmd(repoPath string, index int) tea.Cmd {
+	return func() tea.Msg {
+		ops := vcs.GetOperations(repoPath)
+		ok, msg, err := ops.ApplyStash(context.Background(), repoPath, index)
+		if err != nil {
+			return ActionResultMsg{Path: repoPath, Message: err.Error()}
+		}
+
+		return ActionResultMsg{Path: repoPath, Message: msg, Success: ok}
+	}
+}
+
+func dropStashCmd(repoPath string, index int) tea.Cmd {
+	return func() tea.Msg {
+		ops := vcs.GetOperations(repoPath)
+		ok, msg, err := ops.DropStash(context.Background(), repoPath, index)
+		if err != nil {
+			return ActionResultMsg{Path: repoPath, Message: err.Error()}
+		}
+
+		return ActionResultMsg{Path: repoPath, Message: msg, Success: ok}
+	}
 }
 
 // repoURL is the selected repo's page on its forge, empty when no remote was

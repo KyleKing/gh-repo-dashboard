@@ -543,6 +543,53 @@ func (g *GitOperations) SwitchBranch(ctx context.Context, repoPath, branch strin
 	return true, "Switched to " + branch, nil
 }
 
+// DeleteBranch implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (g *GitOperations) DeleteBranch(ctx context.Context, repoPath, branch string, force bool) (bool, string, error) {
+	flag := "-d"
+	if force {
+		flag = "-D"
+	}
+
+	if _, err := g.runGit(ctx, repoPath, "branch", flag, branch); err != nil {
+		//nolint:nilerr // failure is reported through the message, not the error field
+		return false, err.Error(), nil
+	}
+
+	return true, "Deleted " + branch, nil
+}
+
+// ApplyStash implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (g *GitOperations) ApplyStash(ctx context.Context, repoPath string, index int) (bool, string, error) {
+	ref := stashRef(index)
+	if _, err := g.runGit(ctx, repoPath, "stash", "apply", ref); err != nil {
+		//nolint:nilerr // failure is reported through the message, not the error field
+		return false, err.Error(), nil
+	}
+
+	return true, "Applied " + ref, nil
+}
+
+// DropStash implements Operations.
+//
+//nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
+func (g *GitOperations) DropStash(ctx context.Context, repoPath string, index int) (bool, string, error) {
+	ref := stashRef(index)
+	if _, err := g.runGit(ctx, repoPath, "stash", "drop", ref); err != nil {
+		//nolint:nilerr // failure is reported through the message, not the error field
+		return false, err.Error(), nil
+	}
+
+	return true, "Dropped " + ref, nil
+}
+
+func stashRef(index int) string {
+	return "stash@{" + strconv.Itoa(index) + "}"
+}
+
 // PruneRemote implements Operations.
 //
 //nolint:gocritic // matches the Operations interface's (ok bool, msg string, err error)
