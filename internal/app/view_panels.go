@@ -16,7 +16,7 @@ import (
 const (
 	panelBorderWidth   = 2
 	sideColumnFraction = 100
-	sideColumnPercent  = 42
+	sideColumnPercent  = 46
 	minSideColumnWidth = 34
 	minDetailPaneWidth = 30
 	gridChromeHeight   = 4
@@ -347,9 +347,18 @@ func (m Model) renderPanelGrid() string {
 	return b.String()
 }
 
+// Width of the focused repo view. The single-column views cap at
+// maxContentWidth because a row past that costs more to scan than the density
+// is worth; the grid spends its extra width on a second column instead, so it
+// keeps a proportional margin and a much later cap.
+const (
+	gridWidthPercent = 90
+	gridMaxWidth     = 200
+)
+
 // gridWidth is the width the focused repo view renders into.
 func (m Model) gridWidth() int {
-	return contentWidth(m.width)
+	return max(min(m.width*gridWidthPercent/percentDenominator, gridMaxWidth), minContentWidth)
 }
 
 // gridStacked reports whether the grid drops its side-by-side split, either
@@ -373,16 +382,16 @@ func (m Model) detailPaneSize() paneSize {
 	if !gridStacked(m.isCompact(), grid) {
 		return paneSize{
 			width:  grid - panelSideWidth(grid) - panelBorderWidth,
-			height: body - panelChromeHeight,
+			height: panelRowsHeight(body),
 		}
 	}
 
 	panels := m.panelSet(grid - panelBorderWidth)
-	compressed := panelChromeHeight + 1
+	compressed := panelMinHeight
 
 	return paneSize{
 		width:  grid - panelBorderWidth,
-		height: max(body-compressed*len(panels)-panelChromeHeight, minStackedDetailHeight),
+		height: max(panelRowsHeight(body-compressed*len(panels)), minStackedDetailHeight),
 	}
 }
 
@@ -395,7 +404,7 @@ type paneSize struct {
 // beside them at the full body height.
 func (m Model) renderSplitGrid(panels []panelContent, focused, sideWidth, detailWidth, height int) string {
 	column := m.renderPanelColumn(panels, focused, sideWidth, height)
-	detail := m.renderPanelDetail(detailWidth-panelBorderWidth, height-panelChromeHeight)
+	detail := m.renderPanelDetail(detailWidth-panelBorderWidth, panelRowsHeight(height))
 
 	return lipgloss.JoinHorizontal(lipgloss.Top,
 		column,
@@ -413,8 +422,8 @@ const minStackedDetailHeight = 3
 // The stack scrolls when it outgrows the terminal, so the focused panel and its
 // detail stay on screen.
 func (m Model) renderStackedGrid(panels []panelContent, focused, width, height int) string {
-	compressed := panelChromeHeight + 1
-	detailHeight := max(height-compressed*len(panels)-panelChromeHeight, minStackedDetailHeight)
+	compressed := panelMinHeight
+	detailHeight := max(panelRowsHeight(height-compressed*len(panels)), minStackedDetailHeight)
 
 	var lines []string
 	focusStart, focusEnd := 0, 0
@@ -424,14 +433,15 @@ func (m Model) renderStackedGrid(panels []panelContent, focused, width, height i
 			focusStart = len(lines)
 		}
 
-		rows := panelRows(p, compressed-panelChromeHeight, m.detailCursor, i == focused)
+		rows := panelRows(p, panelRowsHeight(compressed), m.detailCursor, i == focused)
 		box := panelBox(panelTitle(&p, i == focused), rows, width, compressed,
 			focusBorder(!m.detailFocused, i == focused))
 		lines = append(lines, strings.Split(box, "\n")...)
 
 		if i == focused {
 			detail := panelBox(m.focusedPanelTitle(panels, focused),
-				m.renderPanelDetail(width-panelBorderWidth, detailHeight), width, detailHeight+panelChromeHeight,
+				m.renderPanelDetail(width-panelBorderWidth, detailHeight), width,
+				detailHeight+panelChromeHeight+panelTitleHeight,
 				focusBorder(m.detailFocused, true))
 			lines = append(lines, strings.Split(detail, "\n")...)
 			focusEnd = len(lines)
@@ -466,7 +476,7 @@ func (m Model) renderPanelColumn(panels []panelContent, focused, width, height i
 	boxes := make([]string, 0, len(panels))
 	for i, p := range panels {
 		boxes = append(boxes, panelBox(panelTitle(&p, i == focused),
-			panelRows(p, heights[i]-panelChromeHeight, m.detailCursor, i == focused),
+			panelRows(p, panelRowsHeight(heights[i]), m.detailCursor, i == focused),
 			width, heights[i], focusBorder(!m.detailFocused, i == focused)))
 	}
 
@@ -515,7 +525,7 @@ func panelBox(title, content string, width, height int, border color.Color) stri
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(border).
 		Width(width).
-		Height(max(height, panelChromeHeight+1)).
+		Height(max(height, panelMinHeight)).
 		Render(title + "\n" + content)
 }
 

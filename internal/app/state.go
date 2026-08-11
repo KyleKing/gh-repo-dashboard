@@ -108,7 +108,7 @@ func (m Model) focusedPanelName() string {
 		return ""
 	}
 
-	panels := m.panelSet(contentWidth(m.width))
+	panels := m.panelSet(m.gridWidth())
 	for _, p := range panels {
 		if p.id == m.focusedPanel {
 			return strings.ToLower(p.title)

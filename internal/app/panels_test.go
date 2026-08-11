@@ -2,6 +2,7 @@
 package app
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -216,4 +217,51 @@ func mustUpdate(t *testing.T, m *Model, msg tea.Msg) tea.Model {
 	updated, _ := m.Update(msg)
 
 	return updated
+}
+
+// TestGrid_FillsTheTerminalExactly pins the two geometry bugs the grid had:
+// panel boxes never counted their own title line, so the column ran past the
+// bottom, and the lines nothing claimed were left unspent, so it ended ragged
+// beside a full-height detail pane.
+func TestGrid_FillsTheTerminalExactly(t *testing.T) {
+	t.Parallel()
+
+	sizes := [][2]int{{100, 30}, {160, 40}, {200, 60}, {80, 24}}
+
+	for _, size := range sizes {
+		t.Run(strconv.Itoa(size[0])+"x"+strconv.Itoa(size[1]), func(t *testing.T) {
+			t.Parallel()
+
+			m := focusedModel(size[0], size[1])
+
+			if got := strings.Count(m.renderPanelGrid(), "\n") + 1; got != size[1] {
+				t.Errorf("grid rendered %d lines into a %d-line terminal", got, size[1])
+			}
+
+			width := m.gridWidth()
+			if gridStacked(m.isCompact(), width) {
+				return
+			}
+
+			side := panelSideWidth(width)
+			column := m.renderPanelColumn(m.panelSet(side-panelBorderWidth), 1, side, m.height-gridChromeHeight)
+
+			if got, want := strings.Count(column, "\n")+1, m.height-gridChromeHeight; got != want {
+				t.Errorf("panel column is %d lines beside a %d-line detail pane", got, want)
+			}
+		})
+	}
+}
+
+func TestGridWidth_UsesMoreOfAWideTerminal(t *testing.T) {
+	t.Parallel()
+
+	if got := focusedModel(200, 50).gridWidth(); got <= maxContentWidth {
+		t.Errorf("grid width at 200 cells is %d; it must outgrow the single-column cap of %d",
+			got, maxContentWidth)
+	}
+
+	if got := focusedModel(400, 50).gridWidth(); got != gridMaxWidth {
+		t.Errorf("grid width at 400 cells is %d, want the cap of %d", got, gridMaxWidth)
+	}
 }

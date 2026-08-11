@@ -47,8 +47,20 @@ const (
 	relevanceUrgent  = 9
 )
 
-// panelChromeHeight is the border a panel spends whatever its content.
-const panelChromeHeight = 2
+// A panel spends panelChromeHeight on its border and panelTitleHeight on its
+// title before a single row fits, so panelRowsHeight is what a box of a given
+// outer height has left for content.
+const (
+	panelChromeHeight = 2
+	panelTitleHeight  = 1
+)
+
+func panelRowsHeight(height int) int {
+	return height - panelChromeHeight - panelTitleHeight
+}
+
+// panelMinHeight is the shortest a panel can be drawn: its chrome plus one row.
+const panelMinHeight = panelChromeHeight + panelTitleHeight + 1
 
 // Panel tables are narrower than the full-width tab tables were, so each one
 // carries only the columns that survive a half-width pane.
@@ -102,7 +114,7 @@ func distributePanelHeights(panels []panelContent, focused, available int) []int
 		return heights
 	}
 
-	minimum := panelChromeHeight + 1
+	minimum := panelMinHeight
 	for i := range heights {
 		heights[i] = minimum
 	}
@@ -149,7 +161,36 @@ func distributePanelHeights(panels []panelContent, focused, available int) []int
 		surplus -= spent
 	}
 
+	spreadSurplus(heights, panels, surplus)
+
 	return heights
+}
+
+// spreadSurplus hands out the lines nothing asked for, in proportion to
+// relevance, so the panel column reaches the bottom of the grid instead of
+// ending ragged beside a full-height detail pane.
+func spreadSurplus(heights []int, panels []panelContent, surplus int) {
+	if surplus <= 0 {
+		return
+	}
+
+	weight := 0
+	for i := range panels {
+		weight += panels[i].relevance
+	}
+
+	if weight > 0 {
+		for i := range panels {
+			share := min(surplus*panels[i].relevance/weight, surplus)
+			heights[i] += share
+			surplus -= share
+		}
+	}
+
+	for i := 0; surplus > 0; i = (i + 1) % len(heights) {
+		heights[i]++
+		surplus--
+	}
 }
 
 // panelTitle labels a panel's border with its jump key and item count.

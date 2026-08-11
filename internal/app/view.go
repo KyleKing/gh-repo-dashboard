@@ -79,11 +79,14 @@ func (m Model) renderScreen() string {
 // widens past the single-column content width, and only to carry the preview
 // panel beside it.
 func (m Model) frameWidth() int {
-	if m.viewMode == ViewModeRepoList {
+	switch m.viewMode {
+	case ViewModeRepoList:
 		return frameContentWidth(m.width, m.height)
+	case ViewModeRepoDetail:
+		return m.gridWidth()
+	default:
+		return contentWidth(m.width)
 	}
-
-	return contentWidth(m.width)
 }
 
 // selfCentering reports whether the current view already positions itself
