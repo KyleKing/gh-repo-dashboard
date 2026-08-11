@@ -174,7 +174,10 @@ the cursor uses Surface0.
 ### View hierarchy
 
 `ViewModeRepoList` (initial) lists repositories with
-Name/Branch/Status/Peers/PR/Template/Modified columns. `ViewModeRepoDetail` (Enter) is a
+Name/Branch/Status/Peers/PR/Template/Modified columns. A linked checkout whose parent
+was discovered too is left out of that list: a git worktree or jj workspace is a place
+inside its parent repo, and the parent's Peers panel already names it. Scanned on its
+own it has no parent in the set and stays listed. `ViewModeRepoDetail` (Enter) is a
 grid of always-visible panels (Status, Branches, PRs, Peers, Stashes, Notes) beside a
 detail pane rendering whatever the cursor sits on; when discovery finds exactly one repo
 it opens directly, and esc still falls back to the one-row list. `ViewModePalette`

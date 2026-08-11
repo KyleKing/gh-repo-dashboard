@@ -1567,7 +1567,7 @@ func (m *Model) completeCommand() {
 
 func (m *Model) updateFilteredPaths() {
 	m.filteredPaths = filters.FilterAndSortMulti(
-		m.repoPaths,
+		m.listableRepos(),
 		m.summaries,
 		m.activeFilters,
 		m.activeSorts,

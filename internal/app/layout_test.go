@@ -165,3 +165,30 @@ func TestFrame_CentersContentAndLeavesBlankLinesEmpty(t *testing.T) {
 		}
 	}
 }
+
+// TestList_HidesAWorktreeWhoseParentIsAlsoDiscovered keeps a linked checkout
+// out of the fleet count: it is a place inside its parent repo, and the
+// parent's Peers panel already names it.
+func TestList_HidesAWorktreeWhoseParentIsAlsoDiscovered(t *testing.T) {
+	t.Parallel()
+
+	m := New([]string{"/dev"}, 1)
+	m.width, m.height = 160, 40
+	m.summaries = map[string]models.RepoSummary{
+		"/dev/alpha":    {Path: "/dev/alpha", Branch: mainBranchName},
+		"/dev/alpha-wt": {Path: "/dev/alpha-wt", Branch: "feature", ParentPath: "/dev/alpha"},
+		"/dev/orphan":   {Path: "/dev/orphan", Branch: "feature", ParentPath: "/elsewhere/parent"},
+	}
+	m.repoPaths = []string{"/dev/alpha", "/dev/alpha-wt", "/dev/orphan"}
+	m.updateFilteredPaths()
+
+	if got := m.filteredPaths; len(got) != 2 {
+		t.Fatalf("listed %v, want the worktree dropped and the orphan kept", got)
+	}
+
+	for _, path := range m.filteredPaths {
+		if path == "/dev/alpha-wt" {
+			t.Error("a worktree whose parent is on screen must not be listed as its own repo")
+		}
+	}
+}

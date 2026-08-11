@@ -471,6 +471,27 @@ func (m Model) RepoCheckouts() []models.PeerCheckout {
 	)
 }
 
+// listableRepos are the discovered repos the fleet list stands for. A linked
+// checkout whose parent was discovered too is dropped: a worktree or jj
+// workspace is a place inside its parent repo, and the parent's Peers panel
+// already names it, so listing it again would double-count the fleet. Scanned
+// on its own, with no parent in the set, it is still the repo you are in and
+// stays listed.
+func (m Model) listableRepos() []string {
+	paths := make([]string, 0, len(m.repoPaths))
+
+	for _, path := range m.repoPaths {
+		parent := m.summaries[path].ParentPath
+		if _, discovered := m.summaries[parent]; parent != "" && discovered {
+			continue
+		}
+
+		paths = append(paths, path)
+	}
+
+	return paths
+}
+
 // SelectedSummary returns the RepoSummary at the cursor and whether it was found.
 func (m Model) SelectedSummary() (models.RepoSummary, bool) {
 	if m.cursor >= 0 && m.cursor < len(m.filteredPaths) {

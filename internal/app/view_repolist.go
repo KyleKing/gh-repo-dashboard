@@ -55,9 +55,11 @@ func (m Model) renderRepoListBreadcrumbs() string {
 
 	badges := []string{}
 
+	listable := len(m.listableRepos())
+
 	repoCount := fmt.Sprintf("%d repos", len(m.filteredPaths))
-	if len(m.filteredPaths) != len(m.repoPaths) {
-		repoCount = fmt.Sprintf("%d/%d repos", len(m.filteredPaths), len(m.repoPaths))
+	if len(m.filteredPaths) != listable {
+		repoCount = fmt.Sprintf("%d/%d repos", len(m.filteredPaths), listable)
 	}
 	badges = append(badges, styles.Badge(repoCount, styles.CountBadgeStyle))
 
