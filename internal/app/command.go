@@ -16,6 +16,8 @@ import (
 const (
 	nameAll      = "all"
 	nameBranch   = "branch"
+	nameCopyPath = "copy path"
+	nameFetch    = "fetch"
 	nameFilter   = "filter"
 	nameHelp     = "help"
 	nameQuit     = "quit"

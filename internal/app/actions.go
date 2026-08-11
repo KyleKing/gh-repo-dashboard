@@ -1,8 +1,15 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"slices"
+	"strconv"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -297,22 +304,178 @@ type panelAction struct {
 // panelActionsFor returns the verbs the focused panel's selection supports.
 func panelActionsFor(id panelID) []panelAction {
 	switch id {
+	case panelStatus:
+		return []panelAction{
+			{key: "c", name: "cleanup merged", run: Model.startRepoCleanupMerged},
+			{key: "f", name: nameFetch, run: Model.startRepoFetch},
+			{key: "o", name: "open on remote", run: Model.openRepoURL},
+			{key: "p", name: "prune remote", run: Model.startRepoPruneRemote},
+			{key: "y", name: nameCopyPath, run: Model.copyRepoPath},
+		}
 	case panelBranches:
 		return []panelAction{
 			{key: "n", name: "new PR", run: Model.startCreatePR},
+			{key: "o", name: "open on remote", run: Model.openBranchURL},
 			{key: "p", name: "push", run: Model.startPushBranch},
 			{key: "s", name: "switch to it", run: Model.startSwitchBranch},
+			{key: "y", name: "copy name", run: Model.copyBranchName},
 		}
 	case panelPRs:
 		return []panelAction{
 			{key: "c", name: "check out here", run: Model.startCheckoutPR},
 			{key: "m", name: "squash-merge", run: Model.startSquashMergePR},
+			{key: "o", name: "open in browser", run: Model.openPRURL},
+			{key: "u", name: "copy URL", run: Model.copyPRURL},
+			{key: "y", name: "copy number", run: Model.copyPRNumber},
 		}
-	case panelStatus, panelPeers, panelStashes, panelNotes:
+	case panelPeers:
+		return []panelAction{
+			{key: "y", name: nameCopyPath, run: Model.copyPeerPath},
+		}
+	case panelNotes:
+		return []panelAction{
+			{key: "e", name: "edit in $EDITOR", run: Model.editSelectedNote},
+			{key: "y", name: nameCopyPath, run: Model.copyNotePath},
+		}
+	case panelStashes:
 		return nil
 	}
 
 	return nil
+}
+
+// repoURL is the selected repo's page on its forge, empty when no remote was
+// detected. The remote is recorded as "owner/repo", so the host is assumed to
+// be GitHub, which is the only forge the PR integration speaks to anyway.
+func (m Model) repoURL() string {
+	if repo := m.summaries[m.selectedRepo].RemoteRepo; repo != "" {
+		return "https://github.com/" + repo
+	}
+
+	return ""
+}
+
+func (m Model) openRepoURL() (tea.Model, tea.Cmd) {
+	url := m.repoURL()
+	if url == "" {
+		return m, statusCmd("No remote to open")
+	}
+
+	return m, openURLCmd(url)
+}
+
+func (m Model) copyRepoPath() (tea.Model, tea.Cmd) {
+	return m, copyToClipboardCmd(m.selectedRepo)
+}
+
+func (m Model) startRepoFetch() (tea.Model, tea.Cmd) {
+	return m.confirmBatchTask(taskFetchAll, false, []string{m.selectedRepo}, batchFetchAllCmd)
+}
+
+func (m Model) startRepoPruneRemote() (tea.Model, tea.Cmd) {
+	return m.confirmBatchTask("Prune Remote", true, []string{m.selectedRepo}, batchPruneRemoteCmd)
+}
+
+func (m Model) startRepoCleanupMerged() (tea.Model, tea.Cmd) {
+	return m.confirmBatchTask(taskCleanupMerged, true, []string{m.selectedRepo}, batchCleanupMergedCmd)
+}
+
+func (m Model) openBranchURL() (tea.Model, tea.Cmd) {
+	branch, ok := m.actionBranch()
+	url := m.repoURL()
+	if !ok || url == "" {
+		return m, statusCmd("No remote branch to open")
+	}
+
+	return m, openURLCmd(url + "/tree/" + branch.Name)
+}
+
+func (m Model) copyBranchName() (tea.Model, tea.Cmd) {
+	branch, ok := m.actionBranch()
+	if !ok {
+		return m, nil
+	}
+
+	return m, copyToClipboardCmd(branch.Name)
+}
+
+func (m Model) openPRURL() (tea.Model, tea.Cmd) {
+	pr, ok := m.actionPR()
+	if !ok || pr.URL == "" {
+		return m, statusCmd("No pull request URL to open")
+	}
+
+	return m, openURLCmd(pr.URL)
+}
+
+func (m Model) copyPRURL() (tea.Model, tea.Cmd) {
+	pr, ok := m.actionPR()
+	if !ok || pr.URL == "" {
+		return m, statusCmd("No pull request URL to copy")
+	}
+
+	return m, copyToClipboardCmd(pr.URL)
+}
+
+func (m Model) copyPRNumber() (tea.Model, tea.Cmd) {
+	pr, ok := m.actionPR()
+	if !ok {
+		return m, nil
+	}
+
+	return m, copyToClipboardCmd("#" + strconv.Itoa(pr.Number))
+}
+
+func (m Model) copyPeerPath() (tea.Model, tea.Cmd) {
+	checkout, ok := m.selectedPanelCheckout()
+	if !ok {
+		return m, nil
+	}
+
+	return m, copyToClipboardCmd(checkout.Path)
+}
+
+func (m Model) copyNotePath() (tea.Model, tea.Cmd) {
+	note, ok := m.selectedPanelNote()
+	if !ok {
+		return m, nil
+	}
+
+	return m, copyToClipboardCmd(filepath.Join(m.selectedRepo, note.Name))
+}
+
+// editSelectedNote hands the terminal to $EDITOR for the note under the cursor
+// and reloads the repo's detail once it exits, so an edit made there is on
+// screen without a refresh.
+func (m Model) editSelectedNote() (tea.Model, tea.Cmd) {
+	note, ok := m.selectedPanelNote()
+	if !ok {
+		return m, nil
+	}
+
+	// The editor is split on spaces rather than run through a shell, so a
+	// $EDITOR carrying flags ("code -w") works without the string ever reaching
+	// an interpreter.
+	editor := strings.Fields(cmp.Or(os.Getenv("VISUAL"), os.Getenv("EDITOR")))
+	if len(editor) == 0 {
+		return m, statusCmd("Set $EDITOR or $VISUAL to edit notes here")
+	}
+
+	path := filepath.Join(m.selectedRepo, note.Name)
+	repo, name := m.selectedRepo, note.Name
+
+	args := append(slices.Clone(editor[1:]), path)
+	// #nosec G204,G702 -- no shell is involved: the binary comes from the
+	// operator's own environment and the path is a note file this scan read.
+	editorCmd := exec.CommandContext(context.Background(), editor[0], args...)
+
+	return m, tea.ExecProcess(editorCmd, func(err error) tea.Msg {
+		if err != nil {
+			return StatusMsg{Message: "Editor exited with " + err.Error()}
+		}
+
+		return ActionResultMsg{Path: repo, Message: "Reloaded after editing " + name, Success: true}
+	})
 }
 
 // handlePanelActionKey answers the open verb menu: a verb key runs it against
