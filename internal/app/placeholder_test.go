@@ -66,12 +66,12 @@ func TestRepoList_DiscoveringIsDistinctFromNoRepos(t *testing.T) {
 	m.height = 30
 
 	m.loading = true
-	if got := m.renderTable(); !strings.Contains(got, "Discovering repositories...") {
+	if got := m.renderTable(m.listBodyHeight()); !strings.Contains(got, "Discovering repositories...") {
 		t.Errorf("while discovering, got %q", got)
 	}
 
 	m.loading = false
-	if got := m.renderTable(); !strings.Contains(got, "No repositories found") {
+	if got := m.renderTable(m.listBodyHeight()); !strings.Contains(got, "No repositories found") {
 		t.Errorf("once settled with no repos, got %q", got)
 	}
 }
@@ -86,7 +86,7 @@ func TestRepoList_FilteredToNothingSaysSo(t *testing.T) {
 	m.repoPaths = []string{"/dev/alpha"}
 	m.filteredPaths = nil
 
-	got := m.renderTable()
+	got := m.renderTable(m.listBodyHeight())
 	if !strings.Contains(got, "No repositories match the active filters") {
 		t.Errorf("with repos present but filtered out, got %q", got)
 	}

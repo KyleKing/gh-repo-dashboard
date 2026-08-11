@@ -12,6 +12,14 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
 
+// Vertical budget of the repo list. The body is sized once and rendered to
+// exactly that many lines, so nothing the body does (a notes preview opening,
+// a shorter repo set) can move the footer.
+const (
+	listChromeHeight   = 6
+	searchChromeHeight = 2
+)
+
 func (m Model) renderRepoList() string {
 	var b strings.Builder
 
@@ -25,20 +33,21 @@ func (m Model) renderRepoList() string {
 		b.WriteString("\n\n")
 	}
 
-	b.WriteString(m.renderListWithPreview())
-
-	footer := m.renderFooter()
-	footerHeight := 1
-	tableLines := strings.Count(b.String(), "\n")
-	paddingNeeded := m.height - tableLines - footerHeight - 1
-	if paddingNeeded > 0 {
-		b.WriteString(strings.Repeat("\n", paddingNeeded))
-	} else {
-		b.WriteString("\n")
-	}
-	b.WriteString(footer)
+	b.WriteString(m.renderListWithPreview(m.listBodyHeight()))
+	b.WriteString("\n\n")
+	b.WriteString(m.renderFooter())
 
 	return b.String()
+}
+
+// listBodyHeight is how many lines the list and its preview panel share.
+func (m Model) listBodyHeight() int {
+	height := m.height - listChromeHeight
+	if m.searching {
+		height -= searchChromeHeight
+	}
+
+	return max(height, 1)
 }
 
 func (m Model) renderRepoListBreadcrumbs() string {
@@ -133,23 +142,37 @@ func appendSortBadges(parts []string, activeSorts []models.ActiveSort) []string 
 }
 
 // renderListWithPreview renders the repo table, mounting the overview panel
-// beside it when the terminal is wide enough to carry one.
-func (m Model) renderListWithPreview() string {
-	list := m.renderTable()
+// beside it when the terminal is wide enough to carry one. The result is
+// always exactly height lines.
+func (m Model) renderListWithPreview(height int) string {
+	list := m.renderTable(height)
 
 	panel := panelWidth(m.width, m.height)
 	if panel == 0 || len(m.filteredPaths) == 0 || m.cursor >= len(m.filteredPaths) {
-		return list
+		return fitBlock(list, height)
 	}
 
 	summary := m.summaries[m.filteredPaths[m.cursor]]
 
 	overview := m.renderOverview(summary, overviewOpts{width: panel, standalone: true})
 
-	return joinListAndPanel(list, overview, listWidth(m.width, m.height), panel)
+	return joinListAndPanel(list, overview, listWidth(m.width, m.height), panel, height)
 }
 
-func (m Model) renderTable() string {
+// fitBlock pads or truncates a block of lines to exactly height lines.
+func fitBlock(block string, height int) string {
+	lines := strings.Split(block, "\n")
+	if len(lines) > height {
+		lines = lines[:height]
+	}
+	for len(lines) < height {
+		lines = append(lines, "")
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func (m Model) renderTable(height int) string {
 	if len(m.filteredPaths) == 0 {
 		if m.loading {
 			return m.loadingPlaceholder("Discovering repositories")
@@ -189,29 +212,62 @@ func (m Model) renderTable() string {
 		} else {
 			rows = append(rows, m.renderTableRow(summary, i == m.cursor, layout))
 		}
+	}
 
-		if i == m.cursor && m.notesPreviewOpen {
-			if preview := renderNotesPreview(summary); preview != "" {
-				rows = append(rows, preview)
-			}
-		}
+	if preview := m.notesPreviewHeight(height); preview > 0 {
+		rows = append(rows, fitBlock(
+			strings.Join(elideMiddle(m.notesPreviewLines(width), preview), "\n"), preview))
 	}
 
 	return strings.Join(rows, "\n")
 }
+
+// Notes preview geometry. Opening the preview is a request to read the notes,
+// so it takes most of the body and leaves the list a few rows for context.
+const (
+	notesPreviewPercent = 80
+	notesPreviewMinRows = 4
+	listMinRows         = 3
+)
+
+// notesPreviewHeight is how many of the body's lines the notes preview holds,
+// or zero when it is closed. It depends only on the body height, never on the
+// selected repo, so scrolling between a repo with notes and one without cannot
+// resize the list under the cursor.
+func (m Model) notesPreviewHeight(body int) int {
+	if !m.notesPreviewOpen {
+		return 0
+	}
+
+	headerRows := 1
+	if m.isCompact() {
+		headerRows = 0
+	}
+
+	room := body - headerRows - listMinRows
+	if room < notesPreviewMinRows {
+		return 0
+	}
+
+	return min(body*notesPreviewPercent/percentDenominator, room)
+}
+
+// percentDenominator scales the percentage budgets above; elisionEnds is how
+// many ends of a list survive a middle elision.
+const (
+	percentDenominator = 100
+	elisionEnds        = 2
+)
 
 // visibleRepoRange returns the half-open slice of filteredPaths that fits the
 // window, keeping the cursor near the middle. The rowHeight argument is how
 // many terminal lines one record covers, so the compact layout scrolls by
 // records rather than by lines.
 func (m Model) visibleRepoRange(rowHeight int) repoWindow {
-	previewLineCount := 0
-	if m.notesPreviewOpen && m.cursor < len(m.filteredPaths) {
-		previewLineCount = len(m.summaries[m.filteredPaths[m.cursor]].NotesFiles)
-	}
+	body := m.listBodyHeight()
 
-	availableLines := m.height - nonListRowHeight - previewLineCount
-	if m.searching {
+	availableLines := body - m.notesPreviewHeight(body)
+	if !m.isCompact() {
 		availableLines--
 	}
 
@@ -239,26 +295,83 @@ type repoWindow struct {
 	end   int
 }
 
-// renderNotesPreview renders one line per detected notes file, showing its
-// name and first line. It reuses the first line already captured during
-// detection, so opening the preview requires no extra file reads.
-func renderNotesPreview(s models.RepoSummary) string {
-	if len(s.NotesFiles) == 0 {
-		return ""
+// notesPreviewLines renders the selected repo's notes below the list: a rule
+// naming each file, then its text.
+func (m Model) notesPreviewLines(width int) []string {
+	if m.cursor >= len(m.filteredPaths) {
+		return nil
 	}
 
-	lines := make([]string, len(s.NotesFiles))
-	for i, nf := range s.NotesFiles {
-		firstLine := nf.FirstLine
-		if firstLine == "" {
-			firstLine = "(empty)"
-		}
+	path := m.filteredPaths[m.cursor]
+	summary := m.summaries[path]
 
-		lines[i] = "     " + styles.NotesPreviewNameStyle.Render(nf.Name+":") + " " +
-			styles.NotesPreviewLineStyle.Render(firstLine)
+	if len(summary.NotesFiles) == 0 {
+		return []string{notesPreviewRule("no notes", width)}
 	}
 
-	return strings.Join(lines, "\n")
+	contents, loaded := m.notesPreview[path]
+	if !loaded {
+		return []string{notesPreviewRule("reading notes…", width)}
+	}
+
+	var lines []string
+	for i := range contents {
+		lines = append(lines, notesPreviewRule(contents[i].Name, width))
+		lines = append(lines, notesBodyLines(contents[i].Content, width)...)
+	}
+
+	return lines
+}
+
+// notesPreviewRule draws the labeled rule that opens the preview region.
+func notesPreviewRule(label string, width int) string {
+	rule := strings.Repeat("─", max(width-lipgloss.Width(label)-notesRuleLead-notesRuleSpaces, 0))
+
+	return styles.SubtitleStyle.Render(strings.Repeat("─", notesRuleLead)+" ") +
+		styles.NotesPreviewNameStyle.Render(label) +
+		styles.SubtitleStyle.Render(" "+rule)
+}
+
+// notesRuleSpaces is the blank on each side of the rule's label.
+const (
+	notesRuleLead   = 2
+	notesRuleSpaces = 2
+)
+
+// notesBodyLines styles a note's text one line per source line, cutting the
+// middle of any line too wide for the region.
+func notesBodyLines(content string, width int) []string {
+	body := strings.Split(strings.TrimRight(content, "\n"), "\n")
+	if len(body) == 1 && strings.TrimSpace(body[0]) == "" {
+		return []string{styles.SubtitleStyle.Render("  (empty)")}
+	}
+
+	lines := make([]string, len(body))
+	for i, line := range body {
+		lines[i] = styles.NotesPreviewLineStyle.Render(
+			table.TruncateMiddle("  "+strings.TrimRight(line, " \t"), width))
+	}
+
+	return lines
+}
+
+// elideMiddle drops the middle of lines until it fits height, marking the cut,
+// so the newest entries at the end of a note survive alongside the oldest.
+func elideMiddle(lines []string, height int) []string {
+	if len(lines) <= height || height < 1 {
+		return lines
+	}
+
+	kept := height - 1
+	head := kept / elisionEnds
+	tail := kept - head
+
+	out := make([]string, 0, height)
+	out = append(out, lines[:head]...)
+	out = append(out, styles.SubtitleStyle.Render(
+		"  ⋯ "+strconv.Itoa(len(lines)-head-tail)+" more lines ⋯"))
+
+	return append(out, lines[len(lines)-tail:]...)
 }
 
 // formatPRCell formats a repo's PR-column text: "#N" with a review-status

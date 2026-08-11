@@ -61,13 +61,13 @@ func TestWidePanelTracksTheCursor(t *testing.T) {
 
 	m := compactModel(180, 40)
 
-	first := plainText(m.renderListWithPreview())
+	first := plainText(m.renderListWithPreview(m.listBodyHeight()))
 	if !strings.Contains(first, "alpha") || !strings.Contains(first, "Stashes") {
 		t.Fatalf("panel missing for the first repo:\n%s", first)
 	}
 
 	m.cursor = 1
-	second := plainText(m.renderListWithPreview())
+	second := plainText(m.renderListWithPreview(m.listBodyHeight()))
 	if !strings.Contains(second, ".doing") {
 		t.Errorf("panel did not follow the cursor to bravo:\n%s", second)
 	}

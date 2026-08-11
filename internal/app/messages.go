@@ -65,6 +65,13 @@ type DetailLoadedMsg struct {
 	DeletableBranches map[string]bool
 }
 
+// NotesContentLoadedMsg reports a repo's notes files read in full, for the
+// repo list's notes preview.
+type NotesContentLoadedMsg struct {
+	Path  string
+	Files []models.NoteFileContent
+}
+
 // BranchDetailLoadedMsg reports the loaded detail for a single branch.
 type BranchDetailLoadedMsg struct {
 	Path   string

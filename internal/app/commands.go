@@ -107,6 +107,12 @@ func loadCopierInfoCmd(path string) tea.Cmd {
 	}
 }
 
+func loadNotesContentCmd(path string, files []models.NoteFile) tea.Cmd {
+	return func() tea.Msg {
+		return NotesContentLoadedMsg{Path: path, Files: models.ReadNotesFiles(path, files)}
+	}
+}
+
 func loadDetailCmd(path string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()

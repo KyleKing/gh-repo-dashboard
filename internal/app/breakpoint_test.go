@@ -63,7 +63,7 @@ func TestCompactLayoutRendersTwoLineRecords(t *testing.T) {
 	t.Parallel()
 
 	m := compactModel(80, 24)
-	lines := strings.Split(strings.TrimRight(m.renderTable(), "\n"), "\n")
+	lines := strings.Split(strings.TrimRight(m.renderTable(m.listBodyHeight()), "\n"), "\n")
 
 	if len(lines) != len(m.filteredPaths)*compactRowHeight {
 		t.Fatalf("got %d lines for %d repos, want %d",
@@ -100,7 +100,7 @@ func TestStandardLayoutKeepsTheColumnHeader(t *testing.T) {
 	t.Parallel()
 
 	m := compactModel(120, 35)
-	first := strings.Split(m.renderTable(), "\n")[0]
+	first := strings.Split(m.renderTable(m.listBodyHeight()), "\n")[0]
 
 	if !strings.Contains(plainText(first), "NAME") {
 		t.Errorf("standard layout dropped its header: %q", plainText(first))

@@ -42,6 +42,9 @@ type Model struct {
 	filteredPaths    []string
 	cursor           int
 	notesPreviewOpen bool
+	// notesPreview caches each repo's notes read in full, keyed by repo path,
+	// so reopening the preview or scrolling back never re-reads a file.
+	notesPreview map[string][]models.NoteFileContent
 
 	activeFilters []models.ActiveFilter
 	activeSorts   []models.ActiveSort
@@ -183,6 +186,7 @@ func New(scanPaths []string, maxDepth int) Model {
 		scanPaths:     scanPaths,
 		maxDepth:      maxDepth,
 		summaries:     make(map[string]models.RepoSummary),
+		notesPreview:  make(map[string][]models.NoteFileContent),
 		prCount:       make(map[string]int),
 		activeFilters: activeFilters,
 		activeSorts:   sorts,

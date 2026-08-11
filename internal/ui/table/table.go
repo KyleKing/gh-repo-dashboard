@@ -27,6 +27,9 @@ const Gutter = 2
 // Ellipsis replaces the tail of a cell that does not fit its column.
 const Ellipsis = "…"
 
+// truncationEnds is how many ends of a string survive a middle truncation.
+const truncationEnds = 2
+
 // Column describes one column of a table.
 //
 // Priority orders collapse: the lowest positive Priority is hidden first, so
@@ -221,6 +224,41 @@ func Truncate(text string, width int) string {
 	}
 
 	return clip(text, width-markWidth) + Ellipsis
+}
+
+// TruncateMiddle shortens text to at most width display cells by removing its
+// middle, so both ends survive the cut. Use it where the tail carries as much
+// meaning as the head, such as a line of prose or a long path.
+func TruncateMiddle(text string, width int) string {
+	if lipgloss.Width(text) <= width {
+		return text
+	}
+
+	markWidth := lipgloss.Width(Ellipsis)
+	if width <= markWidth {
+		return clip(text, width)
+	}
+
+	kept := width - markWidth
+	head := kept - kept/truncationEnds
+
+	return clip(text, head) + Ellipsis + clipRight(text, kept-head)
+}
+
+// clipRight cuts text down to its last width display cells, at a
+// grapheme-cluster boundary.
+func clipRight(text string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+
+	rest := text
+	for lipgloss.Width(rest) > width {
+		_, remainder, _, _ := uniseg.FirstGraphemeClusterInString(rest, -1)
+		rest = remainder
+	}
+
+	return rest
 }
 
 // clip cuts text at the last grapheme-cluster boundary that still fits in

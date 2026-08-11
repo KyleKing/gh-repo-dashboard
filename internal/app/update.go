@@ -73,6 +73,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case DetailLoadedMsg:
 		return m.handleDetailLoaded(msg)
 
+	case NotesContentLoadedMsg:
+		return m.handleNotesContentLoaded(msg)
+
 	case BranchDetailLoadedMsg:
 		if msg.Path == m.selectedRepo {
 			m.branchDetailLoading = false
@@ -357,7 +360,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if newM, handled := m.handleCursorKey(msg); handled {
-		return newM, tea.Batch(newM.visibleCICmds()...)
+		return newM, tea.Batch(append(newM.visibleCICmds(), newM.notesPreviewCmd())...)
 	}
 
 	if newM, handled := m.handleModeKey(msg); handled {
@@ -385,7 +388,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.NotesPreview):
 		m.notesPreviewOpen = !m.notesPreviewOpen
-		return m, nil
+		return m, m.notesPreviewCmd()
 
 	case key.Matches(msg, m.keys.Peers):
 		return m.openCheckouts()
@@ -613,6 +616,35 @@ func (m *Model) visibleCICmds() []tea.Cmd {
 	}
 
 	return cmds
+}
+
+func (m Model) handleNotesContentLoaded(msg NotesContentLoadedMsg) (tea.Model, tea.Cmd) {
+	if m.notesPreview == nil {
+		m.notesPreview = make(map[string][]models.NoteFileContent)
+	}
+	m.notesPreview[msg.Path] = msg.Files
+
+	return m, nil
+}
+
+// notesPreviewCmd reads the notes of the repo under the cursor when the
+// preview is open and they are not cached yet.
+func (m Model) notesPreviewCmd() tea.Cmd {
+	if !m.notesPreviewOpen || m.cursor >= len(m.filteredPaths) {
+		return nil
+	}
+
+	path := m.filteredPaths[m.cursor]
+	if _, cached := m.notesPreview[path]; cached {
+		return nil
+	}
+
+	summary, ok := m.summaries[path]
+	if !ok || len(summary.NotesFiles) == 0 {
+		return nil
+	}
+
+	return loadNotesContentCmd(path, summary.NotesFiles)
 }
 
 // handleCursorKey handles the repo-list cursor movement keys (up/down/top/

@@ -23,7 +23,6 @@ const (
 // lives in columns.go and is resolved at render time by the column engine.
 const (
 	notesMarkerWidth       = 2
-	nonListRowHeight       = 6
 	visibleWindowCenter    = 2
 	helpKeyColWidth        = 20
 	modalMarkColWidth      = 4

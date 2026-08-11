@@ -295,13 +295,12 @@ func overviewNotes(notes []models.NoteFile) string {
 }
 
 // joinListAndPanel places the preview panel to the right of the repo list,
-// separated by a full-height vertical rule. Both blocks are padded to the same
-// line count so the rule runs unbroken past whichever block is shorter.
-func joinListAndPanel(list, panel string, listW, panelW int) string {
+// separated by a vertical rule that runs the full height of the body whatever
+// either block contains.
+func joinListAndPanel(list, panel string, listW, panelW, height int) string {
 	listLines := strings.Split(list, "\n")
 	panelLines := strings.Split(panel, "\n")
 
-	height := max(len(listLines), len(panelLines))
 	rule := styles.SubtitleStyle.Render(overviewSeparator)
 
 	joined := make([]string, height)
