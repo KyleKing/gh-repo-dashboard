@@ -279,3 +279,52 @@ func (m Model) startSquashMergePR() (tea.Model, tea.Cmd) {
 
 	return m.confirmAction("Squash-merge pull request?", detail, squashMergePRCmd(m.selectedRepo, pr.Number))
 }
+
+// panelActionLeader opens the verb menu for whatever the focused panel has
+// selected. It is the same key the universal find uses to act on its result
+// set, so one idiom covers both.
+const panelActionLeader = "!"
+
+// panelAction is one verb the leader key offers. Keys are scoped to a panel,
+// so the same letter can mean different things in different panels and each
+// stays mnemonic.
+type panelAction struct {
+	key  string
+	name string
+	run  func(Model) (tea.Model, tea.Cmd)
+}
+
+// panelActionsFor returns the verbs the focused panel's selection supports.
+func panelActionsFor(id panelID) []panelAction {
+	switch id {
+	case panelBranches:
+		return []panelAction{
+			{key: "n", name: "new PR", run: Model.startCreatePR},
+			{key: "p", name: "push", run: Model.startPushBranch},
+			{key: "s", name: "switch to it", run: Model.startSwitchBranch},
+		}
+	case panelPRs:
+		return []panelAction{
+			{key: "c", name: "check out here", run: Model.startCheckoutPR},
+			{key: "m", name: "squash-merge", run: Model.startSquashMergePR},
+		}
+	case panelStatus, panelPeers, panelStashes, panelNotes:
+		return nil
+	}
+
+	return nil
+}
+
+// handlePanelActionKey answers the open verb menu: a verb key runs it against
+// the current selection, anything else backs out.
+func (m Model) handlePanelActionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	m.panelActions = false
+
+	for _, action := range panelActionsFor(m.focusedPanel) {
+		if action.key == msg.String() {
+			return action.run(m)
+		}
+	}
+
+	return m, nil
+}

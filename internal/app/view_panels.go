@@ -450,7 +450,13 @@ func (m Model) renderPanelGrid() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(styles.FooterStyle.Render(m.panelFooter(panels, focused, width)))
+
+	if m.panelActions {
+		b.WriteString(styles.FooterStyle.Render(
+			m.renderPanelActions(m.panelDetailTitle(panels[focused]))))
+	} else {
+		b.WriteString(styles.FooterStyle.Render(m.panelFooter(panels, focused, width)))
+	}
 
 	return b.String()
 }
@@ -941,8 +947,10 @@ func (m Model) panelFooter(panels []panelContent, focused, width int) string {
 		})
 	}
 
-	if focused >= 0 && focused < len(panels) {
-		hints = append(hints, panelActionHints(panels[focused].id)...)
+	if focused >= 0 && focused < len(panels) && len(panelActionsFor(panels[focused].id)) > 0 {
+		hints = append(hints, footerHint{
+			key: panelActionLeader, desc: "act", priority: panelHintPriority - navHintStep,
+		})
 	}
 
 	parts := make([]string, 0, len(hints))
@@ -951,31 +959,6 @@ func (m Model) panelFooter(panels []panelContent, focused, width int) string {
 	}
 
 	return strings.Join(parts, "  ")
-}
-
-//nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
-func panelActionHints(id panelID) []footerHint {
-	switch id {
-	case panelBranches:
-		return []footerHint{
-			{key: "O", desc: nameBranch, priority: 5},
-			{key: "c", desc: "switch", priority: 4},
-			{key: "p", desc: "push", priority: 2},
-			{key: "N", desc: "new PR", priority: 3},
-		}
-	case panelPRs:
-		return []footerHint{
-			{key: "O", desc: "PR", priority: 5},
-			{key: "g", desc: "checkout", priority: 4},
-			{key: "M", desc: "squash-merge", priority: 1},
-		}
-	case panelPeers:
-		return []footerHint{{key: "O", desc: "jump", priority: 5}}
-	case panelStatus, panelStashes, panelNotes:
-		return nil
-	}
-
-	return nil
 }
 
 func detailField(label, value string) string {
@@ -1000,4 +983,24 @@ func wrapLines(text string, width int) []string {
 	}
 
 	return lines
+}
+
+// renderPanelActions lists the open menu's verbs in place of the footer, so it
+// costs no line of its own.
+func (m Model) renderPanelActions(target string) string {
+	actions := panelActionsFor(m.focusedPanel)
+	if len(actions) == 0 {
+		return styles.FooterDescStyle.Render("nothing to do with "+target) + "  " +
+			styles.FooterKeyStyle.Render(keyEsc) + styles.FooterDescStyle.Render(" back")
+	}
+
+	parts := make([]string, 0, len(actions)+1)
+	parts = append(parts, styles.FooterDescStyle.Render(target+":"))
+
+	for _, action := range actions {
+		parts = append(parts,
+			styles.FooterKeyStyle.Render(action.key)+styles.FooterDescStyle.Render(" "+action.name))
+	}
+
+	return strings.Join(parts, "  ")
 }

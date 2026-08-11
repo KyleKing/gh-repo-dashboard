@@ -108,6 +108,9 @@ type Model struct {
 	// the selected item's text instead of moving between rows.
 	detailFocused bool
 	detailScroll  int
+	// panelActions is the leader key's verb menu, open over the focused panel's
+	// selection until a verb runs or any other key backs out.
+	panelActions bool
 
 	branches          []models.BranchInfo
 	deletableBranches map[string]bool

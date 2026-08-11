@@ -556,12 +556,10 @@ func (m Model) handleChordKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 
 // acceptsCheckoutPR reports whether the current view has a pull request for
 // "g" to check out. Elsewhere "g" opens the "gg" chord for jumping to the top.
+// The panel grid is not one of them: its verbs live behind the leader key, so
+// "gg" means the same thing in every panel.
 func (m Model) acceptsCheckoutPR() bool {
-	if m.viewMode == ViewModePRDetail {
-		return true
-	}
-
-	return m.viewMode == ViewModeRepoDetail && m.focusedPanel == panelPRs
+	return m.viewMode == ViewModePRDetail
 }
 
 func (m Model) moveToTop() Model {
@@ -804,6 +802,15 @@ func hasTextObjectPrefix(prefix string) bool {
 }
 
 func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.panelActions {
+		return m.handlePanelActionKey(msg)
+	}
+
+	if msg.String() == panelActionLeader {
+		m.panelActions = true
+		return m, nil
+	}
+
 	panels := m.panelSet(m.gridWidth())
 	if p, ok := panelForKey(panels, msg.String()); ok {
 		return m.focusPanel(p.id)
@@ -844,7 +851,7 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	return m.handleActionKey(msg)
+	return m, nil
 }
 
 // handlePanelMoveKey handles movement within the panel column: between panels
@@ -925,7 +932,7 @@ func (m Model) handleDetailPaneKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	return m.handleActionKey(msg)
+	return m, nil
 }
 
 // scrollDetailPane moves the detail pane by delta lines, clamped so the last
