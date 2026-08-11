@@ -9,6 +9,7 @@ import (
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
 
 // Grid geometry. The side column holds the panels; the rest is the detail
@@ -262,28 +263,68 @@ func (m Model) stashesPanel(width int) panelContent {
 }
 
 func (m Model) notesPanel(width int) panelContent {
+	shown, hasBody := m.shownNote()
+
 	rows := make([]string, 0, len(m.notesFiles))
 	for i, note := range m.notesFiles {
 		selected := m.panelSelected(panelNotes, i)
 		style := rowStyleFor(selected)
 
+		// The first line is worth a row only where the body below does not
+		// already carry it.
 		label := note.Name
-		if first := firstContentLine(note.Content); first != "" {
+		if first := firstContentLine(note.Content); first != "" && note.Name != shown.Name {
 			label += "  " + first
 		}
 
-		rows = append(rows, rowCursorFor(selected)+style.Render(padCell(label, width-cursorWidth)))
+		rows = append(rows, rowCursorFor(selected)+style.Render(
+			table.TruncateMiddle(padCell(label, width-cursorWidth), width-cursorWidth)))
 	}
 
 	relevance := relevanceIdle
-	if len(m.notesFiles) > 0 {
-		relevance = relevancePresent
+	if hasBody {
+		// A note is something the last session left for this one, so it
+		// outranks a list the repo itself can always answer.
+		relevance = relevanceUrgent
+		rows = append(rows, noteBodyRows(shown.Content, width)...)
 	}
 
 	return panelContent{
 		id: panelNotes, title: tabNameNotes, count: len(m.notesFiles),
 		relevance: relevance, rows: rows, selectable: true,
 	}
+}
+
+// shownNote is the note whose text the panel spells out: the one under the
+// cursor while Notes holds it, and the first otherwise, so a repo's note is
+// readable from whichever panel the view opened on.
+func (m Model) shownNote() (models.NoteFileContent, bool) {
+	if len(m.notesFiles) == 0 {
+		return models.NoteFileContent{}, false
+	}
+
+	if note, ok := m.selectedPanelNote(); ok {
+		return note, true
+	}
+
+	return m.notesFiles[0], true
+}
+
+// noteBodyRows are a note's text, rendered below the file list so the panel's
+// earned height carries the note itself rather than blank rows. They sit past
+// the selectable rows, so the cursor never lands on one.
+func noteBodyRows(content string, width int) []string {
+	body := strings.Split(strings.TrimSpace(content), "\n")
+
+	rows := make([]string, 0, len(body)+1)
+	rows = append(rows, "")
+
+	for _, line := range body {
+		rows = append(rows, styles.NotesPreviewLineStyle.Render(
+			table.TruncateMiddle("  "+strings.TrimRight(line, " \t"), width)))
+	}
+
+	return rows
 }
 
 // firstContentLine returns a note's first line that carries content, skipping

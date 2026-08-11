@@ -71,9 +71,15 @@ relevance score from cached data: dirty files or conflicted peers score high,
 open PRs with recent activity score high, clean or empty sets score minimum.
 Height is distributed by score through the existing column-engine weight
 logic applied vertically. Focus overrides: the focused panel always gets its
-full content up to the available height. A quiet repo therefore reads as a
-small stack of one-liners plus a large detail pane; a busy repo arrives with
-its problems already expanded.
+full content up to the available height, and whatever no panel claims is
+shared out again so the column reaches the bottom of the pane beside it. A
+quiet repo therefore reads as a small stack of one-liners plus a large detail
+pane; a busy repo arrives with its problems already expanded.
+
+A note scores as high as a failing check. It is what the last session left for
+this one, and unlike every other panel it holds something the repo cannot be
+asked for, so the Notes panel spells out the note's text below the file list
+and stays readable from whichever panel the view opened on.
 
 ## Universal find (the palette)
 

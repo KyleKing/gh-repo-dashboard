@@ -286,6 +286,12 @@ func overviewNotes(notes []models.NoteFile) string {
 		return overviewEmpty
 	}
 
+	// One note is the common case, and its first line says more than its
+	// filename does; several fall back to naming them.
+	if len(notes) == 1 && notes[0].FirstLine != "" {
+		return notes[0].Name + ": " + notes[0].FirstLine
+	}
+
 	names := make([]string, 0, len(notes))
 	for _, note := range notes {
 		names = append(names, note.Name)

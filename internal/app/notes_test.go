@@ -86,3 +86,35 @@ func TestNotesPreview_ElidesTheMiddleOfALongNote(t *testing.T) {
 		t.Errorf("elision does not say how much it cut:\n%s", got)
 	}
 }
+
+// TestNotesPanel_ShowsTheNoteWithoutFocusingIt covers the focused view's half
+// of the emphasis: a note is what the last session left behind, so its text
+// has to be readable from whichever panel the view opened on.
+func TestNotesPanel_ShowsTheNoteWithoutFocusingIt(t *testing.T) {
+	t.Parallel()
+
+	m := focusedModel(180, 45)
+	m.focusedPanel = panelBranches
+	m.notesFiles = []models.NoteFileContent{
+		{Name: ".doing", Content: "# heading\n\nfinish the grid\nthen the notes"},
+	}
+
+	panels := m.panelSet(panelSideWidth(m.gridWidth()) - panelBorderWidth)
+	notes := panels[panelIndex(panels, panelNotes)]
+
+	if notes.relevance != relevanceUrgent {
+		t.Errorf("notes scored %d with a note present, want %d", notes.relevance, relevanceUrgent)
+	}
+
+	body := plainText(strings.Join(notes.rows, "\n"))
+	for _, want := range []string{"finish the grid", "then the notes"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("notes panel is missing %q while another panel holds focus:\n%s", want, body)
+		}
+	}
+
+	if notes.count != len(m.notesFiles) {
+		t.Errorf("count is %d, want %d; the body rows must not be counted as files",
+			notes.count, len(m.notesFiles))
+	}
+}
