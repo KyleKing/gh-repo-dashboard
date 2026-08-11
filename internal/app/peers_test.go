@@ -185,7 +185,7 @@ func TestEnterJumpsToACheckoutAndEscReturns(t *testing.T) {
 	// The checkouts sort by folder name: app-a-wt, then app-b.
 	m.detailCursor = 1
 
-	jumped, _ := m.handleDetailEnterKey()
+	jumped, _ := m.handleDetailOpenKey()
 	after, ok := jumped.(Model)
 	if !ok {
 		t.Fatalf("jump returned %T, want Model", jumped)

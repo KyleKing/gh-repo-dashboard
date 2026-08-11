@@ -39,6 +39,7 @@ type KeyMap struct {
 	CleanupMerged key.Binding
 	RefreshPRs    key.Binding
 
+	OpenDetail   key.Binding
 	CheckoutPR   key.Binding
 	SwitchBranch key.Binding
 	PushBranch   key.Binding
@@ -67,6 +68,10 @@ func DefaultKeyMap() KeyMap {
 	km.CleanupMerged = key.NewBinding(
 		key.WithKeys("C"),
 		key.WithHelp("C+obj", "cleanup"),
+	)
+	km.OpenDetail = key.NewBinding(
+		key.WithKeys("O"),
+		key.WithHelp("O", "open the selected item full screen"),
 	)
 	km.CheckoutPR = key.NewBinding(
 		key.WithKeys("g"),
@@ -218,7 +223,7 @@ func (k KeyMap) ShortHelp() []key.Binding {
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Top, k.Bottom},
-		{k.Enter, k.Back},
+		{k.Enter, k.Back, k.OpenDetail},
 		{k.Filter, k.Sort, k.Search, k.Command, k.Repeat, k.NotesPreview},
 		{k.SwitchBranch, k.PushBranch, k.CreatePR, k.MergePR},
 		{k.Refresh, k.FetchAll, k.PruneRemote, k.CleanupMerged},

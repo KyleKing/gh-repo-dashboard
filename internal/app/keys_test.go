@@ -304,7 +304,7 @@ func TestDetailEnterOpensBranchDetail(t *testing.T) {
 	m.branches = []models.BranchInfo{{Name: mainBranchName}, {Name: featureBranchName}}
 	m.branchDetail = models.BranchDetail{Branch: models.BranchInfo{Name: "stale"}}
 
-	updatedModel, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	updatedModel, cmd := m.Update(openDetailKey())
 	m = mustModel(t, updatedModel)
 
 	if m.viewMode != ViewModeBranchDetail {

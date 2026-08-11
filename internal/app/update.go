@@ -787,9 +787,17 @@ func hasTextObjectPrefix(prefix string) bool {
 }
 
 func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	panels := m.panelSet(contentWidth(m.width))
+	panels := m.panelSet(m.gridWidth())
 	if p, ok := panelForKey(panels, msg.String()); ok {
 		return m.focusPanel(p.id)
+	}
+
+	if m.detailFocused {
+		return m.handleDetailPaneKey(msg)
+	}
+
+	if newM, cmd, handled := m.handlePanelMoveKey(msg, panels); handled {
+		return newM, cmd
 	}
 
 	switch {
@@ -802,35 +810,17 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Refresh):
 		return m.handleRefresh()
 
-	case key.Matches(msg, m.keys.Tab), key.Matches(msg, m.keys.Right):
-		return m.cyclePanel(panels, 1)
-
-	case key.Matches(msg, m.keys.Left):
-		return m.cyclePanel(panels, -1)
-
-	case key.Matches(msg, m.keys.Up):
-		return m.moveDetailCursor(-1)
-
-	case key.Matches(msg, m.keys.Down):
-		return m.moveDetailCursor(1)
-
-	case key.Matches(msg, m.keys.Top):
-		m.detailCursor = 0
-		return m, nil
-
-	case key.Matches(msg, m.keys.Bottom):
-		maxIdx := m.detailListLen() - 1
-		if maxIdx >= 0 {
-			m.detailCursor = maxIdx
-		}
-
-		return m, nil
-
 	case key.Matches(msg, m.keys.Find):
 		return m.openPalette()
 
 	case key.Matches(msg, m.keys.Enter):
-		return m.handleDetailEnterKey()
+		m.detailFocused = true
+		m.detailScroll = 0
+
+		return m, nil
+
+	case key.Matches(msg, m.keys.OpenDetail):
+		return m.handleDetailOpenKey()
 
 	case key.Matches(msg, m.keys.Help):
 		m.viewMode = ViewModeHelp
@@ -838,6 +828,101 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m.handleActionKey(msg)
+}
+
+// handlePanelMoveKey handles movement within the panel column: between panels
+// and between the rows of the focused one. Handled is false if msg didn't
+// match any of them.
+func (m Model) handlePanelMoveKey(msg tea.KeyMsg, panels []panelContent) (tea.Model, tea.Cmd, bool) {
+	switch {
+	case key.Matches(msg, m.keys.Tab), key.Matches(msg, m.keys.Right):
+		model, cmd := m.cyclePanel(panels, 1)
+		return model, cmd, true
+
+	case key.Matches(msg, m.keys.Left):
+		model, cmd := m.cyclePanel(panels, -1)
+		return model, cmd, true
+
+	case key.Matches(msg, m.keys.Up):
+		model, cmd := m.moveDetailCursor(-1)
+		return model, cmd, true
+
+	case key.Matches(msg, m.keys.Down):
+		model, cmd := m.moveDetailCursor(1)
+		return model, cmd, true
+
+	case key.Matches(msg, m.keys.Top):
+		m.detailCursor = 0
+		return m, nil, true
+
+	case key.Matches(msg, m.keys.Bottom):
+		if maxIdx := m.detailListLen() - 1; maxIdx >= 0 {
+			m.detailCursor = maxIdx
+		}
+
+		return m, nil, true
+	}
+
+	return m, nil, false
+}
+
+// handleDetailPaneKey drives the detail pane once enter has moved focus into
+// it: movement scrolls the text rather than changing what is selected, and the
+// write actions still apply to the item the pane is describing.
+func (m Model) handleDetailPaneKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Quit):
+		return m, tea.Quit
+
+	case key.Matches(msg, m.keys.Back), key.Matches(msg, m.keys.Left):
+		m.detailFocused = false
+		m.detailScroll = 0
+
+		return m, nil
+
+	case key.Matches(msg, m.keys.Up):
+		return m.scrollDetailPane(-1), nil
+
+	case key.Matches(msg, m.keys.Down):
+		return m.scrollDetailPane(1), nil
+
+	case key.Matches(msg, m.keys.Top):
+		m.detailScroll = 0
+		return m, nil
+
+	case key.Matches(msg, m.keys.Bottom):
+		m.detailScroll = m.maxDetailScroll()
+		return m, nil
+
+	case key.Matches(msg, m.keys.Refresh):
+		return m.handleRefresh()
+
+	case key.Matches(msg, m.keys.Find):
+		return m.openPalette()
+
+	case key.Matches(msg, m.keys.Enter), key.Matches(msg, m.keys.OpenDetail):
+		return m.handleDetailOpenKey()
+
+	case key.Matches(msg, m.keys.Help):
+		m.viewMode = ViewModeHelp
+		return m, nil
+	}
+
+	return m.handleActionKey(msg)
+}
+
+// scrollDetailPane moves the detail pane by delta lines, clamped so the last
+// line of text never scrolls past the top of the pane.
+func (m Model) scrollDetailPane(delta int) Model {
+	m.detailScroll = min(max(m.detailScroll+delta, 0), m.maxDetailScroll())
+
+	return m
+}
+
+func (m Model) maxDetailScroll() int {
+	pane := m.detailPaneSize()
+
+	return max(len(m.panelDetailLines(pane.width))-pane.height, 0)
 }
 
 // handleActionKey routes the write-action keys shared by the repo-detail,
@@ -863,10 +948,14 @@ func (m Model) handleActionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// focusPanel moves the cursor to a panel and resets its row selection.
+// focusPanel moves the cursor to a panel and resets its row selection. It also
+// hands focus back to the panel column, because a number key naming a panel is
+// a request to be in that panel, not in the pane describing its old selection.
 func (m Model) focusPanel(id panelID) (tea.Model, tea.Cmd) {
 	m.focusedPanel = id
 	m.detailCursor = 0
+	m.detailFocused = false
+	m.detailScroll = 0
 
 	return m, m.panelDetailCmd()
 }
@@ -891,6 +980,7 @@ func (m Model) moveDetailCursor(delta int) (tea.Model, tea.Cmd) {
 	}
 
 	m.detailCursor = newIdx
+	m.detailScroll = 0
 
 	return m, m.panelDetailCmd()
 }
@@ -927,9 +1017,9 @@ func (m Model) panelDetailCmd() tea.Cmd {
 	return nil
 }
 
-// handleDetailEnterKey opens the branch-detail or PR-detail view for the
+// handleDetailOpenKey opens the branch-detail or PR-detail view for the
 // currently selected row.
-func (m Model) handleDetailEnterKey() (tea.Model, tea.Cmd) {
+func (m Model) handleDetailOpenKey() (tea.Model, tea.Cmd) {
 	switch {
 	case m.focusedPanel == panelBranches && m.detailCursor < len(m.branches):
 		m.selectedBranch = m.branches[m.detailCursor]

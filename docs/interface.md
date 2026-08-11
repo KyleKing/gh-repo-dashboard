@@ -40,6 +40,11 @@ next one, `h` to the previous, and `j`/`k` move within the focused panel. Panel
 height follows how much a section has to say, so a busy repo arrives with its
 problems already open.
 
+`enter` hands the keyboard to the detail pane, where `j`/`k` scroll its text and
+`esc` hands it back to the panel column. The blue border marks whichever region
+is live. `O` opens the selected branch or pull request in its own full-screen
+view.
+
 `space` opens the universal find, scoped to the repo you are in (`;` opens it
 fleet-wide from the list, and `*` widens a repo-scoped query). Type `#12` for a
 pull request number, `b`, `s`, `n`, or `r` plus a space to narrow to branches,

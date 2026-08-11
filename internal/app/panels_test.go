@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -158,4 +160,60 @@ func TestNotesPeekSkipsHeadingsAndBlanks(t *testing.T) {
 	if got := firstContentLine("\n\n"); got != "" {
 		t.Errorf("note peek = %q, want nothing for a file with no content", got)
 	}
+}
+
+// TestDetailPaneFocus_EnterMovesInAndEscMovesBack pins the lazygit focus
+// model: enter hands the keyboard to the detail pane, movement scrolls the
+// text instead of the rows, and esc gives it back.
+func TestDetailPaneFocus_EnterMovesInAndEscMovesBack(t *testing.T) {
+	t.Parallel()
+
+	m := focusedModel(200, 50)
+	m.focusedPanel = panelNotes
+	m.notesFiles = []models.NoteFileContent{
+		{Name: ".doing", Content: strings.Repeat("a line of notes\n", 200)},
+	}
+
+	focused := mustModel(t, mustUpdate(t, &m, tea.KeyPressMsg{Code: tea.KeyEnter}))
+	if !focused.detailFocused {
+		t.Fatal("enter did not move focus into the detail pane")
+	}
+
+	scrolled := mustModel(t, mustUpdate(t, &focused, tea.KeyPressMsg{Code: 'j', Text: "j"}))
+	if scrolled.detailScroll != 1 {
+		t.Errorf("j scrolled the pane to %d, want 1", scrolled.detailScroll)
+	}
+	if scrolled.detailCursor != focused.detailCursor {
+		t.Error("j moved the row cursor while the detail pane held focus")
+	}
+
+	back := mustModel(t, mustUpdate(t, &scrolled, tea.KeyPressMsg{Code: tea.KeyEscape}))
+	if back.detailFocused || back.detailScroll != 0 {
+		t.Errorf("esc left focus=%v scroll=%d, want the panel column at the top",
+			back.detailFocused, back.detailScroll)
+	}
+	if back.viewMode != ViewModeRepoDetail {
+		t.Errorf("esc left the focused view entirely, got %v", back.viewMode)
+	}
+}
+
+func TestDetailPaneFocus_ScrollStopsAtTheEnd(t *testing.T) {
+	t.Parallel()
+
+	m := focusedModel(200, 50)
+	m.detailFocused = true
+	m.detailScroll = m.maxDetailScroll()
+
+	further := m.scrollDetailPane(1)
+	if further.detailScroll != m.detailScroll {
+		t.Errorf("scrolled past the last line to %d, want %d", further.detailScroll, m.detailScroll)
+	}
+}
+
+func mustUpdate(t *testing.T, m *Model, msg tea.Msg) tea.Model {
+	t.Helper()
+
+	updated, _ := m.Update(msg)
+
+	return updated
 }

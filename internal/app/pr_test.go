@@ -5,8 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -712,9 +710,7 @@ func TestPRDetailClearedOnNavigation(t *testing.T) {
 		PRInfo: models.PRInfo{Number: 999}, // Old detail from different PR
 	}
 
-	// Simulate Enter key on PR list
-	msg := tea.KeyPressMsg{Code: tea.KeyEnter}
-	updatedModel, _ := m.Update(msg)
+	updatedModel, _ := m.Update(openDetailKey())
 	m = mustModel(t, updatedModel)
 
 	if m.prDetail.Number != 123 {
@@ -798,9 +794,7 @@ func TestPRDetailProgressiveLoading(t *testing.T) {
 	}
 	m.detailCursor = 0
 
-	// Navigate to PR detail
-	msg := tea.KeyPressMsg{Code: tea.KeyEnter}
-	updatedModel, _ := m.Update(msg)
+	updatedModel, _ := m.Update(openDetailKey())
 	m = mustModel(t, updatedModel)
 
 	// Verify basic info is immediately available

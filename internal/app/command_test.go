@@ -17,6 +17,12 @@ var (
 	errPRDetailLoad = errors.New("failed to load PR details")
 )
 
+// openDetailKey is the key that opens the focused view's selected item full
+// screen; enter moves focus into the detail pane instead.
+func openDetailKey() tea.KeyPressMsg {
+	return tea.KeyPressMsg{Code: 'O', Text: "O"}
+}
+
 func mustModel(t *testing.T, tm tea.Model) Model {
 	t.Helper()
 	m, ok := tm.(Model)

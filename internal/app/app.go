@@ -102,8 +102,13 @@ type Model struct {
 	// focusedPanel is which panel of the focused repo view has the cursor.
 	// Every panel stays on screen; focus only decides where j/k land and what
 	// the detail pane describes.
-	focusedPanel      panelID
-	detailCursor      int
+	focusedPanel panelID
+	detailCursor int
+	// detailFocused moves the keyboard into the detail pane, where j/k scroll
+	// the selected item's text instead of moving between rows.
+	detailFocused bool
+	detailScroll  int
+
 	branches          []models.BranchInfo
 	deletableBranches map[string]bool
 	stashes           []models.StashDetail

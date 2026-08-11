@@ -46,7 +46,7 @@ below a content line, so nothing is ever hidden behind a mode.
 ┌─4 Peers (0) ─┬─5 Stashes (2) ───┐│                                             │
 │ none         │ wip: spike    3d ││                                             │
 └──────────────┴──────────────────┘└─────────────────────────────────────────────┘
- 1-5 panels  j/k nav  enter act  space find  ? help
+ 1-5 panels  j/k nav  esc back  space find  enter detail
 ```
 
 - The left column stacks the side panels; the right pane always renders the
@@ -55,6 +55,9 @@ below a content line, so nothing is ever hidden behind a mode.
   body). This replaces per-tab detail screens
 - `1`-`5` jump straight to a panel (the keys freed by retiring scenes);
   `h`/`l` or `[`/`]` cycle. `j`/`k` stay within the focused panel
+- `enter` hands the keyboard to the detail pane, where `j`/`k` scroll its text
+  and `esc` returns to the panel column; the border marks which region is live.
+  `O` opens the selected branch or PR full screen
 - Each panel's actions are its existing tab actions unchanged (`c` switch,
   `p` push, `N` new PR, `M` merge, `g` checkout PR); the footer shows the
   focused panel's keys

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"image/color"
 	"strconv"
 	"strings"
 
@@ -316,8 +317,8 @@ func (m Model) renderPanelGrid() string {
 		return "Repository not found"
 	}
 
-	width := contentWidth(m.width)
-	stacked := m.isCompact() || width-panelSideWidth(width) < minDetailPaneWidth
+	width := m.gridWidth()
+	stacked := gridStacked(m.isCompact(), width)
 
 	sideWidth := width
 	if !stacked {
@@ -341,14 +342,53 @@ func (m Model) renderPanelGrid() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(styles.FooterStyle.Render(panelFooter(panels, focused, width)))
+	b.WriteString(styles.FooterStyle.Render(m.panelFooter(panels, focused, width)))
 
 	return b.String()
+}
+
+// gridWidth is the width the focused repo view renders into.
+func (m Model) gridWidth() int {
+	return contentWidth(m.width)
+}
+
+// gridStacked reports whether the grid drops its side-by-side split, either
+// because the breakpoint says so or because the detail pane would be too
+// narrow to read beside the panel column.
+func gridStacked(compact bool, width int) bool {
+	return compact || width-panelSideWidth(width) < minDetailPaneWidth
 }
 
 // panelSideWidth is the width the panel column takes from a split grid.
 func panelSideWidth(width int) int {
 	return max(width*sideColumnPercent/sideColumnFraction, minSideColumnWidth)
+}
+
+// detailPaneSize returns the detail pane's interior at the current terminal
+// size, which is the geometry a scroll offset has to be clamped against.
+func (m Model) detailPaneSize() paneSize {
+	grid := m.gridWidth()
+	body := m.height - gridChromeHeight
+
+	if !gridStacked(m.isCompact(), grid) {
+		return paneSize{
+			width:  grid - panelSideWidth(grid) - panelBorderWidth,
+			height: body - panelChromeHeight,
+		}
+	}
+
+	panels := m.panelSet(grid - panelBorderWidth)
+	compressed := panelChromeHeight + 1
+
+	return paneSize{
+		width:  grid - panelBorderWidth,
+		height: max(body-compressed*len(panels)-panelChromeHeight, minStackedDetailHeight),
+	}
+}
+
+type paneSize struct {
+	width  int
+	height int
 }
 
 // renderSplitGrid stacks the panels on the left and mounts the detail pane
@@ -359,7 +399,8 @@ func (m Model) renderSplitGrid(panels []panelContent, focused, sideWidth, detail
 
 	return lipgloss.JoinHorizontal(lipgloss.Top,
 		column,
-		panelBox(m.focusedPanelTitle(panels, focused), detail, detailWidth, height, true),
+		panelBox(m.focusedPanelTitle(panels, focused), detail, detailWidth, height,
+			focusBorder(m.detailFocused, true)),
 	)
 }
 
@@ -384,12 +425,14 @@ func (m Model) renderStackedGrid(panels []panelContent, focused, width, height i
 		}
 
 		rows := panelRows(p, compressed-panelChromeHeight, m.detailCursor, i == focused)
-		box := panelBox(panelTitle(&p, i == focused), rows, width, compressed, i == focused)
+		box := panelBox(panelTitle(&p, i == focused), rows, width, compressed,
+			focusBorder(!m.detailFocused, i == focused))
 		lines = append(lines, strings.Split(box, "\n")...)
 
 		if i == focused {
 			detail := panelBox(m.focusedPanelTitle(panels, focused),
-				m.renderPanelDetail(width-panelBorderWidth, detailHeight), width, detailHeight+panelChromeHeight, true)
+				m.renderPanelDetail(width-panelBorderWidth, detailHeight), width, detailHeight+panelChromeHeight,
+				focusBorder(m.detailFocused, true))
 			lines = append(lines, strings.Split(detail, "\n")...)
 			focusEnd = len(lines)
 		}
@@ -424,7 +467,7 @@ func (m Model) renderPanelColumn(panels []panelContent, focused, width, height i
 	for i, p := range panels {
 		boxes = append(boxes, panelBox(panelTitle(&p, i == focused),
 			panelRows(p, heights[i]-panelChromeHeight, m.detailCursor, i == focused),
-			width, heights[i], i == focused))
+			width, heights[i], focusBorder(!m.detailFocused, i == focused)))
 	}
 
 	return strings.Join(boxes, "\n")
@@ -450,14 +493,22 @@ func panelRows(p panelContent, lines, cursor int, focused bool) string {
 	return strings.Join(shown, "\n")
 }
 
-// panelBox wraps content in a titled border, blue when focused so the active
-// panel is unmistakable without a mode indicator.
-func panelBox(title, content string, width, height int, focused bool) string {
-	border := styles.Surface2
-	if focused {
-		border = styles.Blue
+// focusBorder colors a box's border. Blue marks where the keyboard is; the
+// muted accent marks the box that still holds the selection while focus sits
+// in the other region, so the two are never confused for one another.
+func focusBorder(active, current bool) color.Color {
+	switch {
+	case active && current:
+		return styles.Blue
+	case current:
+		return styles.Overlay1
+	default:
+		return styles.Surface2
 	}
+}
 
+// panelBox wraps content in a titled border.
+func panelBox(title, content string, width, height int, border color.Color) string {
 	// lipgloss sizes the bordered block as a whole, so width and height here
 	// are the box's outer dimensions, not its interior.
 	return lipgloss.NewStyle().
@@ -470,11 +521,27 @@ func panelBox(title, content string, width, height int, focused bool) string {
 
 // focusedPanelTitle labels the detail pane with the item it is describing.
 func (m Model) focusedPanelTitle(panels []panelContent, focused int) string {
-	if focused < 0 || focused >= len(panels) {
-		return styles.SubtitleStyle.Render("Detail")
+	title := "Detail"
+	if focused >= 0 && focused < len(panels) {
+		title = m.panelDetailTitle(panels[focused])
 	}
 
-	return styles.SubtitleStyle.Render(m.panelDetailTitle(panels[focused]))
+	return styles.SubtitleStyle.Render(title) + m.detailScrollMarker()
+}
+
+// detailScrollMarker reports how much of the pane's text is on screen, so text
+// running past the bottom is never mistaken for the whole of it.
+func (m Model) detailScrollMarker() string {
+	pane := m.detailPaneSize()
+
+	total := len(m.panelDetailLines(pane.width))
+	if total <= pane.height {
+		return ""
+	}
+
+	shown := min(m.detailScroll+pane.height, total)
+
+	return styles.SubtitleStyle.Render("  " + strconv.Itoa(shown) + "/" + strconv.Itoa(total))
 }
 
 func (m Model) panelDetailTitle(p panelContent) string {
@@ -506,10 +573,10 @@ func (m Model) panelDetailTitle(p panelContent) string {
 	return p.title
 }
 
-// renderPanelDetail renders the selected item of the focused panel. It is
-// never empty: with nothing selected it falls back to the repo's own detail,
-// so the pane always earns its width.
-func (m Model) renderPanelDetail(width, height int) string {
+// panelDetailLines renders the selected item of the focused panel in full. It
+// is never empty: with nothing selected it falls back to the repo's own
+// detail, so the pane always earns its width.
+func (m Model) panelDetailLines(width int) []string {
 	var lines []string
 
 	switch m.focusedPanel {
@@ -531,9 +598,16 @@ func (m Model) renderPanelDetail(width, height int) string {
 		lines = m.repoDetailLines(width)
 	}
 
-	if len(lines) > height {
-		lines = lines[:height]
-	}
+	return lines
+}
+
+// renderPanelDetail windows the selected item's detail to the pane, honoring
+// the scroll offset that focusing the pane makes reachable.
+func (m Model) renderPanelDetail(width, height int) string {
+	lines := m.panelDetailLines(width)
+
+	start := min(m.detailScroll, max(len(lines)-height, 0))
+	lines = lines[start:min(start+height, len(lines))]
 
 	return strings.Join(lines, "\n")
 }
@@ -728,15 +802,27 @@ const (
 )
 
 // panelFooter names the panel jump keys and the actions the focused panel
-// supports, so the keys on offer always match what is selected.
-func panelFooter(panels []panelContent, focused, width int) string {
+// supports, so the keys on offer always match what is selected and where the
+// keyboard currently is.
+func (m Model) panelFooter(panels []panelContent, focused, width int) string {
 	keys := panels[0].key + "-" + panels[len(panels)-1].key
+
+	navDesc, backDesc := descNav, "back"
+	if m.detailFocused {
+		navDesc, backDesc = "scroll", "panels"
+	}
 
 	hints := []footerHint{
 		{key: keys, desc: "panels", priority: panelHintPriority},
-		{key: keyNavPair, desc: descNav, priority: panelHintPriority - navHintStep},
+		{key: keyNavPair, desc: navDesc, priority: panelHintPriority - navHintStep},
+		{key: keyEsc, desc: backDesc, priority: panelHintPriority - navHintStep*3},
 		{key: "space", desc: nameFind, priority: panelHintPriority - navHintStep*2},
-		{key: keyEsc, desc: "back", priority: panelHintPriority - navHintStep*3},
+	}
+
+	if !m.detailFocused {
+		hints = append(hints, footerHint{
+			key: keyEnter, desc: "detail", priority: panelHintPriority - navHintStep*2,
+		})
 	}
 
 	if focused >= 0 && focused < len(panels) {
@@ -756,19 +842,19 @@ func panelActionHints(id panelID) []footerHint {
 	switch id {
 	case panelBranches:
 		return []footerHint{
-			{key: keyEnter, desc: nameBranch, priority: 5},
+			{key: "O", desc: nameBranch, priority: 5},
 			{key: "c", desc: "switch", priority: 4},
 			{key: "p", desc: "push", priority: 2},
 			{key: "N", desc: "new PR", priority: 3},
 		}
 	case panelPRs:
 		return []footerHint{
-			{key: keyEnter, desc: "PR", priority: 5},
+			{key: "O", desc: "PR", priority: 5},
 			{key: "g", desc: "checkout", priority: 4},
 			{key: "M", desc: "squash-merge", priority: 1},
 		}
 	case panelPeers:
-		return []footerHint{{key: keyEnter, desc: "jump", priority: 5}}
+		return []footerHint{{key: "O", desc: "jump", priority: 5}}
 	case panelStatus, panelStashes, panelNotes:
 		return nil
 	}
