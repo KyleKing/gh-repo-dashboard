@@ -3,4 +3,4 @@ given quiet
 when keys 1
 then view = detail
 then panel = status
-then overview = Sync=in sync vs origin/main Files=clean Peers=none Stashes=none Notes=none Template=— PRs=none open CI=—
+then overview = Sync=in sync vs origin/main Files=clean Peers=— Stashes=— Notes=— Template=— PRs=— CI=—

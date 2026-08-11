@@ -46,7 +46,7 @@ pressing `:`; bare keys act on the repo list.
 
 | Input | Result |
 |---|---|
-| press `1` | panel: status; overview: Sync=↑2 ↓1 vs origin/feat/login Files=1 staged · 3 unstaged Peers=none Stashes=4 Notes=doing.md: wip Template=v0.9.1 → v0.10.0 PRs=#42 Add login flow CI=— |
+| press `1` | panel: status; overview: Sync=↑2 ↓1 vs origin/feat/login Files=1 staged · 3 unstaged Peers=— Stashes=4 Notes=doing.md: wip Template=v0.9.1 → v0.10.0 PRs=#42 Add login flow CI=— |
 | press `2` | panel: branches |
 | press `3` | panel: prs |
 | press `4` | panel: peers |
@@ -57,7 +57,7 @@ pressing `:`; bare keys act on the repo list.
 
 | Input | Result |
 |---|---|
-| press `1` | opens the detail view; panel: status; overview: Sync=in sync vs origin/main Files=clean Peers=none Stashes=none Notes=none Template=— PRs=none open CI=— |
+| press `1` | opens the detail view; panel: status; overview: Sync=in sync vs origin/main Files=clean Peers=— Stashes=— Notes=— Template=— PRs=— CI=— |
 
 ## Review command history and repeat the last command
 

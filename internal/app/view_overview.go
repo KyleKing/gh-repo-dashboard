@@ -36,7 +36,9 @@ func splitWidth(termWidth int) int {
 }
 
 // overviewSeparator is the rule drawn between the list and the panel, and
-// overviewEmpty is what a section with nothing to report shows.
+// overviewEmpty is what a panel with nothing to list shows. The overview's own
+// rows use emDash instead: a column of dashes reads as "nothing here" at a
+// glance, where a column of the word "none" has to be read.
 const (
 	overviewSeparator = " │ "
 	overviewEmpty     = "none"
@@ -245,7 +247,7 @@ func overviewFiles(s models.RepoSummary) string {
 // reporting zero as though the repo simply had none.
 func overviewStashes(s models.RepoSummary) string {
 	if s.VCSType == models.VCSTypeJJ {
-		return "n/a for jj"
+		return "n/a"
 	}
 
 	return overviewCount(s.StashCount)
@@ -254,7 +256,7 @@ func overviewStashes(s models.RepoSummary) string {
 // overviewPRs reports the pull request open on the current branch.
 func overviewPRs(s models.RepoSummary) string {
 	if s.PRInfo == nil {
-		return "none open"
+		return emDash
 	}
 
 	return formatPRCell(s) + " " + s.PRInfo.Title
@@ -262,7 +264,7 @@ func overviewPRs(s models.RepoSummary) string {
 
 func overviewPeers(peers []models.PeerCheckout) string {
 	if len(peers) == 0 {
-		return overviewEmpty
+		return emDash
 	}
 
 	folders := make([]string, 0, len(peers))
@@ -275,7 +277,7 @@ func overviewPeers(peers []models.PeerCheckout) string {
 
 func overviewCount(count int) string {
 	if count == 0 {
-		return overviewEmpty
+		return emDash
 	}
 
 	return strconv.Itoa(count)
@@ -283,7 +285,7 @@ func overviewCount(count int) string {
 
 func overviewNotes(notes []models.NoteFile) string {
 	if len(notes) == 0 {
-		return overviewEmpty
+		return emDash
 	}
 
 	// One note is the common case, and its first line says more than its

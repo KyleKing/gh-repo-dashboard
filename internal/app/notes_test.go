@@ -118,3 +118,52 @@ func TestNotesPanel_ShowsTheNoteWithoutFocusingIt(t *testing.T) {
 			notes.count, len(m.notesFiles))
 	}
 }
+
+func TestNotesPreview_CaptionsTheRegionAtItsDivider(t *testing.T) {
+	t.Parallel()
+
+	m := compactModel(180, 40)
+	m.notesPreviewOpen = true
+	m.cursor = 1 // bravo, the repo carrying notes
+
+	tests := []struct {
+		name  string
+		files []models.NoteFileContent
+		want  []string
+	}{
+		{
+			name:  "one note is named by the divider alone",
+			files: []models.NoteFileContent{{Name: ".doing", Content: "wip"}},
+			want:  []string{"dev/bravo · .doing"},
+		},
+		{
+			name: "several notes are headed and counted",
+			files: []models.NoteFileContent{
+				{Name: ".doing", Content: "wip"},
+				{Name: "TODO.md", Content: "later"},
+			},
+			want: []string{"── .doing", "── TODO.md", "dev/bravo · 2 notes"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m.notesPreview = map[string][]models.NoteFileContent{"/dev/bravo": tt.files}
+			lines := m.notesPreviewLines(120)
+			got := plainText(strings.Join(lines, "\n"))
+
+			for _, want := range tt.want {
+				if !strings.Contains(got, want) {
+					t.Errorf("preview is missing %q:\n%s", want, got)
+				}
+			}
+
+			if !strings.Contains(plainText(lines[len(lines)-1]), "dev/bravo") {
+				t.Errorf("the last line must be the divider that captions the region, got %q",
+					plainText(lines[len(lines)-1]))
+			}
+		})
+	}
+}

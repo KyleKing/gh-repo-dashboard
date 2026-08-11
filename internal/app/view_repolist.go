@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -161,6 +162,17 @@ func (m Model) renderListWithPreview(height int) string {
 	return joinListAndPanel(list, overview, listWidth(m.width, m.height), panel, height)
 }
 
+// padTop grows lines to exactly height by adding blanks above them, so a note
+// shorter than its region sits against the divider that captions it rather
+// than floating away from it.
+func padTop(lines []string, height int) []string {
+	if len(lines) >= height {
+		return lines[:height]
+	}
+
+	return append(make([]string, height-len(lines)), lines...)
+}
+
 // fitBlock pads or truncates a block of lines to exactly height lines.
 func fitBlock(block string, height int) string {
 	lines := strings.Split(block, "\n")
@@ -200,8 +212,8 @@ func (m Model) renderTable(height int) string {
 	// the same line whatever the note says, and moving the cursor swaps the
 	// text in place instead of sliding the rows around it.
 	if preview := m.notesPreviewHeight(height); preview > 0 {
-		rows = append(rows, fitBlock(
-			strings.Join(elideMiddle(m.notesPreviewLines(width), preview), "\n"), preview))
+		rows = append(rows, strings.Join(
+			padTop(elideMiddle(m.notesPreviewLines(width), preview), preview), "\n"))
 	}
 
 	layout := layoutRepoCols(width)
@@ -302,8 +314,10 @@ type repoWindow struct {
 	end   int
 }
 
-// notesPreviewLines renders the selected repo's notes below the list: a rule
-// naming each file, then its text.
+// notesPreviewLines renders the selected repo's notes above the list. The last
+// line is always the divider that separates the two and captions what is above
+// it, naming the repo by its parent directory as well as its own, because a
+// fleet holds several checkouts that share a name.
 func (m Model) notesPreviewLines(width int) []string {
 	if m.cursor >= len(m.filteredPaths) {
 		return nil
@@ -313,25 +327,50 @@ func (m Model) notesPreviewLines(width int) []string {
 	summary := m.summaries[path]
 
 	if len(summary.NotesFiles) == 0 {
-		return []string{notesPreviewRule("no notes", width)}
+		return []string{notesDivider(qualifiedRepoName(path), "no notes", width)}
 	}
 
 	contents, loaded := m.notesPreview[path]
 	if !loaded {
-		return []string{notesPreviewRule("reading notes…", width)}
+		return []string{notesDivider(qualifiedRepoName(path), "reading…", width)}
+	}
+
+	// One note needs no heading of its own: the divider below already names
+	// the file. Several do, or their text runs together.
+	if len(contents) == 1 {
+		return append(notesBodyLines(contents[0].Content, width),
+			notesDivider(qualifiedRepoName(path), contents[0].Name, width))
 	}
 
 	var lines []string
 	for i := range contents {
-		lines = append(lines, notesPreviewRule(contents[i].Name, width))
+		lines = append(lines, notesFileRule(contents[i].Name, width))
 		lines = append(lines, notesBodyLines(contents[i].Content, width)...)
 	}
 
-	return lines
+	return append(lines, notesDivider(qualifiedRepoName(path),
+		strconv.Itoa(len(contents))+" "+plural(len(contents), "note", "notes"), width))
 }
 
-// notesPreviewRule draws the labeled rule that opens the preview region.
-func notesPreviewRule(label string, width int) string {
+// qualifiedRepoName names a repo by its parent directory as well as its own,
+// which is what tells two checkouts of the same project apart.
+func qualifiedRepoName(path string) string {
+	return filepath.Join(filepath.Base(filepath.Dir(path)), filepath.Base(path))
+}
+
+// notesDivider closes the preview region and separates it from the table,
+// captioning what sits above it on the right where the text has ended.
+func notesDivider(repo, detail string, width int) string {
+	label := repo + compactSignalSep + detail
+	rule := strings.Repeat("─", max(width-lipgloss.Width(label)-notesRuleSpaces-notesRuleLead, 0))
+
+	return styles.SubtitleStyle.Render(rule+" ") +
+		styles.NotesPreviewNameStyle.Render(label) +
+		styles.SubtitleStyle.Render(" "+strings.Repeat("─", notesRuleLead))
+}
+
+// notesFileRule heads one note's text when the repo has more than one.
+func notesFileRule(label string, width int) string {
 	rule := strings.Repeat("─", max(width-lipgloss.Width(label)-notesRuleLead-notesRuleSpaces, 0))
 
 	return styles.SubtitleStyle.Render(strings.Repeat("─", notesRuleLead)+" ") +
@@ -339,7 +378,7 @@ func notesPreviewRule(label string, width int) string {
 		styles.SubtitleStyle.Render(" "+rule)
 }
 
-// notesRuleSpaces is the blank on each side of the rule's label.
+// notesRuleSpaces is the blank on each side of a rule's label.
 const (
 	notesRuleLead   = 2
 	notesRuleSpaces = 2
