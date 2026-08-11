@@ -122,10 +122,6 @@ func TestNotesPanel_ShowsTheNoteWithoutFocusingIt(t *testing.T) {
 func TestNotesPreview_CaptionsTheRegionAtItsDivider(t *testing.T) {
 	t.Parallel()
 
-	m := compactModel(180, 40)
-	m.notesPreviewOpen = true
-	m.cursor = 1 // bravo, the repo carrying notes
-
 	tests := []struct {
 		name  string
 		files []models.NoteFileContent
@@ -150,6 +146,9 @@ func TestNotesPreview_CaptionsTheRegionAtItsDivider(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			m := compactModel(180, 40)
+			m.notesPreviewOpen = true
+			m.cursor = 1 // bravo, the repo carrying notes
 			m.notesPreview = map[string][]models.NoteFileContent{"/dev/bravo": tt.files}
 			lines := m.notesPreviewLines(120)
 			got := plainText(strings.Join(lines, "\n"))
