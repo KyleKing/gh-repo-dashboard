@@ -808,6 +808,8 @@ func (m Model) prDetailLines(width int) []string {
 		return append(lines, "", styles.SubtitleStyle.Render("loading description…"))
 	}
 
+	lines = append(lines, prCheckLines(m.prDetail.CheckDetails, width)...)
+
 	if body := strings.TrimSpace(m.prDetail.Body); body != "" {
 		lines = append(lines, "", styles.HeaderStyle.Render("description"))
 		lines = append(lines, wrapLines(truncateWords(body, prBodyMaxLen), width)...)
@@ -819,6 +821,106 @@ func (m Model) prDetailLines(width int) []string {
 	}
 
 	return lines
+}
+
+// prCheckLines names every check that is not already green, failures first,
+// and tallies the rest on one line so a passing pull request costs the pane
+// three rows instead of one per check.
+func prCheckLines(checks []models.CheckDetail, width int) []string {
+	if len(checks) == 0 {
+		return nil
+	}
+
+	named, quiet := unsettledChecks(checks), settledTally(checks)
+	lines := []string{"", styles.HeaderStyle.Render("checks")}
+
+	shown := named
+	if len(shown) > prChecksMaxRows {
+		shown = shown[:prChecksMaxRows]
+	}
+
+	statusWidth := 0
+	for _, check := range shown {
+		statusWidth = max(statusWidth, lipgloss.Width(check.StatusDisplay()))
+	}
+
+	nameWidth := max(width-statusWidth-1, prCheckNameMinWidth)
+	for _, check := range shown {
+		status := check.StatusDisplay()
+		lines = append(lines,
+			styles.TableRowStyle.Render(padCell(truncate("  "+checkDisplayName(check), nameWidth), nameWidth))+
+				" "+checkStatusStyle(status).Render(status))
+	}
+
+	if hidden := len(named) - len(shown); hidden > 0 {
+		quiet = append([]string{strconv.Itoa(hidden) + " more"}, quiet...)
+	}
+
+	if len(quiet) > 0 {
+		lines = append(lines, styles.SubtitleStyle.Render(truncate("  "+strings.Join(quiet, ", "), width)))
+	}
+
+	return lines
+}
+
+// unsettledChecks are the checks worth a row of their own, failures ahead of
+// anything still running.
+func unsettledChecks(checks []models.CheckDetail) []models.CheckDetail {
+	var failing, running []models.CheckDetail
+
+	for _, check := range checks {
+		switch checkRank(check.StatusDisplay()) {
+		case checkRankFailing:
+			failing = append(failing, check)
+		case checkRankRunning:
+			running = append(running, check)
+		}
+	}
+
+	return append(failing, running...)
+}
+
+// settledTally counts the checks that need no attention, one entry per
+// outcome in the order the outcomes first appear.
+func settledTally(checks []models.CheckDetail) []string {
+	tally := map[string]int{}
+	order := []string{}
+
+	for _, check := range checks {
+		status := check.StatusDisplay()
+		if checkRank(status) != checkRankSettled {
+			continue
+		}
+		if tally[status] == 0 {
+			order = append(order, status)
+		}
+		tally[status]++
+	}
+
+	counted := make([]string, 0, len(order))
+	for _, status := range order {
+		counted = append(counted, strconv.Itoa(tally[status])+" "+status)
+	}
+
+	return counted
+}
+
+const (
+	checkRankFailing = iota
+	checkRankRunning
+	checkRankSettled
+)
+
+func checkRank(status string) int {
+	switch status {
+	//nolint:misspell // GitHub's own conclusion value is spelled "cancelled"
+	case checkStateFailure, "error", "cancelled", "timed_out", "action_required":
+		return checkRankFailing
+	case checkStateSuccess, "skipped", "neutral", emDash:
+		return checkRankSettled
+	default:
+		return checkRankRunning
+	}
 }
 
 func (m Model) peerDetailLines() []string {

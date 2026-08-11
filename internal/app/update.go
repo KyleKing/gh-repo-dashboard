@@ -302,7 +302,7 @@ func (m Model) handleWorkflowLoaded(msg WorkflowLoadedMsg) (tea.Model, tea.Cmd) 
 // handlePRDetailLoaded stores a loaded PR detail if it's still for the
 // currently selected repo/PR, preserving prior info on error.
 func (m Model) handlePRDetailLoaded(msg PRDetailLoadedMsg) (tea.Model, tea.Cmd) {
-	if msg.Path != m.selectedRepo || msg.PRNumber != m.selectedPR.Number {
+	if msg.Path != m.selectedRepo || !m.showingPR(msg.PRNumber) {
 		return m, nil
 	}
 	if msg.Error != nil {
@@ -313,6 +313,19 @@ func (m Model) handlePRDetailLoaded(msg PRDetailLoadedMsg) (tea.Model, tea.Cmd) 
 	m.prDetail = msg.Detail
 
 	return m, nil
+}
+
+// showingPR reports whether the pull request is the one on screen. The
+// focused view tracks its selection with the panel cursor and never sets
+// selectedPR, which only the PR-detail view owns.
+func (m Model) showingPR(number int) bool {
+	if m.selectedPR.Number == number {
+		return true
+	}
+
+	pr, ok := m.selectedPanelPR()
+
+	return ok && pr.Number == number
 }
 
 // handleSpinnerTick advances the loading spinner. The tick chain stops once

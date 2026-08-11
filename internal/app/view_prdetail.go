@@ -92,13 +92,20 @@ func writePRDetailDescription(b *strings.Builder, sectionStyle, valueStyle lipgl
 	b.WriteString("\n")
 }
 
+// Check conclusions shared by the PR detail view and the focused view's
+// detail pane.
+const (
+	checkStateFailure = "failure"
+	checkStateSuccess = "success"
+)
+
 // checkStatusStyle colors a single check's status by outcome.
 func checkStatusStyle(status string) lipgloss.Style {
 	switch status {
-	case "success", models.StatusPassing:
+	case checkStateSuccess, models.StatusPassing:
 		return styles.CleanStyle
 	//nolint:misspell // GitHub's own conclusion value is spelled "cancelled"
-	case "failure", "error", "cancelled", "timed_out":
+	case checkStateFailure, "error", "cancelled", "timed_out":
 		return styles.ErrorStyle
 	case "skipped", "neutral":
 		return styles.SubtitleStyle
