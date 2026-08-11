@@ -194,6 +194,14 @@ func (m Model) renderTable(height int) string {
 		rowHeight = 1
 	)
 
+	// The preview leads. Its height is fixed, so the table below it starts on
+	// the same line whatever the note says, and moving the cursor swaps the
+	// text in place instead of sliding the rows around it.
+	if preview := m.notesPreviewHeight(height); preview > 0 {
+		rows = append(rows, fitBlock(
+			strings.Join(elideMiddle(m.notesPreviewLines(width), preview), "\n"), preview))
+	}
+
 	layout := layoutRepoCols(width)
 	if compact {
 		layout = table.Fit(compactColSpecs, width-cursorWidth)
@@ -214,20 +222,17 @@ func (m Model) renderTable(height int) string {
 		}
 	}
 
-	if preview := m.notesPreviewHeight(height); preview > 0 {
-		rows = append(rows, fitBlock(
-			strings.Join(elideMiddle(m.notesPreviewLines(width), preview), "\n"), preview))
-	}
-
 	return strings.Join(rows, "\n")
 }
 
 // Notes preview geometry. Opening the preview is a request to read the notes,
-// so it takes most of the body and leaves the list a few rows for context.
+// so it takes the larger share of the body; the list keeps enough rows below
+// it that scrolling still moves through the fleet rather than re-centering a
+// two-row window on every keypress.
 const (
-	notesPreviewPercent = 80
+	notesPreviewPercent = 60
 	notesPreviewMinRows = 4
-	listMinRows         = 3
+	listMinRows         = 6
 )
 
 // notesPreviewHeight is how many of the body's lines the notes preview holds,
