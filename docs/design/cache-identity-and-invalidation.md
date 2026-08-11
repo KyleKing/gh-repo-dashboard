@@ -28,7 +28,7 @@ narrow again for a worktree reading its parent's refs.
 | PR list, PR detail, merged PR heads | the remote | every checkout of that remote |
 | Workflow runs, dependabot alerts | the remote | every checkout of that remote |
 | Copier latest tag | the template's `_src_path` | every repo generated from it |
-| Branch list, commit log | the object store | a worktree and its parent |
+| Branch list, commit log | the checkout that asked | nobody (see Resolved) |
 | Working tree status, stash list | the checkout | nobody |
 
 `CopierLatestTagCache` already keys on the upstream rather than the path, and
@@ -140,6 +140,13 @@ Decisions this needs:
   it as an opaque comparable value and never learns how it is gathered.
 - Disk holds counts, states, numbers, and PR titles at mode 0600. Bodies and
   comments stay in memory, and `cache_to_disk = false` turns the file off.
+- The branch list and the commit log key on the checkout path, not on the
+  object store the checkout borrows. Both are read relative to whichever HEAD
+  asked (`for-each-ref` carries the `%(HEAD)` marker, `git log` starts at
+  HEAD), so one shared entry either hands a worktree its parent's answer or,
+  with the stamp guarding it, misses every time the two alternate. Keying on
+  the checkout caches both, and the sharing this row promised was never
+  available to values that differ per checkout.
 
 ## Order of work
 

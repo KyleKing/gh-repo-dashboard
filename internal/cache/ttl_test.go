@@ -170,9 +170,10 @@ func TestClearAllCaches(t *testing.T) {
 	}
 }
 
-// A worktree borrows its parent's object store, so the branch list and commit
-// log it reads are the parent's; a standalone checkout keeps its own entry.
-func TestObjectStoreKeysFoldAWorktreeOntoItsParent(t *testing.T) {
+// A worktree borrows its parent's object store, but the branch list and commit
+// log it reads are relative to its own HEAD, so it keeps its own entry rather
+// than reading the answer the parent wrote.
+func TestObjectStoreKeysSeparateAWorktreeFromItsParent(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
@@ -190,11 +191,14 @@ func TestObjectStoreKeysFoldAWorktreeOntoItsParent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	branchKey := cache.BranchCacheKey(vcs.CheckoutIdentity(parent))
-	commitKey := cache.CommitCacheKey(vcs.CheckoutIdentity(parent), 10)
+	if got := vcs.CheckoutIdentity(worktree); got != parent {
+		t.Fatalf("the fixture is not a worktree of the parent: identity = %q, want %q", got, parent)
+	}
 
-	branches := []models.BranchInfo{{Name: "main"}}
-	cache.BranchCache.Set(branchKey, cache.NoStamp, branches)
+	branchKey := cache.BranchCacheKey(parent)
+	commitKey := cache.CommitCacheKey(parent, 10)
+
+	cache.BranchCache.Set(branchKey, cache.NoStamp, []models.BranchInfo{{Name: "main"}})
 	cache.CommitCache.Set(commitKey, cache.NoStamp, []models.CommitInfo{{Subject: "init"}})
 
 	t.Cleanup(func() {
@@ -202,17 +206,16 @@ func TestObjectStoreKeysFoldAWorktreeOntoItsParent(t *testing.T) {
 		cache.CommitCache.Delete(commitKey)
 	})
 
-	wtBranchKey := cache.BranchCacheKey(vcs.CheckoutIdentity(worktree))
-	if got, ok := cache.BranchCache.Get(wtBranchKey, cache.NoStamp); !ok || len(got) != 1 {
-		t.Errorf("worktree missed its parent's branch list: %+v, hit=%v", got, ok)
+	if _, ok := cache.BranchCache.Get(cache.BranchCacheKey(worktree), cache.NoStamp); ok {
+		t.Error("a worktree read its parent's branch list, whose current-branch marker is the parent's")
 	}
-	if _, ok := cache.CommitCache.Get(cache.CommitCacheKey(vcs.CheckoutIdentity(worktree), 10), cache.NoStamp); !ok {
-		t.Error("worktree missed its parent's commit log")
+	if _, ok := cache.CommitCache.Get(cache.CommitCacheKey(worktree, 10), cache.NoStamp); ok {
+		t.Error("a worktree read its parent's commit log, which starts at the parent's HEAD")
 	}
-	if _, ok := cache.CommitCache.Get(cache.CommitCacheKey(vcs.CheckoutIdentity(worktree), 20), cache.NoStamp); ok {
+	if _, ok := cache.CommitCache.Get(cache.CommitCacheKey(parent, 20), cache.NoStamp); ok {
 		t.Error("a different log depth read the 10-commit entry")
 	}
-	if _, ok := cache.BranchCache.Get(cache.BranchCacheKey(vcs.CheckoutIdentity(other)), cache.NoStamp); ok {
+	if _, ok := cache.BranchCache.Get(cache.BranchCacheKey(other), cache.NoStamp); ok {
 		t.Error("an unrelated checkout read the parent's branch list")
 	}
 }
