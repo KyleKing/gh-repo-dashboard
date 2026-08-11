@@ -216,7 +216,7 @@ func TestPrefetchCacheHit(t *testing.T) {
 	// This is more of an integration test concept
 	// The actual caching happens in github.GetPRDetail
 	// We're testing that prefetchPRDetailCmd doesn't send a message
-	cmd := prefetchPRDetailCmd(testRepoPath, 123)
+	cmd := prefetchPRDetailCmd(testRepoPath, "github.com/acme/app", 123)
 
 	if cmd == nil {
 		t.Fatal("prefetch command should be created")

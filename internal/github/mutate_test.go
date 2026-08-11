@@ -16,7 +16,10 @@ func TestCreatePR(t *testing.T) {
 	cache.ClearAll()
 
 	ctx, calls := stubRunGH([]byte("https://github.com/acme/app/pull/7\n"), nil)
-	cache.PRListCache.Set(github.PRListCacheKey(mutateRepoPath, "origin/main"), []models.PRInfo{{Number: 1}})
+	cache.PRListCache.Set(
+		github.PRListCacheKey(mutateRepoPath, testRemoteID, "origin/main"),
+		[]models.PRInfo{{Number: 1}},
+	)
 
 	url, err := github.CreatePR(ctx, mutateRepoPath, "feature", "main")
 	if err != nil {
@@ -30,7 +33,7 @@ func TestCreatePR(t *testing.T) {
 	if got != "pr create --fill --head feature --base main" {
 		t.Errorf("unexpected gh args: %q", got)
 	}
-	if _, ok := github.CachedPRs(mutateRepoPath, "origin/main"); ok {
+	if _, ok := github.CachedPRs(mutateRepoPath, testRemoteID, "origin/main"); ok {
 		t.Error("expected the PR list cache to be invalidated")
 	}
 }
@@ -65,7 +68,10 @@ func TestSquashMergePR(t *testing.T) {
 	cache.ClearAll()
 
 	ctx, calls := stubRunGH([]byte(""), nil)
-	cache.MergedPRHeadsCache.Set(mutateRepoPath, map[string]string{"feature": "abc123"})
+	cache.MergedPRHeadsCache.Set(
+		github.MergedPRHeadsCacheKey(mutateRepoPath, testRemoteID),
+		map[string]string{"feature": "abc123"},
+	)
 
 	if err := github.SquashMergePR(ctx, mutateRepoPath, 42); err != nil {
 		t.Fatal(err)
@@ -75,7 +81,7 @@ func TestSquashMergePR(t *testing.T) {
 	if got != "pr merge 42 --squash --delete-branch" {
 		t.Errorf("unexpected gh args: %q", got)
 	}
-	if _, ok := github.CachedMergedPRHeads(mutateRepoPath); ok {
+	if _, ok := github.CachedMergedPRHeads(mutateRepoPath, testRemoteID); ok {
 		t.Error("expected the merged-PR head cache to be invalidated")
 	}
 }

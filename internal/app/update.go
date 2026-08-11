@@ -261,7 +261,7 @@ func (m Model) handleRepoSummaryLoaded(msg RepoSummaryLoadedMsg) (tea.Model, tea
 		m.summaries[msg.Path] = msg.Summary
 		cmds = append(cmds,
 			loadPRCmd(msg.Path, msg.Summary.Branch, msg.Summary.Upstream),
-			loadPRCountCmd(msg.Path, msg.Summary.Upstream),
+			loadPRCountCmd(msg.Path, msg.Summary.RemoteID, msg.Summary.Upstream),
 			loadCopierInfoCmd(msg.Path),
 		)
 	}
@@ -362,7 +362,7 @@ func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
 
 	cmds := []tea.Cmd{m.panelDetailCmd()}
 	for i := range prefetchCount {
-		cmds = append(cmds, prefetchPRDetailCmd(msg.Path, msg.PRs[i].Number))
+		cmds = append(cmds, prefetchPRDetailCmd(msg.Path, m.summaries[msg.Path].RemoteID, msg.PRs[i].Number))
 	}
 
 	return m, tea.Batch(cmds...)
@@ -525,7 +525,7 @@ func (m Model) openPRMap() (Model, tea.Cmd) {
 
 	cmds := make([]tea.Cmd, 0, len(m.filteredPaths)+1)
 	for _, path := range m.filteredPaths {
-		cmds = append(cmds, loadPRMapCmd(path, m.summaries[path].Upstream))
+		cmds = append(cmds, loadPRMapCmd(path, m.summaries[path].RemoteID, m.summaries[path].Upstream))
 	}
 	cmds = append(cmds, m.spinner.Tick)
 
@@ -628,7 +628,7 @@ func (m *Model) visibleCICmds() []tea.Cmd {
 			m.ciRequested = make(map[string]bool)
 		}
 		m.ciRequested[path] = true
-		cmds = append(cmds, loadDefaultBranchCICmd(path))
+		cmds = append(cmds, loadDefaultBranchCICmd(path, m.summaries[path].RemoteID))
 	}
 
 	return cmds
@@ -1088,7 +1088,7 @@ func (m Model) panelDetailCmd() tea.Cmd {
 			return nil
 		}
 
-		return loadPRDetailCmd(m.selectedRepo, pr.Number)
+		return loadPRDetailCmd(m.selectedRepo, m.summaries[m.selectedRepo].RemoteID, pr.Number)
 
 	case m.focusedPanel == panelBranches && m.detailCursor < len(m.branches):
 		branch := m.branches[m.detailCursor]
@@ -1154,7 +1154,7 @@ func (m Model) handleDetailOpenKey() (tea.Model, tea.Cmd) {
 		m.prDetail = models.PRDetail{PRInfo: m.selectedPR}
 		m.viewMode = ViewModePRDetail
 
-		return m, loadPRDetailCmd(m.selectedRepo, m.selectedPR.Number)
+		return m, loadPRDetailCmd(m.selectedRepo, m.summaries[m.selectedRepo].RemoteID, m.selectedPR.Number)
 
 	default:
 		return m, nil
@@ -1314,7 +1314,7 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		if m.selectedRepo != "" {
 			cmds = append(cmds, loadDetailCmd(m.selectedRepo))
 			if summary, ok := m.summaries[m.selectedRepo]; ok && summary.Upstream != "" {
-				cmds = append(cmds, loadPRCountCmd(m.selectedRepo, summary.Upstream))
+				cmds = append(cmds, loadPRCountCmd(m.selectedRepo, summary.RemoteID, summary.Upstream))
 			}
 		}
 
@@ -1332,7 +1332,8 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		m.prDetail = models.PRDetail{}
 
 		if m.selectedRepo != "" && m.selectedPR.Number > 0 {
-			cmds = append(cmds, loadPRDetailCmd(m.selectedRepo, m.selectedPR.Number))
+			cmds = append(cmds,
+				loadPRDetailCmd(m.selectedRepo, m.summaries[m.selectedRepo].RemoteID, m.selectedPR.Number))
 		}
 
 	default:
@@ -1362,10 +1363,11 @@ func (m Model) moveToAdjacentPR(delta int) (tea.Model, tea.Cmd) {
 	m.selectedPR = m.prs[newIdx]
 	m.prDetail = models.PRDetail{PRInfo: m.selectedPR}
 
-	cmds := []tea.Cmd{loadPRDetailCmd(m.selectedRepo, m.selectedPR.Number)}
+	cmds := []tea.Cmd{loadPRDetailCmd(m.selectedRepo, m.summaries[m.selectedRepo].RemoteID, m.selectedPR.Number)}
 
 	if prefetchIdx := newIdx + delta; prefetchIdx >= 0 && prefetchIdx < len(m.prs) {
-		cmds = append(cmds, prefetchPRDetailCmd(m.selectedRepo, m.prs[prefetchIdx].Number))
+		cmds = append(cmds,
+			prefetchPRDetailCmd(m.selectedRepo, m.summaries[m.selectedRepo].RemoteID, m.prs[prefetchIdx].Number))
 	}
 
 	return m, tea.Batch(cmds...)
@@ -1773,8 +1775,8 @@ func (m Model) startBatchTaskOn(taskName string, paths []string, taskCmd func([]
 // deletableBranches marks local, non-current branches whose tip matches a
 // merged pull request's head OID as safe to delete. Best-effort: a missing gh
 // yields an empty set rather than failing the detail load.
-func deletableBranches(ctx context.Context, path string, branches []models.BranchInfo) map[string]bool {
-	heads, err := github.GetMergedPRHeads(ctx, path)
+func deletableBranches(ctx context.Context, path, remoteID string, branches []models.BranchInfo) map[string]bool {
+	heads, err := github.GetMergedPRHeads(ctx, path, remoteID)
 	if err != nil || len(heads) == 0 {
 		return nil
 	}

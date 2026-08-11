@@ -42,14 +42,14 @@ func (e prMapEntry) HasPR() bool {
 // loadPRMapCmd fetches one repo's pull requests and branch list. The pull
 // request call is the same per-repo list the detail view already makes; the
 // branch list is local git and costs nothing.
-func loadPRMapCmd(path, upstream string) tea.Cmd {
+func loadPRMapCmd(path, remoteID, upstream string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
 
 		var prs []models.PRInfo
 		if upstream != "" {
 			//nolint:errcheck // best-effort: a repo we cannot reach leaves a gap in the map
-			prs, _ = github.GetPRsForRepo(ctx, path, upstream)
+			prs, _ = github.GetPRsForRepo(ctx, path, remoteID, upstream)
 		}
 
 		//nolint:errcheck // best-effort, see above

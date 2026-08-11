@@ -43,7 +43,7 @@ func TestGetPRsForRepoDerivesLatestActivity(t *testing.T) {
 
 	ctx, calls := stubRunGH(listJSON, nil)
 
-	prs, err := github.GetPRsForRepo(ctx, "/repo", "owner/repo")
+	prs, err := github.GetPRsForRepo(ctx, "/repo", testRemoteID, "owner/repo")
 	if err != nil {
 		t.Fatalf("GetPRsForRepo: %v", err)
 	}

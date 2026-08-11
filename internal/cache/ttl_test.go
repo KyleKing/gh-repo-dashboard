@@ -1,10 +1,13 @@
 package cache_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
+	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 func TestTTLCacheSetGet(t *testing.T) {
@@ -151,5 +154,48 @@ func TestClearAllCaches(t *testing.T) {
 
 	if ok1 || ok2 || ok3 || ok4 {
 		t.Error("expected all caches to be cleared")
+	}
+}
+
+// A worktree borrows its parent's object store, so the branch list and commit
+// log it reads are the parent's; a standalone checkout keeps its own entry.
+func TestObjectStoreKeysFoldAWorktreeOntoItsParent(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	parent := filepath.Join(root, "app")
+	worktree := filepath.Join(root, "app-wt")
+	other := filepath.Join(root, "lib")
+
+	for _, dir := range []string{filepath.Join(parent, ".git"), other, worktree} {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pointer := "gitdir: " + filepath.Join(parent, ".git", "worktrees", "app-wt") + "\n"
+	if err := os.WriteFile(filepath.Join(worktree, ".git"), []byte(pointer), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	branches := []models.BranchInfo{{Name: "main"}}
+	cache.BranchCache.Set(cache.BranchCacheKey(parent), branches)
+	cache.CommitCache.Set(cache.CommitCacheKey(parent, 10), []models.CommitInfo{{Subject: "init"}})
+
+	t.Cleanup(func() {
+		cache.BranchCache.Delete(cache.BranchCacheKey(parent))
+		cache.CommitCache.Delete(cache.CommitCacheKey(parent, 10))
+	})
+
+	if got, ok := cache.BranchCache.Get(cache.BranchCacheKey(worktree)); !ok || len(got) != 1 {
+		t.Errorf("worktree missed its parent's branch list: %+v, hit=%v", got, ok)
+	}
+	if _, ok := cache.CommitCache.Get(cache.CommitCacheKey(worktree, 10)); !ok {
+		t.Error("worktree missed its parent's commit log")
+	}
+	if _, ok := cache.CommitCache.Get(cache.CommitCacheKey(worktree, 20)); ok {
+		t.Error("a different log depth read the 10-commit entry")
+	}
+	if _, ok := cache.BranchCache.Get(cache.BranchCacheKey(other)); ok {
+		t.Error("an unrelated checkout read the parent's branch list")
 	}
 }

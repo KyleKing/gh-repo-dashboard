@@ -190,7 +190,7 @@ func stubMergedPRHeads(t *testing.T, heads map[string]string) {
 	t.Helper()
 
 	restore := batch.SetGetMergedPRHeadsForTest(
-		func(context.Context, string) (map[string]string, error) { return heads, nil },
+		func(context.Context, string, string) (map[string]string, error) { return heads, nil },
 	)
 	t.Cleanup(restore)
 }

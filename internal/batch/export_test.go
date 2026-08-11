@@ -12,7 +12,9 @@ var RepoName = repoName
 // SetGetMergedPRHeadsForTest overrides the getMergedPRHeads seam for black-box
 // tests and returns a func that restores the original. Avoids shelling out to
 // a real gh CLI when testing squash-merged detection.
-func SetGetMergedPRHeadsForTest(fn func(ctx context.Context, repoPath string) (map[string]string, error)) func() {
+func SetGetMergedPRHeadsForTest(
+	fn func(ctx context.Context, repoPath, remoteID string) (map[string]string, error),
+) func() {
 	orig := getMergedPRHeads
 	getMergedPRHeads = fn
 

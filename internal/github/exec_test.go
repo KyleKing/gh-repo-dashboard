@@ -11,12 +11,16 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 var (
 	errGHFailed   = errors.New("gh failed")
 	errNoPRsFound = errors.New("no pull requests found")
 )
+
+// testRemoteID is the upstream identity every single-repo case caches under.
+const testRemoteID = "github.com/owner/repo"
 
 // stubRunGH returns a context that makes runGH answer with (out, err) instead
 // of shelling out, plus a pointer to the recorded call args. It's local to the
@@ -101,7 +105,7 @@ func runGetPRForBranchCase(t *testing.T, tt getPRForBranchCase) {
 	cache.ClearAll()
 	ctx, calls := stubRunGH(tt.output, tt.runErr)
 
-	pr, err := github.GetPRForBranch(ctx, "/repo", "feature-branch", "owner/repo")
+	pr, err := github.GetPRForBranch(ctx, "/repo", testRemoteID, "feature-branch", "owner/repo")
 	if tt.expectErr {
 		if err == nil {
 			t.Fatal("expected error, got nil")
@@ -117,7 +121,7 @@ func runGetPRForBranchCase(t *testing.T, tt getPRForBranchCase) {
 		return
 	}
 
-	cachedPR, cachedErr := github.GetPRForBranch(ctx, "/repo", "feature-branch", "owner/repo")
+	cachedPR, cachedErr := github.GetPRForBranch(ctx, "/repo", testRemoteID, "feature-branch", "owner/repo")
 	if cachedErr != nil {
 		t.Errorf("expected cached result without error, got %v", cachedErr)
 	}
@@ -134,13 +138,13 @@ func TestGetPRForBranchDoesNotCacheError(t *testing.T) {
 	cache.ClearAll()
 	failCtx, _ := stubRunGH(nil, errGHFailed)
 
-	if _, err := github.GetPRForBranch(failCtx, "/repo", "feature-branch", "owner/repo"); err == nil {
+	if _, err := github.GetPRForBranch(failCtx, "/repo", testRemoteID, "feature-branch", "owner/repo"); err == nil {
 		t.Fatal("expected error, got nil")
 	}
 
 	okCtx, okCalls := stubRunGH([]byte(`{"number": 9}`), nil)
 
-	pr, err := github.GetPRForBranch(okCtx, "/repo", "feature-branch", "owner/repo")
+	pr, err := github.GetPRForBranch(okCtx, "/repo", testRemoteID, "feature-branch", "owner/repo")
 	if err != nil {
 		t.Fatalf("unexpected error after gh recovered: %v", err)
 	}
@@ -157,7 +161,7 @@ func TestGetPRForBranchArgs(t *testing.T) {
 	cache.ClearAll()
 	ctx, calls := stubRunGH([]byte(`{"number": 1}`), nil)
 
-	if _, err := github.GetPRForBranch(ctx, "/repo", "my-branch", "owner/repo"); err != nil {
+	if _, err := github.GetPRForBranch(ctx, "/repo", testRemoteID, "my-branch", "owner/repo"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -272,7 +276,7 @@ func runGetPRDetailCase(t *testing.T, tt getPRDetailCase) {
 	cache.ClearAll()
 	ctx, calls := stubRunGH(tt.output, tt.runErr)
 
-	detail, err := github.GetPRDetail(ctx, "/repo", 7)
+	detail, err := github.GetPRDetail(ctx, "/repo", testRemoteID, 7)
 	if tt.expectErr {
 		if err == nil {
 			t.Fatal("expected error, got nil")
@@ -287,7 +291,7 @@ func runGetPRDetailCase(t *testing.T, tt getPRDetailCase) {
 		t.Errorf("expected %+v, got %+v", tt.expected, detail)
 	}
 
-	cachedDetail, err := github.GetPRDetail(ctx, "/repo", 7)
+	cachedDetail, err := github.GetPRDetail(ctx, "/repo", testRemoteID, 7)
 	if err != nil {
 		t.Fatalf("unexpected error on cached call: %v", err)
 	}
@@ -377,7 +381,7 @@ func TestGetPRsForRepo(t *testing.T) {
 			cache.ClearAll()
 			ctx, calls := stubRunGH(tt.output, tt.runErr)
 
-			prs, err := github.GetPRsForRepo(ctx, "/repo", tt.upstream)
+			prs, err := github.GetPRsForRepo(ctx, "/repo", testRemoteID, tt.upstream)
 			if tt.expectErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -405,11 +409,11 @@ func TestGetPRsForRepoUsesCache(t *testing.T) {
 	cache.ClearAll()
 	ctx, calls := stubRunGH([]byte(`[{"number": 5, "title": "Cached"}]`), nil)
 
-	first, err := github.GetPRsForRepo(ctx, "/repo", "owner/repo")
+	first, err := github.GetPRsForRepo(ctx, "/repo", testRemoteID, "owner/repo")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	second, err := github.GetPRsForRepo(ctx, "/repo", "owner/repo")
+	second, err := github.GetPRsForRepo(ctx, "/repo", testRemoteID, "owner/repo")
 	if err != nil {
 		t.Fatalf("unexpected error on cached call: %v", err)
 	}
@@ -421,47 +425,66 @@ func TestGetPRsForRepoUsesCache(t *testing.T) {
 	}
 }
 
-// upstream is a local ref name that nearly every repo shares, so it cannot
-// identify a repo on its own.
+// Pull request data belongs to the remote, so two checkouts of one remote read
+// a single entry however each was cloned, while a checkout with no remote
+// stays scoped to its own directory. The upstream ref name cannot separate
+// them on its own, since nearly every repo tracks an "origin/..." ref.
 //
 //nolint:paralleltest // asserts against shared global cache.ClearAll() state
-func TestGetPRsForRepoCacheIsScopedByRepo(t *testing.T) {
-	cache.ClearAll()
-
-	ctxA, _ := stubRunGH([]byte(`[{"number": 1, "title": "Only in A"}]`), nil)
-	if _, err := github.GetPRsForRepo(ctxA, "/repo-a", "origin/main"); err != nil {
-		t.Fatalf("unexpected error for repo A: %v", err)
+func TestPRCachesAreScopedByRemote(t *testing.T) {
+	tests := []struct {
+		name       string
+		urlA       string
+		urlB       string
+		wantShared bool
+	}{
+		{
+			name: "ssh and https clones of one remote share",
+			urlA: "git@github.com:Acme/App.git", urlB: "https://github.com/acme/app",
+			wantShared: true,
+		},
+		{
+			name: "a repo of the same name on another host does not",
+			urlA: "git@github.com:acme/app.git", urlB: "git@github.acme-corp.com:acme/app.git",
+		},
+		{
+			name: "checkouts with no remote stay per-directory",
+			urlA: "", urlB: "",
+		},
 	}
 
-	ctxB, callsB := stubRunGH([]byte(`[]`), nil)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cache.ClearAll()
+			idA, idB := vcs.RemoteIdentity(tt.urlA), vcs.RemoteIdentity(tt.urlB)
 
-	prsB, err := github.GetPRsForRepo(ctxB, "/repo-b", "origin/main")
-	if err != nil {
-		t.Fatalf("unexpected error for repo B: %v", err)
-	}
-	if len(prsB) != 0 {
-		t.Errorf("repo B got repo A's cached PRs: %+v", prsB)
-	}
-	if len(*callsB) != github.PRListPages {
-		t.Errorf("expected repo B to invoke gh %d times, got %d", github.PRListPages, len(*callsB))
-	}
+			ctxA, _ := stubRunGH([]byte(`[{"number": 1, "title": "Only in A"}]`), nil)
+			if _, err := github.GetPRsForRepo(ctxA, "/repo-a", idA, "origin/main"); err != nil {
+				t.Fatalf("unexpected error for checkout A: %v", err)
+			}
 
-	if _, ok := github.CachedPRs("/repo-b", "origin/main"); !ok {
-		t.Error("expected repo B's own entry to be cached")
-	}
-}
+			ctxB, callsB := stubRunGH([]byte(`[]`), nil)
+			prsB, err := github.GetPRsForRepo(ctxB, "/repo-b", idB, "origin/main")
+			if err != nil {
+				t.Fatalf("unexpected error for checkout B: %v", err)
+			}
 
-//nolint:paralleltest // asserts against shared global cache.ClearAll() state
-func TestGetPRForBranchCacheIsScopedByRepo(t *testing.T) {
-	cache.ClearAll()
+			wantPRs, wantCalls := 0, github.PRListPages
+			if tt.wantShared {
+				wantPRs, wantCalls = 1, 0
+			}
+			if len(prsB) != wantPRs {
+				t.Errorf("checkout B read %d PRs, want %d", len(prsB), wantPRs)
+			}
+			if len(*callsB) != wantCalls {
+				t.Errorf("checkout B invoked gh %d times, want %d", len(*callsB), wantCalls)
+			}
 
-	ctxA, _ := stubRunGH([]byte(`{"number": 1, "title": "Only in A", "headRefName": "main"}`), nil)
-	if _, err := github.GetPRForBranch(ctxA, "/repo-a", "main", "origin/main"); err != nil {
-		t.Fatalf("unexpected error for repo A: %v", err)
-	}
-
-	if _, ok := github.CachedPRForBranch("/repo-b", "main", "origin/main"); ok {
-		t.Error("repo B hit repo A's cached PR")
+			cache.PRCache.Set(github.PRCacheKey("/repo-a", idA, "origin/main", "main"), &models.PRInfo{Number: 1})
+			if _, hit := github.CachedPRForBranch("/repo-b", idB, "main", "origin/main"); hit != tt.wantShared {
+				t.Errorf("per-branch cache hit from checkout B = %v, want %v", hit, tt.wantShared)
+			}
+		})
 	}
 }
 
@@ -484,7 +507,7 @@ func TestGetPRCount(t *testing.T) {
 			cache.ClearAll()
 			ctx, _ := stubRunGH(tt.output, tt.runErr)
 
-			count, err := github.GetPRCount(ctx, "/repo", "owner/repo")
+			count, err := github.GetPRCount(ctx, "/repo", testRemoteID, "owner/repo")
 			if tt.expectErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -534,7 +557,7 @@ func TestGetMergedPRHeads(t *testing.T) {
 			cache.ClearAll()
 			ctx, _ := stubRunGH(tt.output, tt.runErr)
 
-			heads, err := github.GetMergedPRHeads(ctx, "/repo")
+			heads, err := github.GetMergedPRHeads(ctx, "/repo", testRemoteID)
 			if tt.expectErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -554,7 +577,7 @@ func TestGetMergedPRHeadsArgs(t *testing.T) {
 	cache.ClearAll()
 	ctx, calls := stubRunGH([]byte(`[]`), nil)
 
-	if _, err := github.GetMergedPRHeads(ctx, "/repo"); err != nil {
+	if _, err := github.GetMergedPRHeads(ctx, "/repo", testRemoteID); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -569,11 +592,11 @@ func TestGetMergedPRHeadsUsesCache(t *testing.T) {
 	cache.ClearAll()
 	ctx, calls := stubRunGH([]byte(`[{"headRefName": "x", "headRefOid": "y"}]`), nil)
 
-	first, err := github.GetMergedPRHeads(ctx, "/repo")
+	first, err := github.GetMergedPRHeads(ctx, "/repo", testRemoteID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	second, err := github.GetMergedPRHeads(ctx, "/repo")
+	second, err := github.GetMergedPRHeads(ctx, "/repo", testRemoteID)
 	if err != nil {
 		t.Fatalf("unexpected error on cached call: %v", err)
 	}
@@ -688,7 +711,7 @@ func runGetWorkflowRunsCase(t *testing.T, tt *getWorkflowRunsCase) {
 	cache.ClearAll()
 	ctx, calls := stubRunGH(tt.output, tt.runErr)
 
-	summary, err := github.GetWorkflowRunsForCommit(ctx, "/repo", tt.commitSHA)
+	summary, err := github.GetWorkflowRunsForCommit(ctx, "/repo", testRemoteID, tt.commitSHA)
 	if tt.expectErr {
 		if err == nil {
 			t.Fatal("expected error, got nil")
@@ -712,7 +735,7 @@ func runGetWorkflowRunsCase(t *testing.T, tt *getWorkflowRunsCase) {
 		return
 	}
 
-	cachedSummary, cachedErr := github.GetWorkflowRunsForCommit(ctx, "/repo", tt.commitSHA)
+	cachedSummary, cachedErr := github.GetWorkflowRunsForCommit(ctx, "/repo", testRemoteID, tt.commitSHA)
 	if cachedErr != nil {
 		t.Errorf("expected cached result without error, got %v", cachedErr)
 	}
@@ -729,14 +752,14 @@ func TestGetWorkflowRunsForCommitDoesNotCacheError(t *testing.T) {
 	cache.ClearAll()
 	failCtx, _ := stubRunGH(nil, errGHFailed)
 
-	if _, err := github.GetWorkflowRunsForCommit(failCtx, "/repo", "abc123"); err == nil {
+	if _, err := github.GetWorkflowRunsForCommit(failCtx, "/repo", testRemoteID, "abc123"); err == nil {
 		t.Fatal("expected error, got nil")
 	}
 
 	okJSON := `[{"databaseId": 7, "name": "CI", "status": "completed", "conclusion": "success"}]`
 	okCtx, okCalls := stubRunGH([]byte(okJSON), nil)
 
-	summary, err := github.GetWorkflowRunsForCommit(okCtx, "/repo", "abc123")
+	summary, err := github.GetWorkflowRunsForCommit(okCtx, "/repo", testRemoteID, "abc123")
 	if err != nil {
 		t.Fatalf("unexpected error after gh recovered: %v", err)
 	}
@@ -816,7 +839,7 @@ func TestGetPRsForRepoMergesBothPages(t *testing.T) {
 			cache.ClearAll()
 			ctx := stubRunGHByFilter(tt.mine, tt.others, tt.mineErr, tt.othersErr)
 
-			prs, err := github.GetPRsForRepo(ctx, "/repo", "owner/repo")
+			prs, err := github.GetPRsForRepo(ctx, "/repo", testRemoteID, "owner/repo")
 			if gotErr := err != nil; gotErr != tt.expectErr {
 				t.Fatalf("error = %v, want an error: %v", err, tt.expectErr)
 			}
@@ -840,11 +863,11 @@ func TestGetPRsForRepoDoesNotCacheAFailure(t *testing.T) {
 	cache.ClearAll()
 
 	ctx := stubRunGHByFilter(nil, nil, errGHFailed, errGHFailed)
-	if _, err := github.GetPRsForRepo(ctx, "/repo", "owner/repo"); err == nil {
+	if _, err := github.GetPRsForRepo(ctx, "/repo", testRemoteID, "owner/repo"); err == nil {
 		t.Fatal("expected the failed fetch to report an error")
 	}
 
-	if _, cached := github.CachedPRs("/repo", "owner/repo"); cached {
+	if _, cached := github.CachedPRs("/repo", testRemoteID, "owner/repo"); cached {
 		t.Error("a failed fetch cached a result, so a later read would report no pull requests")
 	}
 }

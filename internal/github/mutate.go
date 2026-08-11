@@ -26,7 +26,7 @@ func CreatePR(ctx context.Context, repoPath, branch, base string) (string, error
 		return "", err
 	}
 
-	InvalidatePRCaches(repoPath)
+	InvalidatePRCaches()
 
 	return lastLine(string(out)), nil
 }
@@ -43,7 +43,7 @@ func SquashMergePR(ctx context.Context, repoPath string, prNumber int) error {
 		return err
 	}
 
-	InvalidatePRCaches(repoPath)
+	InvalidatePRCaches()
 
 	return nil
 }
@@ -57,7 +57,7 @@ func CheckoutPR(ctx context.Context, repoPath string, prNumber int) (string, err
 		return "", fmt.Errorf("checking out PR #%d: %w", prNumber, err)
 	}
 
-	InvalidatePRCaches(repoPath)
+	InvalidatePRCaches()
 
 	branch, err := vcs.GetOperations(repoPath).GetCurrentBranch(ctx, repoPath)
 	if err != nil {
@@ -67,14 +67,15 @@ func CheckoutPR(ctx context.Context, repoPath string, prNumber int) (string, err
 	return branch, nil
 }
 
-// InvalidatePRCaches drops every cached pull request view of a repo. The
-// per-branch and per-repo caches are keyed by upstream as well as path, so
-// they are cleared wholesale rather than by key.
-func InvalidatePRCaches(repoPath string) {
+// InvalidatePRCaches drops every cached pull request view. Each of these
+// caches is keyed by the remote and by upstream, and a mutation changes what
+// every checkout of that remote sees, so they are cleared wholesale rather
+// than by key.
+func InvalidatePRCaches() {
 	cache.PRCache.Clear()
 	cache.PRListCache.Clear()
 	cache.PRDetailCache.Clear()
-	cache.MergedPRHeadsCache.Delete(repoPath)
+	cache.MergedPRHeadsCache.Clear()
 }
 
 func lastLine(out string) string {

@@ -115,7 +115,7 @@ func (m Model) cachedPRs(path string) []models.PRInfo {
 	}
 
 	summary := m.summaries[path]
-	if prs, ok := github.CachedPRs(path, summary.Upstream); ok && len(prs) > 0 {
+	if prs, ok := github.CachedPRs(path, summary.RemoteID, summary.Upstream); ok && len(prs) > 0 {
 		return prs
 	}
 	if summary.PRInfo != nil {

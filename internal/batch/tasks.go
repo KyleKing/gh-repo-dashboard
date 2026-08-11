@@ -35,9 +35,9 @@ func RefreshPRs(ctx context.Context, _ vcs.Mutator, repoPath string) (bool, stri
 		return true, "no upstream, nothing to refresh", nil
 	}
 
-	github.InvalidatePRCaches(repoPath)
+	github.InvalidatePRCaches()
 
-	prs, err := github.GetPRsForRepo(ctx, repoPath, summary.Upstream)
+	prs, err := github.GetPRsForRepo(ctx, repoPath, summary.RemoteID, summary.Upstream)
 	if err != nil {
 		return false, "refresh failed", fmt.Errorf("refreshing pull requests: %w", err)
 	}
@@ -87,7 +87,7 @@ func CleanupMerged(ctx context.Context, ops vcs.Mutator, repoPath string) (bool,
 // merge-tracking can't detect because the squash commit is new history. It's
 // best-effort; a missing gh or a read failure just yields no candidates.
 func squashMergedBranches(ctx context.Context, repoPath string) []string {
-	heads, err := getMergedPRHeads(ctx, repoPath)
+	heads, err := getMergedPRHeads(ctx, repoPath, vcs.RemoteIdentityFor(ctx, repoPath))
 	if err != nil || len(heads) == 0 {
 		return nil
 	}

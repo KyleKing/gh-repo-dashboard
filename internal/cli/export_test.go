@@ -11,8 +11,8 @@ type GitHubClient = githubClient
 
 // NewGitHubClient builds a githubClient from injected fetchers for black-box tests.
 func NewGitHubClient(
-	prForBranch func(ctx context.Context, repoPath, branch, upstream string) (*models.PRInfo, error),
-	prsForRepo func(ctx context.Context, repoPath, upstream string) ([]models.PRInfo, error),
+	prForBranch func(ctx context.Context, repoPath, remoteID, branch, upstream string) (*models.PRInfo, error),
+	prsForRepo func(ctx context.Context, repoPath, remoteID, upstream string) ([]models.PRInfo, error),
 ) githubClient {
 	return githubClient{prForBranch: prForBranch, prsForRepo: prsForRepo}
 }

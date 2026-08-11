@@ -32,32 +32,43 @@ type statusCheck struct {
 	Conclusion string `json:"conclusion,omitempty"`
 }
 
-// PRCacheKey and PRListCacheKey scope cache entries by repo path because
-// upstream is a local ref name ("origin/main") that nearly every repo shares.
-// Exported so callers seeding the cache can't drift from this format.
-func PRCacheKey(repoPath, upstream, branch string) string {
-	return repoPath + "\x00" + upstream + ":" + branch
+// PRCacheKey and PRListCacheKey scope cache entries by the remote the values
+// were read from, so parallel checkouts of one repository share a lookup;
+// upstream is part of the key only because a repo can track more than one
+// remote. Exported so callers seeding the cache can't drift from this format.
+func PRCacheKey(repoPath, remoteID, upstream, branch string) string {
+	return cache.RemoteScope(repoPath, remoteID) + "\x00" + upstream + ":" + branch
 }
 
 // PRListCacheKey builds the cache key for the full PR list of a repo's upstream.
-func PRListCacheKey(repoPath, upstream string) string {
-	return repoPath + "\x00" + upstream + ":all_prs"
+func PRListCacheKey(repoPath, remoteID, upstream string) string {
+	return cache.RemoteScope(repoPath, remoteID) + "\x00" + upstream + ":all_prs"
+}
+
+// PRDetailCacheKey builds the cache key for one pull request's full detail.
+func PRDetailCacheKey(repoPath, remoteID string, prNumber int) string {
+	return cache.RemoteScope(repoPath, remoteID) + "\x00pr:" + strconv.Itoa(prNumber)
+}
+
+// MergedPRHeadsCacheKey builds the cache key for a remote's merged-PR head map.
+func MergedPRHeadsCacheKey(repoPath, remoteID string) string {
+	return cache.RemoteScope(repoPath, remoteID) + "\x00merged_pr_heads"
 }
 
 // CachedPRForBranch returns the cached pull request for branch, if any, without invoking gh.
-func CachedPRForBranch(repoPath, branch, upstream string) (*models.PRInfo, bool) {
-	return cache.PRCache.Get(PRCacheKey(repoPath, upstream, branch))
+func CachedPRForBranch(repoPath, remoteID, branch, upstream string) (*models.PRInfo, bool) {
+	return cache.PRCache.Get(PRCacheKey(repoPath, remoteID, upstream, branch))
 }
 
 // CachedPRs returns the cached open pull request list for the repo without invoking gh.
-func CachedPRs(repoPath, upstream string) ([]models.PRInfo, bool) {
-	return cache.PRListCache.Get(PRListCacheKey(repoPath, upstream))
+func CachedPRs(repoPath, remoteID, upstream string) ([]models.PRInfo, bool) {
+	return cache.PRListCache.Get(PRListCacheKey(repoPath, remoteID, upstream))
 }
 
 // GetPRForBranch returns the pull request associated with branch, if any, using the cache when fresh.
-func GetPRForBranch(ctx context.Context, repoPath, branch, upstream string) (*models.PRInfo, error) {
-	cacheKey := PRCacheKey(repoPath, upstream, branch)
-	if cached, ok := CachedPRForBranch(repoPath, branch, upstream); ok {
+func GetPRForBranch(ctx context.Context, repoPath, remoteID, branch, upstream string) (*models.PRInfo, error) {
+	cacheKey := PRCacheKey(repoPath, remoteID, upstream, branch)
+	if cached, ok := CachedPRForBranch(repoPath, remoteID, branch, upstream); ok {
 		return cached, nil
 	}
 
@@ -201,8 +212,8 @@ func parseTime(value string) time.Time {
 }
 
 // GetPRDetail returns the full detail for a single pull request, using the cache when fresh.
-func GetPRDetail(ctx context.Context, repoPath string, prNumber int) (*models.PRDetail, error) {
-	cacheKey := fmt.Sprintf("%s:pr:%d", repoPath, prNumber)
+func GetPRDetail(ctx context.Context, repoPath, remoteID string, prNumber int) (*models.PRDetail, error) {
+	cacheKey := PRDetailCacheKey(repoPath, remoteID, prNumber)
 	if cached, ok := cache.PRDetailCache.Get(cacheKey); ok {
 		return cached, nil
 	}
@@ -315,13 +326,13 @@ const (
 // repo whose pull requests all belong to a bot from spending it on the operator
 // (who has none there), and keeps the operator's older work from falling off
 // the recent list on a busy repo. Either page failing still returns the other.
-func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRInfo, error) {
+func GetPRsForRepo(ctx context.Context, repoPath, remoteID, upstream string) ([]models.PRInfo, error) {
 	if upstream == "" {
 		return []models.PRInfo{}, nil
 	}
 
-	cacheKey := PRListCacheKey(repoPath, upstream)
-	if cached, ok := CachedPRs(repoPath, upstream); ok {
+	cacheKey := PRListCacheKey(repoPath, remoteID, upstream)
+	if cached, ok := CachedPRs(repoPath, remoteID, upstream); ok {
 		return cached, nil
 	}
 
@@ -446,8 +457,8 @@ func latestActivity(comments []prComment, reviews []prReview) *models.PRActivity
 }
 
 // GetPRCount returns the number of open pull requests for the repo, using the cache when fresh.
-func GetPRCount(ctx context.Context, repoPath, upstream string) (int, error) {
-	prs, err := GetPRsForRepo(ctx, repoPath, upstream)
+func GetPRCount(ctx context.Context, repoPath, remoteID, upstream string) (int, error) {
+	prs, err := GetPRsForRepo(ctx, repoPath, remoteID, upstream)
 	if err != nil {
 		return 0, err
 	}
@@ -460,17 +471,17 @@ type mergedPRHead struct {
 	HeadRefOid  string `json:"headRefOid"`
 }
 
-// CachedMergedPRHeads returns the cached merged-PR head map for repoPath, if any, without invoking gh.
-func CachedMergedPRHeads(repoPath string) (map[string]string, bool) {
-	return cache.MergedPRHeadsCache.Get(repoPath)
+// CachedMergedPRHeads returns the cached merged-PR head map for the remote, if any, without invoking gh.
+func CachedMergedPRHeads(repoPath, remoteID string) (map[string]string, bool) {
+	return cache.MergedPRHeadsCache.Get(MergedPRHeadsCacheKey(repoPath, remoteID))
 }
 
 // GetMergedPRHeads returns merged pull requests' head branch name mapped to head commit OID for
 // repoPath, using the cache when fresh. A branch whose tip matches one of these OIDs was
 // squash-merged: `git branch --merged` won't catch it because the squash commit differs from the
 // branch's own tip.
-func GetMergedPRHeads(ctx context.Context, repoPath string) (map[string]string, error) {
-	if cached, ok := CachedMergedPRHeads(repoPath); ok {
+func GetMergedPRHeads(ctx context.Context, repoPath, remoteID string) (map[string]string, error) {
+	if cached, ok := CachedMergedPRHeads(repoPath, remoteID); ok {
 		return cached, nil
 	}
 
@@ -492,7 +503,7 @@ func GetMergedPRHeads(ctx context.Context, repoPath string) (map[string]string, 
 		heads[pr.HeadRefName] = pr.HeadRefOid
 	}
 
-	cache.MergedPRHeadsCache.Set(repoPath, heads)
+	cache.MergedPRHeadsCache.Set(MergedPRHeadsCacheKey(repoPath, remoteID), heads)
 
 	return heads, nil
 }

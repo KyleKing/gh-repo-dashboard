@@ -14,13 +14,15 @@ import (
 )
 
 // GetWorkflowRunsForCommit returns the CI workflow run summary for a commit, using the cache when fresh.
-func GetWorkflowRunsForCommit(ctx context.Context, repoPath, commitSHA string) (*models.WorkflowSummary, error) {
+func GetWorkflowRunsForCommit(
+	ctx context.Context, repoPath, remoteID, commitSHA string,
+) (*models.WorkflowSummary, error) {
 	if commitSHA == "" {
 		//nolint:nilnil // no commit means nothing to look up, not a failure
 		return nil, nil
 	}
 
-	cacheKey := repoPath + ":" + commitSHA
+	cacheKey := cache.RemoteScope(repoPath, remoteID) + "\x00run:" + commitSHA
 	if cached, ok := cache.WorkflowCache.Get(cacheKey); ok {
 		return cached, nil
 	}

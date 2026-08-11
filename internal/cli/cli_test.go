@@ -20,13 +20,20 @@ import (
 
 var errGH = errors.New("gh failed")
 
+// testRemoteID and peerCheckoutPath stand for two checkouts of one remote: the
+// cache is seeded from the peer and read from "/repo".
+const (
+	testRemoteID     = "github.com/acme/app"
+	peerCheckoutPath = "/peer"
+)
+
 func stubClient(pr *models.PRInfo, prs []models.PRInfo, err error, calls *int) cli.GitHubClient {
 	return cli.NewGitHubClient(
-		func(_ context.Context, _, _, _ string) (*models.PRInfo, error) {
+		func(_ context.Context, _, _, _, _ string) (*models.PRInfo, error) {
 			*calls++
 			return pr, err
 		},
-		func(_ context.Context, _, _ string) ([]models.PRInfo, error) {
+		func(_ context.Context, _, _, _ string) ([]models.PRInfo, error) {
 			*calls++
 			return prs, err
 		},
@@ -62,13 +69,13 @@ func TestLookupPR(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cache.ClearAll()
 			if tt.cached != nil {
-				cache.PRCache.Set(github.PRCacheKey("/repo", tt.upstream, "main"), tt.cached)
+				cache.PRCache.Set(github.PRCacheKey(peerCheckoutPath, testRemoteID, tt.upstream, "main"), tt.cached)
 			}
 
 			calls := 0
 			client := stubClient(freshPR, nil, tt.fetchErr, &calls)
 
-			got := cli.LookupPR(context.Background(), client, "/repo", "main", tt.upstream, tt.fresh)
+			got := cli.LookupPR(context.Background(), client, "/repo", testRemoteID, "main", tt.upstream, tt.fresh)
 			if got != tt.expected && (got == nil || tt.expected == nil || got.Number != tt.expected.Number) {
 				t.Errorf("expected %+v, got %+v", tt.expected, got)
 			}
@@ -110,13 +117,13 @@ func TestLookupPRCount(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cache.ClearAll()
 			if tt.cached != nil {
-				cache.PRListCache.Set(github.PRListCacheKey("/repo", tt.upstream), tt.cached)
+				cache.PRListCache.Set(github.PRListCacheKey(peerCheckoutPath, testRemoteID, tt.upstream), tt.cached)
 			}
 
 			calls := 0
 			client := stubClient(nil, freshPRs, tt.fetchErr, &calls)
 
-			got := cli.LookupPRCount(context.Background(), client, "/repo", tt.upstream, tt.fresh)
+			got := cli.LookupPRCount(context.Background(), client, "/repo", testRemoteID, tt.upstream, tt.fresh)
 			switch {
 			case got == nil && tt.expected != nil, got != nil && tt.expected == nil:
 				t.Errorf("expected %v, got %v", tt.expected, got)

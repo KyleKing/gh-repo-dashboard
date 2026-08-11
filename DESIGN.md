@@ -156,7 +156,8 @@ tag (`git ls-remote --tags --refs <_src_path>`); when it doesn't (a raw commit
 SHA or branch ref), currency can't be judged, so the TUI just flags it as
 non-tag rather than guessing. The latest-tag lookup is cached in
 `cache.CopierLatestTagCache` keyed by `_src_path` rather than by repo path, so
-every repo generated from the same template shares one network call. The repo
+every repo generated from the same template shares one network call. The pull
+request and workflow caches follow the same shape through `cache.RemoteScope`. The repo
 list's TEMPLATE column shows the installed tag, `tag→latest` when behind, or
 the installed ref plus a warning icon when it isn't a tag.
 
@@ -270,7 +271,7 @@ Adding a keybinding: register it in `keymap.go`, handle it in `handleKey()`
 ## Key Features
 
 - Progressive loading: the repo list appears immediately with placeholder data while goroutines load each `RepoSummary` concurrently and the table updates incrementally via Tea messages, never blocking on slow git operations
-- Caching: a generic TTL cache with mutex protection backs `prCache`, `branchCache`, and `summaryCache`; refresh clears all caches
+- Caching: a generic TTL cache with mutex protection backs the pull request, branch, commit, and workflow lookups; refresh clears all caches. A key names who else may read the value, so anything read off the remote is keyed by `cache.RemoteScope` (the `host/owner/repo` identity `vcs.RemoteIdentity` derives, which every checkout of that remote shares), anything read from the object store by `cache.CheckoutScope` (which folds a worktree onto the parent whose refs it borrows), and only genuinely per-directory values (working tree status, stashes) by the checkout path. A checkout with no resolvable remote falls back to its own path rather than pooling with every other remoteless repo
 - Notes detection (surfacing as a Notes panel in the focused view): every configured notes filename (`.doing`, `doing.md`, `doing.txt`, `TODO.md` by default; overridable via config) present at a repo root is collected as a `models.NoteFile`, not just the first match; surfaces as a count badge in the Status column, a first-line preview toggled with `v` on the repo list, the focused view's Notes panel with the file body in the detail pane, and the `has_notes` filter/predicate with the `nr` text object; detection is a plain file check outside the VCS abstraction. The Notes panel's `!e` verb hands the file to `$EDITOR` through `tea.ExecProcess`, which is the only path by which the dashboard causes a notes file to be written
 - Configuration: optional TOML at `$XDG_CONFIG_HOME/gh-repo-dashboard/config.toml` (`internal/config`) supplies scan paths, depth, notes filenames, and cache TTLs; flags take precedence
 - Command history: `ExecuteCommand` records recognized commands (capped at 50), shared by the command bar, `:history`, the `@:` repeat key, and `--script` runs

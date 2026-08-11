@@ -3,6 +3,7 @@
 package cache
 
 import (
+	"strconv"
 	"sync"
 	"time"
 
@@ -116,7 +117,10 @@ const (
 	copierTagTTL = 30 * time.Minute
 )
 
-// Package-level caches shared across the app, keyed by repo path (or "path#N" for PR-numbered lookups).
+// Package-level caches shared across the app. A cache key names who else may
+// read the value: RemoteScope for anything read off the remote, CheckoutScope
+// for anything read from the object store, and the repo path itself only for
+// values that are genuinely per-directory.
 var (
 	PRCache            = newRegisteredTTLCache[*models.PRInfo](defaultTTL)
 	PRListCache        = newRegisteredTTLCache[[]models.PRInfo](defaultTTL)
@@ -130,6 +134,17 @@ var (
 	// shares one lookup instead of each repo hitting the network on its own.
 	CopierLatestTagCache = newRegisteredTTLCache[string](copierTagTTL)
 )
+
+// BranchCacheKey and CommitCacheKey scope the object-store reads onto the
+// checkout identity, so a worktree and its parent share one entry.
+func BranchCacheKey(repoPath string) string {
+	return CheckoutScope(repoPath) + "\x00branches"
+}
+
+// CommitCacheKey builds the commit log cache key for a checkout's object store.
+func CommitCacheKey(repoPath string, count int) string {
+	return CheckoutScope(repoPath) + "\x00commits:" + strconv.Itoa(count)
+}
 
 // ClearAll clears every registered package-level cache.
 func ClearAll() {

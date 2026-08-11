@@ -64,8 +64,8 @@ type Repo struct {
 // githubClient holds the gh-backed fetchers used only when fresh retrieval is
 // requested, injectable so tests can assert on cache-only gating.
 type githubClient struct {
-	prForBranch func(ctx context.Context, repoPath, branch, upstream string) (*models.PRInfo, error)
-	prsForRepo  func(ctx context.Context, repoPath, upstream string) ([]models.PRInfo, error)
+	prForBranch func(ctx context.Context, repoPath, remoteID, branch, upstream string) (*models.PRInfo, error)
+	prsForRepo  func(ctx context.Context, repoPath, remoteID, upstream string) ([]models.PRInfo, error)
 	defaultCI   func(ctx context.Context, repoPath string) (*models.DefaultBranchCI, error)
 	alerts      func(ctx context.Context, repoPath, remoteRepo string) map[string]int
 }
@@ -173,8 +173,8 @@ func loadRepo(ctx context.Context, client githubClient, path string, opts Option
 	summary.NotesFiles = models.DetectNotes(path)
 	//nolint:errcheck // absence just leaves the template fields empty
 	summary.TemplateInfo, _ = copier.GetTemplateInfo(ctx, path)
-	pr := lookupPR(ctx, client, path, summary.Branch, summary.Upstream, opts.Fresh)
-	prCount := lookupPRCount(ctx, client, path, summary.Upstream, opts.Fresh)
+	pr := lookupPR(ctx, client, path, summary.RemoteID, summary.Branch, summary.Upstream, opts.Fresh)
+	prCount := lookupPRCount(ctx, client, path, summary.RemoteID, summary.Upstream, opts.Fresh)
 	summary.PRInfo = pr
 
 	if pred != nil && !pred(summary) {
@@ -244,19 +244,21 @@ func newRepo(summary *models.RepoSummary, worktreeCount int, pr *models.PRInfo, 
 
 // lookupPR returns the pull request for branch from the cache, fetching via gh
 // only when fresh is set. A miss (or fetch failure) yields nil.
-func lookupPR(ctx context.Context, client githubClient, repoPath, branch, upstream string, fresh bool) *models.PRInfo {
+func lookupPR(
+	ctx context.Context, client githubClient, repoPath, remoteID, branch, upstream string, fresh bool,
+) *models.PRInfo {
 	if upstream == "" {
 		return nil
 	}
 
-	if cached, ok := github.CachedPRForBranch(repoPath, branch, upstream); ok {
+	if cached, ok := github.CachedPRForBranch(repoPath, remoteID, branch, upstream); ok {
 		return cached
 	}
 	if !fresh {
 		return nil
 	}
 
-	pr, err := client.prForBranch(ctx, repoPath, branch, upstream)
+	pr, err := client.prForBranch(ctx, repoPath, remoteID, branch, upstream)
 	if err != nil {
 		return nil
 	}
@@ -266,12 +268,12 @@ func lookupPR(ctx context.Context, client githubClient, repoPath, branch, upstre
 
 // lookupPRCount returns the repo's open PR count from the cache, fetching via
 // gh only when fresh is set. A miss (or fetch failure) yields nil.
-func lookupPRCount(ctx context.Context, client githubClient, repoPath, upstream string, fresh bool) *int {
+func lookupPRCount(ctx context.Context, client githubClient, repoPath, remoteID, upstream string, fresh bool) *int {
 	if upstream == "" {
 		return nil
 	}
 
-	if cached, ok := github.CachedPRs(repoPath, upstream); ok {
+	if cached, ok := github.CachedPRs(repoPath, remoteID, upstream); ok {
 		count := len(cached)
 		return &count
 	}
@@ -279,7 +281,7 @@ func lookupPRCount(ctx context.Context, client githubClient, repoPath, upstream 
 		return nil
 	}
 
-	prs, err := client.prsForRepo(ctx, repoPath, upstream)
+	prs, err := client.prsForRepo(ctx, repoPath, remoteID, upstream)
 	if err != nil {
 		return nil
 	}

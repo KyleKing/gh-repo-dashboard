@@ -80,7 +80,7 @@ func loadPRCmd(path, _, upstream string) tea.Cmd {
 // loadDefaultBranchCICmd reads the CI runs for the repo's default branch head.
 // The branch and commit resolve from local refs, so the one gh call is the
 // whole API cost.
-func loadDefaultBranchCICmd(path string) tea.Cmd {
+func loadDefaultBranchCICmd(path, remoteID string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
 
@@ -89,7 +89,7 @@ func loadDefaultBranchCICmd(path string) tea.Cmd {
 			return WorkflowLoadedMsg{Path: path}
 		}
 
-		summary, err := github.GetWorkflowRunsForCommit(ctx, path, def.SHA)
+		summary, err := github.GetWorkflowRunsForCommit(ctx, path, remoteID, def.SHA)
 		if err != nil {
 			return WorkflowLoadedMsg{Path: path, Error: err}
 		}
@@ -128,7 +128,7 @@ func loadDetailCmd(path string) tea.Cmd {
 		var prs []models.PRInfo
 		if summary.Upstream != "" {
 			//nolint:errcheck // best-effort, see comment above
-			prs, _ = github.GetPRsForRepo(ctx, path, summary.Upstream)
+			prs, _ = github.GetPRsForRepo(ctx, path, summary.RemoteID, summary.Upstream)
 		}
 
 		notesFiles := models.DetectNotes(path)
@@ -141,7 +141,7 @@ func loadDetailCmd(path string) tea.Cmd {
 			Worktrees:         worktrees,
 			PRs:               prs,
 			NotesFiles:        notesContents,
-			DeletableBranches: deletableBranches(ctx, path, branches),
+			DeletableBranches: deletableBranches(ctx, path, summary.RemoteID, branches),
 		}
 	}
 }
@@ -194,14 +194,14 @@ func loadBranchDetailCmd(repoPath, branchName string) tea.Cmd {
 	}
 }
 
-func loadPRCountCmd(path, upstream string) tea.Cmd {
+func loadPRCountCmd(path, remoteID, upstream string) tea.Cmd {
 	if upstream == "" {
 		return nil
 	}
 
 	return func() tea.Msg {
 		ctx := context.Background()
-		count, err := github.GetPRCount(ctx, path, upstream)
+		count, err := github.GetPRCount(ctx, path, remoteID, upstream)
 		if err != nil {
 			return PRCountLoadedMsg{Path: path, Count: 0}
 		}
@@ -210,10 +210,10 @@ func loadPRCountCmd(path, upstream string) tea.Cmd {
 	}
 }
 
-func loadPRDetailCmd(repoPath string, prNumber int) tea.Cmd {
+func loadPRDetailCmd(repoPath, remoteID string, prNumber int) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
-		detail, err := github.GetPRDetail(ctx, repoPath, prNumber)
+		detail, err := github.GetPRDetail(ctx, repoPath, remoteID, prNumber)
 		if err != nil {
 			return PRDetailLoadedMsg{
 				Path:     repoPath,
@@ -230,13 +230,13 @@ func loadPRDetailCmd(repoPath string, prNumber int) tea.Cmd {
 	}
 }
 
-func prefetchPRDetailCmd(repoPath string, prNumber int) tea.Cmd {
+func prefetchPRDetailCmd(repoPath, remoteID string, prNumber int) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
 		// Prefetch runs in background and populates cache
 		// No message sent to avoid UI updates during prefetch
 		//nolint:errcheck // prefetch only warms the cache, no message is sent
-		_, _ = github.GetPRDetail(ctx, repoPath, prNumber)
+		_, _ = github.GetPRDetail(ctx, repoPath, remoteID, prNumber)
 
 		return nil
 	}
