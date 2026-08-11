@@ -11,3 +11,7 @@ var ParseChecks = parseChecks
 
 // StatusCheck exposes the unexported statusCheck type to black-box tests.
 type StatusCheck = statusCheck
+
+// PRListPages exposes how many `gh pr list` pages one repo's list costs, so a
+// black-box test can assert the invocation count without hardcoding it.
+const PRListPages = prListPages

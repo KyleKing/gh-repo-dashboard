@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -293,7 +294,27 @@ func GetPRDetail(ctx context.Context, repoPath string, prNumber int) (*models.PR
 	return detail, nil
 }
 
-// GetPRsForRepo returns all open pull requests for the repo, using the cache when fresh.
+// Fields and page size for one `gh pr list` call. Because the rollup, comment,
+// and review fields are each walked per pull request, the cost is linear in the
+// page size: on a repo with ~105 open pull requests carrying ~25 check runs
+// apiece, a page of 100 takes GitHub's GraphQL gateway past its own timeout and
+// comes back 504. Thirty is what fits with room to spare.
+const (
+	prListFields = "number,title,state,url,isDraft,headRefName,headRepositoryOwner,baseRefName," +
+		"reviewDecision,statusCheckRollup,comments,reviews"
+	prListLimit = "30"
+	// Number of filtered pages that make up one repo's list.
+	prListPages = 2
+)
+
+// GetPRsForRepo returns the open pull requests worth showing for the repo,
+// using the cache when fresh.
+//
+// It reads two pages rather than one: the newest pull requests that are not the
+// operator's, and the operator's own. Splitting the budget that way keeps a
+// repo whose pull requests all belong to a bot from spending it on the operator
+// (who has none there), and keeps the operator's older work from falling off
+// the recent list on a busy repo. Either page failing still returns the other.
 func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRInfo, error) {
 	if upstream == "" {
 		return []models.PRInfo{}, nil
@@ -306,13 +327,49 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 
 	env := vcs.GetGitHubEnv(repoPath)
 
-	out, err := runGH(ctx, repoPath, env, "pr", "list",
-		"--json", "number,title,state,url,isDraft,headRefName,headRepositoryOwner,baseRefName,"+
-			"reviewDecision,statusCheckRollup,comments,reviews",
-		"--limit", "100")
+	others, othersErr := prListPage(ctx, repoPath, env, "--search", "-author:@me")
+	mine, mineErr := prListPage(ctx, repoPath, env, "--author", "@me")
+
+	if othersErr != nil && mineErr != nil {
+		// Nothing is cached on failure: an empty list would otherwise read as
+		// "this repo has no pull requests" for the whole cache window, and the
+		// panel would be hidden on the strength of a timeout.
+		return []models.PRInfo{}, othersErr
+	}
+
+	result := mergePRPages(others, mine)
+	cache.PRListCache.Set(cacheKey, result)
+
+	return result, nil
+}
+
+// mergePRPages joins the pages newest-first, dropping the pull requests a
+// repo's pages both name.
+func mergePRPages(pages ...[]models.PRInfo) []models.PRInfo {
+	seen := make(map[int]bool)
+
+	merged := make([]models.PRInfo, 0)
+	for _, page := range pages {
+		for i := range page {
+			if seen[page[i].Number] {
+				continue
+			}
+			seen[page[i].Number] = true
+			merged = append(merged, page[i])
+		}
+	}
+
+	slices.SortFunc(merged, func(a, b models.PRInfo) int { return b.Number - a.Number })
+
+	return merged
+}
+
+func prListPage(ctx context.Context, repoPath string, env []string, filter ...string) ([]models.PRInfo, error) {
+	args := append([]string{"pr", "list", "--json", prListFields, "--limit", prListLimit}, filter...)
+
+	out, err := runGH(ctx, repoPath, env, args...)
 	if err != nil {
-		cache.PRListCache.Set(cacheKey, []models.PRInfo{})
-		return []models.PRInfo{}, err
+		return nil, err
 	}
 
 	var prList []struct {
@@ -333,7 +390,7 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 	}
 
 	if err := json.Unmarshal(out, &prList); err != nil {
-		return []models.PRInfo{}, fmt.Errorf("parsing gh pr list output: %w", err)
+		return nil, fmt.Errorf("parsing gh pr list output: %w", err)
 	}
 
 	result := make([]models.PRInfo, 0, len(prList))
@@ -353,8 +410,6 @@ func GetPRsForRepo(ctx context.Context, repoPath, upstream string) ([]models.PRI
 			Activity:       latestActivity(pr.Comments, pr.Reviews),
 		})
 	}
-
-	cache.PRListCache.Set(cacheKey, result)
 
 	return result, nil
 }

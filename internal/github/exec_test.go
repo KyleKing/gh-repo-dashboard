@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -343,12 +344,12 @@ func TestGetPRsForRepo(t *testing.T) {
 			output:   successJSON,
 			expected: []models.PRInfo{
 				{
-					Number: 1, Title: "First", State: "OPEN", URL: "https://github.com/owner/repo/pull/1",
-					HeadRef: "one", BaseRef: "main", ReviewDecision: "APPROVED",
-				},
-				{
 					Number: 2, Title: "Second", State: "OPEN", URL: "https://github.com/owner/repo/pull/2",
 					IsDraft: true, HeadRef: "two", BaseRef: "main",
+				},
+				{
+					Number: 1, Title: "First", State: "OPEN", URL: "https://github.com/owner/repo/pull/1",
+					HeadRef: "one", BaseRef: "main", ReviewDecision: "APPROVED",
 				},
 			},
 			expectGH: true,
@@ -390,7 +391,7 @@ func TestGetPRsForRepo(t *testing.T) {
 
 			expectedCalls := 0
 			if tt.expectGH {
-				expectedCalls = 1
+				expectedCalls = github.PRListPages
 			}
 			if len(*calls) != expectedCalls {
 				t.Errorf("expected %d gh invocations, got %d", expectedCalls, len(*calls))
@@ -415,8 +416,8 @@ func TestGetPRsForRepoUsesCache(t *testing.T) {
 	if !reflect.DeepEqual(first, second) {
 		t.Errorf("expected cached result %+v, got %+v", first, second)
 	}
-	if len(*calls) != 1 {
-		t.Errorf("expected 1 gh invocation, got %d", len(*calls))
+	if len(*calls) != github.PRListPages {
+		t.Errorf("expected %d gh invocations, got %d", github.PRListPages, len(*calls))
 	}
 }
 
@@ -441,8 +442,8 @@ func TestGetPRsForRepoCacheIsScopedByRepo(t *testing.T) {
 	if len(prsB) != 0 {
 		t.Errorf("repo B got repo A's cached PRs: %+v", prsB)
 	}
-	if len(*callsB) != 1 {
-		t.Errorf("expected repo B to invoke gh once, got %d", len(*callsB))
+	if len(*callsB) != github.PRListPages {
+		t.Errorf("expected repo B to invoke gh %d times, got %d", github.PRListPages, len(*callsB))
 	}
 
 	if _, ok := github.CachedPRs("/repo-b", "origin/main"); !ok {
@@ -744,5 +745,106 @@ func TestGetWorkflowRunsForCommitDoesNotCacheError(t *testing.T) {
 	}
 	if len(*okCalls) != 1 {
 		t.Errorf("expected gh to be re-invoked after a failure, got %d invocations", len(*okCalls))
+	}
+}
+
+// stubRunGHByFilter answers the operator's own page and everyone else's page
+// separately, so a test can tell which of the two a pull request came from.
+func stubRunGHByFilter(mine, others []byte, mineErr, othersErr error) context.Context {
+	stub := func(_ context.Context, _ string, _ []string, args ...string) ([]byte, error) {
+		if slices.Contains(args, "--author") {
+			return mine, mineErr
+		}
+
+		return others, othersErr
+	}
+
+	return github.WithGHRunner(context.Background(), stub)
+}
+
+// The list is read as two pages because one page of 100 times out on a repo
+// with enough open pull requests. A repo whose pull requests all belong to a
+// bot has nothing on the operator's page, and the operator's older work has
+// fallen off everyone else's, so the panel needs both.
+//
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
+func TestGetPRsForRepoMergesBothPages(t *testing.T) {
+	tests := []struct {
+		name      string
+		mine      []byte
+		others    []byte
+		mineErr   error
+		othersErr error
+		want      []int
+		expectErr bool
+	}{
+		{
+			name:   "both pages contribute, newest first",
+			mine:   []byte(`[{"number": 3, "title": "Mine"}]`),
+			others: []byte(`[{"number": 9, "title": "Bot"}]`),
+			want:   []int{9, 3},
+		},
+		{
+			name:   "a pull request on both pages is listed once",
+			mine:   []byte(`[{"number": 5, "title": "Mine"}]`),
+			others: []byte(`[{"number": 5, "title": "Mine"}, {"number": 4, "title": "Theirs"}]`),
+			want:   []int{5, 4},
+		},
+		{
+			name:   "a bot-only repo still lists its pull requests",
+			mine:   []byte(`[]`),
+			others: []byte(`[{"number": 10, "title": "Bump"}, {"number": 9, "title": "Bump"}]`),
+			want:   []int{10, 9},
+		},
+		{
+			name:    "one page failing still returns the other",
+			mineErr: errGHFailed,
+			others:  []byte(`[{"number": 2, "title": "Theirs"}]`),
+			want:    []int{2},
+		},
+		{
+			name:      "both pages failing reports the error",
+			mineErr:   errGHFailed,
+			othersErr: errGHFailed,
+			want:      []int{},
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cache.ClearAll()
+			ctx := stubRunGHByFilter(tt.mine, tt.others, tt.mineErr, tt.othersErr)
+
+			prs, err := github.GetPRsForRepo(ctx, "/repo", "owner/repo")
+			if gotErr := err != nil; gotErr != tt.expectErr {
+				t.Fatalf("error = %v, want an error: %v", err, tt.expectErr)
+			}
+
+			got := make([]int, 0, len(prs))
+			for _, pr := range prs {
+				got = append(got, pr.Number)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("pull requests %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// A failed fetch must not be cached: an empty list would read as "this repo has
+// no pull requests" for the whole cache window and hide the panel.
+//
+//nolint:paralleltest // asserts against shared global cache.ClearAll() state
+func TestGetPRsForRepoDoesNotCacheAFailure(t *testing.T) {
+	cache.ClearAll()
+
+	ctx := stubRunGHByFilter(nil, nil, errGHFailed, errGHFailed)
+	if _, err := github.GetPRsForRepo(ctx, "/repo", "owner/repo"); err == nil {
+		t.Fatal("expected the failed fetch to report an error")
+	}
+
+	if _, cached := github.CachedPRs("/repo", "owner/repo"); cached {
+		t.Error("a failed fetch cached a result, so a later read would report no pull requests")
 	}
 }

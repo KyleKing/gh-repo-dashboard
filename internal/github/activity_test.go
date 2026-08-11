@@ -7,6 +7,7 @@ import (
 
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
+	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 //nolint:paralleltest // asserts against shared global cache.ClearAll() state
@@ -47,8 +48,8 @@ func TestGetPRsForRepoDerivesLatestActivity(t *testing.T) {
 		t.Fatalf("GetPRsForRepo: %v", err)
 	}
 
-	if len(*calls) != 1 {
-		t.Errorf("made %d gh calls for one repo, want 1", len(*calls))
+	if len(*calls) != github.PRListPages {
+		t.Errorf("made %d gh calls for one repo, want %d", len(*calls), github.PRListPages)
 	}
 
 	if joined := strings.Join((*calls)[0], " "); !strings.Contains(joined, "comments") ||
@@ -56,27 +57,32 @@ func TestGetPRsForRepoDerivesLatestActivity(t *testing.T) {
 		t.Errorf("gh call does not request the activity fields: %q", joined)
 	}
 
-	want := []struct {
+	want := map[int]struct {
 		author string
 		at     time.Time
 	}{
-		{author: "reviewer", at: time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC)},
-		{author: "commenter", at: time.Date(2026, time.March, 1, 0, 0, 0, 0, time.UTC)},
+		7: {author: "reviewer", at: time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC)},
+		8: {author: "commenter", at: time.Date(2026, time.March, 1, 0, 0, 0, 0, time.UTC)},
 	}
 
-	for i, w := range want {
-		got := prs[i].Activity
+	byNumber := map[int]models.PRInfo{}
+	for _, pr := range prs {
+		byNumber[pr.Number] = pr
+	}
+
+	for number, w := range want {
+		got := byNumber[number].Activity
 		if got == nil {
-			t.Fatalf("PR #%d has no activity", prs[i].Number)
+			t.Fatalf("PR #%d has no activity", number)
 		}
 
 		if got.Author != w.author || !got.At.Equal(w.at) {
 			t.Errorf("PR #%d activity = %s at %s, want %s at %s",
-				prs[i].Number, got.Author, got.At, w.author, w.at)
+				number, got.Author, got.At, w.author, w.at)
 		}
 	}
 
-	if prs[2].Activity != nil {
-		t.Errorf("a PR with no comments and no reviews reported activity: %+v", prs[2].Activity)
+	if silent := byNumber[9]; silent.Activity != nil {
+		t.Errorf("a PR with no comments and no reviews reported activity: %+v", silent.Activity)
 	}
 }
