@@ -387,8 +387,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.openSearch()
 
 	case key.Matches(msg, m.keys.NotesPreview):
-		m.notesPreviewOpen = !m.notesPreviewOpen
-		return m, m.notesPreviewCmd()
+		return m.toggleNotesPreview()
 
 	case key.Matches(msg, m.keys.Peers):
 		return m.openCheckouts()
@@ -625,6 +624,22 @@ func (m Model) handleNotesContentLoaded(msg NotesContentLoadedMsg) (tea.Model, t
 	m.notesPreview[msg.Path] = msg.Files
 
 	return m, nil
+}
+
+// toggleNotesPreview opens or closes the list's notes region. A terminal too
+// short to seat one would swallow the keypress with nothing on screen to
+// explain it, so it says so instead.
+func (m Model) toggleNotesPreview() (tea.Model, tea.Cmd) {
+	m.notesPreviewOpen = !m.notesPreviewOpen
+
+	if m.notesPreviewOpen && m.notesPreviewHeight(m.listBodyHeight()) == 0 {
+		m.notesPreviewOpen = false
+		m.statusMessage = "Terminal too short for the notes preview"
+
+		return m, clearStatusAfterDelay()
+	}
+
+	return m, m.notesPreviewCmd()
 }
 
 // notesPreviewCmd reads the notes of the repo under the cursor when the

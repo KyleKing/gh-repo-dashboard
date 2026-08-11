@@ -697,19 +697,26 @@ type footerHint struct {
 	priority int
 }
 
-// footerHints lists every repo-list hint in render order.
+// footerHints lists every repo-list hint in render order. The notes hint
+// outranks the rest of the second tier while the preview is open, because the
+// key that closes a region taking most of the screen must stay on offer.
 //
 //nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
-func footerHints() []footerHint {
+func footerHints(notesOpen bool) []footerHint {
+	notes := footerHint{key: "v", desc: "notes", priority: 3}
+	if notesOpen {
+		notes = footerHint{key: "v", desc: "hide notes", priority: 11}
+	}
+
 	return []footerHint{
 		{key: keyNavPair, desc: descNav, priority: 4},
 		{key: keyEnter, desc: "select", priority: 8},
-		{key: "v", desc: "notes", priority: 1},
+		notes,
 		{key: "f", desc: nameFilter, priority: 6},
 		{key: "s", desc: nameSort, priority: 5},
 		{key: "/", desc: "search", priority: 7},
-		{key: ":", desc: "command", priority: 3},
-		{key: "r", desc: nameRefresh, priority: 2},
+		{key: ":", desc: "command", priority: 2},
+		{key: "r", desc: nameRefresh, priority: 1},
 		{key: "?", desc: nameHelp, priority: 9},
 		{key: "q", desc: nameQuit, priority: 10},
 	}
@@ -723,7 +730,7 @@ func (m Model) renderFooter() string {
 		prefix = styles.FooterKeyStyle.Render(hint) + styles.FooterDescStyle.Render(pendingHint) + "  "
 	}
 
-	hints := fittingHints(footerHints(), contentWidth(m.width)-lipgloss.Width(prefix))
+	hints := fittingHints(footerHints(m.notesPreviewOpen), contentWidth(m.width)-lipgloss.Width(prefix))
 
 	parts := make([]string, 0, len(hints))
 	for _, h := range hints {
