@@ -859,11 +859,11 @@ func (m Model) handlePanelMoveKey(msg tea.KeyMsg, panels []panelContent) (tea.Mo
 		return model, cmd, true
 
 	case key.Matches(msg, m.keys.Up):
-		model, cmd := m.moveDetailCursor(-1)
+		model, cmd := m.moveDetailCursor(panels, -1)
 		return model, cmd, true
 
 	case key.Matches(msg, m.keys.Down):
-		model, cmd := m.moveDetailCursor(1)
+		model, cmd := m.moveDetailCursor(panels, 1)
 		return model, cmd, true
 
 	case key.Matches(msg, m.keys.Top):
@@ -963,12 +963,18 @@ func (m Model) handleActionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// focusPanel moves the cursor to a panel and resets its row selection. It also
-// hands focus back to the panel column, because a number key naming a panel is
-// a request to be in that panel, not in the pane describing its old selection.
+// focusPanel moves the cursor to a panel's first row.
 func (m Model) focusPanel(id panelID) (tea.Model, tea.Cmd) {
+	return m.selectPanelRow(id, 0)
+}
+
+// selectPanelRow puts the cursor on one row of one panel and loads whatever the
+// detail pane now needs. It also hands focus back to the panel column, because
+// a key naming a panel is a request to be in that panel, not in the pane
+// describing its old selection.
+func (m Model) selectPanelRow(id panelID, cursor int) (tea.Model, tea.Cmd) {
 	m.focusedPanel = id
-	m.detailCursor = 0
+	m.detailCursor = max(cursor, 0)
 	m.detailFocused = false
 	m.detailScroll = 0
 
@@ -986,18 +992,37 @@ func (m Model) cyclePanel(panels []panelContent, delta int) (tea.Model, tea.Cmd)
 	return m.focusPanel(panels[next].id)
 }
 
-// moveDetailCursor moves the focused panel's row cursor by delta, clamped to
-// that panel's list, and loads whatever the detail pane now needs.
-func (m Model) moveDetailCursor(delta int) (tea.Model, tea.Cmd) {
-	newIdx := m.detailCursor + delta
-	if newIdx < 0 || newIdx > m.detailListLen()-1 {
+// moveDetailCursor moves the row cursor by delta. The panel column reads as one
+// vertical list, so a move off either end of a panel carries into its
+// neighbor: a panel holding one row, or none at all, would otherwise swallow
+// the key and leave the movement keys looking dead.
+func (m Model) moveDetailCursor(panels []panelContent, delta int) (tea.Model, tea.Cmd) {
+	next := m.detailCursor + delta
+	if next >= 0 && next < m.detailListLen() {
+		m.detailCursor = next
+		m.detailScroll = 0
+
+		return m, m.panelDetailCmd()
+	}
+
+	return m.crossPanel(panels, delta)
+}
+
+// crossPanel carries a row move off the end of one panel into the next, landing
+// on the row nearest the boundary just crossed. It stops at the two ends of the
+// column rather than wrapping, since tab is the key that cycles.
+func (m Model) crossPanel(panels []panelContent, delta int) (tea.Model, tea.Cmd) {
+	next := panelIndex(panels, m.focusedPanel) + delta
+	if next < 0 || next >= len(panels) {
 		return m, nil
 	}
 
-	m.detailCursor = newIdx
-	m.detailScroll = 0
+	cursor := 0
+	if delta < 0 {
+		cursor = m.panelRowCount(panels[next].id) - 1
+	}
 
-	return m, m.panelDetailCmd()
+	return m.selectPanelRow(panels[next].id, cursor)
 }
 
 // panelDetailCmd fetches whatever the detail pane needs for the newly
@@ -1151,7 +1176,14 @@ func (m Model) handleBranchDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) detailListLen() int {
-	switch m.focusedPanel {
+	return m.panelRowCount(m.focusedPanel)
+}
+
+// panelRowCount is how many rows a panel offers the cursor. Status reports
+// state rather than listing anything, so it offers none and the column treats
+// it as a single stop.
+func (m Model) panelRowCount(id panelID) int {
+	switch id {
 	case panelBranches:
 		return len(m.branches)
 	case panelStashes:

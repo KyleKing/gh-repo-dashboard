@@ -261,8 +261,16 @@ func TestDetailCursorMovement(t *testing.T) {
 
 	updatedModel, _ = m.Update(keyPress('j'))
 	m = mustModel(t, updatedModel)
-	if m.detailCursor != 2 {
-		t.Errorf("down at bottom should clamp, got %d", m.detailCursor)
+	if m.focusedPanel != panelPRs || m.detailCursor != 0 {
+		t.Errorf("down at the bottom row should enter the next panel, got %v/%d",
+			m.focusedPanel, m.detailCursor)
+	}
+
+	updatedModel, _ = m.Update(keyPress('k'))
+	m = mustModel(t, updatedModel)
+	if m.focusedPanel != panelBranches || m.detailCursor != 2 {
+		t.Errorf("up from the next panel should land on the last row back, got %v/%d",
+			m.focusedPanel, m.detailCursor)
 	}
 
 	for range 2 {
@@ -272,11 +280,42 @@ func TestDetailCursorMovement(t *testing.T) {
 	if m.detailCursor != 0 {
 		t.Errorf("gg should move to top, got %d", m.detailCursor)
 	}
+}
 
-	updatedModel, _ = m.Update(keyPress('k'))
-	m = mustModel(t, updatedModel)
-	if m.detailCursor != 0 {
-		t.Errorf("up at top should clamp, got %d", m.detailCursor)
+// A panel with a single row, or none at all, used to swallow j and k and leave
+// the movement keys looking dead; the column now carries the move into the
+// neighboring panel instead.
+func TestDetailCursorCrossesPanelsWithNothingToMoveThrough(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		key   rune
+		start panelID
+		want  panelID
+	}{
+		{name: "down off a single-row panel", key: 'j', start: panelBranches, want: panelPRs},
+		{name: "up off a single-row panel", key: 'k', start: panelBranches, want: panelStatus},
+		{name: "down off the rowless status panel", key: 'j', start: panelStatus, want: panelBranches},
+		{name: "up at the top of the column stays put", key: 'k', start: panelStatus, want: panelStatus},
+		{name: "down at the bottom of the column stays put", key: 'j', start: panelNotes, want: panelNotes},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			m := New(nil, 1)
+			m.viewMode = ViewModeRepoDetail
+			m.focusedPanel = tt.start
+			m.branches = []models.BranchInfo{{Name: "only"}}
+
+			updated, _ := m.Update(keyPress(tt.key))
+			m = mustModel(t, updated)
+
+			if m.focusedPanel != tt.want {
+				t.Errorf("want panel %v, got %v", tt.want, m.focusedPanel)
+			}
+		})
 	}
 }
 
