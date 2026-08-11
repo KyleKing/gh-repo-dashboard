@@ -146,7 +146,7 @@ func fixtureDataset(t *testing.T, name string) Model {
 	case "quiet":
 		return focusedDataset(quietRepo())
 	case "busy":
-		return focusedDataset(busyRepo())
+		return busyDataset()
 	default:
 		t.Fatalf("unknown dataset %q", name)
 		return Model{}
@@ -213,8 +213,19 @@ func focusedDataset(summary models.RepoSummary) Model {
 	for i := range summary.StashCount {
 		m.stashes = append(m.stashes, models.StashDetail{Index: i, Message: "On main: spike"})
 	}
-	m.notesFiles = nil
+	for _, note := range summary.NotesFiles {
+		m.notesFiles = append(m.notesFiles, models.NoteFileContent{Name: note.Name, Content: note.FirstLine})
+	}
 	m.updateFilteredPaths()
+
+	return m
+}
+
+// busyDataset is the busy repo with every panel populated, including the peer
+// checkout the summary alone cannot express.
+func busyDataset() Model {
+	m := focusedDataset(busyRepo())
+	m.worktrees = append(m.worktrees, models.WorktreeInfo{Path: "/repos/busy-review", Branch: "feat/review"})
 
 	return m
 }

@@ -32,7 +32,10 @@ func focusedModel(width, height int) Model {
 	m.repoPaths = []string{"/dev/alpha"}
 	m.branches = []models.BranchInfo{{Name: mainBranchName, Upstream: "origin/main", Ahead: 1, IsCurrent: true}}
 	m.stashes = []models.StashDetail{{Index: 0, Message: "On main: spike", Date: now}}
-	m.worktrees = []models.WorktreeInfo{{Path: "/dev/alpha", Branch: mainBranchName}}
+	m.worktrees = []models.WorktreeInfo{
+		{Path: "/dev/alpha", Branch: mainBranchName},
+		{Path: "/dev/alpha-thing", Branch: "feature/thing"},
+	}
 	m.prs = []models.PRInfo{{Number: 9, Title: "Add a thing", State: "OPEN", HeadRef: "feature/thing"}}
 	m.notesFiles = []models.NoteFileContent{{Name: ".doing", Content: "# 2026-08-05\n\nfinish the grid"}}
 	m.focusedPanel = panelBranches
@@ -46,12 +49,12 @@ func TestEveryPanelShowsContentWithoutAKeypress(t *testing.T) {
 
 	grid := plainText(focusedModel(200, 50).renderPanelGrid())
 	want := []string{
-		"1 Status", "↑1 vs origin/main",
-		"2 Branches (1)", mainBranchName,
-		"3 PRs (1)", "Add a thing",
-		"4 Peers (0)", "none",
-		"5 Stashes (1)", "On main: spike",
-		"6 Notes (1)", ".doing",
+		"[S]tatus", "↑1 vs origin/main",
+		"[B]ranches (1)", mainBranchName,
+		"[P]Rs (1)", "Add a thing",
+		"P[e]ers (1)", "alpha-thing",
+		"S[t]ashes (1)", "On main: spike",
+		"[N]otes (1)", ".doing",
 	}
 
 	for _, w := range want {
@@ -61,7 +64,7 @@ func TestEveryPanelShowsContentWithoutAKeypress(t *testing.T) {
 	}
 }
 
-func TestNumberKeysJumpToPanels(t *testing.T) {
+func TestLetterKeysJumpToPanels(t *testing.T) {
 	t.Parallel()
 
 	m := focusedModel(160, 45)

@@ -60,11 +60,11 @@ func TestFocusingThePRPanelLoadsItsDetail(t *testing.T) {
 		{Number: 20, Title: "Second PR"},
 	}
 
-	updatedModel, cmd := m.Update(keyPress('3'))
+	updatedModel, cmd := m.Update(keyPress('p'))
 	m = mustModel(t, updatedModel)
 
 	if m.focusedPanel != panelPRs {
-		t.Fatalf("key 3 focused %v, want the PRs panel", m.focusedPanel)
+		t.Fatalf("key p focused %v, want the PRs panel", m.focusedPanel)
 	}
 	if cmd == nil {
 		t.Error("focusing the PRs panel should load the selected PR's detail for the pane")

@@ -263,12 +263,13 @@ func TestRenderPRListEmpty(t *testing.T) {
 	m := New(nil, 1)
 	m.prs = []models.PRInfo{}
 
-	output := renderPanel(m, panelPRs)
-	if output == "" {
-		t.Error("empty PR list should render a message")
+	if output := renderPanel(m, panelPRs); output != "" {
+		t.Errorf("a settled PR panel with nothing to list should be dropped, got %q", output)
 	}
-	if len(output) < 10 {
-		t.Error("empty message should be visible")
+
+	m.detailLoading = true
+	if output := renderPanel(m, panelPRs); !strings.Contains(output, "loading") {
+		t.Errorf("a PR panel still loading should say so, got %q", output)
 	}
 }
 

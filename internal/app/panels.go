@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
@@ -21,6 +22,26 @@ const (
 	panelStashes
 	panelNotes
 )
+
+// panelKeys are the jump keys. Each is fixed to its panel rather than to a
+// grid position, so hiding an empty panel never moves another panel's key out
+// from under the fingers.
+var panelKeys = map[panelID]string{
+	panelBranches: "b",
+	panelNotes:    "n",
+	panelPeers:    "e",
+	panelPRs:      "p",
+	panelStashes:  "t",
+	panelStatus:   "s",
+}
+
+// panelAlwaysShown names the panels the grid keeps even with nothing to list.
+// Status reports state rather than listing anything, and a repo always has a
+// branch, so an empty Branches panel means the load failed rather than that
+// there is nothing to see.
+func panelAlwaysShown(id panelID) bool {
+	return id == panelStatus || id == panelBranches
+}
 
 // panelContent is one panel resolved against the current repo: its title, the
 // lines it would show given unlimited room, and how much of the available
@@ -193,9 +214,11 @@ func spreadSurplus(heights []int, panels []panelContent, surplus int) {
 	}
 }
 
-// panelTitle labels a panel's border with its jump key and item count.
+// panelTitle labels a panel's border with its jump key and item count. The key
+// is bracketed inside the name rather than named in a footer legend, so the
+// key sits on the box it opens.
 func panelTitle(p *panelContent, focused bool) string {
-	label := p.key + " " + p.title
+	label := markHotkey(p.title, p.key)
 	if p.selectable {
 		label += fmt.Sprintf(" (%d)", p.count)
 	}
@@ -205,4 +228,19 @@ func panelTitle(p *panelContent, focused bool) string {
 	}
 
 	return styles.SubtitleStyle.Render(label)
+}
+
+// markHotkey brackets the letter key names inside title, matching without
+// regard to case so a lowercase key can mark an uppercase initial ("PRs" for
+// "p"). A key the title does not contain is prefixed instead.
+func markHotkey(title, key string) string {
+	if key == "" {
+		return title
+	}
+
+	if i := strings.Index(strings.ToLower(title), strings.ToLower(key)); i >= 0 {
+		return title[:i] + "[" + title[i:i+len(key)] + "]" + title[i+len(key):]
+	}
+
+	return "[" + key + "] " + title
 }

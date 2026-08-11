@@ -23,13 +23,15 @@ const (
 	gridChromeHeight   = 4
 )
 
-// panelSet builds every panel for the selected repo at the given content
-// width. A jj repo has no Stashes panel at all, rather than one explaining its
-// own absence.
+// panelSet builds the panels for the selected repo at the given content width.
+// A jj repo has no Stashes panel at all, rather than one explaining its own
+// absence, and the same reasoning drops any panel that finished loading with
+// nothing to list. Everything stays on screen while the load is in flight, so
+// the grid settles once instead of reflowing under the cursor as data lands.
 func (m Model) panelSet(width int) []panelContent {
 	summary := m.summaries[m.selectedRepo]
 
-	panels := []panelContent{
+	built := []panelContent{
 		m.statusPanel(summary, width),
 		m.branchesPanel(width),
 		m.prsPanel(width),
@@ -37,24 +39,37 @@ func (m Model) panelSet(width int) []panelContent {
 	}
 
 	if summary.VCSType != models.VCSTypeJJ {
-		panels = append(panels, m.stashesPanel(width))
+		built = append(built, m.stashesPanel(width))
 	}
 
-	panels = append(panels, m.notesPanel(width))
+	built = append(built, m.notesPanel(width))
 
-	empty := overviewEmpty
-	if m.detailLoading {
-		empty = "loading…"
-	}
-
-	for i := range panels {
-		panels[i].key = strconv.Itoa(i + 1)
-		if len(panels[i].rows) == 0 {
-			panels[i].rows = []string{styles.SubtitleStyle.Render(padCell(empty, width))}
+	panels := make([]panelContent, 0, len(built))
+	for _, p := range built {
+		if len(p.rows) == 0 && !m.detailLoading && !panelAlwaysShown(p.id) {
+			continue
 		}
+
+		p.key = panelKeys[p.id]
+		if len(p.rows) == 0 {
+			p.rows = []string{styles.SubtitleStyle.Render(padCell(m.panelEmptyLabel(), width))}
+		}
+
+		panels = append(panels, p)
 	}
 
 	return panels
+}
+
+// panelEmptyLabel is what a panel with no rows says: still-loading while the
+// detail load is in flight, and the plain empty marker for the panels that are
+// kept on screen regardless.
+func (m Model) panelEmptyLabel() string {
+	if m.detailLoading {
+		return "loading…"
+	}
+
+	return overviewEmpty
 }
 
 // panelForKey returns the panel a number key selects.
@@ -81,10 +96,19 @@ func panelIndex(panels []panelContent, id panelID) int {
 }
 
 func (m Model) statusPanel(summary models.RepoSummary, width int) panelContent {
+	files := overviewFiles(summary)
+	if extras := statusExtras(summary); extras != "" {
+		files += compactSignalSep + extras
+	}
+
 	lines := []string{
 		overviewSync(summary),
-		overviewFiles(summary) + compactSignalSep + statusExtras(summary),
+		files,
 		"template " + formatCopierCell(summary, width) + compactSignalSep + "CI " + m.overviewCI(summary),
+	}
+
+	if absent := m.statusAbsences(summary); absent != "" {
+		lines = append(lines, absent)
 	}
 
 	rows := make([]string, 0, len(lines))
@@ -109,11 +133,54 @@ func statusExtras(summary models.RepoSummary) string {
 	if notes := len(summary.NotesFiles); notes > 0 {
 		parts = append(parts, strconv.Itoa(notes)+" "+plural(notes, "note", "notes"))
 	}
-	if len(parts) == 0 {
-		return "no stashes or notes"
-	}
 
 	return strings.Join(parts, compactSignalSep)
+}
+
+// statusAbsences names the panels the grid dropped for having nothing to list,
+// so an absence is still reported once rather than left to be inferred from a
+// box that is not there.
+func (m Model) statusAbsences(summary models.RepoSummary) string {
+	if m.detailLoading {
+		return ""
+	}
+
+	absent := make([]string, 0, len(panelKeys))
+	if len(m.prs) == 0 {
+		absent = append(absent, "PRs")
+	}
+	if len(m.RepoCheckouts()) == 0 {
+		absent = append(absent, "peers")
+	}
+	if summary.VCSType != models.VCSTypeJJ && len(m.stashes) == 0 {
+		absent = append(absent, "stashes")
+	}
+	if len(m.notesFiles) == 0 {
+		absent = append(absent, "notes")
+	}
+
+	if len(absent) == 0 {
+		return ""
+	}
+
+	return "no " + joinOr(absent)
+}
+
+// joinOr renders a list as prose with an Oxford comma: "a", "a or b", "a, b, or c".
+func joinOr(parts []string) string {
+	switch len(parts) {
+	case 0:
+		return ""
+	case 1:
+		return parts[0]
+	}
+
+	head, last := parts[:len(parts)-1], parts[len(parts)-1]
+	if len(head) == 1 {
+		return head[0] + " or " + last
+	}
+
+	return strings.Join(head, ", ") + ", or " + last
 }
 
 func (m Model) branchesPanel(width int) panelContent {
@@ -852,19 +919,17 @@ const (
 	navHintStep       = 1
 )
 
-// panelFooter names the panel jump keys and the actions the focused panel
-// supports, so the keys on offer always match what is selected and where the
-// keyboard currently is.
+// panelFooter names the keys the focused panel supports, so what is on offer
+// always matches what is selected and where the keyboard currently is. The
+// panel jump keys are absent because each panel's border already carries its
+// own.
 func (m Model) panelFooter(panels []panelContent, focused, width int) string {
-	keys := panels[0].key + "-" + panels[len(panels)-1].key
-
 	navDesc, backDesc := descNav, "back"
 	if m.detailFocused {
 		navDesc, backDesc = "scroll", "panels"
 	}
 
 	hints := []footerHint{
-		{key: keys, desc: "panels", priority: panelHintPriority},
 		{key: keyNavPair, desc: navDesc, priority: panelHintPriority - navHintStep},
 		{key: keyEsc, desc: backDesc, priority: panelHintPriority - navHintStep*3},
 		{key: "space", desc: nameFind, priority: panelHintPriority - navHintStep*2},

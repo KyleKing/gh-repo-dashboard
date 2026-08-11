@@ -1,15 +1,15 @@
-doc: A busy repo shows every panel at once, and number keys move focus between them
+doc: A busy repo shows every panel it has data for, and each panel's letter jumps to it
 given busy
-when keys 1
+when keys s
 then panel = status
 then overview = Sync=↑2 ↓1 vs origin/feat/login Files=1 staged · 3 unstaged Peers=— Stashes=4 Notes=doing.md: wip Template=v0.9.1 → v0.10.0 PRs=#42 Add login flow CI=—
-when keys 2
+when keys b
 then panel = branches
-when keys 3
+when keys p
 then panel = prs
-when keys 4
+when keys e
 then panel = peers
-when keys 5
+when keys t
 then panel = stashes
-when keys 6
+when keys n
 then panel = notes

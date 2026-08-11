@@ -209,8 +209,8 @@ func TestBackNavigationChain(t *testing.T) {
 
 func TestPanelCycling(t *testing.T) {
 	t.Parallel()
-	m := New(nil, 1)
-	m.viewMode = ViewModeRepoDetail
+	m := focusedModel(160, 45)
+	m.focusedPanel = panelStatus
 
 	expected := []panelID{panelBranches, panelPRs, panelPeers, panelStashes, panelNotes, panelStatus}
 	for i, want := range expected {
@@ -224,8 +224,7 @@ func TestPanelCycling(t *testing.T) {
 
 func TestPanelLeftWrapsBackward(t *testing.T) {
 	t.Parallel()
-	m := New(nil, 1)
-	m.viewMode = ViewModeRepoDetail
+	m := focusedModel(160, 45)
 	m.focusedPanel = panelStatus
 	m.detailCursor = 2
 
@@ -242,8 +241,7 @@ func TestPanelLeftWrapsBackward(t *testing.T) {
 
 func TestDetailCursorMovement(t *testing.T) {
 	t.Parallel()
-	m := New(nil, 1)
-	m.viewMode = ViewModeRepoDetail
+	m := focusedModel(160, 45)
 	m.focusedPanel = panelBranches
 	m.branches = []models.BranchInfo{{Name: "a"}, {Name: "b"}, {Name: "c"}}
 
@@ -304,8 +302,7 @@ func TestDetailCursorCrossesPanelsWithNothingToMoveThrough(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			m := New(nil, 1)
-			m.viewMode = ViewModeRepoDetail
+			m := focusedModel(160, 45)
 			m.focusedPanel = tt.start
 			m.branches = []models.BranchInfo{{Name: "only"}}
 

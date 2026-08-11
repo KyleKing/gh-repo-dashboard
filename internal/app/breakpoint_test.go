@@ -113,9 +113,10 @@ func TestCompactGridStacksEveryPanel(t *testing.T) {
 	m := compactModel(80, 24)
 	m.selectedRepo = "/dev/alpha"
 	m.branches = []models.BranchInfo{{Name: mainBranchName, IsCurrent: true}}
+	m.prs = []models.PRInfo{{Number: 4, Title: "Compact", State: "OPEN"}}
 
 	grid := plainText(m.renderPanelGrid())
-	for _, want := range []string{"1 Status", "2 Branches (1)", "3 PRs (0)", "4 Peers (0)"} {
+	for _, want := range []string{"[S]tatus", "[B]ranches (1)", "[P]Rs (1)"} {
 		if !strings.Contains(grid, want) {
 			t.Errorf("compact grid is missing %q:\n%s", want, grid)
 		}

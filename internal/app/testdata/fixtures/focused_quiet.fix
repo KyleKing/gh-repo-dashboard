@@ -1,6 +1,6 @@
 doc: A quiet repo answers its overview without a keypress
 given quiet
-when keys 1
+when keys s
 then view = detail
 then panel = status
 then overview = Sync=in sync vs origin/main Files=clean Peers=— Stashes=— Notes=— Template=— PRs=— CI=—

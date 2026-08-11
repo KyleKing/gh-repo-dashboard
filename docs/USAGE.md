@@ -42,22 +42,22 @@ pressing `:`; bare keys act on the repo list.
 | `:filter behind or has_pr` | shows behind, dirty-pr |
 | `:filter all` | shows behind, clean, dirty, dirty-pr; predicate: (cleared) |
 
-## A busy repo shows every panel at once, and number keys move focus between them
+## A busy repo shows every panel it has data for, and each panel's letter jumps to it
 
 | Input | Result |
 |---|---|
-| press `1` | panel: status; overview: Sync=↑2 ↓1 vs origin/feat/login Files=1 staged · 3 unstaged Peers=— Stashes=4 Notes=doing.md: wip Template=v0.9.1 → v0.10.0 PRs=#42 Add login flow CI=— |
-| press `2` | panel: branches |
-| press `3` | panel: prs |
-| press `4` | panel: peers |
-| press `5` | panel: stashes |
-| press `6` | panel: notes |
+| press `s` | panel: status; overview: Sync=↑2 ↓1 vs origin/feat/login Files=1 staged · 3 unstaged Peers=— Stashes=4 Notes=doing.md: wip Template=v0.9.1 → v0.10.0 PRs=#42 Add login flow CI=— |
+| press `b` | panel: branches |
+| press `p` | panel: prs |
+| press `e` | panel: peers |
+| press `t` | panel: stashes |
+| press `n` | panel: notes |
 
 ## A quiet repo answers its overview without a keypress
 
 | Input | Result |
 |---|---|
-| press `1` | opens the detail view; panel: status; overview: Sync=in sync vs origin/main Files=clean Peers=— Stashes=— Notes=— Template=— PRs=— CI=— |
+| press `s` | opens the detail view; panel: status; overview: Sync=in sync vs origin/main Files=clean Peers=— Stashes=— Notes=— Template=— PRs=— CI=— |
 
 ## Review command history and repeat the last command
 

@@ -23,7 +23,10 @@ func placeholderModel(loading bool) Model {
 	return m
 }
 
-func TestEmptyPanelsDistinguishLoadingFromNothing(t *testing.T) {
+// An empty panel is worth a box only while its data is still in flight. Once
+// the load settles, an empty list is dropped and the Status panel names what is
+// missing, so the grid never spends four lines saying "none".
+func TestEmptyPanelsSayLoadingThenDisappear(t *testing.T) {
 	t.Parallel()
 
 	ids := []panelID{panelBranches, panelStashes, panelPRs, panelPeers, panelNotes}
@@ -32,11 +35,28 @@ func TestEmptyPanelsDistinguishLoadingFromNothing(t *testing.T) {
 		if !strings.Contains(loading, "loading") {
 			t.Errorf("panel %v while loading reads %q, want it to say so", id, loading)
 		}
+	}
 
-		settled := plainText(renderPanel(placeholderModel(false), id))
-		if !strings.Contains(settled, "none") {
-			t.Errorf("panel %v once settled reads %q, want it to report nothing found", id, settled)
+	settled := placeholderModel(false)
+	shown := map[panelID]bool{}
+	for _, p := range settled.panelSet(contentWidth(settled.width)) {
+		shown[p.id] = true
+	}
+
+	for _, id := range []panelID{panelStashes, panelPRs, panelPeers, panelNotes} {
+		if shown[id] {
+			t.Errorf("panel %v is still drawn once settled with nothing to list", id)
 		}
+	}
+	for _, id := range []panelID{panelStatus, panelBranches} {
+		if !shown[id] {
+			t.Errorf("panel %v must stay on screen even when empty", id)
+		}
+	}
+
+	status := plainText(renderPanel(settled, panelStatus))
+	if !strings.Contains(status, "no PRs, peers, stashes, or notes") {
+		t.Errorf("Status must name the dropped panels, got %q", status)
 	}
 }
 

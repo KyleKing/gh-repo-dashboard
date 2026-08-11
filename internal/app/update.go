@@ -87,6 +87,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case PRListLoadedMsg:
 		if msg.Path == m.selectedRepo {
 			m.prs = msg.PRs
+			m = m.snapFocusToShownPanel()
 		}
 
 		return m, nil
@@ -338,6 +339,7 @@ func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
 	m.worktrees = msg.Worktrees
 	m.prs = msg.PRs
 	m.notesFiles = msg.NotesFiles
+	m = m.snapFocusToShownPanel()
 
 	prefetchCount := min(prDetailPrefetchCount, len(msg.PRs))
 
@@ -961,6 +963,31 @@ func (m Model) handleActionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// snapFocusToShownPanel moves focus off a panel the grid has dropped for being
+// empty and clamps the row cursor to what the focused panel still lists, so
+// the cursor is never parked on a box that is not drawn or a row that is gone.
+// Call it wherever a message replaces the focused repo's lists.
+func (m Model) snapFocusToShownPanel() Model {
+	panels := m.panelSet(m.gridWidth())
+	if len(panels) == 0 {
+		return m
+	}
+
+	for _, p := range panels {
+		if p.id == m.focusedPanel {
+			m.detailCursor = min(m.detailCursor, max(m.panelRowCount(p.id)-1, 0))
+
+			return m
+		}
+	}
+
+	m.focusedPanel = panels[0].id
+	m.detailCursor = 0
+	m.detailScroll = 0
+
+	return m
 }
 
 // focusPanel moves the cursor to a panel's first row.

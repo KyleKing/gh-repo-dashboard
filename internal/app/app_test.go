@@ -2,7 +2,6 @@
 package app
 
 import (
-	"strconv"
 	"strings"
 	"testing"
 
@@ -412,17 +411,22 @@ func TestViewModeConstants(t *testing.T) {
 	}
 }
 
-func TestPanelKeysAreContiguousFromOne(t *testing.T) {
+// A jump key belongs to its panel rather than to a grid position, so hiding an
+// empty panel cannot move another panel's key out from under the fingers.
+func TestPanelKeysAreFixedToTheirPanel(t *testing.T) {
 	t.Parallel()
 
-	m := New(nil, 1)
-	m.width, m.height = 160, 45
-	panels := m.panelSet(60)
+	m := focusedModel(160, 45)
+	seen := map[string]bool{}
 
-	for i, p := range panels {
-		if p.key != strconv.Itoa(i+1) {
-			t.Errorf("panel %q has key %q, want %d", p.title, p.key, i+1)
+	for _, p := range m.panelSet(60) {
+		if want := panelKeys[p.id]; p.key != want {
+			t.Errorf("panel %q has key %q, want %q", p.title, p.key, want)
 		}
+		if seen[p.key] {
+			t.Errorf("key %q is claimed by more than one panel", p.key)
+		}
+		seen[p.key] = true
 	}
 }
 
