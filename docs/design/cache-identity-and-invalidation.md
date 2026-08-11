@@ -59,12 +59,18 @@ subprocess:
 
 - the OID `HEAD` resolves to, read through `.git/HEAD` and the ref file it
   names, falling back to `packed-refs`
-- the current branch's name and its upstream's name
+- the current branch's name and its upstream's name, which only `.git/config`
+  records
 - the OID of the remote-tracking ref for that upstream
-- the mtime of `packed-refs`, `FETCH_HEAD`, and the `refs/` tree
+- the mtime of `packed-refs`, `FETCH_HEAD`, `refs/heads`, and the upstream's
+  `refs/remotes/<remote>`
 
-Cost is four stats and two small reads, which is cheap enough to take on every
-render. Everything in it changes the moment you commit, switch, push, or
+The leaf ref directories are the ones to stat. A directory's mtime tracks its
+own entries alone, so `refs/` never moves when a branch is created.
+
+Cost is six stats and four reads, measured at 54-60 µs per checkout, which is
+cheap enough to take on every render and not cheap enough to take per row per
+keystroke. Everything in it changes the moment you commit, switch, push, or
 fetch.
 
 The stamp cuts both ways, and conflating the two directions is how this gets
@@ -89,6 +95,14 @@ written under:
 value, ok := cache.PRListCache.Get(upstream, stamp)   // stale if stamp differs
 value, ok := cache.BranchCache.Fresh(identity, stamp) // ignores the TTL
 ```
+
+A stamp carries the checkout it came from, and an entry remembers a
+fingerprint per checkout rather than one for the whole entry. Six checkouts
+share one PR list and each has its own stamp, so a single fingerprint would
+make every checkout miss on the entry the last one wrote and thrash the
+sharing that keying by upstream just bought. A checkout meeting an entry for
+the first time is a new reader and hits. A checkout whose own fingerprint
+moved since it last touched the entry made a local change and evicts.
 
 ## The cache file
 
