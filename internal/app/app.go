@@ -124,8 +124,11 @@ type Model struct {
 	prs     []models.PRInfo
 	prCount map[string]int
 	// stashDiffstat caches each stash's diffstat by index, filled lazily as
-	// the panel cursor lands on one.
+	// the panel cursor lands on one. stashDiff caches the full patch the same
+	// way, but only once the Stashes panel's full-diff verb asks for it.
 	stashDiffstat map[int]string
+	stashDiff     map[int]string
+	stashFullDiff bool
 	selectedPR    models.PRInfo
 	prDetail      models.PRDetail
 

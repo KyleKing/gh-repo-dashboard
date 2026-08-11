@@ -342,6 +342,7 @@ func panelActionsFor(id panelID) []panelAction {
 		return []panelAction{
 			{key: "a", name: "apply here", run: Model.startApplyStash},
 			{key: "d", name: "drop", run: Model.startDropStash},
+			{key: "o", name: "toggle full diff", run: Model.toggleStashDiff},
 		}
 	}
 
@@ -383,6 +384,21 @@ func (m Model) startApplyStash() (tea.Model, tea.Cmd) {
 	}
 
 	return m, applyStashCmd(m.selectedRepo, stash.Index)
+}
+
+// toggleStashDiff swaps the detail pane between the stash's diffstat and its
+// full patch, reading the patch the first time it is asked for. The toggle
+// holds while the cursor walks the panel, so every stash reads the same way.
+func (m Model) toggleStashDiff() (tea.Model, tea.Cmd) {
+	stash, ok := m.selectedPanelStash()
+	if !ok {
+		return m, nil
+	}
+
+	m.stashFullDiff = !m.stashFullDiff
+	m.detailScroll = 0
+
+	return m, m.stashDetailCmd(stash.Index)
 }
 
 // startDropStash discards the selected stash after confirmation. Nothing

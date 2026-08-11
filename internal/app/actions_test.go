@@ -277,6 +277,51 @@ func TestPanelActionMenuRunsAVerbAndClosesOnAnythingElse(t *testing.T) {
 	}
 }
 
+func TestStashFullDiffVerbSwapsTheDetailPane(t *testing.T) {
+	t.Parallel()
+
+	m := focusedModel(160, 45)
+	m.focusedPanel = panelStashes
+	m.panelActions = true
+	m.stashDiffstat = map[int]string{0: " one.go | 2 +-"}
+
+	toggledModel, cmd := m.handleDetailKey(keyPress('o'))
+	toggled := mustModel(t, toggledModel)
+	if !toggled.stashFullDiff {
+		t.Fatal("the verb should swap the pane to the full diff")
+	}
+	if cmd == nil {
+		t.Error("a diff nothing has read yet should be fetched")
+	}
+
+	if pane := plainText(strings.Join(toggled.stashDetailLines(60), "\n")); !strings.Contains(pane, "loading diff…") {
+		t.Errorf("a diff still loading must say so, got %q", pane)
+	}
+
+	loadedModel, _ := toggled.Update(StashDiffLoadedMsg{
+		Path: toggled.selectedRepo, Index: 0, Diff: "@@ -1 +1 @@\n-old\n+new",
+	})
+	loaded := mustModel(t, loadedModel)
+
+	pane := plainText(strings.Join(loaded.stashDetailLines(60), "\n"))
+	if !strings.Contains(pane, "+new") || strings.Contains(pane, "one.go") {
+		t.Errorf("the pane should show the patch instead of the diffstat, got %q", pane)
+	}
+
+	loaded.panelActions = true
+	backModel, backCmd := loaded.handleDetailKey(keyPress('o'))
+	back := mustModel(t, backModel)
+	if back.stashFullDiff {
+		t.Error("toggling again should return to the diffstat")
+	}
+	if backCmd != nil {
+		t.Error("a cached diffstat should not be re-read")
+	}
+	if pane := plainText(strings.Join(back.stashDetailLines(60), "\n")); !strings.Contains(pane, "one.go") {
+		t.Errorf("the pane should show the diffstat again, got %q", pane)
+	}
+}
+
 // Everything that destroys work is parked behind a confirmation, and applying a
 // stash is not one of those things because the stash survives it.
 func TestDestructivePanelVerbsAskFirst(t *testing.T) {

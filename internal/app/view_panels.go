@@ -848,17 +848,34 @@ func (m Model) stashDetailLines(width int) []string {
 		detailField("created", stash.RelativeDate()),
 	}
 
-	diffstat, loaded := m.stashDiffstat[stash.Index]
-	if !loaded {
-		return append(lines, "", styles.SubtitleStyle.Render("loading diffstat…"))
+	label, texts := "diffstat", m.stashDiffstat
+	if m.stashFullDiff {
+		label, texts = "diff", m.stashDiff
 	}
 
-	lines = append(lines, "", styles.HeaderStyle.Render("diffstat"))
-	for _, line := range strings.Split(diffstat, "\n") {
+	body, loaded := texts[stash.Index]
+	if !loaded {
+		return append(lines, "", styles.SubtitleStyle.Render("loading "+label+"…"))
+	}
+
+	lines = append(lines, "", styles.HeaderStyle.Render(label))
+	for _, line := range stashBodyLines(body) {
 		lines = append(lines, styles.TableRowStyle.Render(truncate("  "+line, width)))
 	}
 
 	return lines
+}
+
+// stashBodyLines caps the pane's line count, since the whole detail is
+// re-rendered on every frame and a stash's patch has no upper bound.
+func stashBodyLines(body string) []string {
+	lines := strings.Split(body, "\n")
+	if len(lines) <= stashDiffMaxLines {
+		return lines
+	}
+
+	return append(lines[:stashDiffMaxLines:stashDiffMaxLines],
+		"… "+strconv.Itoa(len(lines)-stashDiffMaxLines)+" more lines")
 }
 
 func (m Model) noteDetailLines(width int) []string {

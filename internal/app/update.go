@@ -95,12 +95,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case PRDetailLoadedMsg:
 		return m.handlePRDetailLoaded(msg)
 
+	case StashDiffLoadedMsg:
+		if msg.Path == m.selectedRepo {
+			m.stashDiff = withStashText(m.stashDiff, msg.Index, msg.Diff)
+		}
+
+		return m, nil
+
 	case StashDiffstatLoadedMsg:
 		if msg.Path == m.selectedRepo {
-			if m.stashDiffstat == nil {
-				m.stashDiffstat = make(map[int]string)
-			}
-			m.stashDiffstat[msg.Index] = msg.Diffstat
+			m.stashDiffstat = withStashText(m.stashDiffstat, msg.Index, msg.Diffstat)
 		}
 
 		return m, nil
@@ -707,6 +711,8 @@ func (m Model) handleEnterKey() (tea.Model, tea.Cmd) {
 	m.prs = nil
 	m.notesFiles = nil
 	m.stashDiffstat = nil
+	m.stashDiff = nil
+	m.stashFullDiff = false
 	m.branchDetail = models.BranchDetail{}
 	m.prDetail = models.PRDetail{}
 	m.detailLoading = true
@@ -1080,15 +1086,37 @@ func (m Model) panelDetailCmd() tea.Cmd {
 		return loadBranchDetailCmd(m.selectedRepo, branch.Name)
 
 	case m.focusedPanel == panelStashes && m.detailCursor < len(m.stashes):
-		index := m.stashes[m.detailCursor].Index
-		if _, loaded := m.stashDiffstat[index]; loaded {
-			return nil
-		}
-
-		return loadStashDiffstatCmd(m.selectedRepo, index)
+		return m.stashDetailCmd(m.stashes[m.detailCursor].Index)
 	}
 
 	return nil
+}
+
+func withStashText(texts map[int]string, index int, text string) map[int]string {
+	if texts == nil {
+		texts = make(map[int]string)
+	}
+	texts[index] = text
+
+	return texts
+}
+
+// stashDetailCmd fetches whichever of the stash's diffstat or full patch the
+// detail pane is showing, and nothing when that one is already cached.
+func (m Model) stashDetailCmd(index int) tea.Cmd {
+	if m.stashFullDiff {
+		if _, loaded := m.stashDiff[index]; loaded {
+			return nil
+		}
+
+		return loadStashDiffCmd(m.selectedRepo, index)
+	}
+
+	if _, loaded := m.stashDiffstat[index]; loaded {
+		return nil
+	}
+
+	return loadStashDiffstatCmd(m.selectedRepo, index)
 }
 
 // handleDetailOpenKey opens the branch-detail or PR-detail view for the
@@ -1172,6 +1200,8 @@ func (m Model) openRepo(path string) (tea.Model, tea.Cmd) {
 	m.prs = nil
 	m.notesFiles = nil
 	m.stashDiffstat = nil
+	m.stashDiff = nil
+	m.stashFullDiff = false
 	m.branchDetail = models.BranchDetail{}
 	m.prDetail = models.PRDetail{}
 	m.detailLoading = true

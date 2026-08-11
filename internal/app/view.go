@@ -33,6 +33,7 @@ const (
 	detailLabelWidthPR     = 16
 	prBodyMaxLen           = 400
 	prCommentMaxLen        = 240
+	stashDiffMaxLines      = 500
 	statusBarHeight        = 2
 	emptyStateVPad         = 2
 	emptyStateHPad         = 4
