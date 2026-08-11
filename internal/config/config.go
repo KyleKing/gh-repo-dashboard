@@ -21,6 +21,15 @@ type Config struct {
 	Depth           int      `toml:"depth"`
 	NotesFilenames  []string `toml:"notes_filenames"`
 	CacheTTLMinutes int      `toml:"cache_ttl_minutes"`
+	// CacheToDisk is a pointer because an absent key means "on": persistence is
+	// an opt-out, and false is a value the user has to write.
+	CacheToDisk *bool `toml:"cache_to_disk"`
+}
+
+// PersistCache reports whether remote-derived values may be written to the
+// per-upstream cache files, which they may unless the file says otherwise.
+func (c Config) PersistCache() bool {
+	return c.CacheToDisk == nil || *c.CacheToDisk
 }
 
 // CacheTTL returns the configured cache TTL, or zero when unset.

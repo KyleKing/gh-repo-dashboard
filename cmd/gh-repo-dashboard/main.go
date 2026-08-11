@@ -89,6 +89,12 @@ func applyConfig(cfg config.Config, depth *int) {
 	if ttl := cfg.CacheTTL(); ttl > 0 {
 		cache.SetAllTTLs(ttl)
 	}
+
+	if cfg.PersistCache() {
+		if store, err := cache.UserDiskCache(); err == nil {
+			cache.SetDiskCache(store)
+		}
+	}
 }
 
 func printUsage() {

@@ -17,6 +17,9 @@ notes_filenames = [".doing", "doing.md", "doing.txt", "TODO.md"]
 
 # Lifetime of cached GitHub data (PRs, workflow runs), in minutes
 cache_ttl_minutes = 5
+
+# Keep pull request data between runs, one file per remote (default true)
+cache_to_disk = true
 ```
 
 Flags and positional paths on the command line take precedence over the file.
@@ -26,3 +29,16 @@ Flags and positional paths on the command line take precedence over the file.
 The dashboard caches GitHub pull request and workflow data for
 `cache_ttl_minutes`, defaulting to 5. Press `r` in the TUI to clear the caches
 and reload, or pass `--fresh` alongside `--cli`.
+
+With `cache_to_disk` left on, the pull request list and the merged-PR head map
+also outlive the process, in one file per remote under
+`os.UserCacheDir()/gh-repo-dashboard` (`~/Library/Caches` on macOS,
+`$XDG_CACHE_HOME` or `~/.cache` on Linux), so a cold start on a large fleet
+renders without one `gh pr list` per repo. A file is read when the row that
+needs it is drawn, never all of them at startup.
+
+What lands there is pull request numbers, states, check counts, and titles. A
+title from a private repository is the most any of it reveals, so the files are
+written at mode 0600 under a 0700 directory. Pull request bodies and comment
+text stay in memory and are never written. Set `cache_to_disk = false` to keep
+everything in memory; `r` drops the files along with the memory caches.

@@ -157,6 +157,40 @@ func (c *TTLCache[T]) Set(key string, stamp Stamp, value T) {
 	}
 }
 
+// restore seeds an entry read back from disk, keeping the expiry and the
+// fingerprints it was written under so a persisted value neither restarts its
+// TTL nor forgets which checkouts have already read it.
+func (c *TTLCache[T]) restore(key string, value T, expiresAt time.Time, seen map[string]string, stamp Stamp) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	merged := make(map[string]string, len(seen)+1)
+	for scope, fingerprint := range seen {
+		merged[scope] = fingerprint
+	}
+
+	if stamp.Fingerprint != "" {
+		merged[stamp.Scope] = stamp.Fingerprint
+	}
+
+	c.entries[key] = entry[T]{value: value, expiresAt: expiresAt, seen: merged}
+}
+
+// deadline is when an entry written now would expire.
+func (c *TTLCache[T]) deadline() time.Time {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.now().Add(c.ttl)
+}
+
+func (c *TTLCache[T]) clock() time.Time {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.now()
+}
+
 // Clear removes all entries from the cache.
 func (c *TTLCache[T]) Clear() {
 	c.mu.Lock()
@@ -204,25 +238,34 @@ var (
 	CopierLatestTagCache = newRegisteredTTLCache[string](copierTagTTL)
 )
 
-// BranchCacheKey and CommitCacheKey scope the object-store reads onto a
-// checkout identity (vcs.CheckoutIdentity), so a worktree and its parent share
-// one entry.
-func BranchCacheKey(identity string) string {
-	return identity + "\x00branches"
+// BranchCacheKey and CommitCacheKey key on the checkout rather than on the
+// object store it borrows. A worktree and its parent read the same refs, but
+// both values are relative to whichever HEAD asked: the branch list carries the
+// current-branch marker and the log starts at HEAD. Sharing one entry between
+// them would either serve one checkout the other's answer or, as the stamp
+// makes it, miss every time the cursor alternates.
+func BranchCacheKey(repoPath string) string {
+	return repoPath + "\x00branches"
 }
 
-// CommitCacheKey builds the commit log cache key for a checkout's object store.
-func CommitCacheKey(identity string, count int) string {
-	return identity + "\x00commits:" + strconv.Itoa(count)
+// CommitCacheKey builds the commit log cache key for a checkout, keyed by depth
+// because a deeper log is a different value.
+func CommitCacheKey(repoPath string, count int) string {
+	return repoPath + "\x00commits:" + strconv.Itoa(count)
 }
 
-// ClearAll clears every registered package-level cache.
+// ClearAll clears every registered package-level cache, and the installed disk
+// store with them.
 func ClearAll() {
 	registryMu.Lock()
 	defer registryMu.Unlock()
 
 	for _, c := range registry {
 		c.Clear()
+	}
+
+	if d := installedDiskCache(); d != nil {
+		d.Clear()
 	}
 }
 

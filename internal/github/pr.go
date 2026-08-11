@@ -60,9 +60,12 @@ func CachedPRForBranch(repoPath, remoteID, branch, upstream string) (*models.PRI
 	return cache.PRCache.Get(PRCacheKey(repoPath, remoteID, upstream, branch), vcs.Stamp(repoPath))
 }
 
-// CachedPRs returns the cached open pull request list for the repo without invoking gh.
+// CachedPRs returns the cached open pull request list for the repo without
+// invoking gh, reading the remote's cache file when memory misses.
 func CachedPRs(repoPath, remoteID, upstream string) ([]models.PRInfo, bool) {
-	return cache.PRListCache.Get(PRListCacheKey(repoPath, remoteID, upstream), vcs.Stamp(repoPath))
+	key := PRListCacheKey(repoPath, remoteID, upstream)
+
+	return cache.Persisted(cache.PRListCache, remoteID, key, vcs.Stamp(repoPath))
 }
 
 // GetPRForBranch returns the pull request associated with branch, if any, using the cache when fresh.
@@ -349,7 +352,7 @@ func GetPRsForRepo(ctx context.Context, repoPath, remoteID, upstream string) ([]
 	}
 
 	result := mergePRPages(others, mine)
-	cache.PRListCache.Set(cacheKey, vcs.Stamp(repoPath), result)
+	cache.Persist(cache.PRListCache, remoteID, cacheKey, vcs.Stamp(repoPath), result)
 
 	return result, nil
 }
@@ -471,9 +474,12 @@ type mergedPRHead struct {
 	HeadRefOid  string `json:"headRefOid"`
 }
 
-// CachedMergedPRHeads returns the cached merged-PR head map for the remote, if any, without invoking gh.
+// CachedMergedPRHeads returns the cached merged-PR head map for the remote, if
+// any, without invoking gh.
 func CachedMergedPRHeads(repoPath, remoteID string) (map[string]string, bool) {
-	return cache.MergedPRHeadsCache.Get(MergedPRHeadsCacheKey(repoPath, remoteID), vcs.Stamp(repoPath))
+	key := MergedPRHeadsCacheKey(repoPath, remoteID)
+
+	return cache.Persisted(cache.MergedPRHeadsCache, remoteID, key, vcs.Stamp(repoPath))
 }
 
 // GetMergedPRHeads returns merged pull requests' head branch name mapped to head commit OID for
@@ -503,7 +509,8 @@ func GetMergedPRHeads(ctx context.Context, repoPath, remoteID string) (map[strin
 		heads[pr.HeadRefName] = pr.HeadRefOid
 	}
 
-	cache.MergedPRHeadsCache.Set(MergedPRHeadsCacheKey(repoPath, remoteID), vcs.Stamp(repoPath), heads)
+	cache.Persist(cache.MergedPRHeadsCache, remoteID, MergedPRHeadsCacheKey(repoPath, remoteID),
+		vcs.Stamp(repoPath), heads)
 
 	return heads, nil
 }

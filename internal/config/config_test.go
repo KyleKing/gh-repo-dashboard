@@ -52,6 +52,9 @@ cache_ttl_minutes = 10
 	if cfg.CacheTTL() != 10*time.Minute {
 		t.Errorf("cache ttl = %v; want 10m", cfg.CacheTTL())
 	}
+	if !cfg.PersistCache() {
+		t.Error("a file that says nothing about cache_to_disk turned persistence off")
+	}
 }
 
 func TestLoadMissingFileIsZeroConfig(t *testing.T) {
@@ -63,6 +66,23 @@ func TestLoadMissingFileIsZeroConfig(t *testing.T) {
 	}
 	if len(cfg.ScanPaths) != 0 || cfg.Depth != 0 || cfg.CacheTTL() != 0 {
 		t.Errorf("expected zero config, got %+v", cfg)
+	}
+	if !cfg.PersistCache() {
+		t.Error("persistence is an opt-out, so a missing file leaves it on")
+	}
+}
+
+// Writing the key is the only way to turn the cache files off, so false has to
+// survive the round trip that an absent key reads as true.
+func TestCacheToDiskOptOut(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", writeConfig(t, "cache_to_disk = false\n"))
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.PersistCache() {
+		t.Error("cache_to_disk = false still persists")
 	}
 }
 
