@@ -80,16 +80,16 @@ func TestRemoteIdentity(t *testing.T) {
 	}
 }
 
-func mkdir(t *testing.T, path string) {
-	t.Helper()
+func mkdir(tb testing.TB, path string) {
+	tb.Helper()
 	if err := os.MkdirAll(path, 0o750); err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 }
 
-func writeFile(t *testing.T, path, contents string) {
-	t.Helper()
+func writeFile(tb testing.TB, path, contents string) {
+	tb.Helper()
 	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 }

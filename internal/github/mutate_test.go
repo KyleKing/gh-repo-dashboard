@@ -18,6 +18,7 @@ func TestCreatePR(t *testing.T) {
 	ctx, calls := stubRunGH([]byte("https://github.com/acme/app/pull/7\n"), nil)
 	cache.PRListCache.Set(
 		github.PRListCacheKey(mutateRepoPath, testRemoteID, "origin/main"),
+		cache.NoStamp,
 		[]models.PRInfo{{Number: 1}},
 	)
 
@@ -70,6 +71,7 @@ func TestSquashMergePR(t *testing.T) {
 	ctx, calls := stubRunGH([]byte(""), nil)
 	cache.MergedPRHeadsCache.Set(
 		github.MergedPRHeadsCacheKey(mutateRepoPath, testRemoteID),
+		cache.NoStamp,
 		map[string]string{"feature": "abc123"},
 	)
 

@@ -10,9 +10,26 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+// Stamp is what a checkout looked like when a value was read from it. The
+// cache compares Fingerprint for equality and never interprets it; Scope names
+// the checkout it came from, so an entry several checkouts of one remote share
+// is only evicted for the checkout that actually changed.
+//
+// An empty Fingerprint proves nothing: it is what a caller passes for a value
+// no local state can invalidate, and what vcs returns for a checkout it could
+// not read.
+type Stamp struct {
+	Scope       string
+	Fingerprint string
+}
+
+// NoStamp is the stamp for a value no local state can invalidate.
+var NoStamp = Stamp{} //nolint:gochecknoglobals // an empty-value constant, never assigned to
+
 type entry[T any] struct {
 	value     T
 	expiresAt time.Time
+	seen      map[string]string
 }
 
 // TTLCache is a generic in-memory cache whose entries expire after a fixed duration.
@@ -20,6 +37,7 @@ type TTLCache[T any] struct {
 	mu      sync.RWMutex
 	entries map[string]entry[T]
 	ttl     time.Duration
+	now     func() time.Time
 }
 
 // NewTTLCache returns an empty TTLCache with the given entry lifetime.
@@ -27,6 +45,7 @@ func NewTTLCache[T any](ttl time.Duration) *TTLCache[T] {
 	return &TTLCache[T]{
 		entries: make(map[string]entry[T]),
 		ttl:     ttl,
+		now:     time.Now,
 	}
 }
 
@@ -56,35 +75,85 @@ func newRegisteredTTLCache[T any](ttl time.Duration) *TTLCache[T] {
 	return c
 }
 
-// Get returns the cached value for key and whether it was present and unexpired.
+// Get returns the cached value for key, for a value the checkout cannot prove
+// still correct. The TTL is the ceiling and stamp only lowers it: a checkout
+// whose stamp moved since it last touched this entry evicts it early, because
+// a local change (a push above all) is exactly when a remote-derived value
+// stops matching. Pass NoStamp for a value no local state bears on.
 //
 //nolint:ireturn // T is the cache's own type parameter, not an abstraction leak
-func (c *TTLCache[T]) Get(key string) (T, bool) {
+func (c *TTLCache[T]) Get(key string, stamp Stamp) (T, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	var zero T
+
+	e, ok := c.entries[key]
+	if !ok {
+		return zero, false
+	}
+
+	if c.now().After(e.expiresAt) {
+		delete(c.entries, key)
+
+		return zero, false
+	}
+
+	if stamp.Fingerprint != "" {
+		prev, recorded := e.seen[stamp.Scope]
+		switch {
+		case recorded && prev != stamp.Fingerprint:
+			delete(c.entries, key)
+
+			return zero, false
+		case !recorded:
+			e.seen[stamp.Scope] = stamp.Fingerprint
+		}
+	}
+
+	return e.value, true
+}
+
+// Fresh returns the cached value for key when stamp matches the one it was
+// written under, for a value derived from local state alone. An unchanged
+// checkout cannot have changed the answer, so the entry stays correct however
+// old it is and the TTL never evicts it. A checkout that could not be stamped
+// always misses.
+//
+//nolint:ireturn // T is the cache's own type parameter, not an abstraction leak
+func (c *TTLCache[T]) Fresh(key string, stamp Stamp) (T, bool) {
+	var zero T
+
+	if stamp.Fingerprint == "" {
+		return zero, false
+	}
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	e, ok := c.entries[key]
-	if !ok {
-		var zero T
-		return zero, false
-	}
-
-	if time.Now().After(e.expiresAt) {
-		var zero T
+	if !ok || e.seen[stamp.Scope] != stamp.Fingerprint {
 		return zero, false
 	}
 
 	return e.value, true
 }
 
-// Set stores value under key, expiring after the cache's configured TTL.
-func (c *TTLCache[T]) Set(key string, value T) {
+// Set stores value under key as read from the checkout stamp describes,
+// expiring after the cache's configured TTL.
+func (c *TTLCache[T]) Set(key string, stamp Stamp, value T) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	seen := make(map[string]string, 1)
+	if stamp.Fingerprint != "" {
+		seen[stamp.Scope] = stamp.Fingerprint
+	}
+
 	c.entries[key] = entry[T]{
 		value:     value,
-		expiresAt: time.Now().Add(c.ttl),
+		expiresAt: c.now().Add(c.ttl),
+		seen:      seen,
 	}
 }
 
@@ -118,9 +187,9 @@ const (
 )
 
 // Package-level caches shared across the app. A cache key names who else may
-// read the value: RemoteScope for anything read off the remote, CheckoutScope
-// for anything read from the object store, and the repo path itself only for
-// values that are genuinely per-directory.
+// read the value: RemoteScope for anything read off the remote, a checkout
+// identity for anything read from the object store, and the repo path itself
+// only for values that are genuinely per-directory.
 var (
 	PRCache            = newRegisteredTTLCache[*models.PRInfo](defaultTTL)
 	PRListCache        = newRegisteredTTLCache[[]models.PRInfo](defaultTTL)
@@ -135,15 +204,16 @@ var (
 	CopierLatestTagCache = newRegisteredTTLCache[string](copierTagTTL)
 )
 
-// BranchCacheKey and CommitCacheKey scope the object-store reads onto the
-// checkout identity, so a worktree and its parent share one entry.
-func BranchCacheKey(repoPath string) string {
-	return CheckoutScope(repoPath) + "\x00branches"
+// BranchCacheKey and CommitCacheKey scope the object-store reads onto a
+// checkout identity (vcs.CheckoutIdentity), so a worktree and its parent share
+// one entry.
+func BranchCacheKey(identity string) string {
+	return identity + "\x00branches"
 }
 
 // CommitCacheKey builds the commit log cache key for a checkout's object store.
-func CommitCacheKey(repoPath string, count int) string {
-	return CheckoutScope(repoPath) + "\x00commits:" + strconv.Itoa(count)
+func CommitCacheKey(identity string, count int) string {
+	return identity + "\x00commits:" + strconv.Itoa(count)
 }
 
 // ClearAll clears every registered package-level cache.

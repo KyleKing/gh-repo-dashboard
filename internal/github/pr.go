@@ -57,12 +57,12 @@ func MergedPRHeadsCacheKey(repoPath, remoteID string) string {
 
 // CachedPRForBranch returns the cached pull request for branch, if any, without invoking gh.
 func CachedPRForBranch(repoPath, remoteID, branch, upstream string) (*models.PRInfo, bool) {
-	return cache.PRCache.Get(PRCacheKey(repoPath, remoteID, upstream, branch))
+	return cache.PRCache.Get(PRCacheKey(repoPath, remoteID, upstream, branch), vcs.Stamp(repoPath))
 }
 
 // CachedPRs returns the cached open pull request list for the repo without invoking gh.
 func CachedPRs(repoPath, remoteID, upstream string) ([]models.PRInfo, bool) {
-	return cache.PRListCache.Get(PRListCacheKey(repoPath, remoteID, upstream))
+	return cache.PRListCache.Get(PRListCacheKey(repoPath, remoteID, upstream), vcs.Stamp(repoPath))
 }
 
 // GetPRForBranch returns the pull request associated with branch, if any, using the cache when fresh.
@@ -99,7 +99,7 @@ func GetPRForBranch(ctx context.Context, repoPath, remoteID, branch, upstream st
 		Checks:    checks,
 	}
 
-	cache.PRCache.Set(cacheKey, pr)
+	cache.PRCache.Set(cacheKey, vcs.Stamp(repoPath), pr)
 
 	return pr, nil
 }
@@ -214,7 +214,7 @@ func parseTime(value string) time.Time {
 // GetPRDetail returns the full detail for a single pull request, using the cache when fresh.
 func GetPRDetail(ctx context.Context, repoPath, remoteID string, prNumber int) (*models.PRDetail, error) {
 	cacheKey := PRDetailCacheKey(repoPath, remoteID, prNumber)
-	if cached, ok := cache.PRDetailCache.Get(cacheKey); ok {
+	if cached, ok := cache.PRDetailCache.Get(cacheKey, vcs.Stamp(repoPath)); ok {
 		return cached, nil
 	}
 
@@ -300,7 +300,7 @@ func GetPRDetail(ctx context.Context, repoPath, remoteID string, prNumber int) (
 		CheckDetails:  parseCheckDetails(resp.StatusCheckRollup),
 	}
 
-	cache.PRDetailCache.Set(cacheKey, detail)
+	cache.PRDetailCache.Set(cacheKey, vcs.Stamp(repoPath), detail)
 
 	return detail, nil
 }
@@ -349,7 +349,7 @@ func GetPRsForRepo(ctx context.Context, repoPath, remoteID, upstream string) ([]
 	}
 
 	result := mergePRPages(others, mine)
-	cache.PRListCache.Set(cacheKey, result)
+	cache.PRListCache.Set(cacheKey, vcs.Stamp(repoPath), result)
 
 	return result, nil
 }
@@ -473,7 +473,7 @@ type mergedPRHead struct {
 
 // CachedMergedPRHeads returns the cached merged-PR head map for the remote, if any, without invoking gh.
 func CachedMergedPRHeads(repoPath, remoteID string) (map[string]string, bool) {
-	return cache.MergedPRHeadsCache.Get(MergedPRHeadsCacheKey(repoPath, remoteID))
+	return cache.MergedPRHeadsCache.Get(MergedPRHeadsCacheKey(repoPath, remoteID), vcs.Stamp(repoPath))
 }
 
 // GetMergedPRHeads returns merged pull requests' head branch name mapped to head commit OID for
@@ -503,7 +503,7 @@ func GetMergedPRHeads(ctx context.Context, repoPath, remoteID string) (map[strin
 		heads[pr.HeadRefName] = pr.HeadRefOid
 	}
 
-	cache.MergedPRHeadsCache.Set(MergedPRHeadsCacheKey(repoPath, remoteID), heads)
+	cache.MergedPRHeadsCache.Set(MergedPRHeadsCacheKey(repoPath, remoteID), vcs.Stamp(repoPath), heads)
 
 	return heads, nil
 }

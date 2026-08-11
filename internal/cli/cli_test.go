@@ -69,7 +69,8 @@ func TestLookupPR(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cache.ClearAll()
 			if tt.cached != nil {
-				cache.PRCache.Set(github.PRCacheKey(peerCheckoutPath, testRemoteID, tt.upstream, "main"), tt.cached)
+				key := github.PRCacheKey(peerCheckoutPath, testRemoteID, tt.upstream, "main")
+				cache.PRCache.Set(key, cache.NoStamp, tt.cached)
 			}
 
 			calls := 0
@@ -117,7 +118,8 @@ func TestLookupPRCount(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cache.ClearAll()
 			if tt.cached != nil {
-				cache.PRListCache.Set(github.PRListCacheKey(peerCheckoutPath, testRemoteID, tt.upstream), tt.cached)
+				key := github.PRListCacheKey(peerCheckoutPath, testRemoteID, tt.upstream)
+				cache.PRListCache.Set(key, cache.NoStamp, tt.cached)
 			}
 
 			calls := 0

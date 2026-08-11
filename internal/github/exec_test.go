@@ -480,7 +480,8 @@ func TestPRCachesAreScopedByRemote(t *testing.T) {
 				t.Errorf("checkout B invoked gh %d times, want %d", len(*callsB), wantCalls)
 			}
 
-			cache.PRCache.Set(github.PRCacheKey("/repo-a", idA, "origin/main", "main"), &models.PRInfo{Number: 1})
+			keyA := github.PRCacheKey("/repo-a", idA, "origin/main", "main")
+			cache.PRCache.Set(keyA, cache.NoStamp, &models.PRInfo{Number: 1})
 			if _, hit := github.CachedPRForBranch("/repo-b", idB, "main", "origin/main"); hit != tt.wantShared {
 				t.Errorf("per-branch cache hit from checkout B = %v, want %v", hit, tt.wantShared)
 			}

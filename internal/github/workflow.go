@@ -23,7 +23,7 @@ func GetWorkflowRunsForCommit(
 	}
 
 	cacheKey := cache.RemoteScope(repoPath, remoteID) + "\x00run:" + commitSHA
-	if cached, ok := cache.WorkflowCache.Get(cacheKey); ok {
+	if cached, ok := cache.WorkflowCache.Get(cacheKey, vcs.Stamp(repoPath)); ok {
 		return cached, nil
 	}
 
@@ -83,7 +83,7 @@ func GetWorkflowRunsForCommit(
 		}
 	}
 
-	cache.WorkflowCache.Set(cacheKey, summary)
+	cache.WorkflowCache.Set(cacheKey, vcs.Stamp(repoPath), summary)
 
 	return summary, nil
 }

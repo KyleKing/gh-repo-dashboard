@@ -62,7 +62,7 @@ func isBehind(commit, latestTag string) bool {
 // template. The bool result is false when the lookup failed or the remote
 // has no semver-parseable tags.
 func latestSemverTag(ctx context.Context, srcPath string) (string, bool) {
-	if cached, hit := cache.CopierLatestTagCache.Get(srcPath); hit {
+	if cached, hit := cache.CopierLatestTagCache.Get(srcPath, cache.NoStamp); hit {
 		return cached, true
 	}
 
@@ -73,7 +73,7 @@ func latestSemverTag(ctx context.Context, srcPath string) (string, bool) {
 
 	tag, ok := newestSemverTagFromLsRemote(string(out))
 	if ok {
-		cache.CopierLatestTagCache.Set(srcPath, tag)
+		cache.CopierLatestTagCache.Set(srcPath, cache.NoStamp, tag)
 	}
 
 	return tag, ok
