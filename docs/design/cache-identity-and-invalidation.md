@@ -1,6 +1,7 @@
 # Cache identity and invalidation
 
-A proposal. Nothing here is built yet.
+How caching is keyed and invalidated, and why a timer alone is the wrong
+answer.
 
 Every cache in the app is keyed by repo path and expires on a timer. That is
 wrong in both directions at once. Six checkouts of one remote each pay for
@@ -112,17 +113,19 @@ Decisions this needs:
 - **Load lazily.** Reading 60 small files on startup is worse than reading the
   one the cursor is on.
 
-## What this leaves open
+## Resolved
 
-- Whether a jj colocated repo's stamp should read git refs, jj's op log, or
-  both. The op log changes on every jj command, which would make the stamp far
-  more sensitive than it needs to be.
-- Whether `r` (refresh) should drop the disk cache or only the memory one.
-  Dropping both is the honest reading of "refresh", and it turns one keypress
-  into a full fleet re-fetch.
-- Whether the stamp belongs in `internal/vcs` beside `CheckoutIdentity`, which
-  already does this kind of subprocess-free reading, or in `internal/cache`
-  beside the thing that consumes it.
+- A jj colocated repo stamps on git refs alone. The op log advances on
+  operations that changed nothing a cache reads, so stamping on it would
+  invalidate far more than it protects.
+- `r` drops the disk cache along with the memory one. Refresh is pressed
+  because something looks wrong, and a refresh that leaves a stale PR state on
+  disk cannot fix it.
+- The stamp lives in `internal/vcs` beside `CheckoutIdentity`, which already
+  reads repository state without spawning a subprocess. `internal/cache` takes
+  it as an opaque comparable value and never learns how it is gathered.
+- Disk holds counts, states, numbers, and PR titles at mode 0600. Bodies and
+  comments stay in memory, and `cache_to_disk = false` turns the file off.
 
 ## Order of work
 
