@@ -126,48 +126,94 @@ func fitPanelCols(specs []table.Column, width int) table.Layout {
 // narrow for even its mandatory columns; the row overflows instead.
 const minPanelTableWidth = 20
 
-// distributePanelHeights shares available lines between the panels. Every
-// panel keeps its border plus one content line so none is ever fully hidden,
-// the focused panel is served next so its selection stays visible, and what
-// remains is split in proportion to relevance.
+// distributePanelHeights shares available lines between the panels. Every panel
+// keeps its border plus one content line so none is ever fully hidden, every
+// panel that wants them gets up to an equal share before relevance is consulted
+// so a low-scoring list is never starved beside a high-scoring one, the focused
+// panel is served next so its selection stays visible, and what remains is
+// split in proportion to relevance.
 func distributePanelHeights(panels []panelContent, focused, available int) []int {
 	heights := make([]int, len(panels))
 	if len(panels) == 0 {
 		return heights
 	}
 
-	minimum := panelMinHeight
 	for i := range heights {
-		heights[i] = minimum
+		heights[i] = panelMinHeight
 	}
 
-	surplus := available - minimum*len(panels)
+	surplus := available - panelMinHeight*len(panels)
 	if surplus <= 0 {
 		return heights
 	}
 
-	want := func(i int) int { return max(len(panels[i].rows)-1, 0) }
+	surplus = grantFairShares(heights, panels, available, surplus)
+	surplus = grantWant(heights, panels, focused, surplus)
+	shareByRelevance(heights, panels, surplus)
 
-	if focused >= 0 && focused < len(panels) {
-		take := min(want(focused), surplus)
-		heights[focused] += take
+	// Lines nothing asked for stay unspent, so the column ends where its
+	// content does. Stretching it to the bottom of the grid only pads boxes
+	// with blank rows: every panel that had somewhere to put a line has already
+	// been given it by this point.
+	return heights
+}
+
+// panelWant is how many lines beyond its first a panel would use given room.
+func panelWant(p *panelContent) int {
+	return max(len(p.rows)-1, 0)
+}
+
+// panelRoom is how many more lines a panel would still take at its height.
+func panelRoom(p *panelContent, height int) int {
+	return panelWant(p) - (height - panelMinHeight)
+}
+
+// grantFairShares gives every panel that wants them the lines an even split
+// would allow, before relevance is consulted at all. This is what keeps
+// relevance from being a winner-take-all score: Peers showing one of six
+// checkouts beside a half-empty Branches box was the shape it prevents.
+func grantFairShares(heights []int, panels []panelContent, available, surplus int) int {
+	fair := max(available/len(panels)-panelMinHeight, 0)
+
+	for i := range panels {
+		take := min(panelWant(&panels[i]), fair, surplus)
+		heights[i] += take
 		surplus -= take
 	}
 
+	return surplus
+}
+
+// grantWant tops one panel up to everything it would show, used for the focused
+// panel so its selection stays visible.
+func grantWant(heights []int, panels []panelContent, i, surplus int) int {
+	if i < 0 || i >= len(panels) {
+		return surplus
+	}
+
+	take := min(max(panelRoom(&panels[i], heights[i]), 0), surplus)
+	heights[i] += take
+
+	return surplus - take
+}
+
+// shareByRelevance splits what is left between the panels still short of their
+// content, in proportion to how much each has to say.
+func shareByRelevance(heights []int, panels []panelContent, surplus int) {
 	for surplus > 0 {
 		weight := 0
 		for i := range panels {
-			if want(i) > heights[i]-minimum {
+			if panelRoom(&panels[i], heights[i]) > 0 {
 				weight += panels[i].relevance
 			}
 		}
 		if weight == 0 {
-			break
+			return
 		}
 
 		spent := 0
 		for i := range panels {
-			room := want(i) - (heights[i] - minimum)
+			room := panelRoom(&panels[i], heights[i])
 			if room <= 0 {
 				continue
 			}
@@ -178,32 +224,10 @@ func distributePanelHeights(panels []panelContent, focused, available int) []int
 		}
 
 		if spent == 0 {
-			break
+			return
 		}
 		surplus -= spent
 	}
-
-	spreadSurplus(heights, panels, focused, surplus)
-
-	return heights
-}
-
-// spreadSurplus hands the lines nothing asked for to the focused panel, so the
-// column still reaches the bottom of the grid rather than ending ragged beside
-// a full-height detail pane. It all goes to one box on purpose: split across
-// every panel in proportion to relevance, a quiet repo whose empty panels were
-// dropped would carry dozens of blank rows inside two borders, where under the
-// cursor the same slack reads as room the list can grow into.
-func spreadSurplus(heights []int, panels []panelContent, focused, surplus int) {
-	if surplus <= 0 || len(heights) == 0 {
-		return
-	}
-
-	if focused < 0 || focused >= len(panels) {
-		focused = len(heights) - 1
-	}
-
-	heights[focused] += surplus
 }
 
 // panelTitle labels a panel's border with its jump key and item count. The key

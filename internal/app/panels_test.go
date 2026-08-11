@@ -98,15 +98,17 @@ func TestJJRepoHasNoStashesPanel(t *testing.T) {
 	}
 }
 
-func TestRelevanceGivesABusyPanelMoreRoom(t *testing.T) {
+// Relevance decides only the room left over once every panel that wants one has
+// had an equal share, so a high-scoring panel cannot take the column outright.
+func TestRelevanceDecidesTheRoomBeyondAFairShare(t *testing.T) {
 	t.Parallel()
 
-	busy := panelContent{id: panelPRs, relevance: relevanceUrgent, rows: make([]string, 10)}
-	quiet := panelContent{id: panelStashes, relevance: relevanceIdle, rows: make([]string, 10)}
+	busy := panelContent{id: panelPRs, relevance: relevanceUrgent, rows: make([]string, 12)}
+	quiet := panelContent{id: panelStashes, relevance: relevanceIdle, rows: make([]string, 2)}
 
-	heights := distributePanelHeights([]panelContent{busy, quiet}, -1, 20)
+	heights := distributePanelHeights([]panelContent{busy, quiet}, -1, 24)
 	if heights[0] <= heights[1] {
-		t.Errorf("heights %v: the panel with actionable state must get the room", heights)
+		t.Errorf("heights %v: the panel with more to say must get the leftover", heights)
 	}
 
 	minimum := panelChromeHeight + 1
@@ -118,15 +120,30 @@ func TestRelevanceGivesABusyPanelMoreRoom(t *testing.T) {
 	}
 }
 
+// Two panels that both want more than the column holds split it evenly rather
+// than letting the higher relevance score starve the other down to one row.
+func TestContendingPanelsSplitTheColumnEvenly(t *testing.T) {
+	t.Parallel()
+
+	quiet := panelContent{id: panelStashes, relevance: relevanceIdle, rows: make([]string, 10)}
+	busy := panelContent{id: panelPRs, relevance: relevanceUrgent, rows: make([]string, 10)}
+
+	heights := distributePanelHeights([]panelContent{quiet, busy}, 1, 18)
+	if heights[0] != heights[1] {
+		t.Errorf("heights %v: equal demands on a short column must be met equally", heights)
+	}
+}
+
 func TestFocusedPanelIsServedBeforeRelevance(t *testing.T) {
 	t.Parallel()
 
-	quiet := panelContent{id: panelStashes, relevance: relevanceIdle, rows: make([]string, 8)}
-	busy := panelContent{id: panelPRs, relevance: relevanceUrgent, rows: make([]string, 8)}
+	quiet := panelContent{id: panelStashes, relevance: relevanceIdle, rows: make([]string, 10)}
+	busy := panelContent{id: panelPRs, relevance: relevanceUrgent, rows: make([]string, 1)}
 
-	heights := distributePanelHeights([]panelContent{quiet, busy}, 0, 14)
-	if heights[0] < panelChromeHeight+len(quiet.rows) {
-		t.Errorf("heights %v: the focused panel must fit its own content first", heights)
+	heights := distributePanelHeights([]panelContent{quiet, busy}, 0, 20)
+	if heights[0] < panelChromeHeight+panelTitleHeight+len(quiet.rows) {
+		t.Errorf("heights %v: the focused panel must fit its own content once the shares are out",
+			heights)
 	}
 }
 
@@ -222,10 +239,10 @@ func mustUpdate(t *testing.T, m *Model, msg tea.Msg) tea.Model {
 	return updated
 }
 
-// TestGrid_FillsTheTerminalExactly pins the two geometry bugs the grid had:
-// panel boxes never counted their own title line, so the column ran past the
-// bottom, and the lines nothing claimed were left unspent, so it ended ragged
-// beside a full-height detail pane.
+// TestGrid_FillsTheTerminalExactly pins the geometry bug the grid had: panel
+// boxes never counted their own title line, so the column ran past the bottom.
+// The column may now end short of the detail pane, because padding a box with
+// blank rows costs more than the ragged edge does, but it must never overrun.
 func TestGrid_FillsTheTerminalExactly(t *testing.T) {
 	t.Parallel()
 
@@ -249,8 +266,8 @@ func TestGrid_FillsTheTerminalExactly(t *testing.T) {
 			side := panelSideWidth(width)
 			column := m.renderPanelColumn(m.panelSet(side-panelBorderWidth), 1, side, m.height-gridChromeHeight)
 
-			if got, want := strings.Count(column, "\n")+1, m.height-gridChromeHeight; got != want {
-				t.Errorf("panel column is %d lines beside a %d-line detail pane", got, want)
+			if got, limit := strings.Count(column, "\n")+1, m.height-gridChromeHeight; got > limit {
+				t.Errorf("panel column is %d lines in a %d-line body", got, limit)
 			}
 		})
 	}
