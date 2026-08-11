@@ -289,6 +289,12 @@ func (*JJOperations) GetConflictedCount(_ context.Context, _ string) (int, error
 
 // GetBranchList implements Operations.
 func (j *JJOperations) GetBranchList(ctx context.Context, repoPath string) ([]models.BranchInfo, error) {
+	return cachedBranchList(repoPath, func() ([]models.BranchInfo, error) {
+		return j.branchList(ctx, repoPath)
+	})
+}
+
+func (j *JJOperations) branchList(ctx context.Context, repoPath string) ([]models.BranchInfo, error) {
 	out, err := j.runJJ(ctx, repoPath, "bookmark", "list", "--all-remotes", "-T", jjBookmarkListFormat)
 	if err != nil {
 		return nil, err
@@ -355,6 +361,12 @@ const jjRemoteListMinFields = 2
 
 // GetCommitLog implements Operations.
 func (j *JJOperations) GetCommitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error) {
+	return cachedCommitLog(repoPath, count, func() ([]models.CommitInfo, error) {
+		return j.commitLog(ctx, repoPath, count)
+	})
+}
+
+func (j *JJOperations) commitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error) {
 	format := `change_id.short() ++ "\t" ++ description.first_line() ++ "\t" ++ ` +
 		`author.name() ++ "\t" ++ committer.timestamp().utc().format("%s")`
 	out, err := j.runJJ(ctx, repoPath, "log", "-r", fmt.Sprintf("@~%d..", count), "-T", format, "--no-graph")

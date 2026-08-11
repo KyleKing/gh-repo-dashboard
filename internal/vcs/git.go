@@ -297,6 +297,12 @@ const branchListFieldCount = 6
 
 // GetBranchList implements Operations.
 func (g *GitOperations) GetBranchList(ctx context.Context, repoPath string) ([]models.BranchInfo, error) {
+	return cachedBranchList(repoPath, func() ([]models.BranchInfo, error) {
+		return g.branchList(ctx, repoPath)
+	})
+}
+
+func (g *GitOperations) branchList(ctx context.Context, repoPath string) ([]models.BranchInfo, error) {
 	format := "%(refname:short)\t%(upstream:short)\t%(upstream:track)\t%(committerdate:unix)\t%(HEAD)\t%(objectname)"
 	out, err := g.runGit(ctx, repoPath, "for-each-ref", "--format="+format, "refs/heads/")
 	if err != nil {
@@ -457,6 +463,12 @@ const commitLogFieldCount = 5
 
 // GetCommitLog implements Operations.
 func (g *GitOperations) GetCommitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error) {
+	return cachedCommitLog(repoPath, count, func() ([]models.CommitInfo, error) {
+		return g.commitLog(ctx, repoPath, count)
+	})
+}
+
+func (g *GitOperations) commitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error) {
 	format := "%H\t%h\t%s\t%an\t%ct"
 	out, err := g.runGit(ctx, repoPath, "log", fmt.Sprintf("-n%d", count), "--format="+format)
 	if err != nil {
