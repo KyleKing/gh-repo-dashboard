@@ -1,6 +1,7 @@
 package vcs
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,6 +25,61 @@ func CheckoutIdentity(repoPath string) string {
 	}
 
 	return repoPath
+}
+
+// RemoteIdentity derives a key for the repository a remote URL names:
+// "host/owner/repo", lowercased. Every checkout of one remote shares it,
+// whatever URL form or casing each was cloned with, since GitHub treats
+// Owner/Repo and owner/repo as one repository. The host is part of the key so
+// an Enterprise "acme/tools" does not collide with a github.com one. A URL
+// that names no repository yields "".
+//
+// Unlike ExtractRepoPath this keeps the full path, so a GitLab subgroup is
+// distinct from a repo of the same name under another subgroup.
+func RemoteIdentity(remoteURL string) string {
+	url := strings.TrimSuffix(strings.TrimSpace(remoteURL), ".git")
+	if _, after, ok := strings.Cut(url, "://"); ok {
+		url = after
+	}
+	if _, after, ok := strings.Cut(url, "@"); ok {
+		url = after
+	}
+
+	host, repoPath, isSCP := strings.Cut(url, ":")
+	if isSCP {
+		if port, rest, hasPath := strings.Cut(repoPath, "/"); hasPath && isAllDigits(port) {
+			repoPath = rest
+		}
+	} else if host, repoPath, _ = strings.Cut(url, "/"); host == "" {
+		return ""
+	}
+
+	repoPath = strings.Trim(repoPath, "/")
+	if host == "" || !strings.Contains(repoPath, "/") {
+		return ""
+	}
+
+	return strings.ToLower(host + "/" + repoPath)
+}
+
+func isAllDigits(value string) bool {
+	if value == "" {
+		return false
+	}
+
+	return strings.IndexFunc(value, func(r rune) bool { return r < '0' || r > '9' }) < 0
+}
+
+// RemoteIdentityFor resolves the RemoteIdentity of the checkout at repoPath,
+// costing one git/jj call. Callers holding a models.RepoSummary should read
+// its RemoteID instead of paying for this again.
+func RemoteIdentityFor(ctx context.Context, repoPath string) string {
+	url, err := GetOperations(repoPath).GetRemoteURL(ctx, repoPath)
+	if err != nil {
+		return ""
+	}
+
+	return RemoteIdentity(url)
 }
 
 // linkedParent returns the repo repoPath borrows its refs from, or "" when

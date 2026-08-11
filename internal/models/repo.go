@@ -27,9 +27,13 @@ type RepoSummary struct {
 	Loading      bool
 	Error        error
 
-	NotesFiles      []NoteFile
-	RemoteProtocol  string // "ssh", "https", or "" if unknown/no remote
-	RemoteRepo      string // "owner/repo" derived from the remote URL, "" if unknown/no remote
+	NotesFiles     []NoteFile
+	RemoteProtocol string // "ssh", "https", or "" if unknown/no remote
+	RemoteRepo     string // "owner/repo" derived from the remote URL, "" if unknown/no remote
+	// RemoteID is the cache identity of the remote, "host/owner/repo"
+	// lowercased, and "" when there is no resolvable remote. Values read off
+	// the remote are cached under it so parallel checkouts share one fetch.
+	RemoteID        string
 	ConfigOverrides []GitConfigOverride
 	// ParentPath is the repo this one borrows its refs from, set only for a
 	// git worktree or jj workspace. It makes a linked checkout recognizable

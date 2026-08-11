@@ -115,6 +115,7 @@ func (g *GitOperations) GetRepoSummary(ctx context.Context, repoPath string) (mo
 	remoteURL, _ := g.GetRemoteURL(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
 	summary.RemoteProtocol = detectRemoteProtocol(remoteURL)
 	summary.RemoteRepo = ExtractRepoPath(remoteURL)
+	summary.RemoteID = RemoteIdentity(remoteURL)
 	summary.ConfigOverrides = g.getConfigOverrides(ctx, repoPath)
 	summary.ParentPath = linkedParent(repoPath)
 

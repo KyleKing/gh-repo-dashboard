@@ -49,6 +49,37 @@ func TestCheckoutIdentity(t *testing.T) {
 	}
 }
 
+func TestRemoteIdentity(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		url      string
+		expected string
+	}{
+		{"ssh url", "git@github.com:owner/repo.git", "github.com/owner/repo"},
+		{"https url", "https://github.com/owner/repo", "github.com/owner/repo"},
+		{"http url", "http://github.com/owner/repo.git", "github.com/owner/repo"},
+		{"case folds", "git@github.com:Acme/App.git", "github.com/acme/app"},
+		{"https with credentials", "https://token@github.com/owner/repo.git", "github.com/owner/repo"},
+		{"ssh scheme with port", "ssh://git@github.acme.com:2222/owner/repo.git", "github.acme.com/owner/repo"},
+		{"gitlab subgroup keeps its full path", "git@gitlab.com:group/sub/repo.git", "gitlab.com/group/sub/repo"},
+		{"enterprise host is distinct", "git@github.acme.com:acme/app.git", "github.acme.com/acme/app"},
+		{"host without a repo path", "https://github.com/owner", ""},
+		{"not a url", "invalid", ""},
+		{"empty string", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := vcs.RemoteIdentity(tt.url); got != tt.expected {
+				t.Errorf("RemoteIdentity(%q) = %q, want %q", tt.url, got, tt.expected)
+			}
+		})
+	}
+}
+
 func mkdir(t *testing.T, path string) {
 	t.Helper()
 	if err := os.MkdirAll(path, 0o750); err != nil {

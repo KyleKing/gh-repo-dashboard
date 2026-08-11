@@ -465,6 +465,7 @@ func gitRepoSummaryCases() []gitRepoSummaryCase {
 				LastModified:   time.Unix(1700000000, 0),
 				RemoteProtocol: "ssh",
 				RemoteRepo:     "acme/app",
+				RemoteID:       "github.com/acme/app",
 			},
 		},
 		{
