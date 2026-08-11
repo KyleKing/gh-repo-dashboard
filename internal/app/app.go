@@ -100,8 +100,8 @@ type Model struct {
 	spinner             spinner.Model
 
 	// focusedPanel is which panel of the focused repo view has the cursor.
-	// Every panel stays on screen; focus only decides where j/k land and what
-	// the detail pane describes.
+	// Focus only decides which rows j/k walk first and what the detail pane
+	// describes; every panel with content stays on screen either way.
 	focusedPanel panelID
 	detailCursor int
 	// detailFocused moves the keyboard into the detail pane, where j/k scroll

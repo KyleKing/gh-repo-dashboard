@@ -8,8 +8,9 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
 
-// panelID identifies one data set in the focused repo view. Every panel is
-// always on screen, so nothing about a repo is hidden behind a mode.
+// panelID identifies one data set in the focused repo view. Every panel with
+// something to show is on screen at once, so nothing about a repo is hidden
+// behind a mode.
 type panelID int
 
 // Panels in grid order. Status leads because it answers "what is the state of
@@ -182,36 +183,27 @@ func distributePanelHeights(panels []panelContent, focused, available int) []int
 		surplus -= spent
 	}
 
-	spreadSurplus(heights, panels, surplus)
+	spreadSurplus(heights, panels, focused, surplus)
 
 	return heights
 }
 
-// spreadSurplus hands out the lines nothing asked for, in proportion to
-// relevance, so the panel column reaches the bottom of the grid instead of
-// ending ragged beside a full-height detail pane.
-func spreadSurplus(heights []int, panels []panelContent, surplus int) {
-	if surplus <= 0 {
+// spreadSurplus hands the lines nothing asked for to the focused panel, so the
+// column still reaches the bottom of the grid rather than ending ragged beside
+// a full-height detail pane. It all goes to one box on purpose: split across
+// every panel in proportion to relevance, a quiet repo whose empty panels were
+// dropped would carry dozens of blank rows inside two borders, where under the
+// cursor the same slack reads as room the list can grow into.
+func spreadSurplus(heights []int, panels []panelContent, focused, surplus int) {
+	if surplus <= 0 || len(heights) == 0 {
 		return
 	}
 
-	weight := 0
-	for i := range panels {
-		weight += panels[i].relevance
+	if focused < 0 || focused >= len(panels) {
+		focused = len(heights) - 1
 	}
 
-	if weight > 0 {
-		for i := range panels {
-			share := min(surplus*panels[i].relevance/weight, surplus)
-			heights[i] += share
-			surplus -= share
-		}
-	}
-
-	for i := 0; surplus > 0; i = (i + 1) % len(heights) {
-		heights[i]++
-		surplus--
-	}
+	heights[focused] += surplus
 }
 
 // panelTitle labels a panel's border with its jump key and item count. The key

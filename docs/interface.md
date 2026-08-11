@@ -15,30 +15,45 @@ start.
 | `f` / `s` | Filter and sort modals |
 | `:` | Command mode |
 | `r` | Refresh, clearing caches |
-| `c` | Switch to the branch under the cursor |
-| `p` | Push the branch with `--follow-tags` |
-| `N` | Open a pull request for the branch |
-| `M` | Squash-merge the pull request and delete its branch |
+| `!` | Verbs for whatever the focused panel has selected |
 | `?` | Help overlay |
 | `q` | Quit |
 
 Batch operations use a vim-style operator plus a text object, so `F` alone waits
 for a scope. See [batch operations](./batch-operations.md).
 
-`p`, `N`, and `M` reach the remote, so each one asks for confirmation before it
-runs. Answer with `y` or `enter` to go ahead, `n` or `esc` to back out. `c` runs
-straight away because a failed switch changes nothing, and it refuses branches
-already checked out here or in a parallel checkout.
+Everything that writes lives behind `!` rather than on a key of its own, which
+keeps the single-key namespace for moving around and means the verbs on offer
+always match what is selected. `!` then a letter runs one:
+
+| Panel | Verbs |
+|---|---|
+| Status | `f` fetch, `p` prune remote, `c` cleanup merged, `o` open on remote, `y` copy path |
+| Branches | `s` switch, `p` push, `n` new PR, `d` delete, `o` open on remote, `y` copy name |
+| PRs | `c` check out here, `m` squash-merge, `o` open in browser, `u` copy URL, `y` copy number |
+| Peers | `y` copy path |
+| Stashes | `a` apply, `d` drop |
+| Notes | `e` edit in `$EDITOR`, `y` copy path |
+
+Anything that reaches the remote or destroys work asks first: push, new PR,
+squash-merge, PR checkout, prune, cleanup, branch delete, and stash drop. Answer
+with `y` or `enter` to go ahead, `n` or `esc` to back out. Switching, fetching,
+and applying a stash run straight away, because each is recoverable: a failed
+switch changes nothing and refuses branches already checked out here or in a
+parallel checkout, and applying a stash leaves the stash in place.
 
 ## Views
 
 The repository list is the starting view. `enter` opens the focused repo view: a
 grid of panels for Status, Branches, PRs, Peers, Stashes, and Notes, all visible
 at once, beside a detail pane that renders whatever the cursor sits on. A jj repo
-has no Stashes panel. `1`-`6` jump straight to a panel, `tab` and `l` move to the
-next one, `h` to the previous, and `j`/`k` move within the focused panel. Panel
-height follows how much a section has to say, so a busy repo arrives with its
-problems already open.
+has no Stashes panel, and neither does any panel whose list finished loading
+empty: the Status panel names what is missing instead ("no PRs, peers, or
+notes"). Each panel's border brackets its own jump key, so `[B]ranches` is one
+`b` away. `tab` and `l` move to the next panel, `h` to the previous, and `j`/`k`
+walk the whole column as one list, crossing from the last row of one panel into
+the first of the next. Panel height follows how much a section has to say, so a
+busy repo arrives with its problems already open.
 
 `enter` hands the keyboard to the detail pane, where `j`/`k` scroll its text and
 `esc` hands it back to the panel column. The blue border marks whichever region

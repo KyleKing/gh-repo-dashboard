@@ -72,7 +72,7 @@ func (m Model) panelEmptyLabel() string {
 	return overviewEmpty
 }
 
-// panelForKey returns the panel a number key selects.
+// panelForKey returns the panel a jump key selects.
 func panelForKey(panels []panelContent, key string) (panelContent, bool) {
 	for _, p := range panels {
 		if p.key == key {

@@ -178,8 +178,8 @@ Name/Branch/Status/Peers/PR/Template/Modified columns. A linked checkout whose p
 was discovered too is left out of that list: a git worktree or jj workspace is a place
 inside its parent repo, and the parent's Peers panel already names it. Scanned on its
 own it has no parent in the set and stays listed. `ViewModeRepoDetail` (Enter) is a
-grid of always-visible panels (Status, Branches, PRs, Peers, Stashes, Notes) beside a
-detail pane rendering whatever the cursor sits on; when discovery finds exactly one repo
+grid of panels (Status, Branches, PRs, Peers, Stashes, Notes, less the ones with nothing
+to list) beside a detail pane rendering whatever the cursor sits on; when discovery finds exactly one repo
 it opens directly, and esc still falls back to the one-row list. `ViewModePalette`
 (`space` in the focused view, `;` in the list) is the universal find.
 `ViewModeFilter` (f), `ViewModeSort` (s), and `ViewModeHelp` (?) are modals,
@@ -192,10 +192,32 @@ during batch runs.
 `view_panels.go` builds each panel's rows from the Model and renders the grid.
 Panel height follows a relevance score derived from cached data alone, with the
 focused panel served first so its selection stays visible, and no panel ever
-compresses below its border plus one content line. A jj repo has no Stashes
-panel rather than one explaining its own absence. Below the compact breakpoint
+compresses below its border plus one content line. Below the compact breakpoint
 the grid becomes a single stack that scrolls to keep the focused panel and its
 detail on screen.
+
+A panel that has nothing to list is dropped rather than drawn around the word
+"none": a jj repo has no Stashes panel, and neither does a repo with no PRs.
+Everything stays on screen while `detailLoading` is set, so the grid settles
+once instead of reflowing under the cursor as data lands, and `statusAbsences`
+puts what was dropped on one Status line so an absence is still reported.
+`snapFocusToShownPanel` runs wherever a message replaces those lists, because a
+cursor parked on a panel that is no longer drawn would render nothing.
+
+Jump keys live in `panelKeys`, fixed per panel rather than per grid position so
+hiding one cannot move another out from under the fingers, and `panelTitle`
+brackets each inside the panel's own border (`[B]ranches`) instead of naming
+them in a footer legend. The column reads as one vertical list: `moveDetailCursor`
+carries a move off either end of a panel into its neighbor, so a panel holding
+one row (or none, as Status does) cannot swallow `j`/`k`.
+
+Write actions live behind the `!` leader (`panelActionsFor` in `actions.go`),
+the same key the universal find uses to act on a result set. Scoping the verbs
+to the focused panel keeps them mnemonic without spending a top-level key each,
+and leaves the single-key namespace for movement and panel jumps. Adding one is
+a row in `panelActionsFor` plus a method with the `func(Model) (tea.Model,
+tea.Cmd)` shape; anything that reaches the remote or destroys work routes
+through `confirmAction` first.
 
 ### Universal find
 
@@ -231,7 +253,7 @@ Adding a keybinding: register it in `keymap.go`, handle it in `handleKey()`
 - Command history: `ExecuteCommand` records recognized commands (capped at 50), shared by the command bar, `:history`, the `@:` repeat key, and `--script` runs
 - Parallel checkouts: repos sharing a remote (`RepoSummary.RemoteRepo`, derived from the remote URL) are peers of each other, as are a repo's own worktrees/workspaces; `models.FindPeerCheckouts` and `models.WorktreeCheckouts` build the set, surfacing as the repo list's PEERS count, a repo-detail header badge, the branch list's CHECKED OUT column, and a branch-detail line. A repo with no known remote never peers with anything, since an empty remote would group every unrelated local-only repo
 - Universal find: `space` (focused view) or `;` (fleet list) opens a typed-prefix palette over cache-resident data; `tab` marks rows, `!` runs a verb on the set, and a repo set commits to the selected-repos text object so batch operators compose with it
-- Branch and PR actions: `c` switches branch, `p` pushes with `--follow-tags`, `N` opens a PR, and `M` squash-merges one and deletes its head branch. Everything that touches the remote is parked behind `ViewModeConfirm` (`internal/app/actions.go`) rather than running on the keypress; switching is refused up front when the branch is already checked out here or held by a parallel checkout. Results arrive as `ActionResultMsg` and reload the repo's summary and detail
+- Panel verbs: the focused view's write actions sit behind the `!` leader, scoped to the focused panel (`panelActionsFor` in `internal/app/actions.go`) so the letters stay mnemonic without each costing a top-level key. Everything that touches the remote or destroys work is parked behind `ViewModeConfirm` rather than running on the keypress; switching and branch deletion are refused up front when the branch is already checked out here or held by a parallel checkout, and a stash is applied rather than popped so the stash survives a mistake. Results arrive as `ActionResultMsg` and reload the repo's summary and detail
 - Cancellation: use `context.Context` and cancel when leaving views or quitting to avoid goroutine leaks
 
 ## Testing

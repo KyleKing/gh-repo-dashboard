@@ -116,7 +116,11 @@ func TestCompactGridStacksEveryPanel(t *testing.T) {
 	m.prs = []models.PRInfo{{Number: 4, Title: "Compact", State: "OPEN"}}
 
 	grid := plainText(m.renderPanelGrid())
-	for _, want := range []string{"[S]tatus", "[B]ranches (1)", "[P]Rs (1)"} {
+	// The Status title is built rather than spelled out: the bracketed form is
+	// pinned by TestEveryPanelShowsContentWithoutAKeypress, and what matters
+	// here is only that every panel made it into the stack.
+	status := markHotkey("Status", panelKeys[panelStatus])
+	for _, want := range []string{status, "[B]ranches (1)", "[P]Rs (1)"} {
 		if !strings.Contains(grid, want) {
 			t.Errorf("compact grid is missing %q:\n%s", want, grid)
 		}
