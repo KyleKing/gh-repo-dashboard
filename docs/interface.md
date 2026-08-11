@@ -32,7 +32,7 @@ always match what is selected. `!` then a letter runs one:
 | Branches | `s` switch, `p` push, `n` new PR, `d` delete, `o` open on remote, `y` copy name |
 | PRs | `c` check out here, `m` squash-merge, `o` open in browser, `u` copy URL, `y` copy number |
 | Peers | `y` copy path |
-| Stashes | `a` apply, `d` drop |
+| Stashes | `a` apply, `d` drop, `o` toggle the full diff |
 | Notes | `e` edit in `$EDITOR`, `y` copy path |
 
 Anything that reaches the remote or destroys work asks first: push, new PR,
@@ -45,15 +45,16 @@ parallel checkout, and applying a stash leaves the stash in place.
 ## Views
 
 The repository list is the starting view. `enter` opens the focused repo view: a
-grid of panels for Status, Branches, PRs, Peers, Stashes, and Notes, all visible
-at once, beside a detail pane that renders whatever the cursor sits on. A jj repo
-has no Stashes panel, and neither does any panel whose list finished loading
-empty: the Status panel names what is missing instead ("no PRs, peers, or
-notes"). Each panel's border brackets its own jump key, so `[B]ranches` is one
-`b` away. `tab` and `l` move to the next panel, `h` to the previous, and `j`/`k`
-walk the whole column as one list, crossing from the last row of one panel into
-the first of the next. Panel height follows how much a section has to say, so a
-busy repo arrives with its problems already open.
+column of panels for Status, Branches, PRs, Peers, Stashes, and Notes beside a
+detail pane that renders whatever the cursor sits on. Only the panels with
+something to show are drawn, so a jj repo has no Stashes panel and a repo with no
+open pull requests has no PRs panel; the Status panel names what is missing
+instead ("no PRs, peers, or notes"). Each panel's border brackets its own jump
+key, so `[B]ranches` is one `b` away. `tab` and `l` move to the next panel, `h`
+to the previous, and `j`/`k` walk the whole column as one list, crossing from the
+last row of one panel into the first of the next. Every panel gets an equal share
+of the height before the busier ones get more, so a long list is never squeezed
+out and a busy repo still arrives with its problems open.
 
 `enter` hands the keyboard to the detail pane, where `j`/`k` scroll its text and
 `esc` hands it back to the panel column. The blue border marks whichever region
@@ -114,14 +115,16 @@ the repo and focus its Notes panel for the full contents.
 
 The list has no symbols for stash counts, worktree counts, or workflow runs.
 Those appear in the focused view's panels, and the branch detail pane spells
-workflow status out as words, such as `passing (3/4 passing)`. The PR detail view lists
-each check by name with its status and run time, plus the most recent comment on
-the pull request.
+workflow status out as words, such as `passing (3/4 passing)`. Selecting a pull
+request names its failing and still-running checks, tallying the settled ones, so
+a red rollup can be read without leaving the panel; `O` opens the full-screen PR
+view, which adds each check's run time and the most recent comment.
 
 ## Notes files
 
 The dashboard collects every configured notes filename it finds at a repo root,
 so a repo holding three of them shows all three. The defaults are `.doing`,
 `doing.md`, `doing.txt`, and `TODO.md`, and
-[configuration](./configuration.md) overrides the list. It reads these files and
-never writes them.
+[configuration](./configuration.md) overrides the list. The dashboard only reads
+them: the Notes panel's `!e` verb hands the file to `$EDITOR` and reloads the
+repo when the editor exits, so any change is one your editor made.

@@ -15,3 +15,9 @@ the [config file](./configuration.md).
 
 PR data looks stale because cached GitHub data lives for `cache_ttl_minutes`,
 defaulting to 5. Press `r` to refresh, or pass `--fresh` with `--cli`.
+
+A repository with many open pull requests does not list them all. The dashboard
+reads two pages of thirty, the newest that are not yours and your own, because
+asking GitHub for every pull request with its checks, comments, and reviews in
+one request times out on a busy repository. A pull request older than both pages
+is reachable through `gh` directly.

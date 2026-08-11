@@ -77,9 +77,16 @@ File-status counts are computed internally by `GetRepoSummary` rather than expos
 as separate interface methods. `models.BranchInfo` carries a `Head` tip-OID field
 (git `for-each-ref`'s `%(objectname)`, jj's bookmark target commit id) used to
 detect squash-merged branches whose tip matches a merged PR's head OID even though
-the branch itself was never merged. Write operations used by batch tasks
-(`FetchAll`, `PruneRemote`, `CleanupMergedBranches`) return `(success bool, message
-string)` for UI feedback. `CleanupMergedBranches(ctx, repoPath, squashMerged
+the branch itself was never merged. Every `Mutator` method returns
+`(success bool, message string)` alongside an error, so the UI can report a
+per-repo outcome even where the operation itself did not error. Beyond the batch
+tasks (`FetchAll`, `PruneRemote`, `CleanupMergedBranches`) it covers the
+single-item writes the focused view's panels offer: `SwitchBranch`,
+`PushBranch`, `DeleteBranch`, `ApplyStash`, and `DropStash`. `DeleteBranch`
+refuses an unmerged branch unless the caller passes `force`, which only a caller
+that has verified the branch is squash-merged should do. jj has no stash, so its
+`ApplyStash` and `DropStash` report that rather than pretending to work.
+`CleanupMergedBranches(ctx, repoPath, squashMerged
 []string)` additionally takes the caller-verified squash-merged branch names: git
 deletes them with `-D` alongside true-merges deleted with `-d`, reports per-branch
 failures in the result message, and returns success only when every deletion
@@ -97,6 +104,18 @@ GitHub integration works for both git and jj via the `gh` CLI. For git repos and
 colocated jj repos it uses the `.git` directory; for non-colocated jj repos it sets
 `GIT_DIR` to `.jj/repo/store/git`. The `GetGitHubEnv()` helper in `vcs/factory.go`
 handles this transparently. If `gh` is missing, PR columns show a dash rather than failing.
+
+`GetPRsForRepo` reads the list as two filtered pages rather than one unfiltered
+page. The `statusCheckRollup`, `comments`, and `reviews` fields are each walked
+per pull request, so the cost is linear in the page size, and a repo with enough
+open pull requests takes GitHub's GraphQL gateway past its own timeout and
+returns 504. Thirty per page fits with room to spare. The pages are split by
+author (`-author:@me` and `--author @me`) because a repo whose pull requests all
+belong to a bot has nothing on the operator's page, while the operator's older
+work has already fallen off a busy repo's recent list, so neither page alone
+covers both. Results merge by number, newest first. A failed fetch is never
+cached: an empty list would otherwise read as "this repo has no pull requests"
+for the whole TTL and hide the panel on the strength of a timeout.
 
 ## Batch Tasks
 
@@ -190,19 +209,23 @@ during batch runs.
 
 `internal/app/panels.go` holds the panel model and the vertical size math;
 `view_panels.go` builds each panel's rows from the Model and renders the grid.
-Panel height follows a relevance score derived from cached data alone, with the
-focused panel served first so its selection stays visible, and no panel ever
-compresses below its border plus one content line. Below the compact breakpoint
-the grid becomes a single stack that scrolls to keep the focused panel and its
-detail on screen.
+Below the compact breakpoint the grid becomes a single stack that scrolls to
+keep the focused panel and its detail on screen.
 
-A panel that has nothing to list is dropped rather than drawn around the word
-"none": a jj repo has no Stashes panel, and neither does a repo with no PRs.
-Everything stays on screen while `detailLoading` is set, so the grid settles
-once instead of reflowing under the cursor as data lands, and `statusAbsences`
-puts what was dropped on one Status line so an absence is still reported.
-`snapFocusToShownPanel` runs wherever a message replaces those lists, because a
-cursor parked on a panel that is no longer drawn would render nothing.
+Height is shared in three passes: every panel that wants them gets up to an
+equal share, the focused panel is then filled to its own content, and a
+relevance score derived from cached data splits what is left. The equal share
+comes first so relevance cannot starve one list beside a busier one. No panel
+drops below its border plus one line, and lines nothing claims stay unspent, so
+the column ends where its content does instead of padding boxes with blank rows.
+
+A panel with nothing to list is dropped rather than drawn around the word
+"none": a jj repo has no Stashes panel, and neither does a repo with no pull
+requests. Everything stays on screen while `detailLoading` is set, so the grid
+settles once instead of reflowing under the cursor as data lands, and
+`statusAbsences` puts what was dropped on one Status line so an absence is still
+reported. `snapFocusToShownPanel` runs wherever a message replaces those lists,
+because a cursor parked on a panel that is not drawn would render nothing.
 
 Jump keys live in `panelKeys`, fixed per panel rather than per grid position so
 hiding one cannot move another out from under the fingers, and `panelTitle`
@@ -248,12 +271,13 @@ Adding a keybinding: register it in `keymap.go`, handle it in `handleKey()`
 
 - Progressive loading: the repo list appears immediately with placeholder data while goroutines load each `RepoSummary` concurrently and the table updates incrementally via Tea messages, never blocking on slow git operations
 - Caching: a generic TTL cache with mutex protection backs `prCache`, `branchCache`, and `summaryCache`; refresh clears all caches
-- Notes detection (surfacing as a Notes panel in the focused view): every configured notes filename (`.doing`, `doing.md`, `doing.txt`, `TODO.md` by default; overridable via config) present at a repo root is collected as a `models.NoteFile`, not just the first match; surfaces as a count badge in the Status column, a first-line preview toggled with `v` on the repo list, the focused view's Notes panel with the file body in the detail pane, and the `has_notes` filter/predicate with the `nr` text object; detection is a plain file check outside the VCS abstraction
+- Notes detection (surfacing as a Notes panel in the focused view): every configured notes filename (`.doing`, `doing.md`, `doing.txt`, `TODO.md` by default; overridable via config) present at a repo root is collected as a `models.NoteFile`, not just the first match; surfaces as a count badge in the Status column, a first-line preview toggled with `v` on the repo list, the focused view's Notes panel with the file body in the detail pane, and the `has_notes` filter/predicate with the `nr` text object; detection is a plain file check outside the VCS abstraction. The Notes panel's `!e` verb hands the file to `$EDITOR` through `tea.ExecProcess`, which is the only path by which the dashboard causes a notes file to be written
 - Configuration: optional TOML at `$XDG_CONFIG_HOME/gh-repo-dashboard/config.toml` (`internal/config`) supplies scan paths, depth, notes filenames, and cache TTLs; flags take precedence
 - Command history: `ExecuteCommand` records recognized commands (capped at 50), shared by the command bar, `:history`, the `@:` repeat key, and `--script` runs
 - Parallel checkouts: repos sharing a remote (`RepoSummary.RemoteRepo`, derived from the remote URL) are peers of each other, as are a repo's own worktrees/workspaces; `models.FindPeerCheckouts` and `models.WorktreeCheckouts` build the set, surfacing as the repo list's PEERS count, a repo-detail header badge, the branch list's CHECKED OUT column, and a branch-detail line. A repo with no known remote never peers with anything, since an empty remote would group every unrelated local-only repo
 - Universal find: `space` (focused view) or `;` (fleet list) opens a typed-prefix palette over cache-resident data; `tab` marks rows, `!` runs a verb on the set, and a repo set commits to the selected-repos text object so batch operators compose with it
 - Panel verbs: the focused view's write actions sit behind the `!` leader, scoped to the focused panel (`panelActionsFor` in `internal/app/actions.go`) so the letters stay mnemonic without each costing a top-level key. Everything that touches the remote or destroys work is parked behind `ViewModeConfirm` rather than running on the keypress; switching and branch deletion are refused up front when the branch is already checked out here or held by a parallel checkout, and a stash is applied rather than popped so the stash survives a mistake. Results arrive as `ActionResultMsg` and reload the repo's summary and detail
+- Detail pane: renders whatever the panel cursor sits on, from data the panel load already holds. A pull request lists its failing and in-flight checks by name with the settled ones tallied, capped so a wall of failures cannot cost a frame; a stash shows its diffstat, with `!o` swapping in the full patch under a line cap. Both are bounded because `panelDetailLines` is rebuilt several times per frame
 - Cancellation: use `context.Context` and cancel when leaving views or quitting to avoid goroutine leaks
 
 ## Testing

@@ -29,22 +29,24 @@ Move with `j` and `k`, press `enter` to open a repo, and press `?` for the
 keymap. Set `scan_paths` in the [config file](./docs/configuration.md) once and
 `gh repo-dashboard` launches from anywhere with no arguments.
 
-Run it inside a repository and it opens that repo's branches directly, listing
-each branch with its pull request, CI checks, and which sibling checkout or
-worktree currently holds it. From there `c` switches branch, `p` pushes with
-`--follow-tags`, `N` opens a pull request, and `M` squash-merges one. Each of
-those asks for confirmation first.
+Run it inside a repository and it opens that repo directly, listing each branch
+with its pull request, CI checks, and which sibling checkout or worktree
+currently holds it. `!` offers the verbs for whatever is selected: switch branch,
+push with `--follow-tags`, open a pull request, squash-merge one, apply a stash,
+or open a notes file in `$EDITOR`. Anything that reaches the remote or destroys
+work asks for confirmation first.
 
 ## What it does not do
 
 - Commit, stage, rebase, or resolve conflicts. The writes it does make are
-  `fetch`, remote prune, deleting branches already merged upstream, switching
-  branch, pushing, and creating or squash-merging a pull request
+  `fetch`, remote prune, deleting a branch, applying or dropping a stash,
+  switching branch, pushing, and creating or squash-merging a pull request
 - Replace a single-repo client. Use lazygit or gitui for staging, hunk-level
   work, and history surgery
 - Replace `gh`. Pull request data comes from the `gh` CLI, and every non-GitHub
   column still works when `gh` is missing or logged out
-- Edit your notes files. It reads the configured notes files and never writes them
+- Edit your notes files itself. It reads them, and hands one to `$EDITOR` on
+  request so the writing stays yours
 - Run as a server or daemon. `--cli` and `--script` are one-shot headless runs
 
 Full docs: [./docs](./docs)
