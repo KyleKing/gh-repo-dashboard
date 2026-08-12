@@ -350,10 +350,11 @@ type repoWindow struct {
 	end   int
 }
 
-// expandHeadRows is the region's fixed head: the rule that names the repo, then
-// one row each for peers, branches, and pull requests. Everything below it
+// expandHeadRows is the region's fixed head: the rule that names the repo, one
+// row each for peers, branches, and pull requests, and the divider that
+// separates that metadata from the notes below it. Everything below it
 // belongs to the notes, which is the only section whose length the repo decides.
-const expandHeadRows = 4
+const expandHeadRows = 5
 
 // expandLabelCol is the width the head's labels are padded to, so their values
 // line up in a column of their own.
@@ -380,6 +381,7 @@ func (m Model) expandLines(width, height int) []string {
 		expandRow("Peers", section(peersPending, overviewRelevantPeers(m.relevantPeers(path))), width),
 		expandRow(tabNameBranches, section(!loaded, expandBranches(data.Branches)), width),
 		expandRow(tabNamePRs, section(!loaded, expandPRs(data.PRs)), width),
+		notesFileRule("notes", width),
 	}
 
 	notes := m.expandNotes(path, summary, width)
@@ -517,7 +519,7 @@ func notesBodyLines(content string, width int) []string {
 	lines := make([]string, len(body))
 	for i, line := range body {
 		lines[i] = styles.NotesPreviewLineStyle.Render(
-			table.TruncateMiddle("  "+strings.TrimRight(line, " \t"), width))
+			table.TruncateMiddle(strings.TrimRight(line, " \t"), width))
 	}
 
 	return lines
