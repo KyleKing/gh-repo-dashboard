@@ -153,7 +153,10 @@ enabled-tags = [
   "experimental",
   "opinionated"
 ]
-disabled-checks = ["whyNoLint"]
+disabled-checks = [
+  "hugeParam",  # BubbleTea root Models are large by design; value receivers keep Update/View copy semantics
+  "whyNoLint"
+]
 
 [linters.settings.gocyclo]
 min-complexity = 15
@@ -170,8 +173,15 @@ enable-all = true
 disable = ["shadow", "fieldalignment"]
 
 [linters.settings.ireturn]
-# bubbletea's Elm architecture requires Update-family methods to return tea.Model
-allow = ["error", "empty", "stdlib", "charm\\.land/bubbletea/v2\\.Model"]
+# Bubble Tea v2 moved to charm.land; both paths are listed so a project on either
+# major version lints clean, because Model.Update returns the tea.Model interface.
+allow = [
+  "error",
+  "empty",
+  "stdlib",
+  "charm.land/bubbletea/v2.Model",
+  "github.com/charmbracelet/bubbletea.Model"
+]
 
 [linters.settings.lll]
 line-length = 120
