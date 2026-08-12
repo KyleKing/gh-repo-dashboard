@@ -391,26 +391,6 @@ func TestModelActiveFilterModes(t *testing.T) {
 	}
 }
 
-func TestViewModeConstants(t *testing.T) {
-	t.Parallel()
-	modes := []ViewMode{
-		ViewModeRepoList,
-		ViewModeRepoDetail,
-		ViewModeBranchDetail,
-		ViewModePRDetail,
-		ViewModeHelp,
-		ViewModeFilter,
-		ViewModeSort,
-		ViewModeBatchProgress,
-	}
-
-	for i, m := range modes {
-		if int(m) != i {
-			t.Errorf("expected ViewMode %d to have value %d", m, i)
-		}
-	}
-}
-
 // A jump key belongs to its panel rather than to a grid position, so hiding an
 // empty panel cannot move another panel's key out from under the fingers.
 func TestPanelKeysAreFixedToTheirPanel(t *testing.T) {

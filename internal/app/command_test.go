@@ -33,6 +33,17 @@ func mustModel(t *testing.T, tm tea.Model) Model {
 	return m
 }
 
+// afterUpdate feeds msg to m and returns the model that came back, which is
+// what almost every state-transition test wants and Update's tea.Model return
+// makes verbose.
+func afterUpdate(t *testing.T, m Model, msg tea.Msg) Model {
+	t.Helper()
+
+	updated, _ := m.Update(msg)
+
+	return mustModel(t, updated)
+}
+
 func commandModel() Model {
 	m := New([]string{"/test"}, 1)
 	m.loading = false

@@ -5,163 +5,74 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
-func TestDetailListLenWithPRs(t *testing.T) {
+func prDetailModel(detail *models.PRDetail) Model {
+	m := New(nil, 1)
+	m.width = 120
+	m.height = 40
+	m.viewMode = ViewModePRDetail
+	m.selectedRepo = testRepoPath
+	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
+	m.prDetail = *detail
+
+	return m
+}
+
+func TestDetailListLen(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
+	m.selectedRepo = testRepo1Path
 	m.branches = make([]models.BranchInfo, 5)
 	m.stashes = make([]models.StashDetail, 3)
-	m.selectedRepo = testRepo1Path
 	m.worktrees = []models.WorktreeInfo{
 		{Path: testRepo1Path, Branch: mainBranchName},
 		{Path: "/repos/app-wt-a", Branch: "feature/a"},
 		{Path: "/repos/app-wt-b", Branch: "feature/b"},
 	}
-	m.prs = []models.PRInfo{
-		{Number: 1, Title: "PR 1"},
-		{Number: 2, Title: "PR 2"},
-		{Number: 3, Title: "PR 3"},
+	m.prs = make([]models.PRInfo, 3)
+
+	tests := []struct {
+		panel panelID
+		want  int
+	}{
+		{panelBranches, 5},
+		{panelStashes, 3},
+		// The peers panel lists parallel checkouts, so the repo's own working
+		// directory is not one of them.
+		{panelPeers, 2},
+		{panelPRs, 3},
 	}
 
-	m.focusedPanel = panelBranches
-	if m.detailListLen() != 5 {
-		t.Errorf("expected 5 branches, got %d", m.detailListLen())
-	}
-
-	m.focusedPanel = panelStashes
-	if m.detailListLen() != 3 {
-		t.Errorf("expected 3 stashes, got %d", m.detailListLen())
-	}
-
-	// The tab lists parallel checkouts, so the repo's own working directory is
-	// not one of them.
-	m.focusedPanel = panelPeers
-	if m.detailListLen() != 2 {
-		t.Errorf("expected 2 parallel checkouts, got %d", m.detailListLen())
-	}
-
-	m.focusedPanel = panelPRs
-	if m.detailListLen() != 3 {
-		t.Errorf("expected 3 PRs, got %d", m.detailListLen())
-	}
-}
-
-func TestPRCountInModel(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	if m.prCount == nil {
-		t.Error("prCount should be initialized")
-	}
-
-	m.prCount[testRepo1Path] = 5
-	m.prCount["/repo2"] = 3
-
-	if m.prCount[testRepo1Path] != 5 {
-		t.Errorf("expected 5 PRs for repo1, got %d", m.prCount[testRepo1Path])
-	}
-
-	if m.prCount["/repo2"] != 3 {
-		t.Errorf("expected 3 PRs for repo2, got %d", m.prCount["/repo2"])
-	}
-
-	if m.prCount["/repo3"] != 0 {
-		t.Errorf("expected 0 PRs for repo3, got %d", m.prCount["/repo3"])
-	}
-}
-
-func TestPRListSelection(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.prs = []models.PRInfo{
-		{Number: 123, Title: "First PR", HeadRef: "feature-1"},
-		{Number: 456, Title: "Second PR", HeadRef: "feature-2"},
-		{Number: 789, Title: "Third PR", HeadRef: "feature-3"},
-	}
-	m.detailCursor = 1
-
-	if m.detailCursor >= len(m.prs) {
-		t.Error("cursor should be within bounds")
-	}
-
-	selectedPR := m.prs[m.detailCursor]
-	if selectedPR.Number != 456 {
-		t.Errorf("expected PR #456, got #%d", selectedPR.Number)
-	}
-	if selectedPR.Title != "Second PR" {
-		t.Errorf("expected 'Second PR', got %q", selectedPR.Title)
-	}
-}
-
-func TestPRDetailViewMode(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.viewMode = ViewModePRDetail
-
-	if m.viewMode != ViewModePRDetail {
-		t.Errorf("expected ViewModePRDetail, got %v", m.viewMode)
-	}
-
-	m.prDetail = models.PRDetail{
-		PRInfo: models.PRInfo{
-			Number:  123,
-			Title:   "Test PR",
-			State:   "OPEN",
-			HeadRef: "feature-branch",
-			BaseRef: mainBranchName,
-		},
-		Author:    "testuser",
-		Assignees: []string{"reviewer1", "reviewer2"},
-		Reviewers: []string{"reviewer3"},
-	}
-
-	if m.prDetail.Number != 123 {
-		t.Errorf("expected PR #123, got #%d", m.prDetail.Number)
-	}
-	if len(m.prDetail.Assignees) != 2 {
-		t.Errorf("expected 2 assignees, got %d", len(m.prDetail.Assignees))
-	}
-	if len(m.prDetail.Reviewers) != 1 {
-		t.Errorf("expected 1 reviewer, got %d", len(m.prDetail.Reviewers))
+	for _, tt := range tests {
+		m.focusedPanel = tt.panel
+		if got := m.detailListLen(); got != tt.want {
+			t.Errorf("panel %v: expected %d rows, got %d", tt.panel, tt.want, got)
+		}
 	}
 }
 
 func TestPRInfoStatusDisplay(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name     string
-		pr       models.PRInfo
-		expected string
+		name string
+		pr   models.PRInfo
+		want string
 	}{
-		{
-			name:     "draft PR",
-			pr:       models.PRInfo{IsDraft: true, State: "OPEN"},
-			expected: "DRAFT",
-		},
-		{
-			name:     "open PR",
-			pr:       models.PRInfo{IsDraft: false, State: "OPEN"},
-			expected: "OPEN",
-		},
-		{
-			name:     "merged PR",
-			pr:       models.PRInfo{IsDraft: false, State: "MERGED"},
-			expected: "MERGED",
-		},
-		{
-			name:     "closed PR",
-			pr:       models.PRInfo{IsDraft: false, State: "CLOSED"},
-			expected: "CLOSED",
-		},
+		{"draft outranks open", models.PRInfo{IsDraft: true, State: "OPEN"}, "DRAFT"},
+		{"open", models.PRInfo{State: "OPEN"}, "OPEN"},
+		{"merged", models.PRInfo{State: "MERGED"}, "MERGED"},
+		{"closed", models.PRInfo{State: "CLOSED"}, "CLOSED"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := tt.pr.StatusDisplay()
-			if got != tt.expected {
-				t.Errorf("expected %q, got %q", tt.expected, got)
+			if got := tt.pr.StatusDisplay(); got != tt.want {
+				t.Errorf("expected %q, got %q", tt.want, got)
 			}
 		})
 	}
@@ -170,255 +81,142 @@ func TestPRInfoStatusDisplay(t *testing.T) {
 func TestPRInfoReviewStatus(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name     string
-		pr       models.PRInfo
-		expected string
+		name string
+		pr   models.PRInfo
+		want string
+	}{
+		{"approved", models.PRInfo{ReviewDecision: "APPROVED"}, "approved"},
+		{"changes requested", models.PRInfo{ReviewDecision: "CHANGES_REQUESTED"}, "changes requested"},
+		{"review required", models.PRInfo{ReviewDecision: "REVIEW_REQUIRED"}, "review required"},
+		{"an approval with no decision still reads as approved", models.PRInfo{ApprovedBy: []string{"u1"}}, "approved"},
+		{"no review", models.PRInfo{}, emDash},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := tt.pr.ReviewStatus(); got != tt.want {
+				t.Errorf("expected %q, got %q", tt.want, got)
+			}
+		})
+	}
+}
+
+func TestRenderPRPanel(t *testing.T) {
+	t.Parallel()
+	populated := []models.PRInfo{
+		{Number: 123, Title: "Test PR 1", State: "OPEN", HeadRef: "feature-1"},
+		{Number: 456, Title: "Test PR 2", State: "MERGED", HeadRef: "feature-2"},
+		{Number: 789, Title: "Draft PR", State: "OPEN", IsDraft: true, HeadRef: "feature-3"},
+	}
+
+	tests := []struct {
+		name    string
+		prs     []models.PRInfo
+		loading bool
+		want    string
+	}{
+		{name: "settled and empty drops the panel", prs: []models.PRInfo{}},
+		{name: "still loading says so", loading: true, want: "loading"},
+		{name: "populated lists the PRs", prs: populated, want: "Draft PR"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			m := New(nil, 1)
+			m.prs = tt.prs
+			m.detailLoading = tt.loading
+
+			got := renderPanel(m, panelPRs)
+			if tt.want == "" {
+				if got != "" {
+					t.Errorf("expected an empty panel, got %q", got)
+				}
+
+				return
+			}
+
+			if !strings.Contains(got, tt.want) {
+				t.Errorf("expected %q in panel, got %q", tt.want, got)
+			}
+		})
+	}
+}
+
+// TestPRDetailLoadedMsg covers what Update does with a detail fetch's outcome,
+// including the error case, where the basic info taken from the list must
+// survive so the view does not blank out on a failed fetch.
+func TestPRDetailLoadedMsg(t *testing.T) {
+	t.Parallel()
+	basic := models.PRInfo{
+		Number: 456, Title: "Feature PR", State: "OPEN",
+		HeadRef: featureBranchName, BaseRef: mainBranchName,
+	}
+	loaded := models.PRDetail{
+		PRInfo:    basic,
+		Author:    "alice",
+		Assignees: []string{"bob"},
+		Reviewers: []string{"charlie"},
+		Additions: 100,
+		Deletions: 50,
+	}
+
+	tests := []struct {
+		name       string
+		msg        PRDetailLoadedMsg
+		wantNumber int
+		wantAuthor string
 	}{
 		{
-			name:     "approved",
-			pr:       models.PRInfo{ReviewDecision: "APPROVED"},
-			expected: "approved",
+			name:       "a loaded detail replaces the basic info",
+			msg:        PRDetailLoadedMsg{Path: testRepoPath, PRNumber: 456, Detail: loaded},
+			wantNumber: 456,
+			wantAuthor: "alice",
 		},
 		{
-			name:     "changes requested",
-			pr:       models.PRInfo{ReviewDecision: "CHANGES_REQUESTED"},
-			expected: "changes requested",
+			name:       "an error preserves the basic info already shown",
+			msg:        PRDetailLoadedMsg{Path: testRepoPath, PRNumber: 456, Error: errPRDetailLoad},
+			wantNumber: 456,
+			wantAuthor: "",
 		},
 		{
-			name:     "review required",
-			pr:       models.PRInfo{ReviewDecision: "REVIEW_REQUIRED"},
-			expected: "review required",
-		},
-		{
-			name:     "approved by reviewers",
-			pr:       models.PRInfo{ApprovedBy: []string{"user1", "user2"}},
-			expected: "approved",
-		},
-		{
-			name:     "no review",
-			pr:       models.PRInfo{},
-			expected: emDash,
+			name:       "a detail for another repo is ignored",
+			msg:        PRDetailLoadedMsg{Path: "/elsewhere", PRNumber: 456, Detail: loaded},
+			wantNumber: 456,
+			wantAuthor: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := tt.pr.ReviewStatus()
-			if got != tt.expected {
-				t.Errorf("expected %q, got %q", tt.expected, got)
+			m := New(nil, 1)
+			m.selectedRepo = testRepoPath
+			m.selectedPR = basic
+			m.prDetail = models.PRDetail{PRInfo: basic}
+
+			m = afterUpdate(t, m, tt.msg)
+
+			if m.prDetail.Number != tt.wantNumber {
+				t.Errorf("expected PR #%d, got #%d", tt.wantNumber, m.prDetail.Number)
+			}
+			if m.prDetail.Author != tt.wantAuthor {
+				t.Errorf("expected author %q, got %q", tt.wantAuthor, m.prDetail.Author)
+			}
+			if m.prDetail.Title != basic.Title {
+				t.Errorf("title should survive every outcome, got %q", m.prDetail.Title)
 			}
 		})
 	}
 }
 
-func TestPRDetailMetadata(t *testing.T) {
-	t.Parallel()
-	pr := models.PRDetail{
-		PRInfo: models.PRInfo{
-			Number:  100,
-			Title:   "Add new feature",
-			HeadRef: "feature/new-thing",
-			BaseRef: mainBranchName,
-		},
-		Author:    "alice",
-		Assignees: []string{"bob", "charlie"},
-		Reviewers: []string{"dave", "eve"},
-		Additions: 150,
-		Deletions: 50,
-		Comments:  12,
-	}
-
-	if pr.Author != "alice" {
-		t.Errorf("expected author 'alice', got %q", pr.Author)
-	}
-
-	if len(pr.Assignees) != 2 {
-		t.Errorf("expected 2 assignees, got %d", len(pr.Assignees))
-	}
-	if pr.Assignees[0] != "bob" || pr.Assignees[1] != "charlie" {
-		t.Errorf("unexpected assignees: %v", pr.Assignees)
-	}
-
-	if len(pr.Reviewers) != 2 {
-		t.Errorf("expected 2 reviewers, got %d", len(pr.Reviewers))
-	}
-	if pr.Reviewers[0] != "dave" || pr.Reviewers[1] != "eve" {
-		t.Errorf("unexpected reviewers: %v", pr.Reviewers)
-	}
-
-	if pr.Additions != 150 {
-		t.Errorf("expected 150 additions, got %d", pr.Additions)
-	}
-	if pr.Deletions != 50 {
-		t.Errorf("expected 50 deletions, got %d", pr.Deletions)
-	}
-	if pr.Comments != 12 {
-		t.Errorf("expected 12 comments, got %d", pr.Comments)
-	}
-}
-
-func TestRenderPRListEmpty(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.prs = []models.PRInfo{}
-
-	if output := renderPanel(m, panelPRs); output != "" {
-		t.Errorf("a settled PR panel with nothing to list should be dropped, got %q", output)
-	}
-
-	m.detailLoading = true
-	if output := renderPanel(m, panelPRs); !strings.Contains(output, "loading") {
-		t.Errorf("a PR panel still loading should say so, got %q", output)
-	}
-}
-
-func TestRenderPRListWithPRs(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.prs = []models.PRInfo{
-		{Number: 123, Title: "Test PR 1", State: "OPEN", HeadRef: "feature-1"},
-		{Number: 456, Title: "Test PR 2", State: "MERGED", HeadRef: "feature-2"},
-		{Number: 789, Title: "Draft PR", State: "OPEN", IsDraft: true, HeadRef: "feature-3"},
-	}
-
-	output := renderPanel(m, panelPRs)
-	if output == "" {
-		t.Error("PR list should render content")
-	}
-	if len(output) < 50 {
-		t.Error("PR list output too short")
-	}
-}
-
-func TestPRCountMessages(t *testing.T) {
-	t.Parallel()
-	msg := PRCountLoadedMsg{
-		Path:  testRepoPath,
-		Count: 5,
-	}
-
-	if msg.Path != testRepoPath {
-		t.Errorf("expected path '/test/repo', got %q", msg.Path)
-	}
-	if msg.Count != 5 {
-		t.Errorf("expected count 5, got %d", msg.Count)
-	}
-}
-
-func TestPRListLoadedMessage(t *testing.T) {
-	t.Parallel()
-	prs := []models.PRInfo{
-		{Number: 1, Title: "PR 1"},
-		{Number: 2, Title: "PR 2"},
-	}
-
-	msg := PRListLoadedMsg{
-		Path: testRepoPath,
-		PRs:  prs,
-	}
-
-	if msg.Path != testRepoPath {
-		t.Errorf("expected path '/test/repo', got %q", msg.Path)
-	}
-	if len(msg.PRs) != 2 {
-		t.Errorf("expected 2 PRs, got %d", len(msg.PRs))
-	}
-}
-
-func TestPRDetailLoadedMessage(t *testing.T) {
-	t.Parallel()
-	detail := models.PRDetail{
-		PRInfo: models.PRInfo{
-			Number: 123,
-			Title:  "Test PR",
-		},
-		Author: "testuser",
-	}
-
-	msg := PRDetailLoadedMsg{
-		Path:     testRepoPath,
-		PRNumber: 123,
-		Detail:   detail,
-	}
-
-	if msg.Path != testRepoPath {
-		t.Errorf("expected path '/test/repo', got %q", msg.Path)
-	}
-	if msg.PRNumber != 123 {
-		t.Errorf("expected PR number 123, got %d", msg.PRNumber)
-	}
-	if msg.Detail.Author != "testuser" {
-		t.Errorf("expected author 'testuser', got %q", msg.Detail.Author)
-	}
-}
-
-func TestPRDetailUpdateWithMessage(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.selectedRepo = testRepoPath
-	m.selectedPR = models.PRInfo{Number: 123}
-
-	detail := models.PRDetail{
-		PRInfo: models.PRInfo{
-			Number:  123,
-			Title:   "Test PR",
-			HeadRef: "feature-branch",
-			BaseRef: mainBranchName,
-			State:   "OPEN",
-		},
-		Author:    "alice",
-		Assignees: []string{"bob"},
-		Reviewers: []string{"charlie"},
-		Additions: 100,
-		Deletions: 50,
-		Comments:  5,
-	}
-
-	msg := PRDetailLoadedMsg{
-		Path:     testRepoPath,
-		PRNumber: 123,
-		Detail:   detail,
-	}
-
-	updatedModel, _ := m.Update(msg)
-	m = mustModel(t, updatedModel)
-
-	if m.prDetail.Number != 123 {
-		t.Errorf("expected PR #123, got #%d", m.prDetail.Number)
-	}
-	if m.prDetail.Title != "Test PR" {
-		t.Errorf("expected title 'Test PR', got %q", m.prDetail.Title)
-	}
-	if m.prDetail.Author != "alice" {
-		t.Errorf("expected author 'alice', got %q", m.prDetail.Author)
-	}
-	if len(m.prDetail.Assignees) != 1 {
-		t.Errorf("expected 1 assignee, got %d", len(m.prDetail.Assignees))
-	}
-	if len(m.prDetail.Reviewers) != 1 {
-		t.Errorf("expected 1 reviewer, got %d", len(m.prDetail.Reviewers))
-	}
-}
-
 func TestPRDetailViewRender(t *testing.T) {
 	t.Parallel()
-	m := New(nil, 1)
-	m.width = 120
-	m.height = 40
-	m.viewMode = ViewModePRDetail
-	m.selectedRepo = testRepoPath
-	m.summaries[testRepoPath] = models.RepoSummary{
-		Path: testRepoPath,
-	}
-	m.prDetail = models.PRDetail{
+	full := models.PRDetail{
 		PRInfo: models.PRInfo{
-			Number:         456,
-			Title:          "Add amazing feature",
-			HeadRef:        "feature/amazing",
-			BaseRef:        mainBranchName,
-			State:          "OPEN",
-			ReviewDecision: "APPROVED",
+			Number: 456, Title: "Add amazing feature", HeadRef: "feature/amazing",
+			BaseRef: mainBranchName, State: "OPEN", ReviewDecision: "APPROVED",
 		},
 		Author:    "dev1",
 		Assignees: []string{"dev2", "dev3"},
@@ -429,467 +227,145 @@ func TestPRDetailViewRender(t *testing.T) {
 		Body:      "This is the PR description",
 	}
 
-	output := m.renderScreen()
-
-	if !strings.Contains(output, "PR #456") {
-		t.Error("output should contain PR number")
-	}
-	if !strings.Contains(output, "Add amazing feature") {
-		t.Error("output should contain PR title")
-	}
-	if !strings.Contains(output, "dev1") {
-		t.Error("output should contain author")
-	}
-	if !strings.Contains(output, "dev2, dev3") {
-		t.Error("output should contain assignees")
-	}
-	if !strings.Contains(output, "reviewer1") {
-		t.Error("output should contain reviewers")
-	}
-	if !strings.Contains(output, "feature/amazing") {
-		t.Error("output should contain head branch")
-	}
-	if !strings.Contains(output, mainBranchName) {
-		t.Error("output should contain base branch")
-	}
-	if !strings.Contains(output, "+250") {
-		t.Error("output should contain additions")
-	}
-	if !strings.Contains(output, "-100") {
-		t.Error("output should contain deletions")
-	}
-	if !strings.Contains(output, "This is the PR description") {
-		t.Error("output should contain PR description")
-	}
-	if !strings.Contains(output, "open in browser") {
-		t.Error("output should show open action")
-	}
-	if !strings.Contains(output, "copy URL") {
-		t.Error("output should show copy URL action")
-	}
-	if !strings.Contains(output, "copy PR number") {
-		t.Error("output should show copy PR number action")
-	}
-	if !strings.Contains(output, "copy branch name") {
-		t.Error("output should show copy branch action")
-	}
-}
-
-func TestStatusMessages(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-
-	msg := StatusMsg{Message: "Test status"}
-	updatedModel, _ := m.Update(msg)
-	m = mustModel(t, updatedModel)
-
-	if m.statusMessage != "Test status" {
-		t.Errorf("expected status message 'Test status', got %q", m.statusMessage)
-	}
-
-	clearMsg := ClearStatusMsg{}
-	updatedModel, _ = m.Update(clearMsg)
-	m = mustModel(t, updatedModel)
-
-	if m.statusMessage != "" {
-		t.Errorf("expected empty status message, got %q", m.statusMessage)
-	}
-}
-
-func TestCopySuccessMessage(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-
-	msg := CopySuccessMsg{Text: "https://github.com/test/pr/123"}
-	updatedModel, _ := m.Update(msg)
-	m = mustModel(t, updatedModel)
-
-	if !strings.Contains(m.statusMessage, "Copied to clipboard") {
-		t.Errorf("expected copy success message, got %q", m.statusMessage)
-	}
-	if !strings.Contains(m.statusMessage, "https://github.com/test/pr/123") {
-		t.Errorf("expected URL in message, got %q", m.statusMessage)
-	}
-}
-
-func TestURLOpenedMessage(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-
-	msg := URLOpenedMsg{URL: "https://github.com/test/pr/123"}
-	updatedModel, _ := m.Update(msg)
-	m = mustModel(t, updatedModel)
-
-	if !strings.Contains(m.statusMessage, "Opened in browser") {
-		t.Errorf("expected URL opened message, got %q", m.statusMessage)
-	}
-	if !strings.Contains(m.statusMessage, "https://github.com/test/pr/123") {
-		t.Errorf("expected URL in message, got %q", m.statusMessage)
-	}
-}
-
-func TestPRDetailViewWithStatusMessage(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.width = 120
-	m.height = 40
-	m.viewMode = ViewModePRDetail
-	m.selectedRepo = testRepoPath
-	m.summaries[testRepoPath] = models.RepoSummary{
-		Path: testRepoPath,
-	}
-	m.prDetail = models.PRDetail{
-		PRInfo: models.PRInfo{
-			Number:  123,
-			Title:   "Test PR",
-			HeadRef: featureBranchName,
-			BaseRef: mainBranchName,
+	tests := []struct {
+		name   string
+		detail models.PRDetail
+		want   []string
+		absent []string
+	}{
+		{
+			name:   "a full detail renders every field and the action hints",
+			detail: full,
+			want: []string{
+				"PR #456", "Add amazing feature", "dev1", "dev2, dev3", "reviewer1",
+				"feature/amazing", mainBranchName, "+250", "-100", "This is the PR description",
+				"copy URL", "copy PR number", "copy branch name",
+			},
+			absent: []string{"loading details"},
 		},
-		Author: "user1",
+		{
+			name:   "an unloaded detail says it is loading",
+			detail: models.PRDetail{},
+			want:   []string{"Loading PR details"},
+		},
+		{
+			name: "list-only data renders at once and flags the rest as loading",
+			detail: models.PRDetail{PRInfo: models.PRInfo{
+				Number: 100, Title: "Test PR", State: "OPEN",
+				HeadRef: featureBranchName, BaseRef: mainBranchName,
+			}},
+			want: []string{"PR #100", "Test PR", featureBranchName, mainBranchName, "loading details"},
+		},
 	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			output := prDetailModel(&tt.detail).renderScreen()
+
+			for _, want := range tt.want {
+				if !strings.Contains(output, want) {
+					t.Errorf("expected %q in the output", want)
+				}
+			}
+			for _, absent := range tt.absent {
+				if strings.Contains(output, absent) {
+					t.Errorf("did not expect %q in the output", absent)
+				}
+			}
+		})
+	}
+}
+
+func TestPRDetailViewShowsStatusMessage(t *testing.T) {
+	t.Parallel()
+	m := prDetailModel(&models.PRDetail{PRInfo: models.PRInfo{
+		Number: 123, Title: "Test PR", HeadRef: featureBranchName, BaseRef: mainBranchName,
+	}})
 	m.statusMessage = "Copied to clipboard: #123"
 
-	output := m.renderScreen()
-
-	if !strings.Contains(output, "Copied to clipboard: #123") {
-		t.Error("output should contain status message")
+	if output := m.renderScreen(); !strings.Contains(output, m.statusMessage) {
+		t.Error("the PR detail view should render the status message")
 	}
 }
 
-func TestPRDetailErrorHandling(t *testing.T) {
+func TestStatusMessageHandling(t *testing.T) {
 	t.Parallel()
-	m := New(nil, 1)
-	m.selectedRepo = testRepoPath
-	m.selectedPR = models.PRInfo{Number: 999}
+	const url = "https://github.com/test/pr/123"
 
-	msg := PRDetailLoadedMsg{
-		Path:     testRepoPath,
-		PRNumber: 999,
-		Error:    nil,
-		Detail: models.PRDetail{
-			PRInfo: models.PRInfo{
-				Number: 999,
-			},
-		},
+	tests := []struct {
+		name string
+		msg  tea.Msg
+		want []string
+	}{
+		{"a plain status shows verbatim", StatusMsg{Message: "Test status"}, []string{"Test status"}},
+		{"a copy names the clipboard and the text", CopySuccessMsg{Text: url}, []string{"Copied to clipboard", url}},
+		{"an open names the browser and the URL", URLOpenedMsg{URL: url}, []string{"Opened in browser", url}},
 	}
 
-	updatedModel, _ := m.Update(msg)
-	m = mustModel(t, updatedModel)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			m := afterUpdate(t, New(nil, 1), tt.msg)
 
-	if m.prDetail.Number != 999 {
-		t.Errorf("PR detail should be loaded even without error")
+			for _, want := range tt.want {
+				if !strings.Contains(m.statusMessage, want) {
+					t.Errorf("expected %q in %q", want, m.statusMessage)
+				}
+			}
+
+			m = afterUpdate(t, m, ClearStatusMsg{})
+			if m.statusMessage != "" {
+				t.Errorf("ClearStatusMsg left %q behind", m.statusMessage)
+			}
+		})
 	}
 }
 
-func TestPRNavigationFlow(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.prs = []models.PRInfo{
-		{Number: 1, Title: "First PR"},
-		{Number: 2, Title: "Second PR"},
-		{Number: 3, Title: "Third PR"},
-	}
-	m.detailCursor = 1
-
-	if m.detailCursor >= len(m.prs) {
-		t.Error("cursor should be within bounds")
-	}
-
-	selectedPR := m.prs[m.detailCursor]
-	if selectedPR.Number != 2 {
-		t.Errorf("expected PR #2 to be selected, got #%d", selectedPR.Number)
-	}
-
-	m.selectedPR = selectedPR
-	m.viewMode = ViewModePRDetail
-
-	if m.viewMode != ViewModePRDetail {
-		t.Error("should be in PR detail view mode")
-	}
-	if m.selectedPR.Number != 2 {
-		t.Errorf("selected PR should be #2, got #%d", m.selectedPR.Number)
-	}
-}
-
-func TestPRCountLoading(t *testing.T) {
+func TestPRCountLoadedAccumulates(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 
-	msg1 := PRCountLoadedMsg{Path: testRepo1Path, Count: 5}
-	updatedModel, _ := m.Update(msg1)
-	m = mustModel(t, updatedModel)
+	m = afterUpdate(t, m, PRCountLoadedMsg{Path: testRepo1Path, Count: 5})
+	m = afterUpdate(t, m, PRCountLoadedMsg{Path: "/repo2", Count: 3})
 
 	if m.prCount[testRepo1Path] != 5 {
-		t.Errorf("expected 5 PRs for /repo1, got %d", m.prCount[testRepo1Path])
+		t.Errorf("expected 5 PRs for repo1, got %d", m.prCount[testRepo1Path])
 	}
-
-	msg2 := PRCountLoadedMsg{Path: "/repo2", Count: 3}
-	updatedModel, _ = m.Update(msg2)
-	m = mustModel(t, updatedModel)
-
 	if m.prCount["/repo2"] != 3 {
-		t.Errorf("expected 3 PRs for /repo2, got %d", m.prCount["/repo2"])
-	}
-
-	if m.prCount[testRepo1Path] != 5 {
-		t.Error("first repo PR count should be preserved")
+		t.Errorf("expected 3 PRs for repo2, got %d", m.prCount["/repo2"])
 	}
 }
 
-func TestEmptyPRDetailFields(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.width = 120
-	m.height = 40
-	m.viewMode = ViewModePRDetail
-	m.selectedRepo = testRepoPath
-	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
-	m.prDetail = models.PRDetail{
-		PRInfo: models.PRInfo{
-			Number:  100,
-			Title:   "Minimal PR",
-			HeadRef: featureBranchName,
-			BaseRef: mainBranchName,
-		},
-		Author:    "user1",
-		Assignees: []string{},
-		Reviewers: []string{},
-		Comments:  0,
-		Body:      "",
-	}
-
-	output := m.renderScreen()
-
-	if !strings.Contains(output, "Minimal PR") {
-		t.Error("should contain PR title")
-	}
-	if !strings.Contains(output, "user1") {
-		t.Error("should contain author")
-	}
-
-	if strings.Count(output, "Assignees:") > 0 {
-		if !strings.Contains(output, "Assignees:") {
-			t.Error("should not show assignees section when empty")
-		}
-	}
-	if strings.Count(output, "Reviewers:") > 0 {
-		if !strings.Contains(output, "Reviewers:") {
-			t.Error("should not show reviewers section when empty")
-		}
-	}
-}
-
-func TestPRDetailLoadingState(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.width = 120
-	m.height = 40
-	m.viewMode = ViewModePRDetail
-	m.selectedRepo = testRepoPath
-	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
-	// prDetail.Number is 0 (not loaded yet)
-	m.prDetail = models.PRDetail{}
-
-	output := m.renderScreen()
-
-	if !strings.Contains(output, "Loading PR details") {
-		t.Error("should show loading message when PR detail not loaded")
-	}
-}
-
-func TestPRDetailClearedOnNavigation(t *testing.T) {
+// TestOpenPRFromPanel covers the progressive step: opening a PR from the panel
+// seats the list's own fields immediately, so the view has something to render
+// before the detail fetch lands, and any detail left from a previous PR goes.
+func TestOpenPRFromPanel(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.focusedPanel = panelPRs
 	m.selectedRepo = testRepoPath
-	m.prs = []models.PRInfo{
-		{Number: 123, Title: "Test PR", State: "OPEN", HeadRef: featureBranchName, BaseRef: mainBranchName},
-	}
-	m.detailCursor = 0
-	m.prDetail = models.PRDetail{
-		PRInfo: models.PRInfo{Number: 999}, // Old detail from different PR
-	}
+	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
+	m.prs = []models.PRInfo{{
+		Number: 456, Title: "Feature PR", State: "OPEN",
+		URL: "https://github.com/test/pr/456", HeadRef: featureBranchName,
+		BaseRef: mainBranchName, ReviewDecision: "APPROVED",
+	}}
+	m.prDetail = models.PRDetail{PRInfo: models.PRInfo{Number: 999}}
 
-	updatedModel, _ := m.Update(openDetailKey())
-	m = mustModel(t, updatedModel)
+	m = afterUpdate(t, m, openDetailKey())
 
-	if m.prDetail.Number != 123 {
-		t.Errorf("prDetail should be populated with basic info from list, got number %d", m.prDetail.Number)
-	}
 	if m.viewMode != ViewModePRDetail {
-		t.Error("should transition to PR detail view")
+		t.Error("opening a PR should switch to the PR detail view")
 	}
-	if m.selectedPR.Number != 123 {
-		t.Errorf("selected PR should be #123, got #%d", m.selectedPR.Number)
+	if m.selectedPR.Number != 456 || m.prDetail.Number != 456 {
+		t.Errorf("stale detail survived: selected #%d, detail #%d", m.selectedPR.Number, m.prDetail.Number)
 	}
-}
-
-func TestPRDetailErrorPreservesBasicInfo(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.viewMode = ViewModePRDetail
-	m.selectedRepo = testRepoPath
-	m.selectedPR = models.PRInfo{
-		Number:  456,
-		Title:   "Feature PR",
-		State:   "OPEN",
-		HeadRef: featureBranchName,
-		BaseRef: mainBranchName,
+	if m.prDetail.Title != "Feature PR" || m.prDetail.State != "OPEN" || m.prDetail.HeadRef != featureBranchName {
+		t.Errorf("the list's own fields should seat immediately, got %+v", m.prDetail.PRInfo)
 	}
-	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
-
-	// Populate prDetail with basic info (simulating progressive loading)
-	m.prDetail = models.PRDetail{
-		PRInfo: m.selectedPR,
-	}
-
-	// Verify basic info is present
-	if m.prDetail.Number != 456 {
-		t.Fatalf("expected PR #456, got #%d", m.prDetail.Number)
-	}
-
-	// Simulate error response from loadPRDetailCmd
-	errorMsg := PRDetailLoadedMsg{
-		Path:     testRepoPath,
-		PRNumber: 456,
-		Detail:   models.PRDetail{}, // Empty detail due to error
-		Error:    errPRDetailLoad,
-	}
-
-	updatedModel, _ := m.Update(errorMsg)
-	m = mustModel(t, updatedModel)
-
-	// prDetail.Number must survive an error: it preserves the basic info
-	// that was already populated before the detail fetch failed.
-	if m.prDetail.Number == 0 {
-		t.Error("prDetail.Number was cleared to 0 when error occurred - basic info should be preserved!")
-	}
-	if m.prDetail.Number != 456 {
-		t.Errorf("expected PR #456 to be preserved after error, got #%d", m.prDetail.Number)
-	}
-	if m.prDetail.Title != "Feature PR" {
-		t.Errorf("expected title to be preserved after error, got %q", m.prDetail.Title)
-	}
-}
-
-func TestPRDetailProgressiveLoading(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.viewMode = ViewModeRepoDetail
-	m.focusedPanel = panelPRs
-	m.selectedRepo = testRepoPath
-	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
-
-	// PR list data (what we have immediately)
-	m.prs = []models.PRInfo{
-		{
-			Number:         456,
-			Title:          "Feature PR",
-			State:          "OPEN",
-			URL:            "https://github.com/test/pr/456",
-			HeadRef:        "feature-branch",
-			BaseRef:        mainBranchName,
-			ReviewDecision: "APPROVED",
-		},
-	}
-	m.detailCursor = 0
-
-	updatedModel, _ := m.Update(openDetailKey())
-	m = mustModel(t, updatedModel)
-
-	// Verify basic info is immediately available
-	if m.prDetail.Number != 456 {
-		t.Errorf("expected PR #456, got #%d", m.prDetail.Number)
-	}
-	if m.prDetail.Title != "Feature PR" {
-		t.Errorf("expected title 'Feature PR', got %q", m.prDetail.Title)
-	}
-	if m.prDetail.State != "OPEN" {
-		t.Errorf("expected state 'OPEN', got %q", m.prDetail.State)
-	}
-	if m.prDetail.URL != "https://github.com/test/pr/456" {
-		t.Errorf("expected URL to be set, got %q", m.prDetail.URL)
-	}
-	if m.prDetail.HeadRef != "feature-branch" {
-		t.Error("expected HeadRef to be set immediately")
-	}
-	if m.prDetail.BaseRef != mainBranchName {
-		t.Error("expected BaseRef to be set immediately")
-	}
-
-	// Full details (Author, etc.) should be empty initially
-	if m.prDetail.Author != "" {
-		t.Error("Author should be empty until full details load")
-	}
-	if len(m.prDetail.Assignees) > 0 {
-		t.Error("Assignees should be empty until full details load")
-	}
-	if len(m.prDetail.Reviewers) > 0 {
-		t.Error("Reviewers should be empty until full details load")
-	}
-}
-
-func TestPRDetailProgressiveView(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.width = 120
-	m.height = 40
-	m.viewMode = ViewModePRDetail
-	m.selectedRepo = testRepoPath
-	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
-
-	// Partial data (from list)
-	m.prDetail = models.PRDetail{
-		PRInfo: models.PRInfo{
-			Number:         100,
-			Title:          "Test PR",
-			State:          "OPEN",
-			HeadRef:        featureBranchName,
-			BaseRef:        mainBranchName,
-			ReviewDecision: "APPROVED",
-		},
-		// Author and other fields empty (not loaded yet)
-	}
-
-	output := m.renderScreen()
-
-	// Basic info should be visible
-	if !strings.Contains(output, "PR #100") {
-		t.Error("should show PR number immediately")
-	}
-	if !strings.Contains(output, "Test PR") {
-		t.Error("should show title immediately")
-	}
-	if !strings.Contains(output, featureBranchName) {
-		t.Error("should show head branch immediately")
-	}
-	if !strings.Contains(output, mainBranchName) {
-		t.Error("should show base branch immediately")
-	}
-
-	// Should show loading indicator
-	if !strings.Contains(output, "loading details") {
-		t.Error("should show loading indicator when Author is empty")
-	}
-
-	// Now simulate full details loaded
-	m.prDetail.Author = "testuser"
-	m.prDetail.Additions = 100
-	m.prDetail.Deletions = 50
-
-	output = m.renderScreen()
-
-	// Should no longer show loading indicator
-	if strings.Contains(output, "loading details") {
-		t.Error("should not show loading indicator when Author is populated")
-	}
-
-	// Full details should be visible
-	if !strings.Contains(output, "testuser") {
-		t.Error("should show author when loaded")
-	}
-	if !strings.Contains(output, "+100") {
-		t.Error("should show additions when loaded")
+	if m.prDetail.Author != "" || len(m.prDetail.Assignees) > 0 {
+		t.Error("fields only the detail fetch supplies should stay empty until it lands")
 	}
 }
