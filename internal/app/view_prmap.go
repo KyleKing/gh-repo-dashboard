@@ -61,7 +61,7 @@ func (m Model) renderPRMapBreadcrumbs(entries []prMapEntry) string {
 		badges = append(badges, styles.Badge("loading "+strconv.Itoa(pending), styles.CountBadgeStyle))
 	}
 
-	return joinWithinWidth(title, badges, contentWidth(m.width))
+	return joinWithinWidth(title, badges, listWidth(m.width))
 }
 
 func (m Model) renderPRMapTable(entries []prMapEntry) string {
@@ -74,7 +74,7 @@ func (m Model) renderPRMapTable(entries []prMapEntry) string {
 			"Every visible repo is level with its remote.")
 	}
 
-	layout := fitDetailCols(prMapColSpecs, m.width)
+	layout := fitDetailCols(prMapColSpecs, listWidth(m.width))
 	rows := []string{detailHeader(layout)}
 
 	window := visibleRange(m.prMapCursor, len(entries), m.height-prMapChromeHeight)
@@ -130,7 +130,7 @@ func (m Model) prMapFooter() string {
 	}
 
 	parts := make([]string, 0, len(hints))
-	for _, h := range fittingHints(hints, contentWidth(m.width)) {
+	for _, h := range fittingHints(hints, listWidth(m.width)) {
 		parts = append(parts, styles.FooterKeyStyle.Render(h.key)+styles.FooterDescStyle.Render(" "+h.desc))
 	}
 

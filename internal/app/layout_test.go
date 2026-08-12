@@ -147,6 +147,26 @@ func TestFrameWidth_PRListMatchesRepoList(t *testing.T) {
 	}
 }
 
+// The fleet map (renderPRMap) had the same gap: its own table fit to raw
+// m.width while its breadcrumbs and footer fit to contentWidth, and the
+// shared frame used contentWidth too, so on a wide terminal the table
+// rendered wider than the frame that was supposed to contain it.
+func TestFrameWidth_PRMapMatchesRepoList(t *testing.T) {
+	t.Parallel()
+
+	m := Model{width: 200}
+
+	m.viewMode = ViewModeRepoList
+	repoList := m.frameWidth()
+
+	m.viewMode = ViewModePRMap
+	prMap := m.frameWidth()
+
+	if prMap != repoList {
+		t.Errorf("frameWidth(PRMap) = %d, frameWidth(RepoList) = %d; want equal", prMap, repoList)
+	}
+}
+
 func TestTruncate_MeasuresDisplayWidthNotBytes(t *testing.T) {
 	t.Parallel()
 
