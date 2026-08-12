@@ -42,7 +42,8 @@ func (m *Model) emptyPlaceholder(headline, hint string) string {
 	return placeholderBox(headline+"\n\n"+hint, false)
 }
 
-// isCompact reports whether the model renders at the compact breakpoint.
+// isCompact reports whether the model renders stacked records rather than the
+// eight-column table.
 func (m *Model) isCompact() bool {
-	return breakpointFor(m.width, m.height) == breakpointCompact
+	return compactLayout(m.width)
 }

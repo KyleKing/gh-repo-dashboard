@@ -1,48 +1,17 @@
 package app
 
-// breakpoint names the density the terminal's width can carry. It is derived
+// Width thresholds from docs/design/layout-and-density.md. Density is derived
 // on every render rather than stored, so a resize needs no state to migrate.
-type breakpoint int
-
-// Layouts, narrowest first. The compact layout is its own UX rather than a
-// shrunken table: eight columns cannot be read at 80 cells, so records stack.
+// Past wideMinWidth the table hides no columns; the width it renders into
+// above that is a continuous rule rather than a step (see listWidth).
 const (
-	breakpointCompact breakpoint = iota
-	breakpointStandard
-	breakpointWide
+	standardMinWidth = 100
+	wideMinWidth     = 160
 )
 
-// Width thresholds from docs/design/layout-and-density.md. The wide layout
-// also needs vertical room, so a short terminal falls back to standard even
-// when it is wide enough.
-const (
-	standardMinWidth   = 100
-	wideMinWidth       = 160
-	widePanelMinHeight = 20
-)
-
-func breakpointFor(width, height int) breakpoint {
-	switch {
-	case width >= wideMinWidth && height >= widePanelMinHeight:
-		return breakpointWide
-	case width >= standardMinWidth:
-		return breakpointStandard
-	default:
-		return breakpointCompact
-	}
-}
-
-func (b breakpoint) String() string {
-	const standard = "standard"
-
-	switch b {
-	case breakpointCompact:
-		return "compact"
-	case breakpointWide:
-		return "wide"
-	case breakpointStandard:
-		return standard
-	default:
-		return standard
-	}
+// compactLayout reports whether width can only carry stacked two-line records.
+// Eight columns cannot be read at 80 cells, so compact is its own layout rather
+// than a shrunken table.
+func compactLayout(width int) bool {
+	return width < standardMinWidth
 }

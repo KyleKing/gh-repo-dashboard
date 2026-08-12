@@ -11,28 +11,27 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
-func TestBreakpointForSize(t *testing.T) {
+func TestCompactLayoutFollowsWidthAlone(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name          string
 		width, height int
-		want          breakpoint
+		want          bool
 	}{
-		{name: "80x24 is compact", width: 80, height: 24, want: breakpointCompact},
-		{name: "99 columns is still compact", width: 99, height: 40, want: breakpointCompact},
-		{name: "100 columns is standard", width: 100, height: 35, want: breakpointStandard},
-		{name: "159 columns is standard", width: 159, height: 35, want: breakpointStandard},
-		{name: "160 columns is wide", width: 160, height: 50, want: breakpointWide},
-		{name: "a short terminal falls back to standard", width: 220, height: 19, want: breakpointStandard},
+		{name: "80x24 stacks records", width: 80, height: 24, want: true},
+		{name: "99 columns still stacks", width: 99, height: 40, want: true},
+		{name: "100 columns carries the table", width: 100, height: 35, want: false},
+		{name: "a short wide terminal carries the table", width: 220, height: 19, want: false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := breakpointFor(tt.width, tt.height); got != tt.want {
-				t.Errorf("breakpointFor(%d, %d) = %s, want %s", tt.width, tt.height, got, tt.want)
+			m := compactModel(tt.width, tt.height)
+			if got := m.isCompact(); got != tt.want {
+				t.Errorf("at %dx%d isCompact() = %v, want %v", tt.width, tt.height, got, tt.want)
 			}
 		})
 	}

@@ -1,6 +1,6 @@
 # Layout engine and responsive density
 
-Design for the shared column engine and the three-breakpoint layout system.
+Design for the shared column engine and the responsive density it renders at.
 Findings that motivate this live in
 [2026-08-03-usability-critique.md](2026-08-03-usability-critique.md). Scope and
 sequencing live in [ROADMAP.md](../../ROADMAP.md) (M13, M14).
@@ -68,13 +68,17 @@ glyph column (`here`, `⧉ name`) before hiding.
 
 ## Breakpoints (M14)
 
-Three named layouts selected by width, re-evaluated on every resize:
+Two layouts selected by width alone, re-evaluated on every resize:
 
 | Name | Width | UX |
 |------|-------|----|
 | compact | < 100 | two-line records rather than a shrunken table |
-| standard | 100 - 159 | single-table layout, engine-sized |
-| wide | >= 160 | the same table, spending the surplus width on its own columns |
+| standard | >= 100 | single-table layout, engine-sized |
+
+Width past that is continuous rather than stepped: the table keeps growing with
+the terminal, and past about 160 cells it hides no columns at all. There is no
+third breakpoint, because with the side panel gone a wide terminal renders the
+same layout a standard one does.
 
 The table takes the wider of two rules: the single-column content width, and
 the proportional one the focused grid uses (90% of the terminal, capped at 200).
@@ -103,11 +107,11 @@ future refinement; v1 keeps uniform two-line rows for cursor simplicity.
 Detail views in compact stack sections vertically (no side-by-side), and the
 tab bar abbreviates counts (`Br 7 · St 0 · Wt 1 · PR 12 · No 0`).
 
-### Standard (100-159)
+### Standard (>= 100)
 
 The current layout, but every column sized by the engine. No other UX change.
 
-### Wide (>= 160): the table keeps the width
+### Past 160: the table keeps the width
 
 The surplus goes to the table's own columns, so NAME and BRANCH stop truncating
 before the fleet's longest names. Answering "what state is this repo in" without
