@@ -53,9 +53,11 @@ func (m Model) currentTab() Tab {
 	return TabRepos
 }
 
-// renderTabBar draws the bar with the current tab lit and its key bracketed in
-// its own name, the way each panel's border carries its jump key.
-func (m Model) renderTabBar() string {
+// renderTabBar draws the bar as a row of filled tabs, the current one lit and
+// its key bracketed in its own name the way each panel's border carries its
+// jump key, over a rule spanning width that separates the bar from the
+// content below it.
+func (m Model) renderTabBar(width int) string {
 	current := m.currentTab()
 
 	labels := make([]string, 0, len(tabBar))
@@ -70,7 +72,10 @@ func (m Model) renderTabBar() string {
 		labels = append(labels, styles.TabStyle.Render(label))
 	}
 
-	return strings.Join(labels, styles.TabStyle.Render("│"))
+	bar := strings.Join(labels, " ")
+	rule := styles.TabRuleStyle.Render(strings.Repeat("─", width))
+
+	return bar + "\n" + rule
 }
 
 // openTab moves to tab, reading what it shows if it has nothing yet. Pressing

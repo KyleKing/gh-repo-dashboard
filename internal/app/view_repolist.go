@@ -17,7 +17,7 @@ import (
 // exactly that many lines, so nothing the body does (the region opening, a
 // shorter repo set) can move the footer.
 const (
-	listChromeHeight   = 7
+	listChromeHeight   = 8
 	searchChromeHeight = 2
 )
 
@@ -28,7 +28,7 @@ func (m Model) renderRepoList() string {
 
 	var b strings.Builder
 
-	b.WriteString(m.renderTabBar())
+	b.WriteString(m.renderTabBar(listWidth(m.width)))
 	b.WriteString("\n")
 	b.WriteString(m.renderBreadcrumbs())
 	b.WriteString("\n\n")

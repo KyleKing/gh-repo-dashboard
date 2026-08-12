@@ -15,7 +15,7 @@ import (
 
 // prListChromeHeight is what the tab bar, heading, blank lines, and footer
 // spend before a row fits.
-const prListChromeHeight = 8
+const prListChromeHeight = 9
 
 // viewSearchIndent lines a saved view's query up under its name in the picker.
 const viewSearchIndent = 2
@@ -59,7 +59,7 @@ func (m Model) renderPRList() string {
 
 	width := listWidth(m.width)
 
-	b.WriteString(m.renderTabBar())
+	b.WriteString(m.renderTabBar(width))
 	b.WriteString("\n\n")
 	b.WriteString(m.renderPRListHeading(width))
 	b.WriteString("\n\n")

@@ -25,7 +25,7 @@ func prTabModel() Model {
 func TestTabBarBracketsTheKeyAsTyped(t *testing.T) {
 	t.Parallel()
 
-	bar := plainText(prTabModel().renderTabBar())
+	bar := plainText(prTabModel().renderTabBar(160))
 	for _, want := range []string{"[R]epos", "[P]Rs"} {
 		if !strings.Contains(bar, want) {
 			t.Errorf("tab bar is missing %q: %q", want, bar)

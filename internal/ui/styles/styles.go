@@ -60,12 +60,18 @@ var (
 				Foreground(Text)
 
 	TabStyle = lipgloss.NewStyle().
+			Background(Surface0).
 			Foreground(Overlay1)
 
 	SelectedTabStyle = lipgloss.NewStyle().
-				Background(Surface0).
-				Foreground(Blue).
+				Background(Blue).
+				Foreground(Base).
 				Bold(true)
+
+	// TabRuleStyle draws the divider separating the tab bar from the content
+	// below it, so the bar reads as a strip rather than floating text.
+	TabRuleStyle = lipgloss.NewStyle().
+			Foreground(Surface1)
 
 	DirtyStyle = lipgloss.NewStyle().
 			Foreground(Peach)
