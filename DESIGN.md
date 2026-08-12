@@ -10,7 +10,9 @@ K9s-inspired Bubble Tea TUI for managing multiple git and jj repositories with
 progressive loading, filtering, GitHub PR integration, and batch maintenance tasks.
 Besides the TUI, two headless modes share the same internals: `--cli` prints repo
 summaries as JSON (optionally narrowed by `--filter <predicate>`) and `--script`
-replays `:command` lines from a file or stdin.
+replays `:command` lines from a file or stdin. A script runs every line even
+after one fails and exits nonzero at the end, so a rejected command or an
+unparseable predicate cannot pass for success.
 
 - Framework: Bubble Tea (Go TUI framework)
 - Theme: Catppuccin Macchiato

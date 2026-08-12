@@ -52,6 +52,11 @@ and `git log` are the record. The lists below are the whole backlog.
 
 Low priority; pick up when convenient.
 
+- The copier template update from my_go_template v0.9.1 to v0.11.3. The `ci`
+  job's GOROOT fix (`d41265c`) lives in a template-managed file, and mise and
+  `actions/setup-go` disagree about `GOROOT` when both run in one job, which
+  goes red the moment mise's `go = "latest"` resolves past `go.mod`. Confirm the
+  newer template carries the fix before accepting its `ci.yml`
 - Full Catppuccin themes replacing the current textual themes
 - Motion policy: the app has zero animation (static discovery text, static
   batch gauge). Decide deliberate restraint or add a spinner
