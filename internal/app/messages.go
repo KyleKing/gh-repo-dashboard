@@ -88,9 +88,12 @@ type URLOpenedMsg struct {
 	URL string
 }
 
-// StatusMsg sets the transient status bar message.
+// StatusMsg sets the transient status bar message. IsError marks a message the
+// operator asked for something the app could not do, which headless script mode
+// turns into a nonzero exit.
 type StatusMsg struct {
 	Message string
+	IsError bool
 }
 
 // ClearStatusMsg clears the status bar message.

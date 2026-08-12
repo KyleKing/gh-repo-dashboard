@@ -54,6 +54,9 @@ type Model struct {
 	searching     bool
 	searchInput   textinput.Model
 
+	// headless is set by script mode, where a command that would open a modal
+	// has to answer in the status line instead.
+	headless             bool
 	commandMode          bool
 	commandInput         textinput.Model
 	registry             Registry

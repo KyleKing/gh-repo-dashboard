@@ -68,6 +68,20 @@ func (r Registry) Lookup(name string) (Command, bool) {
 	return Command{}, false
 }
 
+// Listing renders every command as "name\tdescription", one per line, for the
+// headless reader who has no help modal to open.
+func (r Registry) Listing() string {
+	var b strings.Builder
+	for _, c := range r.commands {
+		b.WriteString(c.Name)
+		b.WriteString("\t")
+		b.WriteString(c.Description)
+		b.WriteString("\n")
+	}
+
+	return strings.TrimSuffix(b.String(), "\n")
+}
+
 // Candidates returns command names starting with the given prefix.
 func (r Registry) Candidates(prefix string) []string {
 	var names []string
@@ -125,7 +139,11 @@ func DefaultRegistry() Registry {
 			Name:        nameHelp,
 			Description: "Show help",
 			Run: func(m Model, _ []string) (Model, tea.Cmd) {
+				if m.headless {
+					return m, statusCmd(m.registry.Listing())
+				}
 				m.viewMode = ViewModeHelp
+
 				return m, nil
 			},
 		},
@@ -197,7 +215,7 @@ func filterCommand() Command {
 			expr := strings.Join(args, " ")
 			pred, err := filters.ParsePredicate(expr)
 			if err != nil {
-				return m, statusCmd(err.Error())
+				return m, statusErrCmd(err.Error())
 			}
 			m.SetPredicate(expr, pred)
 			m.updateFilteredPaths()
@@ -232,7 +250,7 @@ func selectCommand() Command {
 
 func runSelectCommand(m Model, args []string) (Model, tea.Cmd) {
 	if len(args) == 0 {
-		return m, statusCmd("Usage: :select where <predicate> | :select all | :select none")
+		return m, statusErrCmd("Usage: :select where <predicate> | :select all | :select none")
 	}
 	switch args[0] {
 	case "none":
@@ -249,7 +267,7 @@ func runSelectCommand(m Model, args []string) (Model, tea.Cmd) {
 		expr := strings.Join(args[1:], " ")
 		pred, err := filters.ParsePredicate(expr)
 		if err != nil {
-			return m, statusCmd(err.Error())
+			return m, statusErrCmd(err.Error())
 		}
 		m.selectedPaths = make(map[string]bool)
 		for _, path := range m.repoPaths {
@@ -260,7 +278,7 @@ func runSelectCommand(m Model, args []string) (Model, tea.Cmd) {
 
 		return m, statusCmd(fmt.Sprintf("Selected %d repos", len(m.selectedPaths)))
 	default:
-		return m, statusCmd("Unknown select action: " + args[0])
+		return m, statusErrCmd("Unknown select action: " + args[0])
 	}
 }
 
@@ -287,7 +305,7 @@ func sortCommand() Command {
 			}
 			mode, ok := sortModeNames()[args[0]]
 			if !ok {
-				return m, statusCmd("Unknown sort: " + args[0])
+				return m, statusErrCmd("Unknown sort: " + args[0])
 			}
 			m.CycleSortState(mode)
 			m.updateFilteredPaths()
@@ -329,7 +347,7 @@ func runBatchCommand(
 		expr := strings.Join(args, " ")
 		pred, err := filters.ParsePredicate(expr)
 		if err != nil {
-			return m, statusCmd(err.Error())
+			return m, statusErrCmd(err.Error())
 		}
 		paths = nil
 		for _, path := range m.filteredPaths {
@@ -417,6 +435,14 @@ func statusCmd(message string) tea.Cmd {
 	}
 }
 
+// statusErrCmd reports a command the app refused: an unknown name, an
+// unparseable predicate, an argument it does not recognize.
+func statusErrCmd(message string) tea.Cmd {
+	return func() tea.Msg {
+		return StatusMsg{Message: message, IsError: true}
+	}
+}
+
 // commandHistoryLimit caps the retained command history; historyStatusCount
 // is how many recent entries ":history" shows.
 const (
@@ -434,7 +460,7 @@ func (m Model) ExecuteCommand(line string) (Model, tea.Cmd) {
 	}
 	cmd, ok := m.registry.Lookup(fields[0])
 	if !ok {
-		return m, statusCmd("Unknown command: " + fields[0])
+		return m, statusErrCmd("Unknown command: " + fields[0])
 	}
 
 	if cmd.Name != "history" {
@@ -450,7 +476,7 @@ func (m Model) ExecuteCommand(line string) (Model, tea.Cmd) {
 // repeatLastCommand re-executes the most recent history entry ("@:").
 func (m Model) repeatLastCommand() (Model, tea.Cmd) {
 	if len(m.commandHistory) == 0 {
-		return m, statusCmd("No command to repeat")
+		return m, statusErrCmd("No command to repeat")
 	}
 
 	return m.ExecuteCommand(m.commandHistory[len(m.commandHistory)-1])
