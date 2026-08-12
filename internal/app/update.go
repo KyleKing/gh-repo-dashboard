@@ -753,8 +753,40 @@ func (m Model) handleBackKey() (tea.Model, tea.Cmd) {
 		m.viewMode = ViewModeRepoList
 	case ViewModeSort:
 		m.viewMode = ViewModeRepoList
+	case ViewModeRepoList:
+		return m.dismissListLayer()
 	default:
 		// no back transition from this view
+	}
+
+	return m, nil
+}
+
+// dismissListLayer closes one layer of the repo list, most recently opened
+// first: the notes preview, then the search text, then the filters. The list
+// itself has no parent to pop to, so a back key with nothing open does
+// nothing rather than leaving the fleet.
+func (m Model) dismissListLayer() (tea.Model, tea.Cmd) {
+	switch {
+	case m.notesPreviewOpen:
+		m.notesPreviewOpen = false
+
+		return m, nil
+
+	case m.searchText != "":
+		m.searchText = ""
+		m.searchInput.SetValue("")
+		m.updateFilteredPaths()
+		m.cursor = 0
+
+		return m, statusCmd("Search cleared")
+
+	case m.filtersActive():
+		m.ResetFilters()
+		m.updateFilteredPaths()
+		m.cursor = 0
+
+		return m, statusCmd("Filters cleared")
 	}
 
 	return m, nil

@@ -254,6 +254,22 @@ func (m Model) ActiveFilterModes() []models.FilterMode {
 	return modes
 }
 
+// filtersActive reports whether anything is narrowing the fleet, counting an
+// inverted filter and a predicate alongside a plain one.
+func (m Model) filtersActive() bool {
+	if m.predicateText != "" || m.predicate != nil {
+		return true
+	}
+
+	for _, f := range m.activeFilters {
+		if f.Enabled && f.Mode != models.FilterModeAll {
+			return true
+		}
+	}
+
+	return false
+}
+
 // SetFilter enables only the given filter mode, disabling all others.
 func (m *Model) SetFilter(mode models.FilterMode) {
 	for i := range m.activeFilters {

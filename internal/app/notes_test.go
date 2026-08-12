@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -165,4 +167,59 @@ func TestNotesPreview_CaptionsTheRegionAtItsDivider(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestEscape_DismissesOneListLayerAtATime pins the order the repo list gives
+// back: the most recently opened thing closes first, and an esc with nothing
+// open must not walk out of the fleet.
+func TestEscape_DismissesOneListLayerAtATime(t *testing.T) {
+	t.Parallel()
+
+	m := compactModel(180, 40)
+	m.notesPreviewOpen = true
+	m.searchText = "alpha"
+	m.SetFilter(models.FilterModeDirty)
+	m.updateFilteredPaths()
+
+	esc := tea.KeyPressMsg{Code: tea.KeyEscape}
+
+	m = stepModel(t, &m, esc)
+
+	if m.notesPreviewOpen {
+		t.Fatal("the first escape must close the notes preview")
+	}
+
+	if m.searchText != "alpha" || !m.filtersActive() {
+		t.Fatal("the first escape must leave the search and the filters alone")
+	}
+
+	m = stepModel(t, &m, esc)
+
+	if m.searchText != "" {
+		t.Errorf("the second escape must clear the search, got %q", m.searchText)
+	}
+
+	if !m.filtersActive() {
+		t.Fatal("the second escape must leave the filters alone")
+	}
+
+	m = stepModel(t, &m, esc)
+
+	if m.filtersActive() {
+		t.Error("the third escape must clear the filters")
+	}
+
+	m = stepModel(t, &m, esc)
+
+	if m.viewMode != ViewModeRepoList {
+		t.Errorf("an escape with nothing open must stay in the list, got %v", m.viewMode)
+	}
+}
+
+func stepModel(t *testing.T, m *Model, msg tea.Msg) Model {
+	t.Helper()
+
+	next, _ := m.Update(msg)
+
+	return mustModel(t, next)
 }
