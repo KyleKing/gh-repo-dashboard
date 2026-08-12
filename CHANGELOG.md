@@ -1,3 +1,53 @@
+## v1.7.0 (2026-08-12)
+
+### Feat
+
+- **app**: filter repo-list peers to those sharing an open PR
+- **prs**: add a PRs tab with saved GitHub searches and local checkout
+- **stash**: render the full patch through the configured diff viewer
+- **tui**: narrow the panel column and widen the detail pane on focus
+- **tui**: render pull request bodies and open the verb menu as a modal
+- **script**: fail on rejected commands and list :commands headlessly
+- **list**: drop the side panel and put one expanded region under the table
+- **list**: tell a pending cell from an empty one while the fleet loads
+- **list**: dismiss the notes panel, then the search, then the filters on esc
+- **cache**: persist pull request data per upstream between runs
+- **vcs**: serve branch lists and commit logs while the stamp holds
+- **cache**: expire entries by checkout stamp as well as by clock
+- **vcs**: derive a host-qualified upstream identity for each remote
+- **panels**: name the failing checks in the PR detail pane
+- **panels**: let a stash verb swap the diffstat for its full diff
+- **vcs**: add branch delete and stash apply/drop, wired to the panel verbs
+- **panels**: give every panel its own verbs behind the leader key
+- **panels**: put every panel verb behind the ! leader, freeing the letter keys
+- **panels**: drop empty panels and move each jump key onto its own border
+- **list**: close the notes preview with a divider that captions it
+- **notes**: spell the note out in the focused view and the list preview
+- **repo**: let the focused view use the wide terminal it is given
+- **repo**: focus the detail pane with enter, lazygit-style
+
+### Fix
+
+- **cli**: persist the per-branch PR and default-branch CI like the PR list
+- **cli**: reject a scan path that is not an existing directory
+- **list**: stop the fleet map from discarding the expanded region's cache
+- **cache**: rename totalBytes so the coverage gate can find its total
+- **cache**: key branch lists and commit logs by checkout, not by object store
+- **github**: read the PR list as two filtered pages so a busy repo stops timing out
+- **panels**: give every panel an equal share before relevance, and stop padding boxes
+- **panels**: pool the unclaimed height in the focused panel
+- **panels**: carry j/k across panel boundaries so a one-row panel can't swallow them
+- **list**: keep the notes key on offer and say when the terminal is too short
+- **list**: keep a discovered worktree out of the fleet list
+- **list**: lead the body with the notes preview so the table never moves
+- **list**: give the notes preview a fixed region instead of pushing the frame
+
+### Refactor
+
+- give the summary read and the message handlers one path each
+- **list**: collapse the breakpoint enum now that wide renders like standard
+- **cache**: key remote-derived entries by upstream identity, object-store entries by checkout
+
 ## v1.6.0 (2026-08-05)
 
 ### Feat
