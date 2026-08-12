@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -222,9 +221,4 @@ func (m Model) renderPRViewModal() string {
 		Render(strings.Join(lines, "\n"))
 
 	return centerModal(m, content)
-}
-
-// prSearchSummary is what the status line says once a search lands.
-func prSearchSummary(count int, view models.PRView) string {
-	return fmt.Sprintf("%d for %s", count, view.Name)
 }

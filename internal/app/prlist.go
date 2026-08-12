@@ -88,7 +88,7 @@ func (m Model) handlePRSearchLoaded(msg PRSearchLoadedMsg) (tea.Model, tea.Cmd) 
 	m.prSearchCursor = 0
 	m.prSearchError = ""
 
-	return m, statusCmd(prSearchSummary(len(msg.PRs), m.currentPRView()))
+	return m, nil
 }
 
 // selectedSearchPR is the pull request under the PRs tab cursor.

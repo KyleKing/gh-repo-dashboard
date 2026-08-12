@@ -127,6 +127,25 @@ func TestASearchAnswerForAnotherViewIsDropped(t *testing.T) {
 	}
 }
 
+// A landed search's row count is already in the heading badge
+// (renderPRListHeading); a status message duplicating it never gets cleared,
+// so it would sit permanently over the footer.
+func TestPRSearchLandingSetsNoStatusMessage(t *testing.T) {
+	t.Parallel()
+
+	m := prTabModel()
+	m.prSearchLoading = true
+	m.prSearch = nil
+
+	landed := mustModel(t, mustUpdate(t, &m, PRSearchLoadedMsg{
+		Query: m.currentPRView().Search,
+		PRs:   []models.PRInfo{{Number: 99}},
+	}))
+	if landed.statusMessage != "" {
+		t.Errorf("a landed search should not set a status message, got %q", landed.statusMessage)
+	}
+}
+
 func TestCheckoutFromThePRTabResolvesTheRepoAndAsksFirst(t *testing.T) {
 	t.Parallel()
 
