@@ -95,12 +95,12 @@ func TestOperatorComposition(t *testing.T) {
 		expectedTotal int
 		confirms      bool
 	}{
-		{"fetch dirty", "Fdr", "Fetch All (dirty)", 2, false},
-		{"fetch behind", "Fbr", "Fetch All (behind)", 1, false},
-		{"cleanup with PRs", "Cpr", "Cleanup Merged (with PRs)", 1, true},
-		{"prune all", "Par", "Prune Remote (all)", 4, false},
-		{"doubled operator", "FF", "Fetch All", 4, false},
-		{"doubled cleanup", "CC", "Cleanup Merged", 4, true},
+		{"fetch dirty", "!fdr", "Fetch All (dirty)", 2, false},
+		{"fetch behind", "!fbr", "Fetch All (behind)", 1, false},
+		{"cleanup with PRs", "!cpr", "Cleanup Merged (with PRs)", 1, true},
+		{"prune all", "!par", "Prune Remote (all)", 4, false},
+		{"doubled operator", "!ff", "Fetch All", 4, false},
+		{"doubled cleanup", "!cc", "Cleanup Merged", 4, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -134,7 +134,7 @@ func TestOperatorSelectedComposition(t *testing.T) {
 	t.Parallel()
 	m := operatorModel()
 	m2, _ := m.ExecuteCommand("select where dirty")
-	m3, cmd := pressKeys(t, m2, "Fsr")
+	m3, cmd := pressKeys(t, m2, "!fsr")
 	if m3.batchTask != "Fetch All (selected)" {
 		t.Errorf("expected selected scope, got %q", m3.batchTask)
 	}
@@ -149,7 +149,7 @@ func TestOperatorSelectedComposition(t *testing.T) {
 func TestOperatorEscCancels(t *testing.T) {
 	t.Parallel()
 	m := operatorModel()
-	m2, _ := pressKeys(t, m, "F")
+	m2, _ := pressKeys(t, m, "!f")
 	if m2.pendingOperator != "F" {
 		t.Fatalf("expected pending operator F, got %q", m2.pendingOperator)
 	}
@@ -167,7 +167,7 @@ func TestOperatorEscCancels(t *testing.T) {
 func TestOperatorUnknownObjectCancels(t *testing.T) {
 	t.Parallel()
 	m := operatorModel()
-	m2, cmd := pressKeys(t, m, "Fz")
+	m2, cmd := pressKeys(t, m, "!fz")
 	if m2.pendingOperator != "" {
 		t.Error("expected unknown object to cancel pending operator")
 	}
@@ -185,7 +185,7 @@ func TestOperatorEmptyScope(t *testing.T) {
 	m.summaries["/test/behind"] = models.RepoSummary{Path: "/test/behind", Branch: mainBranchName}
 	m.updateFilteredPaths()
 
-	m2, cmd := pressKeys(t, m, "Fbr")
+	m2, cmd := pressKeys(t, m, "!fbr")
 	if m2.viewMode == ViewModeBatchProgress {
 		t.Error("empty scope must not start a batch")
 	}
@@ -203,7 +203,7 @@ func TestOperatorPendingFooterHint(t *testing.T) {
 	m.width = 100
 	m.height = 30
 
-	m2, _ := pressKeys(t, m, "F")
+	m2, _ := pressKeys(t, m, "!f")
 	if !strings.Contains(m2.renderScreen(), "pending") {
 		t.Error("expected pending hint in footer")
 	}

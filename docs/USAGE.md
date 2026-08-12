@@ -48,7 +48,6 @@ pressing `:`; bare keys act on the repo list.
 |---|---|
 | press `s` | panel: status; overview: Sync=↑2 ↓1 vs origin/feat/login Files=1 staged · 3 unstaged Peers=— Stashes=4 Notes=doing.md: wip Template=v0.9.1 → v0.10.0 PRs=#42 Add login flow CI=— |
 | press `b` | panel: branches |
-| press `p` | panel: prs |
 | press `e` | panel: peers |
 | press `t` | panel: stashes |
 | press `n` | panel: notes |
@@ -82,7 +81,7 @@ pressing `:`; bare keys act on the repo list.
 
 | Input | Result |
 |---|---|
-| press `F` `d` `r` | opens the batch view; starts batch Fetch All (dirty); over 2 repos |
+| press `!` `f` `d` `r` | opens the batch view; starts batch Fetch All (dirty); over 2 repos |
 
 ## Search repos by name
 
@@ -103,7 +102,7 @@ pressing `:`; bare keys act on the repo list.
 | Input | Result |
 |---|---|
 | `:select where dirty` | selects dirty, dirty-pr |
-| press `F` `s` `r` | opens the batch view; starts batch Fetch All (selected); over 2 repos |
+| press `!` `f` `s` `r` | opens the batch view; starts batch Fetch All (selected); over 2 repos |
 
 ## Find across the fleet, then commit the result set to a batch operator
 
@@ -113,4 +112,4 @@ pressing `:`; bare keys act on the repo list.
 | press `d` `i` `r` `t` `y` | find: dirty; matches: repo:dirty repo:dirty-pr |
 | press `!` | opens the find view |
 | press `s` | selects dirty, dirty-pr |
-| press `F` `s` `r` | opens the batch view; starts batch Fetch All (selected); over 2 repos |
+| press `!` `f` `s` `r` | opens the batch view; starts batch Fetch All (selected); over 2 repos |

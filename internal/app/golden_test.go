@@ -99,7 +99,6 @@ func TestGoldenPanelGridBreakpoints(t *testing.T) {
 		tab  panelID
 	}{
 		{"branches", panelBranches},
-		{"prs", panelPRs},
 	}
 
 	for _, size := range breakpointSizes() {

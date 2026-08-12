@@ -5,8 +5,6 @@ then panel = status
 then overview = Sync=↑2 ↓1 vs origin/feat/login Files=1 staged · 3 unstaged Peers=— Stashes=4 Notes=doing.md: wip Template=v0.9.1 → v0.10.0 PRs=#42 Add login flow CI=—
 when keys b
 then panel = branches
-when keys p
-then panel = prs
 when keys e
 then panel = peers
 when keys t

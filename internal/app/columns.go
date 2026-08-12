@@ -35,6 +35,8 @@ const (
 	colPRState    = "STATE"
 	colPRActivity = "ACTIVITY"
 	colPRBranch   = "BRANCH"
+	colPRAuthor   = "AUTHOR"
+	colPRUpdated  = "UPDATED"
 
 	colCheckName     = "CHECK"
 	colCheckState    = "STATUS"

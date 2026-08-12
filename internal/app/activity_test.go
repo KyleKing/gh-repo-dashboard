@@ -53,19 +53,21 @@ func TestReviewDecisionFoldsIntoTheStateCell(t *testing.T) {
 	}
 }
 
-func TestPRPanelShowsActivityInsteadOfReview(t *testing.T) {
+// The PRs tab has to say who a pull request is waiting on, which is the last
+// person to touch it rather than the review decision.
+func TestPRListShowsActivityInsteadOfReview(t *testing.T) {
 	t.Parallel()
 
-	m := detailTableModel(160)
-	m.prs[0].Activity = &models.PRActivity{Author: "cjs", At: time.Now().Add(-3 * time.Hour)}
+	m := focusedModel(200, 40)
+	m.viewMode = ViewModePRList
+	m.prSearch = []models.PRInfo{{
+		Number: 9, Title: "Add a thing", State: "OPEN", ReviewDecision: models.ReviewApproved,
+		Activity: &models.PRActivity{Author: "cjs", At: time.Now().Add(-3 * time.Hour)},
+	}}
 
-	rendered := plainText(renderPanel(m, panelPRs))
+	rendered := plainText(m.renderPRList())
 	if !strings.Contains(rendered, "cjs") || !strings.Contains(rendered, "3 hours ago") {
-		t.Errorf("PR panel does not name who the PR is waiting on:\n%s", rendered)
-	}
-
-	if strings.Contains(rendered, models.ReviewApproved) {
-		t.Errorf("the review decision should have given its width to activity:\n%s", rendered)
+		t.Errorf("the PRs tab does not name who the pull request is waiting on:\n%s", rendered)
 	}
 }
 
@@ -74,7 +76,8 @@ func TestCheckoutPRRefusesABranchAPeerHolds(t *testing.T) {
 
 	m := peerFleet(140, 35)
 	m.viewMode = ViewModeRepoDetail
-	m.focusedPanel = panelPRs
+	m.focusedPanel = panelBranches
+	m.branches = []models.BranchInfo{{Name: "feature/side"}}
 	m.prs = []models.PRInfo{{Number: 3, Title: "Peer work", State: "OPEN", HeadRef: "feature/side"}}
 	m.worktrees = []models.WorktreeInfo{{Path: "/dev/app-a-wt", Branch: "feature/side"}}
 
@@ -98,7 +101,8 @@ func TestCheckoutPRConfirmsBeforeSwitching(t *testing.T) {
 
 	m := peerFleet(140, 35)
 	m.viewMode = ViewModeRepoDetail
-	m.focusedPanel = panelPRs
+	m.focusedPanel = panelBranches
+	m.branches = []models.BranchInfo{{Name: "feature/fresh"}}
 	m.prs = []models.PRInfo{{Number: 4, Title: "New work", State: "OPEN", HeadRef: "feature/fresh"}}
 
 	next, _ := m.startCheckoutPR()

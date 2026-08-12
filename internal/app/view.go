@@ -135,6 +135,15 @@ func (m Model) renderView() string {
 		return m.renderPRMap()
 	case ViewModePalette:
 		return m.renderPalette()
+	case ViewModePRList:
+		if m.prViewMenu {
+			return m.renderPRViewModal()
+		}
+		if m.panelActions {
+			return m.renderActionModal()
+		}
+
+		return m.renderPRList()
 	case ViewModeRepoDetail:
 		return m.renderRepoDetail()
 	case ViewModeBranchDetail:

@@ -44,7 +44,6 @@ func TestDetailListLen(t *testing.T) {
 		// The peers panel lists parallel checkouts, so the repo's own working
 		// directory is not one of them.
 		{panelPeers, 2},
-		{panelPRs, 3},
 	}
 
 	for _, tt := range tests {
@@ -97,48 +96,6 @@ func TestPRInfoReviewStatus(t *testing.T) {
 			t.Parallel()
 			if got := tt.pr.ReviewStatus(); got != tt.want {
 				t.Errorf("expected %q, got %q", tt.want, got)
-			}
-		})
-	}
-}
-
-func TestRenderPRPanel(t *testing.T) {
-	t.Parallel()
-	populated := []models.PRInfo{
-		{Number: 123, Title: "Test PR 1", State: "OPEN", HeadRef: "feature-1"},
-		{Number: 456, Title: "Test PR 2", State: "MERGED", HeadRef: "feature-2"},
-		{Number: 789, Title: "Draft PR", State: "OPEN", IsDraft: true, HeadRef: "feature-3"},
-	}
-
-	tests := []struct {
-		name    string
-		prs     []models.PRInfo
-		loading bool
-		want    string
-	}{
-		{name: "settled and empty drops the panel", prs: []models.PRInfo{}},
-		{name: "still loading says so", loading: true, want: "loading"},
-		{name: "populated lists the PRs", prs: populated, want: "Draft PR"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			m := New(nil, 1)
-			m.prs = tt.prs
-			m.detailLoading = tt.loading
-
-			got := renderPanel(m, panelPRs)
-			if tt.want == "" {
-				if got != "" {
-					t.Errorf("expected an empty panel, got %q", got)
-				}
-
-				return
-			}
-
-			if !strings.Contains(got, tt.want) {
-				t.Errorf("expected %q in panel, got %q", tt.want, got)
 			}
 		})
 	}
@@ -337,24 +294,24 @@ func TestPRCountLoadedAccumulates(t *testing.T) {
 	}
 }
 
-// TestOpenPRFromPanel covers the progressive step: opening a PR from the panel
-// seats the list's own fields immediately, so the view has something to render
-// before the detail fetch lands, and any detail left from a previous PR goes.
-func TestOpenPRFromPanel(t *testing.T) {
+// TestOpenPRFromTheTab covers the progressive step: opening a pull request from
+// the PRs tab seats the row's own fields immediately, so the view has something
+// to render before the detail fetch lands, and any detail left from a previous
+// pull request goes.
+func TestOpenPRFromTheTab(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
-	m.viewMode = ViewModeRepoDetail
-	m.focusedPanel = panelPRs
+	m.viewMode = ViewModePRList
 	m.selectedRepo = testRepoPath
 	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
-	m.prs = []models.PRInfo{{
+	m.prSearch = []models.PRInfo{{
 		Number: 456, Title: "Feature PR", State: "OPEN",
 		URL: "https://github.com/test/pr/456", HeadRef: featureBranchName,
 		BaseRef: mainBranchName, ReviewDecision: "APPROVED",
 	}}
 	m.prDetail = models.PRDetail{PRInfo: models.PRInfo{Number: 999}}
 
-	m = afterUpdate(t, m, openDetailKey())
+	m = afterUpdate(t, m, tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	if m.viewMode != ViewModePRDetail {
 		t.Error("opening a PR should switch to the PR detail view")

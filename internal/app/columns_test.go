@@ -56,7 +56,6 @@ func TestDetailTablesFitEveryBreakpoint(t *testing.T) {
 		"branches":  panelRenderer(panelBranches),
 		"stashes":   panelRenderer(panelStashes),
 		"worktrees": panelRenderer(panelPeers),
-		"prs":       panelRenderer(panelPRs),
 	}
 
 	for _, termWidth := range []int{80, 120, 220} {

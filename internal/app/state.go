@@ -29,7 +29,7 @@ func (v ViewMode) String() string {
 	case ViewModeRepoList:
 		return "list"
 	case ViewModeRepoDetail:
-		return "detail"
+		return descDetail
 	case ViewModeBranchDetail:
 		return nameBranch
 	case ViewModePRDetail:

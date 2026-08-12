@@ -117,7 +117,7 @@ func TestPRListAlignsUnderWideGlyphs(t *testing.T) {
 			{Number: 333, Title: "draft " + glyph, State: "OPEN", IsDraft: true, HeadRef: "feature-3"},
 		}
 
-		return renderPanel(m, panelPRs)
+		return renderPanel(m, panelPeers)
 	})
 }
 

@@ -18,7 +18,6 @@ type panelID int
 const (
 	panelStatus panelID = iota
 	panelBranches
-	panelPRs
 	panelPeers
 	panelStashes
 	panelNotes
@@ -31,7 +30,6 @@ var panelKeys = map[panelID]string{
 	panelBranches: "b",
 	panelNotes:    "n",
 	panelPeers:    "e",
-	panelPRs:      "p",
 	panelStashes:  "t",
 	panelStatus:   "s",
 }
@@ -96,14 +94,6 @@ var (
 		{Key: colChecks, Title: colChecks, Min: 12, Priority: 2},
 		{Key: colCheckedOut, Title: colCheckedOut, Min: 14, Weight: 1, Priority: 1},
 		{Key: colLastCommit, Title: colLastCommit, Min: 10, Weight: 1, Priority: 4},
-	}
-
-	prPanelSpecs = []table.Column{
-		{Key: colPRNumber, Title: colPRNumber, Min: 5},
-		{Key: colPRTitle, Title: colPRTitle, Min: 12, Weight: 3},
-		{Key: colChecks, Title: colChecks, Min: 10, Priority: 2},
-		{Key: colPRActivity, Title: colPRActivity, Min: 16, Weight: 1, Priority: 1},
-		{Key: colPRState, Title: colPRState, Min: 7, Priority: 3},
 	}
 
 	peerPanelSpecs = []table.Column{
@@ -262,7 +252,7 @@ func markHotkey(title, key string) string {
 	}
 
 	matched, rest := title[i:i+len(key)], title[i+len(key):]
-	if stranded(matched, rest) {
+	if matched != key && stranded(matched, rest) {
 		return "[" + key + "] " + title
 	}
 

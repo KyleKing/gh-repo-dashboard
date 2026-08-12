@@ -6,14 +6,15 @@ keep going when one repo fails.
 
 ## Scoping the run
 
-Each operation is an operator key that waits for a text object, so the scope is
-always explicit before anything runs.
+Each operation is a verb under the `!` leader that waits for a text object, so
+the scope is always explicit before anything runs.
 
-| Operator | Task |
+| Verb | Task |
 |----------|------|
-| `F` | Fetch all |
-| `P` | Prune remote |
-| `C` | Cleanup merged branches |
+| `!f` | Fetch all |
+| `!p` | Prune remote |
+| `!c` | Cleanup merged branches |
+| `!r` | Refresh PR data |
 
 | Text object | Scope |
 |-------------|-------|
@@ -24,7 +25,8 @@ always explicit before anything runs.
 | `pr` | Repos with PRs |
 | `sr` | Selected repos |
 
-`Fdr` fetches every dirty repo. `@:` repeats the last `:command`.
+`!fdr` fetches every dirty repo, and repeating the verb (`!ff`) runs it over the
+filtered set. `@:` repeats the last `:command`.
 
 Command mode takes a predicate instead: `:fetch dirty and has_pr`,
 `:prune behind`, or `:cleanup`. With no argument the command runs over whatever

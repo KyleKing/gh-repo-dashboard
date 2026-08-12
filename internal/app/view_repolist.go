@@ -17,13 +17,19 @@ import (
 // exactly that many lines, so nothing the body does (the region opening, a
 // shorter repo set) can move the footer.
 const (
-	listChromeHeight   = 6
+	listChromeHeight   = 7
 	searchChromeHeight = 2
 )
 
 func (m Model) renderRepoList() string {
+	if m.panelActions {
+		return m.renderActionModal()
+	}
+
 	var b strings.Builder
 
+	b.WriteString(m.renderTabBar())
+	b.WriteString("\n")
 	b.WriteString(m.renderBreadcrumbs())
 	b.WriteString("\n\n")
 	b.WriteString(m.renderStatusBar())
@@ -867,7 +873,8 @@ func (m Model) renderFooter() string {
 	prefix := ""
 	if m.pendingOperator != "" {
 		hint := m.pendingOperator + m.pendingObject
-		pendingHint := " pending (ar/br/dr/pr/sr, " + m.pendingOperator + m.pendingOperator + "=all, esc cancels)"
+		pendingHint := " pending (ar/br/dr/pr/sr, " +
+			strings.ToLower(m.pendingOperator) + "=all, esc cancels)"
 		prefix = styles.FooterKeyStyle.Render(hint) + styles.FooterDescStyle.Render(pendingHint) + "  "
 	}
 

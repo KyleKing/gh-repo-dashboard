@@ -33,6 +33,13 @@ type PRInfo struct {
 	ApprovedBy      []string     `json:"approved_by,omitempty"`
 	ChangesRequests int          `json:"changes_requests,omitempty"`
 	Activity        *PRActivity  `json:"activity,omitempty"`
+	// Repo, Author, and UpdatedAt are carried by rows a saved search produced,
+	// where the list spans repositories and the owner of a pull request is not
+	// the person reading it. A row read for one repo's own panel leaves them
+	// empty.
+	Repo      string    `json:"repo,omitempty"`
+	Author    string    `json:"author,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitzero"`
 }
 
 // FromFork reports whether the pull request's head branch lives in someone

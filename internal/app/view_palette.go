@@ -347,10 +347,10 @@ func (m Model) runPaletteDefault(results []findResult) (tea.Model, tea.Cmd) {
 // lands the cursor where the object is.
 func panelForKind(kind findKind) panelID {
 	switch kind {
-	case findBranch:
+	// A pull request has no panel of its own, and its head branch is where the
+	// work it names actually lives.
+	case findBranch, findPR:
 		return panelBranches
-	case findPR:
-		return panelPRs
 	case findStash:
 		return panelStashes
 	case findNote:
@@ -498,7 +498,7 @@ func (m Model) renderPalette() string {
 }
 
 func (m Model) paletteScopeLine(matches int) string {
-	scope := "this repo"
+	scope := scopeThisRepo
 	if m.paletteFleetScope || parseFindQuery(m.paletteInput.Value()).fleet {
 		scope = "all repos"
 	}

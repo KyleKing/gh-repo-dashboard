@@ -238,6 +238,25 @@ func prefetchPRDetailCmd(repoPath, remoteID string, prNumber int) tea.Cmd {
 	}
 }
 
+// loadPRSearchCmd runs one saved view, against the repo the cursor came from
+// or against everything the search reaches.
+func loadPRSearchCmd(repoPath, remoteID, query string, fleet bool) tea.Cmd {
+	return func() tea.Msg {
+		msg := PRSearchLoadedMsg{Query: query, Fleet: fleet}
+		ctx := context.Background()
+
+		if fleet {
+			msg.PRs, msg.Error = github.SearchPRsEverywhere(ctx, repoPath, query)
+
+			return msg
+		}
+
+		msg.PRs, msg.Error = github.SearchPRsInRepo(ctx, repoPath, remoteID, query)
+
+		return msg
+	}
+}
+
 // loadStashDiffCmd reads one stash's full patch, rendered by the configured
 // external diff viewer where there is one. Since jj has no stashes, the call is
 // git-only and a non-git repo simply reports nothing.

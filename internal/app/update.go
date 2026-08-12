@@ -89,6 +89,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case PRDetailLoadedMsg:
 		return m.handlePRDetailLoaded(msg)
 
+	case PRSearchLoadedMsg:
+		return m.handlePRSearchLoaded(msg)
+
 	case StashDiffLoadedMsg:
 		if msg.Path == m.selectedRepo {
 			m.stashDiff = withStashText(m.stashDiff, msg.Index, msg.Diff)
@@ -212,6 +215,8 @@ func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleConfirmKey(msg)
 	case ViewModePRMap:
 		return m.handlePRMapKey(msg)
+	case ViewModePRList:
+		return m.handlePRListKey(msg)
 	case ViewModePalette:
 		return m.handlePaletteKey(msg)
 	default:
@@ -333,13 +338,7 @@ func (m Model) handlePRDetailLoaded(msg PRDetailLoadedMsg) (tea.Model, tea.Cmd) 
 // focused view tracks its selection with the panel cursor and never sets
 // selectedPR, which only the PR-detail view owns.
 func (m Model) showingPR(number int) bool {
-	if m.selectedPR.Number == number {
-		return true
-	}
-
-	pr, ok := m.selectedPanelPR()
-
-	return ok && pr.Number == number
+	return m.selectedPR.Number == number
 }
 
 // handleSpinnerTick advances the loading spinner. The tick chain stops once
@@ -383,6 +382,14 @@ func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.panelActions {
+		return m.handlePanelActionKey(msg)
+	}
+
+	if newM, cmd, handled := m.handleLeaderOrTabKey(msg); handled {
+		return newM, cmd
+	}
+
 	if m.pendingOperator != "" {
 		return m.handleOperatorPendingKey(msg)
 	}
@@ -426,18 +433,27 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Peers):
 		return m.openCheckouts()
-
-	case key.Matches(msg, m.keys.FetchAll),
-		key.Matches(msg, m.keys.PruneRemote),
-		key.Matches(msg, m.keys.CleanupMerged),
-		key.Matches(msg, m.keys.RefreshPRs):
-		m.pendingOperator = msg.String()
-		m.pendingObject = ""
-
-		return m, nil
 	}
 
 	return m, nil
+}
+
+// handleLeaderOrTabKey answers the two keys that leave the list behind: the
+// verb leader, and a tab bar key. Handled is false if msg is neither.
+func (m Model) handleLeaderOrTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	if msg.String() == panelActionLeader {
+		m.panelActions = true
+
+		return m, nil, true
+	}
+
+	if tab, ok := tabForKey(msg.String()); ok {
+		next, cmd := m.openTab(tab)
+
+		return next, cmd, true
+	}
+
+	return m, nil, false
 }
 
 // handleModeKey handles the keys that only swap which full-screen mode is
@@ -835,7 +851,10 @@ func (m Model) handleOperatorPendingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	case keyStr == m.pendingOperator && m.pendingObject == "":
+	// The operator's own key repeated means "the whole filtered set". The menu
+	// opens it on the lowercase letter and the operator is named by the
+	// capital, so either spelling repeats it.
+	case strings.EqualFold(keyStr, m.pendingOperator) && m.pendingObject == "":
 		m.pendingOperator = ""
 		return m.confirmBatchTask(op.TaskName, op.Destructive, m.filteredPaths, op.Cmd)
 	}
@@ -886,6 +905,10 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if msg.String() == panelActionLeader {
 		m.panelActions = true
 		return m, nil
+	}
+
+	if tab, ok := tabForKey(msg.String()); ok {
+		return m.openTab(tab)
 	}
 
 	panels := m.panelSet(m.gridWidth())
@@ -1140,14 +1163,6 @@ func (m Model) crossPanel(panels []panelContent, delta int) (tea.Model, tea.Cmd)
 // selected item, and nothing when the pane can render from cached data.
 func (m Model) panelDetailCmd() tea.Cmd {
 	switch {
-	case m.focusedPanel == panelPRs && m.detailCursor < len(m.prs):
-		pr := m.prs[m.detailCursor]
-		if m.prDetail.Number == pr.Number {
-			return nil
-		}
-
-		return loadPRDetailCmd(m.selectedRepo, m.summaries[m.selectedRepo].RemoteID, pr.Number)
-
 	case m.focusedPanel == panelBranches && m.detailCursor < len(m.branches):
 		branch := m.branches[m.detailCursor]
 		if m.branchDetail.Branch.Name == branch.Name {
@@ -1204,15 +1219,6 @@ func (m Model) handleDetailOpenKey() (tea.Model, tea.Cmd) {
 
 	case m.focusedPanel == panelPeers:
 		return m.jumpToCheckout()
-
-	case m.focusedPanel == panelPRs && m.detailCursor < len(m.prs):
-		m.selectedPR = m.prs[m.detailCursor]
-		// Progressive loading: show basic info from the list immediately,
-		// full details (author, assignees, etc.) load async.
-		m.prDetail = models.PRDetail{PRInfo: m.selectedPR}
-		m.viewMode = ViewModePRDetail
-
-		return m, loadPRDetailCmd(m.selectedRepo, m.summaries[m.selectedRepo].RemoteID, m.selectedPR.Number)
 
 	default:
 		return m, nil
@@ -1325,8 +1331,6 @@ func (m Model) panelRowCount(id panelID) int {
 		return len(m.stashes)
 	case panelPeers:
 		return len(m.RepoCheckouts())
-	case panelPRs:
-		return len(m.prs)
 	case panelNotes:
 		return len(m.notesFiles)
 	case panelStatus:
@@ -1442,6 +1446,10 @@ func (m Model) handlePRDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Back):
 		m.viewMode = ViewModeRepoDetail
+		if m.prListReturn == ViewModePRList {
+			m.viewMode, m.prListReturn = ViewModePRList, 0
+		}
+
 		return m, nil
 
 	case key.Matches(msg, m.keys.Refresh):

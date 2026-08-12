@@ -179,7 +179,7 @@ func TestEnterOpensTheRepoOnTheObjectsPanel(t *testing.T) {
 	next, _ := m.runPaletteDefault(m.findResults())
 	landed := mustModel(t, next)
 
-	if landed.viewMode != ViewModeRepoDetail || landed.focusedPanel != panelPRs {
+	if landed.viewMode != ViewModeRepoDetail || landed.focusedPanel != panelBranches {
 		t.Errorf("enter landed in %v on panel %v, want the repo's PRs panel",
 			landed.viewMode, landed.focusedPanel)
 	}

@@ -237,9 +237,9 @@ func TestPanelVerbKeysDoNotCollideWithPanelJumps(t *testing.T) {
 
 	// A jump key firing a verb would be the collision that matters, so confirm
 	// the grid still treats one as a jump while the menu is closed.
-	next, _ := m.handleDetailKey(keyPress('p'))
-	if jumped := mustModel(t, next); jumped.focusedPanel != panelPRs {
-		t.Errorf("p with the menu closed focused %v, want the PRs panel", jumped.focusedPanel)
+	next, _ := m.handleDetailKey(keyPress('t'))
+	if jumped := mustModel(t, next); jumped.focusedPanel != panelStashes {
+		t.Errorf("t with the menu closed focused %v, want the stashes panel", jumped.focusedPanel)
 	}
 }
 
@@ -287,16 +287,16 @@ func TestPanelActionMenuKeepsItsVerbsUnderALongTitle(t *testing.T) {
 	const width = 100
 
 	m := focusedModel(width, 30)
-	m.focusedPanel = panelPRs
-	m.detailCursor = 0
-	m.prs = []models.PRInfo{{
+	m.viewMode = ViewModePRList
+	m.prSearchCursor = 0
+	m.prSearch = []models.PRInfo{{
 		Number: 10,
 		Title:  strings.TrimSpace(strings.Repeat("bump the go-dependencies group across 1 directory ", 4)),
 	}}
 	m.panelActions = true
 
 	view := plainText(m.renderView())
-	for _, verb := range panelActionsFor(panelPRs) {
+	for _, verb := range prListActions() {
 		if !strings.Contains(view, verb.name) {
 			t.Errorf("the menu dropped %q:\n%s", verb.name, view)
 		}

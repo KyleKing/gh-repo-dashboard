@@ -318,7 +318,7 @@ func GetPRDetail(ctx context.Context, repoPath, remoteID string, prNumber int) (
 // comes back 504. Thirty is what fits with room to spare.
 const (
 	prListFields = "number,title,state,url,isDraft,headRefName,headRepositoryOwner,baseRefName," +
-		"reviewDecision,statusCheckRollup,comments,reviews"
+		"reviewDecision,statusCheckRollup,comments,reviews,author,updatedAt"
 	prListLimit = "30"
 	// Number of filtered pages that make up one repo's list.
 	prListPages = 2
@@ -404,6 +404,10 @@ func prListPage(ctx context.Context, repoPath string, env []string, filter ...st
 		StatusCheckRollup []statusCheck `json:"statusCheckRollup"`
 		Comments          []prComment   `json:"comments"`
 		Reviews           []prReview    `json:"reviews"`
+		Author            struct {
+			Login string `json:"login"`
+		} `json:"author"`
+		UpdatedAt time.Time `json:"updatedAt"`
 	}
 
 	if err := json.Unmarshal(out, &prList); err != nil {
@@ -425,6 +429,8 @@ func prListPage(ctx context.Context, repoPath string, env []string, filter ...st
 			ReviewDecision: pr.ReviewDecision,
 			Checks:         parseChecks(pr.StatusCheckRollup),
 			Activity:       latestActivity(pr.Comments, pr.Reviews),
+			Author:         pr.Author.Login,
+			UpdatedAt:      pr.UpdatedAt,
 		})
 	}
 

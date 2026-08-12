@@ -52,7 +52,6 @@ func TestEveryPanelShowsContentWithoutAKeypress(t *testing.T) {
 	want := []string{
 		"↑1 vs origin/main",
 		"[b]ranches (1)", mainBranchName,
-		"[p] PRs (1)", "Add a thing",
 		"P[e]ers (1)", "alpha-thing",
 		"S[t]ashes (1)", "On main: spike",
 		"[n]otes (1)", ".doing",
@@ -104,7 +103,7 @@ func TestJJRepoHasNoStashesPanel(t *testing.T) {
 func TestRelevanceDecidesTheRoomBeyondAFairShare(t *testing.T) {
 	t.Parallel()
 
-	busy := panelContent{id: panelPRs, relevance: relevanceUrgent, rows: make([]string, 12)}
+	busy := panelContent{id: panelPeers, relevance: relevanceUrgent, rows: make([]string, 12)}
 	quiet := panelContent{id: panelStashes, relevance: relevanceIdle, rows: make([]string, 2)}
 
 	heights := distributePanelHeights([]panelContent{busy, quiet}, -1, 24)
@@ -127,7 +126,7 @@ func TestContendingPanelsSplitTheColumnEvenly(t *testing.T) {
 	t.Parallel()
 
 	quiet := panelContent{id: panelStashes, relevance: relevanceIdle, rows: make([]string, 10)}
-	busy := panelContent{id: panelPRs, relevance: relevanceUrgent, rows: make([]string, 10)}
+	busy := panelContent{id: panelPeers, relevance: relevanceUrgent, rows: make([]string, 10)}
 
 	heights := distributePanelHeights([]panelContent{quiet, busy}, 1, 18)
 	if heights[0] != heights[1] {
@@ -139,7 +138,7 @@ func TestFocusedPanelIsServedBeforeRelevance(t *testing.T) {
 	t.Parallel()
 
 	quiet := panelContent{id: panelStashes, relevance: relevanceIdle, rows: make([]string, 10)}
-	busy := panelContent{id: panelPRs, relevance: relevanceUrgent, rows: make([]string, 1)}
+	busy := panelContent{id: panelPeers, relevance: relevanceUrgent, rows: make([]string, 1)}
 
 	heights := distributePanelHeights([]panelContent{quiet, busy}, 0, 20)
 	if heights[0] < panelChromeHeight+panelTitleHeight+len(quiet.rows) {
@@ -165,129 +164,6 @@ func TestDetailPaneDescribesTheSelectedItem(t *testing.T) {
 	if got := plainText(m.renderPanelDetail(60, 20)); !strings.Contains(got, "finish the grid") {
 		t.Errorf("note detail pane is missing the file body:\n%s", got)
 	}
-
-	m.focusedPanel = panelPRs
-	m.prDetail = models.PRDetail{PRInfo: m.prs[0], Body: "wires the panel grid"}
-	if got := plainText(m.renderPanelDetail(60, 20)); !strings.Contains(got, "wires the panel grid") {
-		t.Errorf("PR detail pane is missing the description:\n%s", got)
-	}
-}
-
-// A rollup says a pull request is failing; the pane has to say which check.
-func TestPRDetailPaneNamesTheFailingChecks(t *testing.T) {
-	t.Parallel()
-
-	check := func(name, status, conclusion string) models.CheckDetail {
-		return models.CheckDetail{Name: name, Status: status, Conclusion: conclusion}
-	}
-
-	tests := []struct {
-		name    string
-		checks  []models.CheckDetail
-		want    []string
-		notWant []string
-	}{
-		{
-			name: "failures lead and passing checks collapse to a tally",
-			checks: []models.CheckDetail{
-				check("unit", "COMPLETED", "SUCCESS"),
-				check("lint", "COMPLETED", "FAILURE"),
-				check("docs", "COMPLETED", "SKIPPED"),
-			},
-			want:    []string{"checks", "lint", "failure", "1 success", "1 skipped"},
-			notWant: []string{"unit", "docs"},
-		},
-		{
-			name:    "an in-flight check keeps its own row",
-			checks:  []models.CheckDetail{check("build", "IN_PROGRESS", "")},
-			want:    []string{"build", "in progress"},
-			notWant: []string{"more"},
-		},
-		{
-			name:   "a green pull request costs the pane one tally line",
-			checks: []models.CheckDetail{check("unit", "COMPLETED", "SUCCESS"), check("lint", "COMPLETED", "SUCCESS")},
-			want:   []string{"checks", "2 success"},
-		},
-		{
-			name:    "a wall of failures is capped",
-			checks:  failingChecks(prChecksMaxRows + 4),
-			want:    []string{"check-0", "4 more"},
-			notWant: []string{"check-12"},
-		},
-	}
-
-	t.Run("no checks leaves only the rollup field", func(t *testing.T) {
-		t.Parallel()
-
-		m := focusedModel(200, 50)
-		m.focusedPanel = panelPRs
-		m.prDetail = models.PRDetail{PRInfo: m.prs[0]}
-
-		pane := plainText(strings.Join(m.prDetailLines(60), "\n"))
-		if got := strings.Count(pane, "checks"); got != 1 {
-			t.Errorf("pane names checks %d times, want only the rollup field:\n%s", got, pane)
-		}
-	})
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			m := focusedModel(200, 50)
-			m.focusedPanel = panelPRs
-			m.prDetail = models.PRDetail{PRInfo: m.prs[0], CheckDetails: tt.checks}
-
-			pane := plainText(strings.Join(m.prDetailLines(60), "\n"))
-			for _, want := range tt.want {
-				if !strings.Contains(pane, want) {
-					t.Errorf("pane is missing %q:\n%s", want, pane)
-				}
-			}
-			for _, unwanted := range tt.notWant {
-				if strings.Contains(pane, unwanted) {
-					t.Errorf("pane should not name %q:\n%s", unwanted, pane)
-				}
-			}
-		})
-	}
-}
-
-// The focused view never sets selectedPR, so a detail keyed on it alone
-// leaves the pane loading forever.
-func TestPRDetailLandsWhenOnlyThePanelCursorSelectsIt(t *testing.T) {
-	t.Parallel()
-
-	m := focusedModel(200, 50)
-	m.focusedPanel = panelPRs
-
-	loaded := mustModel(t, mustUpdate(t, &m, PRDetailLoadedMsg{
-		Path:     m.selectedRepo,
-		PRNumber: m.prs[0].Number,
-		Detail:   models.PRDetail{PRInfo: m.prs[0], Body: "wires the panel grid"},
-	}))
-
-	pane := plainText(strings.Join(loaded.prDetailLines(60), "\n"))
-	if !strings.Contains(pane, "wires the panel grid") {
-		t.Errorf("pane is still waiting on a detail it already has:\n%s", pane)
-	}
-
-	other := mustModel(t, mustUpdate(t, &m, PRDetailLoadedMsg{
-		Path: m.selectedRepo, PRNumber: 404, Detail: models.PRDetail{PRInfo: models.PRInfo{Number: 404}},
-	}))
-	if other.prDetail.Number == 404 {
-		t.Error("a detail for a pull request nothing selects should be dropped")
-	}
-}
-
-func failingChecks(count int) []models.CheckDetail {
-	checks := make([]models.CheckDetail, 0, count)
-	for i := range count {
-		checks = append(checks, models.CheckDetail{
-			Name: "check-" + strconv.Itoa(i), Status: "COMPLETED", Conclusion: "FAILURE",
-		})
-	}
-
-	return checks
 }
 
 func TestNotesPeekSkipsHeadingsAndBlanks(t *testing.T) {

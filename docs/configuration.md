@@ -24,6 +24,15 @@ cache_to_disk = true
 # Diff viewer, in the form git's diff.external takes; unset means git decides
 [diff]
 external = "difft --color=always --display=inline --syntax-highlight=off"
+
+# Named searches for the PRs tab, in GitHub's own query syntax
+[[pr_views]]
+name = "Needs My Review"
+search = "is:open review-requested:@me sort:updated-desc"
+
+[[pr_views]]
+name = "Pending Review"
+search = "is:open draft:false -review:approved -author:app/dependabot sort:updated-desc"
 ```
 
 Flags and positional paths on the command line take precedence over the file.
@@ -40,6 +49,23 @@ color and assume eighty columns, so the pane's width arrives in `COLUMNS` and
 `DFT_WIDTH`, and color is forced through `CLICOLOR_FORCE`, `DFT_COLOR`, and
 `DFT_DISPLAY=inline`. A flag written into the command itself still wins over
 all of them, which is the way to configure a viewer that reads neither.
+
+## Pull request views
+
+`pr_views` replaces the built-in set (Open, Mine, Needs My Review, Pending
+Review) rather than adding to it, and order is the order `[` and `]` cycle
+through. The query is handed to gh untouched, so anything the GitHub search box
+accepts works.
+
+The same string serves both scopes. Against one repo it runs as
+`gh pr list --search`, and widened with `*` it runs as `gh search prs`, where a
+`sort:` qualifier is translated into the `--sort` and `--order` flags that
+command takes instead.
+
+A widened search also needs a subject. A view scoped only by the repo it ran in
+(`is:open`) would otherwise match every open pull request on GitHub, so
+`involves:@me` is added unless the query already names one with `author:`,
+`org:`, `review-requested:`, or any other qualifier that says whose work it is.
 
 ## Caching
 

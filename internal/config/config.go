@@ -25,6 +25,15 @@ type Config struct {
 	// an opt-out, and false is a value the user has to write.
 	CacheToDisk *bool      `toml:"cache_to_disk"`
 	Diff        DiffConfig `toml:"diff"`
+	PRViews     []PRView   `toml:"pr_views"`
+}
+
+// PRView is one named pull request search, in GitHub's own query syntax. The
+// query is passed to gh untouched, so anything the search box accepts works
+// here, and nothing about it is interpreted locally.
+type PRView struct {
+	Name   string `toml:"name"`
+	Search string `toml:"search"`
 }
 
 // DiffConfig selects how a patch is rendered.

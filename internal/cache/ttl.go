@@ -228,6 +228,7 @@ var (
 	DefaultBranchCICache = newRegisteredTTLCache[*models.DefaultBranchCI](workflowTTL)
 	PRCache              = newRegisteredTTLCache[*models.PRInfo](defaultTTL)
 	PRListCache          = newRegisteredTTLCache[[]models.PRInfo](defaultTTL)
+	PRSearchCache        = newRegisteredTTLCache[[]models.PRInfo](defaultTTL)
 	PRDetailCache        = newRegisteredTTLCache[*models.PRDetail](defaultTTL)
 	BranchCache          = newRegisteredTTLCache[[]models.BranchInfo](defaultTTL)
 	CommitCache          = newRegisteredTTLCache[[]models.CommitInfo](defaultTTL)

@@ -29,6 +29,7 @@ const (
 	ViewModeConfirm
 	ViewModePRMap
 	ViewModePalette
+	ViewModePRList
 )
 
 // Model is the root Bubble Tea model holding all TUI state.
@@ -114,6 +115,19 @@ type Model struct {
 	// the selected item's text instead of moving between rows.
 	detailFocused bool
 	detailScroll  int
+	// prViewIndex selects which of models.PRViews the PRs tab is showing, and
+	// prFleet widens that view from this repo to everything the search reaches.
+	prViewIndex     int
+	prFleet         bool
+	prSearch        []models.PRInfo
+	prSearchCursor  int
+	prSearchLoading bool
+	prViewMenu      bool
+	prSearchError   string
+	// prListReturn is where esc goes from a pull request opened out of the PRs
+	// tab, which is the tab rather than the repo grid it was never in.
+	prListReturn ViewMode
+
 	// panelActions is the leader key's verb menu, open over the focused panel's
 	// selection until a verb runs or any other key backs out.
 	panelActions bool

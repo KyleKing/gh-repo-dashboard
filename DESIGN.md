@@ -217,9 +217,11 @@ table for the repo under the cursor, carrying its peers, local branches, open pu
 requests, and notes; the region takes a fixed share of the body, so the frame's
 height never depends on which repo the cursor is on or on what is still loading.
 `ViewModeRepoDetail` (Enter) is a
-grid of panels (Status, Branches, PRs, Peers, Stashes, Notes, less the ones with nothing
+grid of panels (Status, Branches, Peers, Stashes, Notes, less the ones with nothing
 to list) beside a detail pane rendering whatever the cursor sits on; when discovery finds exactly one repo
-it opens directly, and esc still falls back to the one-row list. `ViewModePalette`
+it opens directly, and esc still falls back to the one-row list. `ViewModePRList` (`P`, the second tab)
+answers one saved GitHub search at a time, scoped to the repo the cursor came from or widened
+across every repository the search reaches. `ViewModePalette`
 (`space` in the focused view, `;` in the list) is the universal find.
 `ViewModeFilter` (f), `ViewModeSort` (s), and `ViewModeHelp` (?) are modals,
 `ViewModeConfirm` gates every write action, and `ViewModeBatchProgress` shows a progress bar

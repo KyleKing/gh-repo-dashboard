@@ -13,13 +13,9 @@ func TestPrefetchOnCursorMovement(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
-	m.focusedPanel = panelPRs
+	m.focusedPanel = panelBranches
 	m.selectedRepo = testRepoPath
-	m.prs = []models.PRInfo{
-		{Number: 1, Title: "PR 1"},
-		{Number: 2, Title: "PR 2"},
-		{Number: 3, Title: "PR 3"},
-	}
+	m.branches = []models.BranchInfo{{Name: "one"}, {Name: "two"}, {Name: "three"}}
 	m.detailCursor = 0
 
 	// Move down - should trigger prefetch
@@ -46,28 +42,6 @@ func TestPrefetchOnCursorMovement(t *testing.T) {
 
 	if cmd == nil {
 		t.Error("moving cursor up should trigger prefetch command")
-	}
-}
-
-func TestFocusingThePRPanelLoadsItsDetail(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.viewMode = ViewModeRepoDetail
-	m.focusedPanel = panelBranches
-	m.selectedRepo = testRepoPath
-	m.prs = []models.PRInfo{
-		{Number: 10, Title: "First PR"},
-		{Number: 20, Title: "Second PR"},
-	}
-
-	updatedModel, cmd := m.Update(keyPress('p'))
-	m = mustModel(t, updatedModel)
-
-	if m.focusedPanel != panelPRs {
-		t.Fatalf("key p focused %v, want the PRs panel", m.focusedPanel)
-	}
-	if cmd == nil {
-		t.Error("focusing the PRs panel should load the selected PR's detail for the pane")
 	}
 }
 

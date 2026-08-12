@@ -100,7 +100,7 @@ func TestEnterOpensRepoDetail(t *testing.T) {
 	t.Parallel()
 	m := newListModel("/alpha", "/beta")
 	m.cursor = 1
-	m.focusedPanel = panelPRs
+	m.focusedPanel = panelPeers
 	m.detailCursor = 3
 
 	updatedModel, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -212,7 +212,7 @@ func TestPanelCycling(t *testing.T) {
 	m := focusedModel(160, 45)
 	m.focusedPanel = panelStatus
 
-	expected := []panelID{panelBranches, panelPRs, panelPeers, panelStashes, panelNotes, panelStatus}
+	expected := []panelID{panelBranches, panelPeers, panelStashes, panelNotes, panelStatus}
 	for i, want := range expected {
 		updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 		m = mustModel(t, updatedModel)
@@ -259,7 +259,7 @@ func TestDetailCursorMovement(t *testing.T) {
 
 	updatedModel, _ = m.Update(keyPress('j'))
 	m = mustModel(t, updatedModel)
-	if m.focusedPanel != panelPRs || m.detailCursor != 0 {
+	if m.focusedPanel != panelPeers || m.detailCursor != 0 {
 		t.Errorf("down at the bottom row should enter the next panel, got %v/%d",
 			m.focusedPanel, m.detailCursor)
 	}
@@ -292,7 +292,7 @@ func TestDetailCursorCrossesPanelsWithNothingToMoveThrough(t *testing.T) {
 		start panelID
 		want  panelID
 	}{
-		{name: "down off a single-row panel", key: 'j', start: panelBranches, want: panelPRs},
+		{name: "down off a single-row panel", key: 'j', start: panelBranches, want: panelPeers},
 		{name: "up off a single-row panel", key: 'k', start: panelBranches, want: panelStatus},
 		{name: "down off the rowless status panel", key: 'j', start: panelStatus, want: panelBranches},
 		{name: "up at the top of the column stays put", key: 'k', start: panelStatus, want: panelStatus},

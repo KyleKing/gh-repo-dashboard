@@ -59,6 +59,14 @@ var (
 				Background(Surface0).
 				Foreground(Text)
 
+	TabStyle = lipgloss.NewStyle().
+			Foreground(Overlay1)
+
+	SelectedTabStyle = lipgloss.NewStyle().
+				Background(Surface0).
+				Foreground(Blue).
+				Bold(true)
+
 	DirtyStyle = lipgloss.NewStyle().
 			Foreground(Peach)
 

@@ -29,7 +29,7 @@ func placeholderModel(loading bool) Model {
 func TestEmptyPanelsSayLoadingThenDisappear(t *testing.T) {
 	t.Parallel()
 
-	ids := []panelID{panelBranches, panelStashes, panelPRs, panelPeers, panelNotes}
+	ids := []panelID{panelBranches, panelStashes, panelPeers, panelNotes}
 	for _, id := range ids {
 		loading := plainText(renderPanel(placeholderModel(true), id))
 		if !strings.Contains(loading, "loading") {
@@ -43,7 +43,7 @@ func TestEmptyPanelsSayLoadingThenDisappear(t *testing.T) {
 		shown[p.id] = true
 	}
 
-	for _, id := range []panelID{panelStashes, panelPRs, panelPeers, panelNotes} {
+	for _, id := range []panelID{panelStashes, panelPeers, panelNotes} {
 		if shown[id] {
 			t.Errorf("panel %v is still drawn once settled with nothing to list", id)
 		}

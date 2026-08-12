@@ -90,6 +90,7 @@ func applyConfig(cfg config.Config, depth *int) {
 
 	models.SetNotesFilenames(cfg.NotesFilenames)
 	vcs.SetExternalDiffCommand(cfg.Diff.External)
+	models.SetPRViews(prViews(cfg))
 
 	if ttl := cfg.CacheTTL(); ttl > 0 {
 		cache.SetAllTTLs(ttl)
@@ -100,6 +101,17 @@ func applyConfig(cfg config.Config, depth *int) {
 			cache.SetDiskCache(store)
 		}
 	}
+}
+
+// prViews converts the config file's saved searches into the model's own type,
+// which the app package reads without knowing where they were written.
+func prViews(cfg config.Config) []models.PRView {
+	views := make([]models.PRView, 0, len(cfg.PRViews))
+	for _, view := range cfg.PRViews {
+		views = append(views, models.PRView{Name: view.Name, Search: view.Search})
+	}
+
+	return views
 }
 
 func printUsage() {
@@ -115,7 +127,7 @@ over the config file's scan_paths, which takes precedence over the enclosing
 repo (walking up from the current directory) or the current directory itself.
 
 Optional config file (scan_paths, depth, cache_ttl_minutes, notes_filenames,
-cache_to_disk, diff.external):
+cache_to_disk, diff.external, pr_views):
   %s
 
 Run "%s --script -" with a "help" line to list the :commands.

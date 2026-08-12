@@ -25,73 +25,7 @@ func (m Model) renderHelp() string {
 		Bold(true).
 		PaddingLeft(1)
 
-	sections := []struct {
-		title string
-		keys  []struct{ key, desc string }
-	}{
-		{
-			"Navigation",
-			[]struct{ key, desc string }{
-				{"j/k, Up/Down", "Move up/down"},
-				{"gg/G", "Go to top/bottom"},
-				{keyEnter, "Select/enter"},
-				{"esc, backspace", "Go back"},
-				{"h/l, " + keyTab, "Move between panels (focused view)"},
-				{"s/b/p/e/t/n", "Jump straight to a panel, as bracketed in its title"},
-				{"space, ;", "Universal find (#12 PRs, b/s/n/r types, * fleet-wide)"},
-			},
-		},
-		{
-			"Filtering & Sorting",
-			[]struct{ key, desc string }{
-				{"f", "Filter menu (enter/key cycles, *=reset)"},
-				{"s", "Sort menu (enter/key cycles, [/]=reorder, *=reset)"},
-				{"/", "Search repositories"},
-			},
-		},
-		{
-			"Branch & PR Actions",
-			[]struct{ key, desc string }{
-				{"]", "Parallel checkouts of the selected repo"},
-				{panelActionLeader, "Verbs for the focused panel's selection (focused view)"},
-				{panelActionLeader + "s", "Switch to the selected branch"},
-				{panelActionLeader + "p", "Push branch and its tags (--follow-tags)"},
-				{panelActionLeader + "n", "Create a PR for the selected branch"},
-				{panelActionLeader + "c", "Check the selected PR's branch out here"},
-				{panelActionLeader + "m", "Squash-merge the PR and delete its branch"},
-			},
-		},
-		{
-			"Batch Actions",
-			[]struct{ key, desc string }{
-				{"F", "Fetch all (filtered repos)"},
-				{"P", "Prune remote (filtered repos)"},
-				{"C", "Cleanup merged (filtered repos)"},
-				{"R", "Refresh PR data (filtered repos)"},
-			},
-		},
-		{
-			"Command Mode",
-			[]struct{ key, desc string }{
-				{":", "Command prompt (:filter dirty and has_pr, :help)"},
-				{"@:", "Repeat the last command"},
-				{":history", "Recent commands, newest first"},
-				{":prs", "Map open PRs to the branches and checkouts holding them"},
-				{"F/P/C/R + object", "Run an operator over a text object (Fdr fetches dirty repos)"},
-				{textObjectKeys(), textObjectNames()},
-			},
-		},
-		{
-			"General",
-			[]struct{ key, desc string }{
-				{"r/ctrl+r", "Refresh all data (clears cache)"},
-				{"?", "Toggle help"},
-				{"q, ctrl+c", "Quit"},
-			},
-		},
-	}
-
-	for _, section := range sections {
+	for _, section := range helpSections() {
 		b.WriteString(sectionStyle.Render(section.title))
 		b.WriteString("\n")
 		for _, k := range section.keys {
@@ -113,6 +47,79 @@ func (m Model) renderHelp() string {
 	b.WriteString(styles.FooterStyle.Render("Press ? or esc to close"))
 
 	return b.String()
+}
+
+type helpSection struct {
+	title string
+	keys  []struct{ key, desc string }
+}
+
+func helpSections() []helpSection {
+	return []helpSection{
+		{
+			"Navigation",
+			[]struct{ key, desc string }{
+				{"j/k, Up/Down", "Move up/down"},
+				{"gg/G", "Go to top/bottom"},
+				{keyEnter, "Select/enter"},
+				{"esc, backspace", "Go back"},
+				{"R/P", "Switch tabs: Repos and PRs, as bracketed in the bar"},
+				{"h/l, " + keyTab, "Move between panels (focused view)"},
+				{"s/b/e/t/n", "Jump straight to a panel, as bracketed in its title"},
+				{"space, ;", "Universal find (#12 PRs, b/s/n/r types, * fleet-wide)"},
+			},
+		},
+		{
+			"Filtering & Sorting",
+			[]struct{ key, desc string }{
+				{"f", "Filter menu (enter/key cycles, *=reset)"},
+				{"s", "Sort menu (enter/key cycles, [/]=reorder, *=reset)"},
+				{"/", "Search repositories"},
+			},
+		},
+		{
+			"Branch & PR Actions",
+			[]struct{ key, desc string }{
+				{"]", "Parallel checkouts of the selected repo"},
+				{panelActionLeader, "Verbs for the focused panel's selection (focused view)"},
+				{panelActionLeader + "s", "Switch to the selected branch"},
+				{panelActionLeader + "p", "Push branch and its tags (--follow-tags)"},
+				{panelActionLeader + "n", "Create a PR for the selected branch"},
+				{panelActionLeader + "c", "Check the selected PR's branch out here"},
+				{"f, [/], *", "PRs tab: pick a saved view, cycle views, widen the scope"},
+				{panelActionLeader + "m", "Squash-merge the PR and delete its branch"},
+			},
+		},
+		{
+			"Batch Actions",
+			[]struct{ key, desc string }{
+				{panelActionLeader + "f", "Fetch all, then a text object"},
+				{panelActionLeader + "p", "Prune remote, then a text object"},
+				{panelActionLeader + "c", "Cleanup merged, then a text object"},
+				{panelActionLeader + "r", "Refresh PR data, then a text object"},
+				{"the verb again", "Run it over the filtered set (!ff)"},
+			},
+		},
+		{
+			"Command Mode",
+			[]struct{ key, desc string }{
+				{":", "Command prompt (:filter dirty and has_pr, :help)"},
+				{"@:", "Repeat the last command"},
+				{":history", "Recent commands, newest first"},
+				{":prs", "Map open PRs to the branches and checkouts holding them"},
+				{"! + verb + object", "Run an operator over a text object (!fdr fetches dirty repos)"},
+				{textObjectKeys(), textObjectNames()},
+			},
+		},
+		{
+			"General",
+			[]struct{ key, desc string }{
+				{"r/ctrl+r", "Refresh all data (clears cache)"},
+				{"?", "Toggle help"},
+				{"q, ctrl+c", "Quit"},
+			},
+		},
+	}
 }
 
 func (m Model) renderFilterModal() string {
@@ -234,23 +241,23 @@ func (m Model) renderConfirmModal() string {
 	return centerModal(m, content)
 }
 
-// renderPanelActionModal lists the focused panel's verbs over the grid. The
-// menu names what it acts on, and that name is a pull request title as often
-// as a branch, so it wraps inside a box rather than running a footer line off
-// the screen.
-func (m Model) renderPanelActionModal(panel panelContent) string {
+// renderActionModal lists the current view's verbs over it. The menu names
+// what it acts on, and that name is a pull request title as often as a branch,
+// so it wraps inside a box rather than running a footer line off the screen.
+func (m Model) renderActionModal() string {
 	width := min(panelActionModalWidth, max(m.width-panelActionModalFrame, minPanelTableWidth))
 
-	lines := []string{styles.TitleStyle.Render(panel.title)}
-	lines = append(lines, wrapLines(m.panelDetailTitle(panel), width)...)
+	menu := m.actionMenu()
+
+	lines := []string{styles.TitleStyle.Render(menu.title)}
+	lines = append(lines, wrapLines(menu.target, width)...)
 	lines = append(lines, "")
 
-	actions := panelActionsFor(panel.id)
-	if len(actions) == 0 {
+	if len(menu.actions) == 0 {
 		lines = append(lines, styles.SubtitleStyle.Render("Nothing to do here"))
 	}
 
-	for _, action := range actions {
+	for _, action := range menu.actions {
 		lines = append(lines,
 			styles.HelpKeyStyle.Render(padCell(action.key, modalKeyColWidth))+"  "+
 				styles.HelpDescStyle.Render(action.name))

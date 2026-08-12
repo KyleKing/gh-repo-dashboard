@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui/markdown"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
@@ -36,7 +35,6 @@ func (m Model) panelSet(width int) []panelContent {
 	built := []panelContent{
 		m.statusPanel(summary, width),
 		m.branchesPanel(width),
-		m.prsPanel(width),
 		m.peersPanel(summary, width),
 	}
 
@@ -219,42 +217,6 @@ func (m Model) branchesPanel(width int) panelContent {
 
 	return panelContent{
 		id: panelBranches, title: tabNameBranches, count: len(m.branches),
-		relevance: relevance, rows: rows, selectable: true,
-	}
-}
-
-func (m Model) prsPanel(width int) panelContent {
-	layout := fitPanelCols(prPanelSpecs, width)
-
-	rows := make([]string, 0, len(m.prs))
-	for i := range m.prs {
-		pr := &m.prs[i]
-		selected := m.panelSelected(panelPRs, i)
-		style := rowStyleFor(selected)
-
-		values := map[string]string{
-			colPRNumber:   "#" + strconv.Itoa(pr.Number),
-			colPRTitle:    pr.Title,
-			colPRState:    prStateCell(pr),
-			colChecks:     formatChecksCell(pr),
-			colPRActivity: pr.ActivitySummary(),
-		}
-		cellStyles := map[string]lipgloss.Style{
-			colPRState:    withSelection(prStateStyle(pr), selected),
-			colChecks:     withSelection(checksCellStyle(pr, style), selected),
-			colPRActivity: withSelection(styles.SubtitleStyle, selected),
-		}
-
-		rows = append(rows, detailRow(rowCursorFor(selected), layout, renderCells(layout, values, cellStyles, &style)))
-	}
-
-	relevance := relevanceIdle
-	if len(m.prs) > 0 {
-		relevance = relevanceUrgent
-	}
-
-	return panelContent{
-		id: panelPRs, title: tabNamePRs, count: len(m.prs),
 		relevance: relevance, rows: rows, selectable: true,
 	}
 }
@@ -444,8 +406,8 @@ func (m Model) renderPanelGrid() string {
 	b.WriteString(styles.SubtitleStyle.Render(truncate(summary.Path, width)))
 	b.WriteString("\n\n")
 
-	if m.panelActions && focused >= 0 && focused < len(panels) {
-		return m.renderPanelActionModal(panels[focused])
+	if m.panelActions {
+		return m.renderActionModal()
 	}
 
 	body := m.height - gridChromeHeight
@@ -676,10 +638,6 @@ func (m Model) panelDetailTitle(p panelContent) string {
 		if branch, ok := m.selectedPanelBranch(); ok {
 			return branch.Name
 		}
-	case panelPRs:
-		if pr, ok := m.selectedPanelPR(); ok {
-			return "#" + strconv.Itoa(pr.Number) + " " + pr.Title
-		}
 	case panelPeers:
 		if checkout, ok := m.selectedPanelCheckout(); ok {
 			return checkout.Folder()
@@ -708,8 +666,6 @@ func (m Model) panelDetailLines(width int) []string {
 	switch m.focusedPanel {
 	case panelBranches:
 		lines = m.branchDetailLines(width)
-	case panelPRs:
-		lines = m.prDetailLines(width)
 	case panelPeers:
 		lines = m.peerDetailLines()
 	case panelStashes:
@@ -790,139 +746,6 @@ func (m Model) branchDetailLines(width int) []string {
 	}
 
 	return lines
-}
-
-func (m Model) prDetailLines(width int) []string {
-	pr, ok := m.selectedPanelPR()
-	if !ok {
-		return nil
-	}
-
-	lines := []string{
-		detailField("state", pr.StatusDisplay()),
-		detailField("head", pr.HeadRef+" → "+pr.BaseRef),
-		detailField("checks", formatChecksCell(&pr)),
-		detailField("review", pr.ReviewStatus()),
-		detailField("activity", pr.ActivitySummary()),
-	}
-
-	if m.prDetail.Number != pr.Number {
-		return append(lines, "", styles.SubtitleStyle.Render("loading description…"))
-	}
-
-	lines = append(lines, prCheckLines(m.prDetail.CheckDetails, width)...)
-
-	if body := strings.TrimSpace(m.prDetail.Body); body != "" {
-		lines = append(lines, "", styles.HeaderStyle.Render("description"))
-		lines = append(lines, markdown.Render(body, width, prBodyMaxLines)...)
-	}
-
-	if comment := m.prDetail.LatestComment; comment != nil {
-		lines = append(lines, "", styles.HeaderStyle.Render("latest comment · "+comment.Author))
-		lines = append(lines, markdown.Render(comment.Body, width, prCommentMaxLines)...)
-	}
-
-	return lines
-}
-
-// prCheckLines names every check that is not already green, failures first,
-// and tallies the rest on one line so a passing pull request costs the pane
-// three rows instead of one per check.
-func prCheckLines(checks []models.CheckDetail, width int) []string {
-	if len(checks) == 0 {
-		return nil
-	}
-
-	named, quiet := unsettledChecks(checks), settledTally(checks)
-	lines := []string{"", styles.HeaderStyle.Render("checks")}
-
-	shown := named
-	if len(shown) > prChecksMaxRows {
-		shown = shown[:prChecksMaxRows]
-	}
-
-	statusWidth := 0
-	for _, check := range shown {
-		statusWidth = max(statusWidth, lipgloss.Width(check.StatusDisplay()))
-	}
-
-	nameWidth := max(width-statusWidth-1, prCheckNameMinWidth)
-	for _, check := range shown {
-		status := check.StatusDisplay()
-		lines = append(lines,
-			styles.TableRowStyle.Render(padCell(truncate("  "+checkDisplayName(check), nameWidth), nameWidth))+
-				" "+checkStatusStyle(status).Render(status))
-	}
-
-	if hidden := len(named) - len(shown); hidden > 0 {
-		quiet = append([]string{strconv.Itoa(hidden) + " more"}, quiet...)
-	}
-
-	if len(quiet) > 0 {
-		lines = append(lines, styles.SubtitleStyle.Render(truncate("  "+strings.Join(quiet, ", "), width)))
-	}
-
-	return lines
-}
-
-// unsettledChecks are the checks worth a row of their own, failures ahead of
-// anything still running.
-func unsettledChecks(checks []models.CheckDetail) []models.CheckDetail {
-	var failing, running []models.CheckDetail
-
-	for _, check := range checks {
-		switch checkRank(check.StatusDisplay()) {
-		case checkRankFailing:
-			failing = append(failing, check)
-		case checkRankRunning:
-			running = append(running, check)
-		}
-	}
-
-	return append(failing, running...)
-}
-
-// settledTally counts the checks that need no attention, one entry per
-// outcome in the order the outcomes first appear.
-func settledTally(checks []models.CheckDetail) []string {
-	tally := map[string]int{}
-	order := []string{}
-
-	for _, check := range checks {
-		status := check.StatusDisplay()
-		if checkRank(status) != checkRankSettled {
-			continue
-		}
-		if tally[status] == 0 {
-			order = append(order, status)
-		}
-		tally[status]++
-	}
-
-	counted := make([]string, 0, len(order))
-	for _, status := range order {
-		counted = append(counted, strconv.Itoa(tally[status])+" "+status)
-	}
-
-	return counted
-}
-
-const (
-	checkRankFailing = iota
-	checkRankRunning
-	checkRankSettled
-)
-
-func checkRank(status string) int {
-	switch status {
-	//nolint:misspell // GitHub's own conclusion value is spelled "cancelled"
-	case checkStateFailure, "error", "cancelled", "timed_out", "action_required":
-		return checkRankFailing
-	case checkStateSuccess, "skipped", "neutral", emDash:
-		return checkRankSettled
-	default:
-		return checkRankRunning
-	}
 }
 
 func (m Model) peerDetailLines() []string {
@@ -1021,14 +844,6 @@ func (m Model) selectedPanelBranch() (models.BranchInfo, bool) {
 	return m.branches[m.detailCursor], true
 }
 
-func (m Model) selectedPanelPR() (models.PRInfo, bool) {
-	if m.focusedPanel != panelPRs || m.detailCursor >= len(m.prs) {
-		return models.PRInfo{}, false
-	}
-
-	return m.prs[m.detailCursor], true
-}
-
 func (m Model) selectedPanelCheckout() (models.PeerCheckout, bool) {
 	checkouts := m.RepoCheckouts()
 	if m.focusedPanel != panelPeers || m.detailCursor >= len(checkouts) {
@@ -1079,7 +894,7 @@ func (m Model) panelFooter(panels []panelContent, focused, width int) string {
 
 	if !m.detailFocused {
 		hints = append(hints, footerHint{
-			key: keyEnter, desc: "detail", priority: panelHintPriority - navHintStep*2,
+			key: keyEnter, desc: descDetail, priority: panelHintPriority - navHintStep*2,
 		})
 	}
 

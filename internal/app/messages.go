@@ -161,6 +161,17 @@ type PRDetailLoadedMsg struct {
 	Error    error
 }
 
+// PRSearchLoadedMsg reports the pull requests one saved view returned. Query
+// and fleet identify which read this was, so an answer that arrives after the
+// view or the scope moved on is discarded rather than shown under the wrong
+// heading.
+type PRSearchLoadedMsg struct {
+	Query string
+	Fleet bool
+	PRs   []models.PRInfo
+	Error error
+}
+
 // ActionResultMsg reports the outcome of a write action (branch switch, push,
 // PR creation, or PR merge) run against a single repo.
 type ActionResultMsg struct {

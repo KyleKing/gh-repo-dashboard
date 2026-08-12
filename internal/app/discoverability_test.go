@@ -55,7 +55,7 @@ func TestHelpCoversTheCommandLayer(t *testing.T) {
 
 	help := plainText(New(nil, 1).renderHelp())
 
-	for _, want := range []string{"Command Mode", "@:", ":history", "Fdr"} {
+	for _, want := range []string{"Command Mode", "@:", ":history", "!fdr"} {
 		if !strings.Contains(help, want) {
 			t.Errorf("help overlay is missing %q:\n%s", want, help)
 		}

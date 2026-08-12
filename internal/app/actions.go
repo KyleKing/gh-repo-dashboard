@@ -171,11 +171,8 @@ func (m Model) actionBranch() (models.BranchInfo, bool) {
 // actionPR returns the pull request the current view's actions apply to: the
 // selected PR row, the branch's own PR, or the repo's PR.
 func (m Model) actionPR() (models.PRInfo, bool) {
-	switch {
-	case m.viewMode == ViewModePRDetail && m.prDetail.Number > 0:
+	if m.viewMode == ViewModePRDetail && m.prDetail.Number > 0 {
 		return m.prDetail.PRInfo, true
-	case m.viewMode == ViewModeRepoDetail && m.focusedPanel == panelPRs && m.detailCursor < len(m.prs):
-		return m.prs[m.detailCursor], true
 	}
 
 	branch, ok := m.actionBranch()
@@ -211,26 +208,41 @@ func (m Model) startSwitchBranch() (tea.Model, tea.Cmd) {
 }
 
 // startCheckoutPR checks the pull request under the cursor out locally after
-// confirmation. A branch a parallel checkout already holds is refused, for the
-// same reason switching to it is: git will not check one branch out twice.
+// confirmation.
 func (m Model) startCheckoutPR() (tea.Model, tea.Cmd) {
 	pr, ok := m.actionPR()
 	if !ok {
 		return m, statusCmd("No pull request under the cursor")
 	}
-	if peer, held := models.CheckoutForBranch(m.RepoCheckouts(), pr.HeadRef); held {
-		return m, statusCmd(pr.HeadRef + " is checked out in " + peer.Folder())
-	}
-	for _, branch := range m.branches {
-		if branch.Name == pr.HeadRef && branch.IsCurrent {
-			return m, statusCmd(pr.HeadRef + " is already checked out here")
-		}
+	if refusal, held := m.checkoutRefusal(pr.HeadRef); held {
+		return m, statusCmd(refusal)
 	}
 
 	detail := fmt.Sprintf("#%d %s → %s", pr.Number, pr.Title, pr.HeadRef)
 
 	return m.confirmAction("Check the PR branch out here?", detail,
 		checkoutPRCmd(m.selectedRepo, pr.Number))
+}
+
+// checkoutRefusal reports why a head ref cannot be checked out here, which is
+// that some checkout already holds it: git will not check one branch out
+// twice. An empty ref is unknown rather than free, and is not refused.
+func (m Model) checkoutRefusal(headRef string) (string, bool) {
+	if headRef == "" {
+		return "", false
+	}
+
+	if peer, held := models.CheckoutForBranch(m.RepoCheckouts(), headRef); held {
+		return headRef + " is checked out in " + peer.Folder(), true
+	}
+
+	for _, branch := range m.branches {
+		if branch.Name == headRef && branch.IsCurrent {
+			return headRef + " is already checked out here", true
+		}
+	}
+
+	return "", false
 }
 
 // startPushBranch pushes the branch under the cursor after confirmation.
@@ -301,6 +313,71 @@ type panelAction struct {
 	run  func(Model) (tea.Model, tea.Cmd)
 }
 
+// actionMenu is what the open verb menu is acting on and what it offers, which
+// depends on the view: a panel's selection in the grid, the row under the
+// cursor in the PRs tab, and the filtered fleet in the repo list.
+func (m Model) actionMenu() actionMenu {
+	switch m.viewMode { //nolint:exhaustive // every other view answers with the focused panel's verbs
+	case ViewModePRList:
+		target := "nothing selected"
+		if pr, ok := m.selectedSearchPR(); ok {
+			target = "#" + strconv.Itoa(pr.Number) + " " + pr.Title
+		}
+
+		return actionMenu{title: tabNamePRs, target: target, actions: prListActions()}
+
+	case ViewModeRepoList:
+		return actionMenu{
+			title:   "Fleet",
+			target:  strconv.Itoa(len(m.filteredPaths)) + " repos match the current filters",
+			actions: listActions(),
+		}
+	}
+
+	panels := m.panelSet(m.gridWidth())
+	i := panelIndex(panels, m.focusedPanel)
+	if i < 0 || i >= len(panels) {
+		return actionMenu{title: "Detail"}
+	}
+
+	return actionMenu{
+		title:   panels[i].title,
+		target:  m.panelDetailTitle(panels[i]),
+		actions: panelActionsFor(panels[i].id),
+	}
+}
+
+// actionMenu is one open verb menu: what it acts on, and what it offers.
+type actionMenu struct {
+	title   string
+	target  string
+	actions []panelAction
+}
+
+// listActions are the batch operators, which each still want a text object
+// after the verb ("!fdr" fetches the dirty repos, "!ff" the filtered set).
+// They sit behind the leader rather than on capital letters of their own,
+// which is what frees those letters for the tab bar.
+func listActions() []panelAction {
+	return []panelAction{
+		{key: "c", name: "cleanup merged + object", run: startOperator("C")},
+		{key: "f", name: nameFetch + " + object", run: startOperator("F")},
+		{key: "p", name: "prune remote + object", run: startOperator("P")},
+		{key: "r", name: "refresh PRs + object", run: startOperator("R")},
+	}
+}
+
+// startOperator parks an operator waiting for its text object, exactly as
+// typing its key used to.
+func startOperator(key string) func(Model) (tea.Model, tea.Cmd) {
+	return func(m Model) (tea.Model, tea.Cmd) {
+		m.pendingOperator = key
+		m.pendingObject = ""
+
+		return m, nil
+	}
+}
+
 // panelActionsFor returns the verbs the focused panel's selection supports.
 func panelActionsFor(id panelID) []panelAction {
 	switch id {
@@ -320,14 +397,6 @@ func panelActionsFor(id panelID) []panelAction {
 			{key: "p", name: "push", run: Model.startPushBranch},
 			{key: "s", name: "switch to it", run: Model.startSwitchBranch},
 			{key: "y", name: "copy name", run: Model.copyBranchName},
-		}
-	case panelPRs:
-		return []panelAction{
-			{key: "c", name: "check out here", run: Model.startCheckoutPR},
-			{key: "m", name: "squash-merge", run: Model.startSquashMergePR},
-			{key: "o", name: "open in browser", run: Model.openPRURL},
-			{key: "u", name: "copy URL", run: Model.copyPRURL},
-			{key: "y", name: "copy number", run: Model.copyPRNumber},
 		}
 	case panelPeers:
 		return []panelAction{
@@ -504,33 +573,6 @@ func (m Model) copyBranchName() (tea.Model, tea.Cmd) {
 	return m, copyToClipboardCmd(branch.Name)
 }
 
-func (m Model) openPRURL() (tea.Model, tea.Cmd) {
-	pr, ok := m.actionPR()
-	if !ok || pr.URL == "" {
-		return m, statusCmd("No pull request URL to open")
-	}
-
-	return m, openURLCmd(pr.URL)
-}
-
-func (m Model) copyPRURL() (tea.Model, tea.Cmd) {
-	pr, ok := m.actionPR()
-	if !ok || pr.URL == "" {
-		return m, statusCmd("No pull request URL to copy")
-	}
-
-	return m, copyToClipboardCmd(pr.URL)
-}
-
-func (m Model) copyPRNumber() (tea.Model, tea.Cmd) {
-	pr, ok := m.actionPR()
-	if !ok {
-		return m, nil
-	}
-
-	return m, copyToClipboardCmd("#" + strconv.Itoa(pr.Number))
-}
-
 func (m Model) copyPeerPath() (tea.Model, tea.Cmd) {
 	checkout, ok := m.selectedPanelCheckout()
 	if !ok {
@@ -586,9 +628,10 @@ func (m Model) editSelectedNote() (tea.Model, tea.Cmd) {
 // handlePanelActionKey answers the open verb menu: a verb key runs it against
 // the current selection, anything else backs out.
 func (m Model) handlePanelActionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	menu := m.actionMenu()
 	m.panelActions = false
 
-	for _, action := range panelActionsFor(m.focusedPanel) {
+	for _, action := range menu.actions {
 		if action.key == msg.String() {
 			return action.run(m)
 		}
