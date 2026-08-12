@@ -54,6 +54,50 @@ func TestFindGitRoot(t *testing.T) {
 	})
 }
 
+func TestResolveScanPathsRejectsUnusablePaths(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	file := filepath.Join(dir, "notadir")
+	if err := os.WriteFile(file, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	missing := filepath.Join(dir, "typo")
+
+	tests := []struct {
+		name    string
+		args    []string
+		cfg     config.Config
+		wantErr bool
+	}{
+		{name: "existing positional directory", args: []string{dir}},
+		{name: "missing positional directory", args: []string{missing}, wantErr: true},
+		{name: "positional path is a file", args: []string{file}, wantErr: true},
+		{name: "existing config scan path", cfg: config.Config{ScanPaths: []string{dir}}},
+		{name: "missing config scan path", cfg: config.Config{ScanPaths: []string{missing}}, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			paths, err := resolveScanPaths(tt.args, tt.cfg)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("resolveScanPaths(%v, %v) = %v, nil; want an error", tt.args, tt.cfg, paths)
+				}
+
+				return
+			}
+			if err != nil {
+				t.Fatalf("resolveScanPaths(%v, %v) errored: %v", tt.args, tt.cfg, err)
+			}
+			if len(paths) != 1 || paths[0] != dir {
+				t.Errorf("resolveScanPaths = %v; want [%s]", paths, dir)
+			}
+		})
+	}
+}
+
 //nolint:paralleltest // applyConfig mutates global flag and notes-filename state
 func TestApplyConfigDepth(t *testing.T) {
 	tests := []struct {

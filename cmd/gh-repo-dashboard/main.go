@@ -21,7 +21,10 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
-var errEmptyRoster = errors.New("names no repos that exist on disk")
+var (
+	errEmptyRoster  = errors.New("names no repos that exist on disk")
+	errNotDirectory = errors.New("not a directory")
+)
 
 var (
 	version = "dev"
@@ -109,9 +112,7 @@ Flags:
 	flag.PrintDefaults()
 }
 
-// resolveScanPaths picks the scan roots: positional args, then config, then the
-// enclosing repo, then the current directory.
-// ResolveRoster picks the repo roster: a mani.yaml when one is named, and the
+// resolveRoster picks the repo roster: a mani.yaml when one is named, and the
 // usual scan-path resolution otherwise. Roster entries are repo directories,
 // which discovery returns as-is at any depth.
 func resolveRoster(maniPath string, args []string, cfg config.Config) ([]string, error) {
@@ -130,11 +131,38 @@ func resolveRoster(maniPath string, args []string, cfg config.Config) ([]string,
 	return roster, nil
 }
 
+// checkScanPaths rejects a scan root that is not an existing directory. Only
+// the explicitly named roots are checked; the cwd and enclosing-repo fallbacks
+// exist by construction.
+func checkScanPaths(source string, paths []string) error {
+	for _, p := range paths {
+		info, err := os.Stat(p)
+		if err != nil {
+			return fmt.Errorf("%s %s: %w", source, p, err)
+		}
+		if !info.IsDir() {
+			return fmt.Errorf("%s %s: %w", source, p, errNotDirectory)
+		}
+	}
+
+	return nil
+}
+
+// resolveScanPaths picks the scan roots: positional args, then config, then the
+// enclosing repo, then the current directory.
 func resolveScanPaths(args []string, cfg config.Config) ([]string, error) {
 	if len(args) > 0 {
+		if err := checkScanPaths("scan path", args); err != nil {
+			return nil, err
+		}
+
 		return args, nil
 	}
 	if len(cfg.ScanPaths) > 0 {
+		if err := checkScanPaths("config scan_paths entry", cfg.ScanPaths); err != nil {
+			return nil, err
+		}
+
 		return cfg.ScanPaths, nil
 	}
 
