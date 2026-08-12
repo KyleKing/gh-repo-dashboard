@@ -238,9 +238,10 @@ func prefetchPRDetailCmd(repoPath, remoteID string, prNumber int) tea.Cmd {
 	}
 }
 
-// loadStashDiffCmd reads one stash's full patch. Since jj has no stashes, the
-// call is git-only and a non-git repo simply reports nothing.
-func loadStashDiffCmd(repoPath string, index int) tea.Cmd {
+// loadStashDiffCmd reads one stash's full patch, rendered by the configured
+// external diff viewer where there is one. Since jj has no stashes, the call is
+// git-only and a non-git repo simply reports nothing.
+func loadStashDiffCmd(repoPath string, index, width int) tea.Cmd {
 	return func() tea.Msg {
 		msg := StashDiffLoadedMsg{Path: repoPath, Index: index}
 
@@ -249,8 +250,17 @@ func loadStashDiffCmd(repoPath string, index int) tea.Cmd {
 			return msg
 		}
 
+		ctx := context.Background()
+		if viewer := git.ExternalDiffCommand(ctx, repoPath); viewer != "" {
+			if diff, err := git.StashDiffExternal(ctx, repoPath, index, width, viewer); err == nil {
+				msg.Diff = diff
+
+				return msg
+			}
+		}
+
 		//nolint:errcheck // a stash we cannot read reports an empty diff
-		msg.Diff, _ = git.StashDiff(context.Background(), repoPath, index)
+		msg.Diff, _ = git.StashDiff(ctx, repoPath, index)
 
 		return msg
 	}

@@ -19,6 +19,7 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/config"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 var (
@@ -88,6 +89,7 @@ func applyConfig(cfg config.Config, depth *int) {
 	}
 
 	models.SetNotesFilenames(cfg.NotesFilenames)
+	vcs.SetExternalDiffCommand(cfg.Diff.External)
 
 	if ttl := cfg.CacheTTL(); ttl > 0 {
 		cache.SetAllTTLs(ttl)
@@ -113,7 +115,7 @@ over the config file's scan_paths, which takes precedence over the enclosing
 repo (walking up from the current directory) or the current directory itself.
 
 Optional config file (scan_paths, depth, cache_ttl_minutes, notes_filenames,
-cache_to_disk):
+cache_to_disk, diff.external):
   %s
 
 Run "%s --script -" with a "help" line to list the :commands.

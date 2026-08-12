@@ -1180,7 +1180,7 @@ func (m Model) stashDetailCmd(index int) tea.Cmd {
 			return nil
 		}
 
-		return loadStashDiffCmd(m.selectedRepo, index)
+		return loadStashDiffCmd(m.selectedRepo, index, m.detailPaneSize().width-stashBodyIndent)
 	}
 
 	if _, loaded := m.stashDiffstat[index]; loaded {

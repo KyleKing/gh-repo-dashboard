@@ -330,12 +330,21 @@ func TestStashFullDiffVerbSwapsTheDetailPane(t *testing.T) {
 		t.Errorf("a diff still loading must say so, got %q", pane)
 	}
 
+	// An external viewer's own colors reach the pane already styled, and
+	// restyling them would end that styling at the viewer's first reset.
+	const colored = "\x1b[92m+new\x1b[0m"
+
 	loadedModel, _ := toggled.Update(StashDiffLoadedMsg{
-		Path: toggled.selectedRepo, Index: 0, Diff: "@@ -1 +1 @@\n-old\n+new",
+		Path: toggled.selectedRepo, Index: 0, Diff: "@@ -1 +1 @@\n-old\n" + colored,
 	})
 	loaded := mustModel(t, loadedModel)
 
-	pane := plainText(strings.Join(loaded.stashDetailLines(60), "\n"))
+	rendered := strings.Join(loaded.stashDetailLines(60), "\n")
+	if !strings.Contains(rendered, colored) {
+		t.Errorf("the pane dropped the viewer's own styling, got %q", rendered)
+	}
+
+	pane := plainText(rendered)
 	if !strings.Contains(pane, "+new") || strings.Contains(pane, "one.go") {
 		t.Errorf("the pane should show the patch instead of the diffstat, got %q", pane)
 	}

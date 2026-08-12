@@ -4,6 +4,7 @@ package vcs
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -32,12 +33,22 @@ func runCommand(ctx context.Context, dir, name string, args ...string) (string, 
 // it: the leading byte of the first record carries meaning (a porcelain status
 // code's unstaged column is a leading space) that runCommand's trim eats.
 func runCommandRaw(ctx context.Context, dir, name string, args ...string) (string, error) {
+	return runCommandEnv(ctx, dir, nil, name, args...)
+}
+
+// runCommandEnv is runCommandRaw with env appended to the environment the
+// process already has, for the variables a viewer reads.
+func runCommandEnv(ctx context.Context, dir string, env []string, name string, args ...string) (string, error) {
 	if fn, ok := ctx.Value(commandRunnerKey{}).(commandRunner); ok {
 		return fn(ctx, dir, name, args...)
 	}
 
 	cmd := exec.CommandContext(ctx, name, args...) // #nosec G204 -- name/args from internal command tables
 	cmd.Dir = dir
+	if len(env) > 0 {
+		cmd.Env = append(os.Environ(), env...)
+	}
+
 	out, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("running %s: %w", name, err)

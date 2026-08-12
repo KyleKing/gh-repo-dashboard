@@ -30,6 +30,9 @@ scan_paths = ["~/Developer", "/tmp/repos"]
 depth = 3
 notes_filenames = ["NOTES.md"]
 cache_ttl_minutes = 10
+
+[diff]
+external = "difft --color=always"
 `)
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	t.Setenv("HOME", "/home/tester")
@@ -54,6 +57,9 @@ cache_ttl_minutes = 10
 	}
 	if !cfg.PersistCache() {
 		t.Error("a file that says nothing about cache_to_disk turned persistence off")
+	}
+	if want := "difft --color=always"; cfg.Diff.External != want {
+		t.Errorf("diff.external = %q; want %q", cfg.Diff.External, want)
 	}
 }
 

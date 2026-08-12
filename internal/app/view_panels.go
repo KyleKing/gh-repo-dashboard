@@ -964,10 +964,25 @@ func (m Model) stashDetailLines(width int) []string {
 
 	lines = append(lines, "", styles.HeaderStyle.Render(label))
 	for _, line := range stashBodyLines(body) {
-		lines = append(lines, styles.TableRowStyle.Render(truncate("  "+line, width)))
+		lines = append(lines, stashBodyLine(line, width))
 	}
 
 	return lines
+}
+
+// stashBodyIndent is what a patch line is inset by inside the detail pane.
+const stashBodyIndent = 2
+
+// stashBodyLine renders one line of a patch. A line an external viewer colored
+// is only clipped, never restyled: the viewer's first reset would end an outer
+// style anyway, leaving the rest of the pane's line unstyled.
+func stashBodyLine(line string, width int) string {
+	indented := strings.Repeat(" ", stashBodyIndent) + line
+	if strings.ContainsRune(line, '\x1b') {
+		return lipgloss.NewStyle().MaxWidth(max(width, 1)).Render(indented)
+	}
+
+	return styles.TableRowStyle.Render(truncate(indented, width))
 }
 
 // stashBodyLines caps the pane's line count, since the whole detail is

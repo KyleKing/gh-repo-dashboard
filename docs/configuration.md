@@ -20,9 +20,26 @@ cache_ttl_minutes = 5
 
 # Keep pull request data between runs, one file per remote (default true)
 cache_to_disk = true
+
+# Diff viewer, in the form git's diff.external takes; unset means git decides
+[diff]
+external = "difft --color=always --display=inline --syntax-highlight=off"
 ```
 
 Flags and positional paths on the command line take precedence over the file.
+
+## Diff viewer
+
+A stash's full patch (`!o` in the Stashes panel) renders through the same
+external diff command git itself would run, so a repo or global
+`diff.external = difft` is picked up with no further setup. `[diff] external`
+overrides it for this tool alone.
+
+The viewer runs without a terminal, which is how a tool decides to drop its
+color and assume eighty columns, so the pane's width arrives in `COLUMNS` and
+`DFT_WIDTH`, and color is forced through `CLICOLOR_FORCE`, `DFT_COLOR`, and
+`DFT_DISPLAY=inline`. A flag written into the command itself still wins over
+all of them, which is the way to configure a viewer that reads neither.
 
 ## Caching
 
