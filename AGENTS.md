@@ -34,6 +34,10 @@ Known false negatives, each of which has already cost a session:
   binary published ten times. Confirm with
   `gh release download <tag> -p checksums.txt -O - | awk '{print $1}' | sort -u | wc -l`
   and expect the same number as there are binaries.
+- **No function anywhere may be named `total*`.** `test:coverage-min` pulls the
+  percentage out with `grep total`, so a second matching line makes `$coverage` two
+  values, the `awk` comparison dies, and the empty result reads as passing. The task
+  lives in a template-managed file, so the guard has to hold here.
 
 When a check fails, fix the cause. Do not skip a test, widen a timeout, or disable a
 linter to get to green. Three fix-and-push rounds with no new root cause means stop and

@@ -352,7 +352,7 @@ type diskFileInfo struct {
 func (d *DiskCache) evict() {
 	files := d.stat()
 
-	total := totalBytes(files)
+	total := sumSizes(files)
 	if total <= d.maxBytes {
 		return
 	}
@@ -399,7 +399,7 @@ func (d *DiskCache) stat() []diskFileInfo {
 	return files
 }
 
-func totalBytes(files []diskFileInfo) int64 {
+func sumSizes(files []diskFileInfo) int64 {
 	var total int64
 	for _, f := range files {
 		total += f.size
