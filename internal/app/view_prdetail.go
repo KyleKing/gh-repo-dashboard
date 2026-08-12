@@ -102,25 +102,22 @@ func writeMarkdown(b *strings.Builder, body string, width, maxLines int) {
 	}
 }
 
-// Check conclusions shared by the PR detail view and the focused view's
-// detail pane.
-const (
-	checkStateFailure = "failure"
-	checkStateSuccess = "success"
-)
+// checkStateFailure is one of the check conclusions checkStatusStyle treats
+// as failing.
+const checkStateFailure = "failure"
 
-// checkStatusStyle colors a single check's status by outcome.
+// checkStatusStyle colors a single check's status by outcome. Only a failing
+// or skipped check draws the eye; passing, pending, and every other outcome
+// read as settled, so a long checks list does not read as a wall of color.
 func checkStatusStyle(status string) lipgloss.Style {
 	switch status {
-	case checkStateSuccess, models.StatusPassing:
-		return styles.CleanStyle
 	//nolint:misspell // GitHub's own conclusion value is spelled "cancelled"
 	case checkStateFailure, "error", "cancelled", "timed_out":
 		return styles.ErrorStyle
-	case "skipped", "neutral":
-		return styles.SubtitleStyle
-	default:
+	case "skipped":
 		return styles.WarningStyle
+	default:
+		return styles.SubtitleStyle
 	}
 }
 

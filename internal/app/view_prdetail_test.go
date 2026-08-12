@@ -6,7 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/lipgloss/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
 func TestRenderPRDetailShowsChecksAndLatestComment(t *testing.T) {
@@ -41,6 +44,37 @@ func TestRenderPRDetailShowsChecksAndLatestComment(t *testing.T) {
 		if !strings.Contains(rendered, fragment) {
 			t.Errorf("expected %q in the PR detail view:\n%s", fragment, rendered)
 		}
+	}
+}
+
+// Only a failing or skipped check should draw the eye; everything else
+// (passing, pending, unknown) reads as settled so a long checks list is not a
+// wall of color.
+func TestCheckStatusStyle_OnlyFailingAndSkippedStandOut(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		status string
+		want   lipgloss.Style
+	}{
+		{"failure", styles.ErrorStyle},
+		{"error", styles.ErrorStyle},
+		{"cancelled", styles.ErrorStyle}, //nolint:misspell // GitHub's own conclusion value is spelled "cancelled"
+		{"timed_out", styles.ErrorStyle},
+		{"skipped", styles.WarningStyle},
+		{"success", styles.SubtitleStyle},
+		{"neutral", styles.SubtitleStyle},
+		{"pending", styles.SubtitleStyle},
+		{"in_progress", styles.SubtitleStyle},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.status, func(t *testing.T) {
+			t.Parallel()
+			if got := checkStatusStyle(tt.status); got.String() != tt.want.String() {
+				t.Errorf("checkStatusStyle(%q) = %v, want %v", tt.status, got, tt.want)
+			}
+		})
 	}
 }
 
