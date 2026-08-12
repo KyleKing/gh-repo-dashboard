@@ -82,6 +82,12 @@ func (m Model) openTab(tab Tab) (tea.Model, tea.Cmd) {
 	}
 
 	if tab == TabPRs {
+		// Leaving a repo you've focused defaults the search to that repo;
+		// leaving the list, where no one repo is the subject, defaults it to
+		// everywhere the search reaches instead of falling back to an
+		// arbitrary one.
+		m.prFleet = m.viewMode != ViewModeRepoDetail
+
 		next, cmd := m.openPRList()
 
 		return next, cmd

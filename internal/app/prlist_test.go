@@ -33,6 +33,35 @@ func TestTabBarBracketsTheKeyAsTyped(t *testing.T) {
 	}
 }
 
+// Opening the PRs tab from the repo list has no one repo to scope a search
+// to, so it defaults to everywhere the search reaches rather than falling
+// back to an arbitrary repo (which can fail outright if that repo has no
+// remote gh can resolve).
+func TestOpenTabDefaultsToFleetScopeFromTheRepoList(t *testing.T) {
+	t.Parallel()
+
+	m := focusedModel(160, 40)
+	m.viewMode = ViewModeRepoList
+
+	opened := mustModel(t, mustUpdate(t, &m, keyPress('P')))
+	if !opened.prFleet {
+		t.Error("opening the PRs tab from the repo list should default to fleet scope")
+	}
+}
+
+// Opening the PRs tab from a repo already in focus defaults the search to
+// that repo, since it is the one the tab was opened to ask about.
+func TestOpenTabDefaultsToThisRepoScopeFromRepoDetail(t *testing.T) {
+	t.Parallel()
+
+	m := focusedModel(160, 40)
+
+	opened := mustModel(t, mustUpdate(t, &m, keyPress('P')))
+	if opened.prFleet {
+		t.Error("opening the PRs tab from a focused repo should default to this-repo scope")
+	}
+}
+
 func TestTabKeysCrossBetweenTheListAndThePRTab(t *testing.T) {
 	t.Parallel()
 
