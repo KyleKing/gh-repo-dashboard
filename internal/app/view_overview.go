@@ -159,11 +159,17 @@ func overviewIdentity(s models.RepoSummary) string {
 //
 // The compact layout keeps only Sync and Files: at that width the rest costs
 // more rows than the answers are worth.
+// Each row names what it is waiting on rather than what it would say if the
+// answer were in: a row read from the repo's own summary waits on that summary,
+// Peers waits on every summary because a peer is another repo, and the rows
+// with a fetch of their own wait on that fetch as well.
 func (m Model) overviewRows(s models.RepoSummary, compact bool) []overviewRow {
+	unread := m.summaryPending(s.Path)
+
 	rows := make([]overviewRow, 0, overviewFullRows)
 	rows = append(rows,
-		overviewRow{label: rowNameSync, value: overviewSync(s)},
-		overviewRow{label: rowNameFiles, value: overviewFiles(s)},
+		overviewRow{label: rowNameSync, value: section(unread, overviewSync(s))},
+		overviewRow{label: rowNameFiles, value: section(unread, overviewFiles(s))},
 	)
 
 	if compact {
@@ -171,12 +177,15 @@ func (m Model) overviewRows(s models.RepoSummary, compact bool) []overviewRow {
 	}
 
 	return append(rows,
-		overviewRow{label: "Peers", value: overviewPeers(m.PeerCheckouts(s.Path))},
-		overviewRow{label: tabNameStashes, value: overviewStashes(s)},
-		overviewRow{label: tabNameNotes, value: overviewNotes(s.NotesFiles)},
-		overviewRow{label: "Template", value: formatCopierCell(s, overviewMaxWidth)},
-		overviewRow{label: tabNamePRs, value: overviewPRs(s)},
-		overviewRow{label: "CI", value: m.overviewCI(s)},
+		overviewRow{label: "Peers", value: section(m.loading, overviewPeers(m.PeerCheckouts(s.Path)))},
+		overviewRow{label: tabNameStashes, value: section(unread, overviewStashes(s))},
+		overviewRow{label: tabNameNotes, value: section(unread, overviewNotes(s.NotesFiles))},
+		overviewRow{
+			label: "Template",
+			value: section(unread || m.fetchPending(s.Path, fetchTemplate), formatCopierCell(s, overviewMaxWidth)),
+		},
+		overviewRow{label: tabNamePRs, value: section(unread || m.fetchPending(s.Path, fetchPR), overviewPRs(s))},
+		overviewRow{label: "CI", value: section(unread || m.fetchPending(s.Path, fetchCI), m.overviewCI(s))},
 	)
 }
 

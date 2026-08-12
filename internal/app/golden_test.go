@@ -127,6 +127,21 @@ func TestGoldenPanelGridBreakpoints(t *testing.T) {
 	}
 }
 
+// TestGoldenRepoListLoading pins the list mid-load: charlie's summary has not
+// been read, alpha's summary is in but every fetch it started is still out, and
+// bravo has settled. A pending cell that quietly renders as an absent one shows
+// up here as a frame diff.
+func TestGoldenRepoListLoading(t *testing.T) {
+	m := goldenModel()
+	m.loading = true
+	m.loadingCount, m.loadedCount = 3, 2
+	delete(m.summaries, "/Users/dev/charlie")
+	for _, kind := range []fetchKind{fetchPR, fetchPRCount, fetchTemplate, fetchCI} {
+		m.startFetch("/Users/dev/alpha", kind)
+	}
+	golden.RequireEqual(t, []byte(m.renderScreen()))
+}
+
 func TestGoldenFilterModal(t *testing.T) {
 	m := goldenModel()
 	m.viewMode = ViewModeFilter

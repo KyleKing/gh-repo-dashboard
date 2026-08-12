@@ -80,12 +80,28 @@ func (m Model) renderRepoListBreadcrumbs() string {
 		badges = append(badges, styles.Badge(label, styles.WarningStyle))
 	}
 
-	if m.loading {
-		progress := fmt.Sprintf("Loading %d/%d", m.loadedCount, m.loadingCount)
+	if progress := m.loadingBadge(); progress != "" {
 		badges = append(badges, styles.Badge(progress, styles.CountBadgeStyle))
 	}
 
 	return joinWithinWidth(title, badges, contentWidth(m.width))
+}
+
+// loadingBadge reports what is still arriving, or is empty once the fleet has
+// settled. Discovery counts against a denominator it knows, and the per-repo
+// fetches it starts count down instead: CI is only asked for the rows on
+// screen, so their total is not known in advance and a combined fraction would
+// have to move its own denominator as the user scrolls.
+func (m Model) loadingBadge() string {
+	if m.loading {
+		return fmt.Sprintf("Loading %d/%d", m.loadedCount, m.loadingCount)
+	}
+
+	if inFlight := m.fetchesInFlight(); inFlight > 0 {
+		return fmt.Sprintf("Fetching %d", inFlight)
+	}
+
+	return ""
 }
 
 func (m Model) renderStatusBar() string {
@@ -155,7 +171,7 @@ func (m Model) renderListWithPreview(height int) string {
 		return fitBlock(list, height)
 	}
 
-	summary := m.summaries[m.filteredPaths[m.cursor]]
+	summary := m.rowSummary(m.filteredPaths[m.cursor])
 
 	overview := m.renderOverview(summary, overviewOpts{width: panel, standalone: true})
 
@@ -184,6 +200,19 @@ func fitBlock(block string, height int) string {
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// rowSummary is the summary a list row renders from. A row exists from
+// discovery, before its own summary has been read, and the zero summary carries
+// no path: standing the path back in keeps the row named and lets every cell
+// tell a value still being fetched from one that is genuinely absent.
+func (m Model) rowSummary(path string) models.RepoSummary {
+	summary, loaded := m.summaries[path]
+	if !loaded {
+		summary.Path = path
+	}
+
+	return summary
 }
 
 func (m Model) renderTable(height int) string {
@@ -227,7 +256,7 @@ func (m Model) renderTable(height int) string {
 	window := m.visibleRepoRange(rowHeight)
 	for i := window.start; i < window.end; i++ {
 		path := m.filteredPaths[i]
-		summary := m.summaries[path]
+		summary := m.rowSummary(path)
 
 		if compact {
 			rows = append(rows, m.renderCompactRow(summary, i == m.cursor, layout))
@@ -332,7 +361,7 @@ func (m Model) notesPreviewLines(width int) []string {
 
 	contents, loaded := m.notesPreview[path]
 	if !loaded {
-		return []string{notesDivider(qualifiedRepoName(path), "reading…", width)}
+		return []string{notesDivider(qualifiedRepoName(path), readingLabel, width)}
 	}
 
 	// One note needs no heading of its own: the divider below already names
@@ -420,6 +449,26 @@ func elideMiddle(lines []string, height int) []string {
 	return append(out, lines[len(lines)-tail:]...)
 }
 
+// prCell renders the PR column: the pull request when the repo has one, and
+// the pending-or-absent placeholder when it does not.
+func (m Model) prCell(s models.RepoSummary) string {
+	if s.PRInfo == nil {
+		return absentCell(m.fetchPending(s.Path, fetchPR) || m.summaryPending(s.Path))
+	}
+
+	return formatPRCell(s)
+}
+
+// templateCell renders the copier-template column, standing in the
+// pending-or-absent placeholder for a repo whose template info has not arrived.
+func (m Model) templateCell(s models.RepoSummary, width int) string {
+	if s.TemplateInfo == nil {
+		return absentCell(m.fetchPending(s.Path, fetchTemplate) || m.summaryPending(s.Path))
+	}
+
+	return formatCopierCell(s, width)
+}
+
 // formatPRCell formats a repo's PR-column text: "#N" with a review-status
 // indicator and a CI/workflow failure indicator, or emDash if there's no PR.
 func formatPRCell(s models.RepoSummary) string {
@@ -492,12 +541,14 @@ func renderRepoHeader(layout table.Layout) string {
 	return strings.Repeat(" ", cursorWidth) + table.Header(layout)
 }
 
-// peersCell renders a repo's parallel-checkout count, or emDash when the repo
-// is the only checkout of its remote.
+// peersCell renders a repo's parallel-checkout count, or the pending-or-absent
+// placeholder when it is the only checkout found so far. Peers are read out of
+// the other repos' summaries, so no repo's count is final until every summary
+// has landed.
 func (m Model) peersCell(path string, base lipgloss.Style, selected bool) (string, lipgloss.Style) {
 	peers := m.PeerCheckouts(path)
 	if len(peers) == 0 {
-		return emDash, base
+		return absentCell(m.loading), base
 	}
 
 	cell := "⧉ " + strconv.Itoa(len(peers))
@@ -509,15 +560,11 @@ func (m Model) peersCell(path string, base lipgloss.Style, selected bool) (strin
 }
 
 // ciCell renders the default branch's CI rollup: a check when every run
-// passed, the count of failures when not, an ellipsis while the fetch is in
-// flight, and emDash once it is known there is nothing to report.
+// passed, the count of failures when not, the pending glyph while the fetch is
+// in flight, and emDash once it is known there is nothing to report.
 func (m Model) ciCell(s models.RepoSummary, base lipgloss.Style, selected bool) (string, lipgloss.Style) {
 	if s.WorkflowInfo == nil {
-		if m.ciRequested[s.Path] && !m.ciSettled[s.Path] {
-			return "…", base
-		}
-
-		return emDash, base
+		return absentCell(m.fetchPending(s.Path, fetchCI) || m.summaryPending(s.Path)), base
 	}
 
 	wf := s.WorkflowInfo
@@ -615,22 +662,26 @@ func (m Model) repoCell(col string, s models.RepoSummary, width int, base lipglo
 	case colBranch:
 		return withSelection(styles.BranchStyle, selected).Render(padCell(s.Branch, width))
 	case colStatus:
-		return statusCell(s, width, base, selected)
+		return m.statusCell(s, width, base, selected)
 	case colPeers:
 		text, style := m.peersCell(s.Path, base, selected)
 
 		return style.Render(padCell(text, width))
 	case colPR:
-		return prCellStyle(s, base, selected).Render(padCell(formatPRCell(s), width))
+		return prCellStyle(s, base, selected).Render(padCell(m.prCell(s), width))
 	case colPRs:
 		return base.Render(padCell(m.prCountText(s.Path), width))
 	case colTemplate:
-		return templateCellStyle(s, base, selected).Render(padCell(formatCopierCell(s, width), width))
+		return templateCellStyle(s, base, selected).Render(padCell(m.templateCell(s, width), width))
 	case colCI:
 		text, style := m.ciCell(s, base, selected)
 
 		return style.Render(padCell(text, width))
 	case colModified:
+		if m.summaryPending(s.Path) {
+			return base.Render(padCell(pendingGlyph, width))
+		}
+
 		return base.Render(padCell(s.RelativeModified(), width))
 	default:
 		return base.Render(padCell("", width))
@@ -638,12 +689,20 @@ func (m Model) repoCell(col string, s models.RepoSummary, width int, base lipglo
 }
 
 // statusCell renders the status summary and the notes marker that shares its
-// column, keeping the marker right-aligned within the column.
-func statusCell(s models.RepoSummary, width int, base lipgloss.Style, selected bool) string {
+// column, keeping the marker right-aligned within the column. A summary still
+// being read has no state to report, and reporting a clean tree before the read
+// lands would be a claim about the repo rather than a placeholder.
+func (m Model) statusCell(s models.RepoSummary, width int, base lipgloss.Style, selected bool) string {
 	notesText, notesStyle := notesMarker(s, base, selected)
 	style := withSelection(statusCellStyle(s, base), selected)
 
-	return style.Render(padCell(s.StatusSummary(), width-notesMarkerWidth)) +
+	summary := s.StatusSummary()
+	if m.summaryPending(s.Path) {
+		summary = pendingGlyph
+		style = base
+	}
+
+	return style.Render(padCell(summary, width-notesMarkerWidth)) +
 		notesStyle.Render(padCell(notesText, notesMarkerWidth))
 }
 
@@ -652,7 +711,7 @@ func (m Model) prCountText(path string) string {
 		return strconv.Itoa(count)
 	}
 
-	return emDash
+	return absentCell(m.fetchPending(path, fetchPRCount) || m.summaryPending(path))
 }
 
 func statusCellStyle(s models.RepoSummary, base lipgloss.Style) lipgloss.Style {

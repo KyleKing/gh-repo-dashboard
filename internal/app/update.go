@@ -56,6 +56,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			summary.PRInfo = msg.PRInfo
 			m.summaries[msg.Path] = summary
 		}
+		m.finishFetch(msg.Path, fetchPR)
 
 		return m, nil
 
@@ -67,6 +68,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			summary.TemplateInfo = msg.Info
 			m.summaries[msg.Path] = summary
 		}
+		m.finishFetch(msg.Path, fetchTemplate)
 
 		return m, nil
 
@@ -125,6 +127,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.prCount = make(map[string]int)
 		}
 		m.prCount[msg.Path] = msg.Count
+		m.finishFetch(msg.Path, fetchPRCount)
 
 		return m, nil
 
@@ -259,11 +262,7 @@ func (m Model) handleRepoSummaryLoaded(msg RepoSummaryLoadedMsg) (tea.Model, tea
 		}
 	} else {
 		m.summaries[msg.Path] = msg.Summary
-		cmds = append(cmds,
-			loadPRCmd(msg.Path, msg.Summary.Branch, msg.Summary.Upstream),
-			loadPRCountCmd(msg.Path, msg.Summary.RemoteID, msg.Summary.Upstream),
-			loadCopierInfoCmd(msg.Path),
-		)
+		cmds = append(cmds, m.followUpCmds(msg.Summary)...)
 	}
 
 	if m.loadedCount >= m.loadingCount {
@@ -275,19 +274,42 @@ func (m Model) handleRepoSummaryLoaded(msg RepoSummaryLoadedMsg) (tea.Model, tea
 	return m, tea.Batch(cmds...)
 }
 
+// followUpCmds starts the per-repo fetches a loaded summary enables, recording
+// each as in flight so the cell it fills reads as pending until it lands. A
+// repo with no upstream has no pull request to ask about, and its commands are
+// nil, so nothing is recorded for it.
+func (m *Model) followUpCmds(summary models.RepoSummary) []tea.Cmd {
+	started := []struct {
+		kind fetchKind
+		cmd  tea.Cmd
+	}{
+		{fetchPR, loadPRCmd(summary.Path, summary.Branch, summary.Upstream)},
+		{fetchPRCount, loadPRCountCmd(summary.Path, summary.RemoteID, summary.Upstream)},
+		{fetchTemplate, loadCopierInfoCmd(summary.Path)},
+	}
+
+	cmds := make([]tea.Cmd, 0, len(started))
+	for _, start := range started {
+		if start.cmd == nil {
+			continue
+		}
+		m.startFetch(summary.Path, start.kind)
+		cmds = append(cmds, start.cmd)
+	}
+
+	return cmds
+}
+
 // handleWorkflowLoaded records a CI fetch's outcome. A repo with no GitHub
 // remote, or one whose runs cannot be read, arrives with no workflow and is
-// marked settled so its cell stops showing the in-flight placeholder.
+// still marked settled so its cell stops showing the in-flight placeholder.
 func (m Model) handleWorkflowLoaded(msg WorkflowLoadedMsg) (tea.Model, tea.Cmd) {
 	if summary, ok := m.summaries[msg.Path]; ok {
 		summary.WorkflowInfo = msg.Workflow
 		m.summaries[msg.Path] = summary
 	}
 
-	if m.ciSettled == nil {
-		m.ciSettled = make(map[string]bool)
-	}
-	m.ciSettled[msg.Path] = true
+	m.finishFetch(msg.Path, fetchCI)
 
 	if msg.Branch != "" {
 		if m.ciBranch == nil {
@@ -628,6 +650,7 @@ func (m *Model) visibleCICmds() []tea.Cmd {
 			m.ciRequested = make(map[string]bool)
 		}
 		m.ciRequested[path] = true
+		m.startFetch(path, fetchCI)
 		cmds = append(cmds, loadDefaultBranchCICmd(path, m.summaries[path].RemoteID))
 	}
 
@@ -1324,6 +1347,10 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		m.loading = true
 		m.summaries = make(map[string]models.RepoSummary)
 		m.prCount = make(map[string]int)
+		// Every fetch is reissued from discovery, so the old bookkeeping would
+		// otherwise suppress the new CI requests and leave phantom pending cells.
+		m.fetching = nil
+		m.ciRequested = nil
 		m.branches = nil
 		m.stashes = nil
 		m.worktrees = nil
