@@ -518,8 +518,12 @@ func notesBodyLines(content string, width int) []string {
 
 	lines := make([]string, len(body))
 	for i, line := range body {
-		lines[i] = styles.NotesPreviewLineStyle.Render(
-			table.TruncateMiddle(strings.TrimRight(line, " \t"), width))
+		style := styles.NotesPreviewLineStyle
+		if strings.HasPrefix(strings.TrimSpace(line), "!") {
+			style = styles.NotesPreviewBangStyle
+		}
+
+		lines[i] = style.Render(table.TruncateMiddle(strings.TrimRight(line, " \t"), width))
 	}
 
 	return lines

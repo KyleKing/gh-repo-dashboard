@@ -134,6 +134,11 @@ var (
 	NotesPreviewLineStyle = lipgloss.NewStyle().
 				Foreground(Subtext0)
 
+	// NotesPreviewBangStyle marks a note line flagged with a leading '!' as
+	// worth a second look, without giving up the section's muted look.
+	NotesPreviewBangStyle = lipgloss.NewStyle().
+				Foreground(Yellow)
+
 	FooterStyle = lipgloss.NewStyle().
 			Foreground(Subtext0)
 
