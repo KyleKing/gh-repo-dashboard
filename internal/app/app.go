@@ -482,6 +482,11 @@ func (m Model) PRCount() int {
 	return m.countVisible(func(s models.RepoSummary) bool { return s.PRInfo != nil })
 }
 
+// NotesCount returns the number of visible repos with a notes file.
+func (m Model) NotesCount() int {
+	return m.countVisible(func(s models.RepoSummary) bool { return s.HasNotes() })
+}
+
 // countVisible counts the filtered repos matching match. Every header count
 // shares this scope, so a filter narrows all of them together rather than
 // leaving one fleet-wide number beside a filtered one.

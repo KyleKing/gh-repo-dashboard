@@ -78,6 +78,10 @@ func (m Model) renderRepoListBreadcrumbs() string {
 		badges = append(badges, styles.Badge(fmt.Sprintf("%d PRs", prCount), styles.PROpenStyle))
 	}
 
+	if notesCount := m.NotesCount(); notesCount > 0 {
+		badges = append(badges, styles.Badge(fmt.Sprintf("%d notes", notesCount), styles.NotesBadgeStyle))
+	}
+
 	if conflicts := m.BranchConflictCount(); conflicts > 0 {
 		label := fmt.Sprintf("%s %d branch conflicts", conflictMark, conflicts)
 		if conflicts == 1 {
