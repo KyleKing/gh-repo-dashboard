@@ -18,33 +18,43 @@ replays `:command` lines from a file or stdin.
 
 ## Architecture
 
+Three front ends share one set of internals. The TUI is the only one with an
+event loop, so it reads progressively through messages while `--cli` and
+`--script` read the same data synchronously.
+
+```mermaid
+flowchart TB
+    main["cmd: flags, config, roster"] --> disc[discovery]
+    main --> app["app: TUI"]
+    main --> cli["cli: JSON"]
+    main --> script["app: --script"]
+
+    disc --> paths([repo paths])
+    paths --> app & cli & script
+
+    app -.->|tea.Cmd per repo| read
+    cli & script --> read
+
+    subgraph read["vcs.ReadSummary and the per-repo fetches"]
+        vcs["vcs: git, jj"]
+        gh["github: PRs, workflows"]
+        copier["copier: template tag"]
+    end
+
+    read --> cache[("cache: TTL, stamp, disk")]
+    cache --> models[models.RepoSummary]
+    models -->|"*LoadedMsg"| app
+    models --> cli & script
+
+    app --> filters
+    filters --> view["view_*.go, sized by ui/table"]
 ```
-├── cmd/gh-repo-dashboard/    # CLI entry point (main.go, flag/config wiring)
-├── internal/
-│   ├── app/                  # Bubble Tea app
-│   │   ├── app.go           # Model definition, Init
-│   │   ├── update.go        # Update function (message handling)
-│   │   ├── view.go          # Shared rendering scaffolding
-│   │   ├── view_*.go        # Per-view-mode rendering (repolist, panels, palette, ...)
-│   │   ├── panels.go        # Focused view's panel model and vertical sizing
-│   │   ├── palette.go       # Universal find's query grammar and result types
-│   │   ├── keymap.go        # Key bindings
-│   │   ├── command.go       # :command registry and commands
-│   │   ├── commands.go      # tea.Cmd constructors
-│   │   ├── script.go        # --script headless runner
-│   │   ├── textobject.go    # Text objects and operators
-│   │   └── messages.go      # Message types
-│   ├── batch/                # Batch operations (runner, tasks)
-│   ├── cache/                # Generic TTL cache with registry
-│   ├── cli/                  # --cli JSON output mode
-│   ├── config/               # TOML config file loading
-│   ├── discovery/            # Repo discovery
-│   ├── filters/              # Filter/sort/search and predicate logic
-│   ├── github/               # GitHub integration (pr, workflow)
-│   ├── models/               # Data structures (repo, branch, pr, notes, enums)
-│   ├── vcs/                  # VCS abstraction (operations, git, jj, factory, mock)
-│   └── ui/styles/            # Lipgloss styles
-```
+
+Everything network-derived goes through `cache`, keyed by upstream so parallel
+checkouts of one remote share a read (see
+[cache-identity-and-invalidation.md](docs/design/cache-identity-and-invalidation.md)).
+`vcs` is the only package that shells out to git or jj, `models` holds the
+shapes all three front ends render, and `ui/table` sizes every table.
 
 ## VCS Abstraction
 
