@@ -234,6 +234,40 @@ func (m Model) renderConfirmModal() string {
 	return centerModal(m, content)
 }
 
+// renderPanelActionModal lists the focused panel's verbs over the grid. The
+// menu names what it acts on, and that name is a pull request title as often
+// as a branch, so it wraps inside a box rather than running a footer line off
+// the screen.
+func (m Model) renderPanelActionModal(panel panelContent) string {
+	width := min(panelActionModalWidth, max(m.width-panelActionModalFrame, minPanelTableWidth))
+
+	lines := []string{styles.TitleStyle.Render(panel.title)}
+	lines = append(lines, wrapLines(m.panelDetailTitle(panel), width)...)
+	lines = append(lines, "")
+
+	actions := panelActionsFor(panel.id)
+	if len(actions) == 0 {
+		lines = append(lines, styles.SubtitleStyle.Render("Nothing to do here"))
+	}
+
+	for _, action := range actions {
+		lines = append(lines,
+			styles.HelpKeyStyle.Render(padCell(action.key, modalKeyColWidth))+"  "+
+				styles.HelpDescStyle.Render(action.name))
+	}
+
+	lines = append(lines, "",
+		styles.FooterKeyStyle.Render(keyEsc)+styles.FooterDescStyle.Render(" back"))
+
+	content := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(styles.Blue).
+		Padding(confirmModalVPad, confirmModalHPad).
+		Render(strings.Join(lines, "\n"))
+
+	return centerModal(m, content)
+}
+
 func (m Model) countForFilter(mode models.FilterMode) int {
 	return len(filters.FilterRepos(m.repoPaths, m.summaries, mode))
 }

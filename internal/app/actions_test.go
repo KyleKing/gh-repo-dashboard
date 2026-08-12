@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -254,8 +255,9 @@ func TestPanelActionMenuRunsAVerbAndClosesOnAnythingElse(t *testing.T) {
 	if !opened.panelActions {
 		t.Fatal("the leader key should open the verb menu")
 	}
-	if footer := plainText(opened.renderPanelActions("feature/thing")); !strings.Contains(footer, "push") {
-		t.Errorf("the open menu should list the branch verbs, got %q", footer)
+	menu := plainText(opened.renderView())
+	if !strings.Contains(menu, "push") || !strings.Contains(menu, "feature/thing") {
+		t.Errorf("the open menu should list the branch verbs against the selection, got %q", menu)
 	}
 
 	ranModel, _ := opened.handleDetailKey(keyPress('p'))
@@ -274,6 +276,36 @@ func TestPanelActionMenuRunsAVerbAndClosesOnAnythingElse(t *testing.T) {
 	}
 	if backedOut.viewMode != ViewModeRepoDetail {
 		t.Errorf("backing out should stay in the grid, got %v", backedOut.viewMode)
+	}
+}
+
+// The menu used to be a footer line, so a pull request title wider than the
+// terminal pushed the verbs off the end of it.
+func TestPanelActionMenuKeepsItsVerbsUnderALongTitle(t *testing.T) {
+	t.Parallel()
+
+	const width = 100
+
+	m := focusedModel(width, 30)
+	m.focusedPanel = panelPRs
+	m.detailCursor = 0
+	m.prs = []models.PRInfo{{
+		Number: 10,
+		Title:  strings.TrimSpace(strings.Repeat("bump the go-dependencies group across 1 directory ", 4)),
+	}}
+	m.panelActions = true
+
+	view := plainText(m.renderView())
+	for _, verb := range panelActionsFor(panelPRs) {
+		if !strings.Contains(view, verb.name) {
+			t.Errorf("the menu dropped %q:\n%s", verb.name, view)
+		}
+	}
+
+	for i, line := range strings.Split(view, "\n") {
+		if got := lipgloss.Width(line); got > width {
+			t.Errorf("line %d is %d cells wide, past the %d the terminal has: %q", i, got, width, line)
+		}
 	}
 }
 

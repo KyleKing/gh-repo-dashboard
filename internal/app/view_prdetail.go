@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/markdown"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
@@ -77,10 +78,10 @@ func (m Model) writePRDetailInfo(writeLine func(label, value string)) {
 	}
 }
 
-// writePRDetailDescription writes the "Description" section, truncated to
-// prBodyMaxLen on a word boundary, or nothing if the PR has no body.
-func writePRDetailDescription(b *strings.Builder, sectionStyle, valueStyle lipgloss.Style, body string) {
-	if body == "" {
+// writePRDetailDescription writes the "Description" section as rendered
+// markdown, or nothing if the PR has no body.
+func writePRDetailDescription(b *strings.Builder, sectionStyle lipgloss.Style, body string, width int) {
+	if strings.TrimSpace(body) == "" {
 		return
 	}
 
@@ -88,8 +89,17 @@ func writePRDetailDescription(b *strings.Builder, sectionStyle, valueStyle lipgl
 	b.WriteString(sectionStyle.Render("Description"))
 	b.WriteString("\n")
 
-	b.WriteString(valueStyle.Render(truncateWords(body, prBodyMaxLen)))
-	b.WriteString("\n")
+	writeMarkdown(b, body, width, prBodyMaxLines)
+}
+
+// writeMarkdown writes a rendered markdown body indented under its section
+// heading.
+func writeMarkdown(b *strings.Builder, body string, width, maxLines int) {
+	padding := lipgloss.NewStyle().PaddingLeft(infoPaddingLeft)
+	for _, line := range markdown.Render(body, max(width-infoPaddingLeft, 1), maxLines) {
+		b.WriteString(padding.Render(line))
+		b.WriteString("\n")
+	}
 }
 
 // Check conclusions shared by the PR detail view and the focused view's
@@ -166,7 +176,7 @@ func checkDisplayName(check models.CheckDetail) string {
 // writePRDetailLatestComment writes the most recent comment on the pull
 // request, or nothing when there are none.
 func writePRDetailLatestComment(
-	b *strings.Builder, sectionStyle, valueStyle lipgloss.Style, comment *models.PRComment,
+	b *strings.Builder, sectionStyle, valueStyle lipgloss.Style, comment *models.PRComment, width int,
 ) {
 	if comment == nil {
 		return
@@ -179,8 +189,7 @@ func writePRDetailLatestComment(
 		styles.BranchStyle.Render(comment.Author) + " " +
 			styles.SubtitleStyle.Render(comment.RelativeCreated())))
 	b.WriteString("\n")
-	b.WriteString(valueStyle.Render(truncateWords(strings.TrimSpace(comment.Body), prCommentMaxLen)))
-	b.WriteString("\n")
+	writeMarkdown(b, comment.Body, width, prCommentMaxLines)
 }
 
 // writePRDetailActions writes the "Actions" section's footer key hints.
@@ -270,8 +279,8 @@ func (m Model) renderPRDetail() string {
 	m.writePRDetailInfo(writeLine)
 
 	writePRDetailChecks(&b, sectionStyle, m.prDetail.CheckDetails, fitDetailCols(checkColSpecs, m.width))
-	writePRDetailDescription(&b, sectionStyle, valueStyle, m.prDetail.Body)
-	writePRDetailLatestComment(&b, sectionStyle, valueStyle, m.prDetail.LatestComment)
+	writePRDetailDescription(&b, sectionStyle, m.prDetail.Body, m.width)
+	writePRDetailLatestComment(&b, sectionStyle, valueStyle, m.prDetail.LatestComment, m.width)
 	writePRDetailActions(&b, sectionStyle)
 
 	contentLines := strings.Count(b.String(), "\n")

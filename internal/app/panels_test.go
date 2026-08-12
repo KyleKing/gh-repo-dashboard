@@ -50,11 +50,11 @@ func TestEveryPanelShowsContentWithoutAKeypress(t *testing.T) {
 	grid := plainText(focusedModel(200, 50).renderPanelGrid())
 	want := []string{
 		"↑1 vs origin/main",
-		"[B]ranches (1)", mainBranchName,
-		"[P]Rs (1)", "Add a thing",
+		"[b]ranches (1)", mainBranchName,
+		"[p] PRs (1)", "Add a thing",
 		"P[e]ers (1)", "alpha-thing",
 		"S[t]ashes (1)", "On main: spike",
-		"[N]otes (1)", ".doing",
+		"[n]otes (1)", ".doing",
 	}
 
 	for _, w := range want {

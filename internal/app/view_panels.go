@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/markdown"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
@@ -442,6 +443,10 @@ func (m Model) renderPanelGrid() string {
 	b.WriteString(styles.SubtitleStyle.Render(truncate(summary.Path, width)))
 	b.WriteString("\n\n")
 
+	if m.panelActions && focused >= 0 && focused < len(panels) {
+		return m.renderPanelActionModal(panels[focused])
+	}
+
 	body := m.height - gridChromeHeight
 	if stacked {
 		b.WriteString(m.renderStackedGrid(panels, focused, sideWidth, body))
@@ -450,13 +455,7 @@ func (m Model) renderPanelGrid() string {
 	}
 
 	b.WriteString("\n")
-
-	if m.panelActions {
-		b.WriteString(styles.FooterStyle.Render(
-			m.renderPanelActions(m.panelDetailTitle(panels[focused]))))
-	} else {
-		b.WriteString(styles.FooterStyle.Render(m.panelFooter(panels, focused, width)))
-	}
+	b.WriteString(styles.FooterStyle.Render(m.panelFooter(panels, focused, width)))
 
 	return b.String()
 }
@@ -641,7 +640,10 @@ func (m Model) focusedPanelTitle(panels []panelContent, focused int) string {
 		title = m.panelDetailTitle(panels[focused])
 	}
 
-	return styles.SubtitleStyle.Render(title) + m.detailScrollMarker()
+	marker := m.detailScrollMarker()
+	title = truncate(title, max(m.detailPaneSize().width-lipgloss.Width(marker), 1))
+
+	return styles.SubtitleStyle.Render(title) + marker
 }
 
 // detailScrollMarker reports how much of the pane's text is on screen, so text
@@ -803,12 +805,12 @@ func (m Model) prDetailLines(width int) []string {
 
 	if body := strings.TrimSpace(m.prDetail.Body); body != "" {
 		lines = append(lines, "", styles.HeaderStyle.Render("description"))
-		lines = append(lines, wrapLines(truncateWords(body, prBodyMaxLen), width)...)
+		lines = append(lines, markdown.Render(body, width, prBodyMaxLines)...)
 	}
 
 	if comment := m.prDetail.LatestComment; comment != nil {
 		lines = append(lines, "", styles.HeaderStyle.Render("latest comment · "+comment.Author))
-		lines = append(lines, wrapLines(truncateWords(strings.TrimSpace(comment.Body), prCommentMaxLen), width)...)
+		lines = append(lines, markdown.Render(comment.Body, width, prCommentMaxLines)...)
 	}
 
 	return lines
@@ -1093,24 +1095,4 @@ func wrapLines(text string, width int) []string {
 	}
 
 	return lines
-}
-
-// renderPanelActions lists the open menu's verbs in place of the footer, so it
-// costs no line of its own.
-func (m Model) renderPanelActions(target string) string {
-	actions := panelActionsFor(m.focusedPanel)
-	if len(actions) == 0 {
-		return styles.FooterDescStyle.Render("nothing to do with "+target) + "  " +
-			styles.FooterKeyStyle.Render(keyEsc) + styles.FooterDescStyle.Render(" back")
-	}
-
-	parts := make([]string, 0, len(actions)+1)
-	parts = append(parts, styles.FooterDescStyle.Render(target+":"))
-
-	for _, action := range actions {
-		parts = append(parts,
-			styles.FooterKeyStyle.Render(action.key)+styles.FooterDescStyle.Render(" "+action.name))
-	}
-
-	return strings.Join(parts, "  ")
 }

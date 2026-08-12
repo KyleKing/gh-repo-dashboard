@@ -31,10 +31,10 @@ const (
 	descriptionTruncLen    = 60
 	detailLabelWidth       = 18
 	detailLabelWidthPR     = 16
-	prBodyMaxLen           = 400
+	prBodyMaxLines         = 80
 	prChecksMaxRows        = 12
 	prCheckNameMinWidth    = 12
-	prCommentMaxLen        = 240
+	prCommentMaxLines      = 24
 	stashDiffMaxLines      = 500
 	statusBarHeight        = 2
 	emptyStateVPad         = 2
@@ -44,6 +44,10 @@ const (
 	notesSeparatorWidth    = 40
 	confirmModalVPad       = 1
 	confirmModalHPad       = 3
+	panelActionModalWidth  = 56
+	// A modal spends panelActionModalFrame on its border and padding before any
+	// text fits, which is what keeps it inside a narrow terminal.
+	panelActionModalFrame = 2*confirmModalHPad + 2
 )
 
 // View renders the TUI for the current model state.
@@ -185,20 +189,4 @@ func (m Model) renderBreadcrumbs() string {
 // an ellipsis when there is room for one.
 func truncate(s string, maxLen int) string {
 	return table.Truncate(s, maxLen)
-}
-
-// truncateWords shortens s to at most maxLen terminal cells, backing up to the
-// last word boundary so prose ends on a word instead of part of one.
-func truncateWords(s string, maxLen int) string {
-	clipped := table.Truncate(s, maxLen)
-	if clipped == s {
-		return s
-	}
-
-	body := strings.TrimSuffix(clipped, table.Ellipsis)
-	if i := strings.LastIndexAny(body, " \t\n"); i > 0 {
-		body = body[:i]
-	}
-
-	return strings.TrimRight(body, " \t\n") + table.Ellipsis
 }

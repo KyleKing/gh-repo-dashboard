@@ -119,7 +119,7 @@ func TestCompactGridStacksEveryPanel(t *testing.T) {
 	// pinned by TestEveryPanelShowsContentWithoutAKeypress, and what matters
 	// here is only that every panel made it into the stack.
 	status := markHotkey("Status", panelKeys[panelStatus])
-	for _, want := range []string{status, "[B]ranches (1)", "[P]Rs (1)"} {
+	for _, want := range []string{status, "[b]ranches (1)", "[p] PRs (1)"} {
 		if !strings.Contains(grid, want) {
 			t.Errorf("compact grid is missing %q:\n%s", want, grid)
 		}

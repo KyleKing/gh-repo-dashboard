@@ -246,17 +246,34 @@ func panelTitle(p *panelContent, focused bool) string {
 	return styles.SubtitleStyle.Render(label)
 }
 
-// markHotkey brackets the letter key names inside title, matching without
-// regard to case so a lowercase key can mark an uppercase initial ("PRs" for
-// "p"). A key the title does not contain is prefixed instead.
+// markHotkey brackets the letter key names inside title. The bracketed letter
+// is the key as typed, so "Branches" reads "[b]ranches" rather than promising
+// a shift the binding does not want. Where recasing would strand an uppercase
+// letter mid-word ("PRs"), or the title does not contain the key at all, the
+// key is prefixed instead.
 func markHotkey(title, key string) string {
 	if key == "" {
 		return title
 	}
 
-	if i := strings.Index(strings.ToLower(title), strings.ToLower(key)); i >= 0 {
-		return title[:i] + "[" + title[i:i+len(key)] + "]" + title[i+len(key):]
+	i := strings.Index(strings.ToLower(title), strings.ToLower(key))
+	if i < 0 {
+		return "[" + key + "] " + title
 	}
 
-	return "[" + key + "] " + title
+	matched, rest := title[i:i+len(key)], title[i+len(key):]
+	if stranded(matched, rest) {
+		return "[" + key + "] " + title
+	}
+
+	return title[:i] + "[" + key + "]" + rest
+}
+
+// stranded reports whether recasing the matched letters would leave the rest of
+// the word shouting, which is how an acronym title reads once its initial is
+// lowercased ("[p]Rs").
+func stranded(matched, rest string) bool {
+	word, _, _ := strings.Cut(rest, " ")
+
+	return matched != strings.ToLower(matched) && word != strings.ToLower(word)
 }
