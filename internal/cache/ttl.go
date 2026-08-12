@@ -225,13 +225,14 @@ const (
 // identity for anything read from the object store, and the repo path itself
 // only for values that are genuinely per-directory.
 var (
-	PRCache            = newRegisteredTTLCache[*models.PRInfo](defaultTTL)
-	PRListCache        = newRegisteredTTLCache[[]models.PRInfo](defaultTTL)
-	PRDetailCache      = newRegisteredTTLCache[*models.PRDetail](defaultTTL)
-	BranchCache        = newRegisteredTTLCache[[]models.BranchInfo](defaultTTL)
-	CommitCache        = newRegisteredTTLCache[[]models.CommitInfo](defaultTTL)
-	WorkflowCache      = newRegisteredTTLCache[*models.WorkflowSummary](workflowTTL)
-	MergedPRHeadsCache = newRegisteredTTLCache[map[string]string](defaultTTL)
+	DefaultBranchCICache = newRegisteredTTLCache[*models.DefaultBranchCI](workflowTTL)
+	PRCache              = newRegisteredTTLCache[*models.PRInfo](defaultTTL)
+	PRListCache          = newRegisteredTTLCache[[]models.PRInfo](defaultTTL)
+	PRDetailCache        = newRegisteredTTLCache[*models.PRDetail](defaultTTL)
+	BranchCache          = newRegisteredTTLCache[[]models.BranchInfo](defaultTTL)
+	CommitCache          = newRegisteredTTLCache[[]models.CommitInfo](defaultTTL)
+	WorkflowCache        = newRegisteredTTLCache[*models.WorkflowSummary](workflowTTL)
+	MergedPRHeadsCache   = newRegisteredTTLCache[map[string]string](defaultTTL)
 	// CopierLatestTagCache is keyed by a template's _src_path rather than by
 	// repo path, so every repo generated from the same upstream template
 	// shares one lookup instead of each repo hitting the network on its own.

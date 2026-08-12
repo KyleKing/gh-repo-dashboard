@@ -22,6 +22,7 @@ const (
 	nameHelp     = "help"
 	nameQuit     = "quit"
 	nameRefresh  = "refresh"
+	nameSelect   = "select"
 	nameSelected = "selected"
 	nameSort     = "sort"
 	nameStatus   = "status"
@@ -230,7 +231,7 @@ func filterCommand() Command {
 // "where <predicate>".
 func selectCommand() Command {
 	return Command{
-		Name:        "select",
+		Name:        nameSelect,
 		Description: "Mark repos: :select where <predicate>, :select all, :select none",
 		Complete: func(_ Model, args []string) []string {
 			if len(args) <= 1 {

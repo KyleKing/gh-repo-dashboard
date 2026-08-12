@@ -851,7 +851,7 @@ func footerHints(expandOpen bool) []footerHint {
 
 	return []footerHint{
 		{key: keyNavPair, desc: descNav, priority: 4},
-		{key: keyEnter, desc: "select", priority: 8},
+		{key: keyEnter, desc: nameSelect, priority: 8},
 		expand,
 		{key: "f", desc: nameFilter, priority: 6},
 		{key: "s", desc: nameSort, priority: 5},

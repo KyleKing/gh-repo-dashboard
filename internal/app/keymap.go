@@ -167,7 +167,7 @@ func navigationKeyMap() KeyMap {
 		),
 		Enter: key.NewBinding(
 			key.WithKeys(keyEnter, "space"),
-			key.WithHelp(keyEnter, "select"),
+			key.WithHelp(keyEnter, nameSelect),
 		),
 		// The fleet list already spends space on selection, so ";" opens the
 		// palette there and space opens it in the focused view.

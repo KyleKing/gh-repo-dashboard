@@ -55,9 +55,12 @@ func MergedPRHeadsCacheKey(repoPath, remoteID string) string {
 	return cache.RemoteScope(repoPath, remoteID) + "\x00merged_pr_heads"
 }
 
-// CachedPRForBranch returns the cached pull request for branch, if any, without invoking gh.
+// CachedPRForBranch returns the cached pull request for branch, if any, without
+// invoking gh, reading the remote's cache file when memory misses.
 func CachedPRForBranch(repoPath, remoteID, branch, upstream string) (*models.PRInfo, bool) {
-	return cache.PRCache.Get(PRCacheKey(repoPath, remoteID, upstream, branch), vcs.Stamp(repoPath))
+	key := PRCacheKey(repoPath, remoteID, upstream, branch)
+
+	return cache.Persisted(cache.PRCache, remoteID, key, vcs.Stamp(repoPath))
 }
 
 // CachedPRs returns the cached open pull request list for the repo without
@@ -102,7 +105,7 @@ func GetPRForBranch(ctx context.Context, repoPath, remoteID, branch, upstream st
 		Checks:    checks,
 	}
 
-	cache.PRCache.Set(cacheKey, vcs.Stamp(repoPath), pr)
+	cache.Persist(cache.PRCache, remoteID, cacheKey, vcs.Stamp(repoPath), pr)
 
 	return pr, nil
 }

@@ -19,7 +19,7 @@ func NewGitHubClient(
 
 // NewGitHubClientWithCI builds a githubClient that also answers CI lookups.
 func NewGitHubClientWithCI(
-	defaultCI func(ctx context.Context, repoPath string) (*models.DefaultBranchCI, error),
+	defaultCI func(ctx context.Context, repoPath, remoteID string) (*models.DefaultBranchCI, error),
 ) githubClient {
 	return githubClient{defaultCI: defaultCI}
 }

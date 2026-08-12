@@ -66,7 +66,7 @@ type Repo struct {
 type githubClient struct {
 	prForBranch func(ctx context.Context, repoPath, remoteID, branch, upstream string) (*models.PRInfo, error)
 	prsForRepo  func(ctx context.Context, repoPath, remoteID, upstream string) ([]models.PRInfo, error)
-	defaultCI   func(ctx context.Context, repoPath string) (*models.DefaultBranchCI, error)
+	defaultCI   func(ctx context.Context, repoPath, remoteID string) (*models.DefaultBranchCI, error)
 	alerts      func(ctx context.Context, repoPath, remoteRepo string) map[string]int
 }
 
@@ -82,7 +82,8 @@ func defaultGitHubClient() githubClient {
 // Options configures one --cli run.
 //
 // Fresh permits network reads (pull requests, CI); without it the output is
-// whatever the in-process cache already holds. Fetch runs a git fetch first,
+// whatever the cache already holds, which with `cache_to_disk` on survives a
+// cold start for every GitHub-derived field. Fetch runs a git fetch first,
 // so ahead/behind counts compare against the remote rather than the last
 // local fetch.
 type Options struct {
@@ -180,7 +181,7 @@ func loadRepo(ctx context.Context, client githubClient, path string, opts Option
 	}
 
 	repo := newRepo(&summary, len(worktrees), pr, prCount)
-	repo.CI = lookupCI(ctx, client, path, opts.Fresh)
+	repo.CI = lookupCI(ctx, client, path, summary.RemoteID, opts.Fresh)
 	if opts.Fresh && client.alerts != nil {
 		repo.DependabotAlerts = client.alerts(ctx, path, summary.RemoteRepo)
 	}
@@ -188,14 +189,19 @@ func loadRepo(ctx context.Context, client githubClient, path string, opts Option
 	return &repo
 }
 
-// lookupCI reads the default branch's CI, which always costs a network call
-// and so is gated behind Fresh like the pull request data.
-func lookupCI(ctx context.Context, client githubClient, repoPath string, fresh bool) *models.DefaultBranchCI {
+// lookupCI returns the default branch's CI from the cache, fetching via gh only
+// when fresh is set. A miss (or fetch failure) yields nil.
+func lookupCI(
+	ctx context.Context, client githubClient, repoPath, remoteID string, fresh bool,
+) *models.DefaultBranchCI {
+	if cached, ok := github.CachedDefaultBranchCI(ctx, repoPath, remoteID); ok {
+		return cached
+	}
 	if !fresh || client.defaultCI == nil {
 		return nil
 	}
 
-	ci, err := client.defaultCI(ctx, repoPath)
+	ci, err := client.defaultCI(ctx, repoPath, remoteID)
 	if err != nil {
 		return nil
 	}

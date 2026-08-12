@@ -92,15 +92,41 @@ func GetWorkflowRunsForCommit(
 // commit with more runs than this has re-run workflows; the newest win.
 const ciRunLimit = "30"
 
+// DefaultBranchCICacheKey builds the cache key for one commit's default-branch
+// CI. The commit is part of the key, so a new head is a new entry rather than
+// an eviction, and the TTL alone governs how stale a run's state may be.
+func DefaultBranchCICacheKey(repoPath, remoteID, sha string) string {
+	return cache.RemoteScope(repoPath, remoteID) + "\x00ci:" + sha
+}
+
+// CachedDefaultBranchCI returns the cached default-branch CI for the repo, if
+// any, without invoking gh. Resolving the default branch head still reads local
+// refs, which is free of network cost.
+func CachedDefaultBranchCI(ctx context.Context, repoPath, remoteID string) (*models.DefaultBranchCI, bool) {
+	def, err := vcs.DefaultBranchHead(ctx, repoPath)
+	if err != nil {
+		return nil, false
+	}
+
+	return cache.Persisted(cache.DefaultBranchCICache, remoteID,
+		DefaultBranchCICacheKey(repoPath, remoteID, def.SHA), cache.NoStamp)
+}
+
 // GetDefaultBranchCI returns the latest run of each workflow on the repo's
-// default branch head, with the failing job names filled in for red runs.
+// default branch head, with the failing job names filled in for red runs, using
+// the cache when fresh.
 //
 // The branch and commit come from local refs, so a healthy repo costs one gh
 // call; each failing workflow costs one more to name what broke.
-func GetDefaultBranchCI(ctx context.Context, repoPath string) (*models.DefaultBranchCI, error) {
+func GetDefaultBranchCI(ctx context.Context, repoPath, remoteID string) (*models.DefaultBranchCI, error) {
 	def, err := vcs.DefaultBranchHead(ctx, repoPath)
 	if err != nil {
 		return nil, fmt.Errorf("resolving the default branch: %w", err)
+	}
+
+	cacheKey := DefaultBranchCICacheKey(repoPath, remoteID, def.SHA)
+	if cached, ok := cache.Persisted(cache.DefaultBranchCICache, remoteID, cacheKey, cache.NoStamp); ok {
+		return cached, nil
 	}
 
 	runs, err := latestRunPerWorkflow(ctx, repoPath, def.SHA)
@@ -117,7 +143,10 @@ func GetDefaultBranchCI(ctx context.Context, repoPath string) (*models.DefaultBr
 		runs[i].FailingJobs, _ = failingJobs(ctx, repoPath, runs[i].ID)
 	}
 
-	return &models.DefaultBranchCI{Branch: def.Name, SHA: def.SHA, Workflows: runs}, nil
+	ci := &models.DefaultBranchCI{Branch: def.Name, SHA: def.SHA, Workflows: runs}
+	cache.Persist(cache.DefaultBranchCICache, remoteID, cacheKey, cache.NoStamp, ci)
+
+	return ci, nil
 }
 
 func latestRunPerWorkflow(ctx context.Context, repoPath, sha string) ([]models.CIWorkflowRun, error) {

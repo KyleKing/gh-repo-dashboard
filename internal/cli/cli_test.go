@@ -301,19 +301,19 @@ func TestLookupCIIsGatedByFresh(t *testing.T) {
 
 	calls := 0
 	client := cli.NewGitHubClientWithCI(
-		func(_ context.Context, _ string) (*models.DefaultBranchCI, error) {
+		func(_ context.Context, _, _ string) (*models.DefaultBranchCI, error) {
 			calls++
 			return &models.DefaultBranchCI{Branch: "main"}, nil
 		})
 
-	if got := cli.LookupCI(context.Background(), client, "/repos/app", false); got != nil {
+	if got := cli.LookupCI(context.Background(), client, "/repos/app", "", false); got != nil {
 		t.Errorf("CI = %+v without --fresh, want nil; the read always costs a network call", got)
 	}
 	if calls != 0 {
 		t.Errorf("made %d CI calls without --fresh, want 0", calls)
 	}
 
-	if got := cli.LookupCI(context.Background(), client, "/repos/app", true); got == nil {
+	if got := cli.LookupCI(context.Background(), client, "/repos/app", "", true); got == nil {
 		t.Error("CI is nil with --fresh, want the fetched summary")
 	}
 	if calls != 1 {
