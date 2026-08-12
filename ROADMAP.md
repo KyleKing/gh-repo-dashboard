@@ -22,10 +22,10 @@ dirty repos) driven either by keys or a `:command` mode with predicates
 makes behavior testable without keyboard simulation, documentable from fixtures,
 and scriptable headlessly.
 
-The 2026-08 direction adds a second axis: the same data at three densities.
-A compact narrow layout with its own UX, the standard table, and a wide layout
-that spends surplus width on the table's own columns, with a focused single-repo
-view that answers "what is the state of the repo I am standing in" without any
+The 2026-08 direction adds a second axis: the same data at two densities. A
+compact narrow layout with its own UX, and the standard table, which keeps
+growing into whatever width the terminal has, with a focused single-repo view
+that answers "what is the state of the repo I am standing in" without any
 drilling.
 
 The external `tui-commander` package extraction is deferred until a second TUI

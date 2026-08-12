@@ -73,7 +73,7 @@ Extends PR detail and the review scene rather than adding screens:
 ## CI on the default branch (M17)
 
 `internal/github/workflow.go` already fetches workflow conclusions for the
-TUI. Surface it as a CI column (repo list, wide preview panel, focused
+TUI. Surface it as a CI column (repo list, expanded region, focused
 header): `✓`, `✗ lint`, or `…` while loading. The `--cli` fleet-assessment
 proposal in ROADMAP.md consumes the same fetch path, so the TUI column and the
 JSON field ship from one implementation.

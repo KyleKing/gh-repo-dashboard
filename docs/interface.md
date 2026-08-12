@@ -109,6 +109,12 @@ The STATUS column shows the working tree as symbols:
 - `↓N` for N commits behind
 - `✓` when the working tree is clean
 
+Across the other columns, `·` marks a value still being fetched and `—` one the
+dashboard has read and found empty, so a quiet repo can be told from an unread
+one. The header counts the same thing twice over: `Loading 8/54` while the
+repos are being read, then `Fetching 31` counting down the pull request,
+template, and CI reads that follow.
+
 Alongside it, `N` marks a repo with one notes file and `N3` a repo with three.
 Press `v` to open the expanded region under the table, which reads those files in
 full for the repo under the cursor alongside its peers, local branches, and open

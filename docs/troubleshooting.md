@@ -14,7 +14,11 @@ directories as arguments (`gh repo-dashboard ~/projects`) or set `scan_paths` in
 the [config file](./configuration.md).
 
 PR data looks stale because cached GitHub data lives for `cache_ttl_minutes`,
-defaulting to 5. Press `r` to refresh, or pass `--fresh` with `--cli`.
+defaulting to 5. That is a ceiling and not a floor: committing, switching,
+pushing, or fetching in a repo drops its cached pull request data early, since
+those are the moments the cache is most likely wrong. Nothing local can tell
+you someone else merged a PR, so for that, press `r` to refresh, or pass
+`--fresh` with `--cli`.
 
 A repository with many open pull requests does not list them all. The dashboard
 reads two pages of thirty, the newest that are not yours and your own, because

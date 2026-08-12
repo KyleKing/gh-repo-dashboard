@@ -3,19 +3,15 @@
 How caching is keyed and invalidated, and why a timer alone is the wrong
 answer.
 
-Every cache in the app is keyed by repo path and expires on a timer. That is
-wrong in both directions at once. Six checkouts of one remote each pay for
-their own `gh pr list`, and a PR that was merged thirty seconds ago keeps
-rendering as open for the rest of the five-minute window while the branch that
-carried it has already gone from the local refs.
+Caching was keyed by repo path and expired on a timer, which was wrong in both
+directions at once. Six checkouts of one remote each paid for their own `gh pr
+list`, and a PR merged thirty seconds ago kept rendering as open for the rest
+of the five-minute window while the branch that carried it had already gone
+from the local refs.
 
-This proposes two identity axes and a cheap local stamp, and a per-upstream
+The answer is two identity axes and a cheap local stamp, plus a per-upstream
 cache file so a cold start on a large fleet does not re-issue one network call
-per repo.
-
-The list redesign is gated on this. Showing branches and open pull requests
-under the cursor means a fetch per row you land on, and `j` held down should
-not cost sixty API calls.
+per repo. All three steps below have shipped.
 
 ## What is shared with what
 
@@ -157,5 +153,7 @@ Decisions this needs:
    early.
 3. The disk cache.
 
-The list redesign (drop the side panel, widen the table, and put one expanded
-region below it under `v`) can ship on step 1.
+The list redesign rode on step 1. Its expanded region reads branches and open
+pull requests for the repo under the cursor through the `:prs` fleet map's
+per-repo path, so the upstream key is what keeps `j` held down from costing one
+API call per row.
