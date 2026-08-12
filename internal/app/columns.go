@@ -102,7 +102,8 @@ func renderCells(
 			style = *base
 		}
 
-		cells = append(cells, style.Render(padCell(values[c.Key], layout.Width(c.Key))))
+		cells = append(cells,
+			style.Render(table.PadTrim(values[c.Key], layout.Width(c.Key), table.AlignLeft, c.Trim)))
 	}
 
 	return cells

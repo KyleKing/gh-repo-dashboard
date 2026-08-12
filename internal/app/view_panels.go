@@ -16,12 +16,13 @@ import (
 // Grid geometry. The side column holds the panels; the rest is the detail
 // pane, which always renders the selected item rather than waiting for a key.
 const (
-	panelBorderWidth   = 2
-	sideColumnFraction = 100
-	sideColumnPercent  = 46
-	minSideColumnWidth = 34
-	minDetailPaneWidth = 30
-	gridChromeHeight   = 4
+	panelBorderWidth         = 2
+	sideColumnFraction       = 100
+	sideColumnPercent        = 25
+	sideColumnFocusedPercent = 15
+	minSideColumnWidth       = 24
+	minDetailPaneWidth       = 30
+	gridChromeHeight         = 4
 )
 
 // panelSet builds the panels for the selected repo at the given content width.
@@ -431,7 +432,7 @@ func (m Model) renderPanelGrid() string {
 
 	sideWidth := width
 	if !stacked {
-		sideWidth = panelSideWidth(width)
+		sideWidth = panelSideWidth(width, m.detailFocused)
 	}
 
 	panels := m.panelSet(sideWidth - panelBorderWidth)
@@ -467,14 +468,22 @@ func (m Model) gridWidth() int {
 
 // gridStacked reports whether the grid drops its side-by-side split, either
 // because the breakpoint says so or because the detail pane would be too
-// narrow to read beside the panel column.
+// narrow to read beside the panel column. It measures against the widest the
+// column ever gets, so moving focus never flips the grid between layouts.
 func gridStacked(compact bool, width int) bool {
-	return compact || width-panelSideWidth(width) < minDetailPaneWidth
+	return compact || width-panelSideWidth(width, false) < minDetailPaneWidth
 }
 
-// panelSideWidth is the width the panel column takes from a split grid.
-func panelSideWidth(width int) int {
-	return max(width*sideColumnPercent/sideColumnFraction, minSideColumnWidth)
+// panelSideWidth is the width the panel column takes from a split grid. The
+// column gives up more of it while the detail pane holds focus, because
+// nothing is being selected in it then.
+func panelSideWidth(width int, detailFocused bool) int {
+	percent := sideColumnPercent
+	if detailFocused {
+		percent = sideColumnFocusedPercent
+	}
+
+	return max(width*percent/sideColumnFraction, minSideColumnWidth)
 }
 
 // detailPaneSize returns the detail pane's interior at the current terminal
@@ -485,7 +494,7 @@ func (m Model) detailPaneSize() paneSize {
 
 	if !gridStacked(m.isCompact(), grid) {
 		return paneSize{
-			width:  grid - panelSideWidth(grid) - panelBorderWidth,
+			width:  grid - panelSideWidth(grid, m.detailFocused) - panelBorderWidth,
 			height: panelRowsHeight(body),
 		}
 	}

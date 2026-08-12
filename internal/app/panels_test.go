@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -380,11 +381,50 @@ func TestGrid_FillsTheTerminalExactly(t *testing.T) {
 				return
 			}
 
-			side := panelSideWidth(width)
+			side := panelSideWidth(width, false)
 			column := m.renderPanelColumn(m.panelSet(side-panelBorderWidth), 1, side, m.height-gridChromeHeight)
 
 			if got, limit := strings.Count(column, "\n")+1, m.height-gridChromeHeight; got > limit {
 				t.Errorf("panel column is %d lines in a %d-line body", got, limit)
+			}
+		})
+	}
+}
+
+// A row wider than its panel wraps inside the box and pushes the column past
+// the bottom of the terminal, so every row is cut to fit. A branch name is cut
+// from the left, because its head is the part every sibling shares.
+func TestPanelRowsFitTheirBoxAndKeepTheBranchTail(t *testing.T) {
+	t.Parallel()
+
+	const longBranch = "dependabot/github_actions/all-dependencies-56744d620d"
+
+	sizes := [][2]int{{80, 24}, {100, 30}, {160, 40}, {220, 50}}
+
+	for _, size := range sizes {
+		t.Run(strconv.Itoa(size[0])+"x"+strconv.Itoa(size[1]), func(t *testing.T) {
+			t.Parallel()
+
+			m := focusedModel(size[0], size[1])
+			m.branches = append(m.branches, models.BranchInfo{Name: longBranch})
+			m.prs = []models.PRInfo{{Number: 11, Title: strings.Repeat("bump the dependencies ", 6)}}
+
+			width := panelSideWidth(m.gridWidth(), false) - panelBorderWidth
+
+			var branchRows string
+			for _, p := range m.panelSet(width) {
+				for _, row := range p.rows {
+					if got := lipgloss.Width(row); got > width {
+						t.Errorf("a %s row is %d cells wide in a %d-cell panel: %q", p.title, got, width, row)
+					}
+				}
+				if p.id == panelBranches {
+					branchRows = plainText(strings.Join(p.rows, "\n"))
+				}
+			}
+
+			if !strings.Contains(branchRows, "d620d") {
+				t.Errorf("the branch name lost its tail, which is the part that identifies it:\n%s", branchRows)
 			}
 		})
 	}

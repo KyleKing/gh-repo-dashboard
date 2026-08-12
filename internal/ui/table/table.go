@@ -21,6 +21,18 @@ const (
 	AlignRight
 )
 
+// Trim selects which end of a cell is dropped when its text is too wide for
+// its column.
+type Trim int
+
+// Cell truncation ends. Most text reads from the left, so the tail is what
+// goes; a name whose prefix is shared with every other name in the column
+// reads the other way.
+const (
+	TrimRight Trim = iota
+	TrimLeft
+)
+
 // Gutter is the number of blank cells rendered between two adjacent columns.
 const Gutter = 2
 
@@ -43,6 +55,7 @@ type Column struct {
 	Weight   int
 	Priority int
 	Align    Align
+	Trim     Trim
 }
 
 // Layout is a resolved table: the columns that survived collapse, in render
@@ -51,7 +64,10 @@ type Layout struct {
 	Columns []Column
 	Hidden  int
 
-	widths map[string]int
+	// unmarked suppresses the hidden-column marker, for a table too narrow to
+	// spend five cells saying what it dropped.
+	unmarked bool
+	widths   map[string]int
 }
 
 // Width returns the resolved width of the named column, or zero when it was
@@ -72,8 +88,8 @@ func (l Layout) Total() int {
 		total += l.widths[c.Key]
 	}
 
-	if l.Hidden > 0 {
-		total += Gutter + lipgloss.Width(l.Marker())
+	if marker := l.Marker(); marker != "" {
+		total += Gutter + lipgloss.Width(marker)
 	}
 
 	return total
@@ -81,7 +97,7 @@ func (l Layout) Total() int {
 
 // Marker announces how many columns collapse hid, or is empty when none were.
 func (l Layout) Marker() string {
-	if l.Hidden == 0 {
+	if l.Hidden == 0 || l.unmarked {
 		return ""
 	}
 
@@ -93,27 +109,48 @@ func (l Layout) Marker() string {
 // between the weighted columns in proportion to their Weight and capped at
 // their Max.
 func Fit(cols []Column, width int) Layout {
-	layout := collapse(cols, width)
+	return resolve(cols, width, false)
+}
+
+// FitCompact is Fit for a table with no room to spare: what collapse hides
+// goes unmarked, so every cell of the row carries content.
+func FitCompact(cols []Column, width int) Layout {
+	return resolve(cols, width, true)
+}
+
+func resolve(cols []Column, width int, unmarked bool) Layout {
+	layout := collapse(cols, width, unmarked)
+	layout.unmarked = unmarked
 
 	layout.widths = make(map[string]int, len(layout.Columns))
 	for _, c := range layout.Columns {
 		layout.widths[c.Key] = c.Min
 	}
 
-	distribute(layout, width-minWidth(layout.Columns, layout.Hidden))
+	distribute(layout, width-minWidth(layout.Columns, layout.markedHidden()))
 
 	return layout
+}
+
+// markedHidden is the hidden count minWidth has to reserve marker room for,
+// which is none at all when the marker is suppressed.
+func (l Layout) markedHidden() int {
+	if l.unmarked {
+		return 0
+	}
+
+	return l.Hidden
 }
 
 // collapse hides the least valuable columns until the rest fit in width,
 // stopping once only never-hidden columns remain. The returned layout has no
 // resolved widths yet.
-func collapse(cols []Column, width int) Layout {
+func collapse(cols []Column, width int, unmarked bool) Layout {
 	visible := make([]Column, len(cols))
 	copy(visible, cols)
 
 	hidden := 0
-	for minWidth(visible, hidden) > width {
+	for minWidth(visible, marked(hidden, unmarked)) > width {
 		victim := -1
 		for i, c := range visible {
 			if c.Priority > 0 && (victim < 0 || c.Priority < visible[victim].Priority) {
@@ -130,6 +167,14 @@ func collapse(cols []Column, width int) Layout {
 	}
 
 	return Layout{Columns: visible, Hidden: hidden}
+}
+
+func marked(hidden int, unmarked bool) int {
+	if unmarked {
+		return 0
+	}
+
+	return hidden
 }
 
 // minWidth returns the narrowest row that holds cols at their minimums, with
@@ -197,7 +242,16 @@ func atMax(c Column, width int) bool {
 // Pad truncates text to width display cells, appending an ellipsis when one
 // fits, and pads the remainder to exactly width on the side align implies.
 func Pad(text string, width int, align Align) string {
-	text = Truncate(text, width)
+	return PadTrim(text, width, align, TrimRight)
+}
+
+// PadTrim is Pad with the cut taken from the end trim names.
+func PadTrim(text string, width int, align Align, trim Trim) string {
+	if trim == TrimLeft {
+		text = TruncateLeft(text, width)
+	} else {
+		text = Truncate(text, width)
+	}
 
 	gap := width - lipgloss.Width(text)
 	if gap <= 0 {
@@ -224,6 +278,22 @@ func Truncate(text string, width int) string {
 	}
 
 	return clip(text, width-markWidth) + Ellipsis
+}
+
+// TruncateLeft shortens text to at most width display cells by removing its
+// head, so the tail survives the cut. Use it where a shared prefix carries no
+// information, such as a branch name under dependabot/github_actions/.
+func TruncateLeft(text string, width int) string {
+	if lipgloss.Width(text) <= width {
+		return text
+	}
+
+	markWidth := lipgloss.Width(Ellipsis)
+	if width <= markWidth {
+		return clip(text, width)
+	}
+
+	return Ellipsis + clipRight(text, width-markWidth)
 }
 
 // TruncateMiddle shortens text to at most width display cells by removing its

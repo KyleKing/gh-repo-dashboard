@@ -196,7 +196,7 @@ func TestNotesPanel_ShowsTheNoteWithoutFocusingIt(t *testing.T) {
 		{Name: ".doing", Content: "# heading\n\nfinish the grid\nthen the notes"},
 	}
 
-	panels := m.panelSet(panelSideWidth(m.gridWidth()) - panelBorderWidth)
+	panels := m.panelSet(panelSideWidth(m.gridWidth(), false) - panelBorderWidth)
 	notes := panels[panelIndex(panels, panelNotes)]
 
 	if notes.relevance != relevanceUrgent {

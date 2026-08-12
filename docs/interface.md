@@ -50,7 +50,7 @@ detail pane that renders whatever the cursor sits on. Only the panels with
 something to show are drawn, so a jj repo has no Stashes panel and a repo with no
 open pull requests has no PRs panel; the Status panel names what is missing
 instead ("no PRs, peers, or notes"). Each panel's border brackets its own jump
-key, so `[B]ranches` is one `b` away. `tab` and `l` move to the next panel, `h`
+key, so `[b]ranches` is one `b` away. `tab` and `l` move to the next panel, `h`
 to the previous, and `j`/`k` walk the whole column as one list, crossing from the
 last row of one panel into the first of the next. Every panel gets an equal share
 of the height before the busier ones get more, so a long list is never squeezed
@@ -58,7 +58,8 @@ out and a busy repo still arrives with its problems open.
 
 `enter` hands the keyboard to the detail pane, where `j`/`k` scroll its text and
 `esc` hands it back to the panel column. The blue border marks whichever region
-is live. `O` opens the selected branch or pull request in its own full-screen
+is live, and the panel column narrows while the detail pane holds focus, since
+nothing is being selected in it then. `O` opens the selected branch or pull request in its own full-screen
 view.
 
 `space` opens the universal find, scoped to the repo you are in (`;` opens it
