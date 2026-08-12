@@ -24,15 +24,15 @@ type KeyMap struct {
 	Back   key.Binding
 	Tab    key.Binding
 
-	Command      key.Binding
-	Refresh      key.Binding
-	Filter       key.Binding
-	Sort         key.Binding
-	Search       key.Binding
-	Reverse      key.Binding
-	TopPrefix    key.Binding
-	NotesPreview key.Binding
-	Peers        key.Binding
+	Command   key.Binding
+	Refresh   key.Binding
+	Filter    key.Binding
+	Sort      key.Binding
+	Search    key.Binding
+	Reverse   key.Binding
+	TopPrefix key.Binding
+	Expand    key.Binding
+	Peers     key.Binding
 
 	FetchAll      key.Binding
 	PruneRemote   key.Binding
@@ -207,9 +207,9 @@ func navigationKeyMap() KeyMap {
 			key.WithKeys("R"),
 			key.WithHelp("R", "reverse"),
 		),
-		NotesPreview: key.NewBinding(
+		Expand: key.NewBinding(
 			key.WithKeys("v"),
-			key.WithHelp("v", "toggle notes preview"),
+			key.WithHelp("v", "expand the repo under the cursor"),
 		),
 	}
 }
@@ -224,7 +224,7 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Top, k.Bottom},
 		{k.Enter, k.Back, k.OpenDetail},
-		{k.Filter, k.Sort, k.Search, k.Command, k.Repeat, k.NotesPreview},
+		{k.Filter, k.Sort, k.Search, k.Command, k.Repeat, k.Expand},
 		{k.SwitchBranch, k.PushBranch, k.CreatePR, k.MergePR},
 		{k.Refresh, k.FetchAll, k.PruneRemote, k.CleanupMerged},
 		{k.Help, k.Quit},

@@ -14,8 +14,8 @@ import (
 )
 
 // Vertical budget of the repo list. The body is sized once and rendered to
-// exactly that many lines, so nothing the body does (a notes preview opening,
-// a shorter repo set) can move the footer.
+// exactly that many lines, so nothing the body does (the region opening, a
+// shorter repo set) can move the footer.
 const (
 	listChromeHeight   = 6
 	searchChromeHeight = 2
@@ -34,14 +34,14 @@ func (m Model) renderRepoList() string {
 		b.WriteString("\n\n")
 	}
 
-	b.WriteString(m.renderListWithPreview(m.listBodyHeight()))
+	b.WriteString(m.renderListBody())
 	b.WriteString("\n\n")
 	b.WriteString(m.renderFooter())
 
 	return b.String()
 }
 
-// listBodyHeight is how many lines the list and its preview panel share.
+// listBodyHeight is how many lines the table and the expanded region share.
 func (m Model) listBodyHeight() int {
 	height := m.height - listChromeHeight
 	if m.searching {
@@ -84,7 +84,7 @@ func (m Model) renderRepoListBreadcrumbs() string {
 		badges = append(badges, styles.Badge(progress, styles.CountBadgeStyle))
 	}
 
-	return joinWithinWidth(title, badges, contentWidth(m.width))
+	return joinWithinWidth(title, badges, listWidth(m.width))
 }
 
 // loadingBadge reports what is still arriving, or is empty once the fleet has
@@ -160,33 +160,30 @@ func appendSortBadges(parts []string, activeSorts []models.ActiveSort) []string 
 	return parts
 }
 
-// renderListWithPreview renders the repo table, mounting the overview panel
-// beside it when the terminal is wide enough to carry one. The result is
-// always exactly height lines.
-func (m Model) renderListWithPreview(height int) string {
-	list := m.renderTable(height)
+// renderListBody renders the repo table with the expanded region under it. The
+// result is always exactly listBodyHeight lines, and the split between the two
+// depends only on that height, so neither the selected repo nor what is still
+// loading can move the footer.
+func (m Model) renderListBody() string {
+	region := m.expandHeight(m.listBodyHeight())
+	list := fitBlock(m.renderTable(), m.tableHeight())
 
-	panel := panelWidth(m.width, m.height)
-	if panel == 0 || len(m.filteredPaths) == 0 || m.cursor >= len(m.filteredPaths) {
-		return fitBlock(list, height)
+	if region == 0 {
+		return list
 	}
 
-	summary := m.rowSummary(m.filteredPaths[m.cursor])
-
-	overview := m.renderOverview(summary, overviewOpts{width: panel, standalone: true})
-
-	return joinListAndPanel(list, overview, listWidth(m.width, m.height), panel, height)
+	return list + "\n" + fitBlock(strings.Join(m.expandLines(listWidth(m.width), region), "\n"), region)
 }
 
-// padTop grows lines to exactly height by adding blanks above them, so a note
-// shorter than its region sits against the divider that captions it rather
-// than floating away from it.
-func padTop(lines []string, height int) []string {
+// padBottom grows lines to exactly height by adding blanks below them, so a
+// note shorter than its region starts under the row above it and the slack
+// collects against the divider that closes the region.
+func padBottom(lines []string, height int) []string {
 	if len(lines) >= height {
 		return lines[:height]
 	}
 
-	return append(make([]string, height-len(lines)), lines...)
+	return append(lines, make([]string, height-len(lines))...)
 }
 
 // fitBlock pads or truncates a block of lines to exactly height lines.
@@ -215,7 +212,7 @@ func (m Model) rowSummary(path string) models.RepoSummary {
 	return summary
 }
 
-func (m Model) renderTable(height int) string {
+func (m Model) renderTable() string {
 	if len(m.filteredPaths) == 0 {
 		if m.loading {
 			return m.loadingPlaceholder("Discovering repositories")
@@ -230,20 +227,12 @@ func (m Model) renderTable(height int) string {
 	}
 
 	compact := m.isCompact()
-	width := listWidth(m.width, m.height)
+	width := listWidth(m.width)
 
 	var (
 		rows      []string
 		rowHeight = 1
 	)
-
-	// The preview leads. Its height is fixed, so the table below it starts on
-	// the same line whatever the note says, and moving the cursor swaps the
-	// text in place instead of sliding the rows around it.
-	if preview := m.notesPreviewHeight(height); preview > 0 {
-		rows = append(rows, strings.Join(
-			padTop(elideMiddle(m.notesPreviewLines(width), preview), preview), "\n"))
-	}
 
 	layout := layoutRepoCols(width)
 	if compact {
@@ -268,22 +257,24 @@ func (m Model) renderTable(height int) string {
 	return strings.Join(rows, "\n")
 }
 
-// Notes preview geometry. Opening the preview is a request to read the notes,
-// so it takes the larger share of the body; the list keeps enough rows below
-// it that scrolling still moves through the fleet rather than re-centering a
-// two-row window on every keypress.
+// Expanded region geometry. Opening the region is a request to read one repo in
+// full, so it takes the larger share of the body; the table keeps enough rows
+// above it that scrolling still moves through the fleet rather than
+// re-centering a two-row window on every keypress. The minimum is the region's
+// own fixed head plus a note line and the divider that captions it, since a
+// region too short for those says nothing the table did not already.
 const (
-	notesPreviewPercent = 60
-	notesPreviewMinRows = 4
-	listMinRows         = 6
+	expandPercent = 60
+	expandMinRows = expandHeadRows + 2
+	listMinRows   = 6
 )
 
-// notesPreviewHeight is how many of the body's lines the notes preview holds,
-// or zero when it is closed. It depends only on the body height, never on the
+// expandHeight is how many of the body's lines the expanded region holds, or
+// zero when it is closed. It depends only on the body height, never on the
 // selected repo, so scrolling between a repo with notes and one without cannot
-// resize the list under the cursor.
-func (m Model) notesPreviewHeight(body int) int {
-	if !m.notesPreviewOpen {
+// resize the table under the cursor.
+func (m Model) expandHeight(body int) int {
+	if !m.expandOpen {
 		return 0
 	}
 
@@ -293,11 +284,19 @@ func (m Model) notesPreviewHeight(body int) int {
 	}
 
 	room := body - headerRows - listMinRows
-	if room < notesPreviewMinRows {
+	if room < expandMinRows {
 		return 0
 	}
 
-	return min(body*notesPreviewPercent/percentDenominator, room)
+	return min(body*expandPercent/percentDenominator, room)
+}
+
+// tableHeight is how many of the body's lines the table keeps once the expanded
+// region has taken its share.
+func (m Model) tableHeight() int {
+	body := m.listBodyHeight()
+
+	return body - m.expandHeight(body)
 }
 
 // percentDenominator scales the percentage budgets above; elisionEnds is how
@@ -312,9 +311,7 @@ const (
 // many terminal lines one record covers, so the compact layout scrolls by
 // records rather than by lines.
 func (m Model) visibleRepoRange(rowHeight int) repoWindow {
-	body := m.listBodyHeight()
-
-	availableLines := body - m.notesPreviewHeight(body)
+	availableLines := m.tableHeight()
 	if !m.isCompact() {
 		availableLines--
 	}
@@ -343,42 +340,127 @@ type repoWindow struct {
 	end   int
 }
 
-// notesPreviewLines renders the selected repo's notes above the list. The last
-// line is always the divider that separates the two and captions what is above
-// it, naming the repo by its parent directory as well as its own, because a
-// fleet holds several checkouts that share a name.
-func (m Model) notesPreviewLines(width int) []string {
+// expandHeadRows is the region's fixed head: the rule that names the repo, then
+// one row each for peers, branches, and pull requests. Everything below it
+// belongs to the notes, which is the only section whose length the repo decides.
+const expandHeadRows = 4
+
+// expandLabelCol is the width the head's labels are padded to, so their values
+// line up in a column of their own.
+const expandLabelCol = 10
+
+// expandLines renders the region below the table for the repo under the cursor:
+// a rule naming the repo, a row each for peers, branches, and pull requests,
+// then the repo's notes over whatever height is left, closed by the divider
+// that captions them. Sections whose data has not arrived say so rather than
+// disappearing, so the region's shape never moves as data lands.
+func (m Model) expandLines(width, height int) []string {
 	if m.cursor >= len(m.filteredPaths) {
 		return nil
 	}
 
 	path := m.filteredPaths[m.cursor]
-	summary := m.summaries[path]
+	summary := m.rowSummary(path)
+	data, loaded := m.prMap[path]
 
+	lines := []string{
+		notesFileRule(qualifiedRepoName(path)+compactSignalSep+
+			section(m.summaryPending(path), overviewIdentity(summary)), width),
+		expandRow("Peers", section(m.loading, overviewPeers(m.PeerCheckouts(path))), width),
+		expandRow(tabNameBranches, section(!loaded, expandBranches(data.Branches)), width),
+		expandRow(tabNamePRs, section(!loaded, expandPRs(data.PRs)), width),
+	}
+
+	notes := m.expandNotes(path, summary, width)
+
+	room := height - len(lines) - 1
+	lines = append(lines, padBottom(elideMiddle(notes.lines, room), room)...)
+
+	return append(lines, notesDivider(qualifiedRepoName(path), notes.caption, width))
+}
+
+// expandRow renders one label/value line of the region's head.
+func expandRow(label, value string, width int) string {
+	return styles.SubtitleStyle.Render(table.Pad(label, expandLabelCol, table.AlignLeft)) +
+		" " + table.Truncate(value, width-expandLabelCol-1)
+}
+
+// expandBranches counts the repo's local branches and names the ones holding
+// commits their remote does not have, which are the branches with work on them.
+// The default branch is left out: it is where the work lands, not work itself.
+func expandBranches(branches []models.BranchInfo) string {
+	if len(branches) == 0 {
+		return emDash
+	}
+
+	defaultBranch := findDefaultBranch(branches)
+
+	names := make([]string, 0, len(branches))
+	for _, branch := range branches {
+		if branch.Ahead == 0 || branch.Name == defaultBranch {
+			continue
+		}
+
+		names = append(names, branch.Name+" ↑"+strconv.Itoa(branch.Ahead))
+	}
+
+	count := strconv.Itoa(len(branches)) + " local"
+	if len(names) == 0 {
+		return count
+	}
+
+	return count + compactSignalSep + strings.Join(names, ", ")
+}
+
+// expandPRs counts the repo's open pull requests and names them newest first.
+func expandPRs(prs []models.PRInfo) string {
+	if len(prs) == 0 {
+		return emDash
+	}
+
+	titles := make([]string, 0, len(prs))
+	for i := range prs {
+		titles = append(titles, "#"+strconv.Itoa(prs[i].Number)+" "+prs[i].Title)
+	}
+
+	return strconv.Itoa(len(prs)) + " open" + compactSignalSep + strings.Join(titles, ", ")
+}
+
+// notesBlock is the region's notes section: the note text itself, and the
+// caption the closing divider carries, which is what names a note when nothing
+// else on screen does.
+type notesBlock struct {
+	lines   []string
+	caption string
+}
+
+// expandNotes renders the selected repo's notes at the foot of the region.
+func (m Model) expandNotes(path string, summary models.RepoSummary, width int) notesBlock {
 	if len(summary.NotesFiles) == 0 {
-		return []string{notesDivider(qualifiedRepoName(path), "no notes", width)}
+		return notesBlock{caption: "no notes"}
 	}
 
 	contents, loaded := m.notesPreview[path]
 	if !loaded {
-		return []string{notesDivider(qualifiedRepoName(path), readingLabel, width)}
+		return notesBlock{caption: readingLabel}
 	}
 
-	// One note needs no heading of its own: the divider below already names
-	// the file. Several do, or their text runs together.
+	// One note needs no heading of its own: the divider already names the
+	// file. Several do, or their text runs together.
 	if len(contents) == 1 {
-		return append(notesBodyLines(contents[0].Content, width),
-			notesDivider(qualifiedRepoName(path), contents[0].Name, width))
+		return notesBlock{lines: notesBodyLines(contents[0].Content, width), caption: contents[0].Name}
 	}
 
-	var lines []string
+	lines := make([]string, 0, len(contents))
 	for i := range contents {
 		lines = append(lines, notesFileRule(contents[i].Name, width))
 		lines = append(lines, notesBodyLines(contents[i].Content, width)...)
 	}
 
-	return append(lines, notesDivider(qualifiedRepoName(path),
-		strconv.Itoa(len(contents))+" "+plural(len(contents), "note", "notes"), width))
+	return notesBlock{
+		lines:   lines,
+		caption: strconv.Itoa(len(contents)) + " " + plural(len(contents), "note", "notes"),
+	}
 }
 
 // qualifiedRepoName names a repo by its parent directory as well as its own,
@@ -387,8 +469,8 @@ func qualifiedRepoName(path string) string {
 	return filepath.Join(filepath.Base(filepath.Dir(path)), filepath.Base(path))
 }
 
-// notesDivider closes the preview region and separates it from the table,
-// captioning what sits above it on the right where the text has ended.
+// notesDivider closes the region, captioning what sits above it on the right
+// where the text has ended.
 func notesDivider(repo, detail string, width int) string {
 	label := repo + compactSignalSep + detail
 	rule := strings.Repeat("─", max(width-lipgloss.Width(label)-notesRuleSpaces-notesRuleLead, 0))
@@ -756,21 +838,21 @@ type footerHint struct {
 	priority int
 }
 
-// footerHints lists every repo-list hint in render order. The notes hint
-// outranks the rest of the second tier while the preview is open, because the
+// footerHints lists every repo-list hint in render order. The expand hint
+// outranks the rest of the second tier while the region is open, because the
 // key that closes a region taking most of the screen must stay on offer.
 //
 //nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
-func footerHints(notesOpen bool) []footerHint {
-	notes := footerHint{key: "v", desc: "notes", priority: 3}
-	if notesOpen {
-		notes = footerHint{key: "v", desc: "hide notes", priority: 11}
+func footerHints(expandOpen bool) []footerHint {
+	expand := footerHint{key: "v", desc: "expand", priority: 3}
+	if expandOpen {
+		expand = footerHint{key: "v", desc: "hide", priority: 11}
 	}
 
 	return []footerHint{
 		{key: keyNavPair, desc: descNav, priority: 4},
 		{key: keyEnter, desc: "select", priority: 8},
-		notes,
+		expand,
 		{key: "f", desc: nameFilter, priority: 6},
 		{key: "s", desc: nameSort, priority: 5},
 		{key: "/", desc: "search", priority: 7},
@@ -789,7 +871,7 @@ func (m Model) renderFooter() string {
 		prefix = styles.FooterKeyStyle.Render(hint) + styles.FooterDescStyle.Render(pendingHint) + "  "
 	}
 
-	hints := fittingHints(footerHints(m.notesPreviewOpen), contentWidth(m.width)-lipgloss.Width(prefix))
+	hints := fittingHints(footerHints(m.expandOpen), listWidth(m.width)-lipgloss.Width(prefix))
 
 	parts := make([]string, 0, len(hints))
 	for _, h := range hints {

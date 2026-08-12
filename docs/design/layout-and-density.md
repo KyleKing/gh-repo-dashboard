@@ -72,12 +72,14 @@ Three named layouts selected by width, re-evaluated on every resize:
 
 | Name | Width | UX |
 |------|-------|----|
-| compact | < 100 | different UX, not a shrunken table: two-line rows, no side panel |
-| standard | 100 - 159 | current single-table layout, engine-sized |
-| wide | >= 160 | master-detail: table left, live preview panel right |
+| compact | < 100 | two-line records rather than a shrunken table |
+| standard | 100 - 159 | single-table layout, engine-sized |
+| wide | >= 160 | the same table, spending the surplus width on its own columns |
 
-Height also gates: below 20 rows the preview panel is dropped even at wide
-widths.
+The table takes the wider of two rules: the single-column content width, and
+the proportional one the focused grid uses (90% of the terminal, capped at 200).
+Below about 156 cells the first wins, so a narrow terminal keeps every cell it
+has; above it the second does, and the list and the focused view frame alike.
 
 ### Compact (80x24 target)
 
@@ -105,37 +107,53 @@ tab bar abbreviates counts (`Br 7 · St 0 · Wt 1 · PR 12 · No 0`).
 
 The current layout, but every column sized by the engine. No other UX change.
 
-### Wide (>= 160): preview side panel
+### Wide (>= 160): the table keeps the width
 
-The unused margin becomes a live preview of the selected repo, so Enter is no
-longer required to answer "what state is this repo in". j/k updates the panel
-from cached summaries; it never blocks on fetch (sections render placeholders
-until their data arrives, same pattern as the list).
+The surplus goes to the table's own columns, so NAME and BRANCH stop truncating
+before the fleet's longest names. Answering "what state is this repo in" without
+pressing Enter is the expanded region's job instead, which `v` opens below the
+table at any width (see "Expanded region" below).
 
 ```
- repo-dashboard   62 repos   22 dirty                                      Name (ASC)
-  NAME                    BRANCH          STATUS     PEERS PRs TEMPLATE   MODIFIED    │ gh-repo-dashboard          git · ssh
-> gh-repo-dashboard       main            ↑1         —     —   v0.9.1→…   6 mins ago  │ main ↑1 · clean
-  gh-star-search          main            ✓          —     1   v0.9.1→…   2 days ago  │
-  gh-sweep                main            ✓          —     1   v0.9.1→…   2 days ago  │ Branches   main ↑1 (here)
-  hk-debugging            main            ✓          —     —   —          8 months    │ Stashes    2 · latest: wip: spike (3d)
-  jj-diff                 @               ✓          —     —   v0.9.1→…   2 days ago  │ Peers      none
-  karabiner-actions       main            +1 ↑3  N   —     —   —          2 days ago  │ Notes      none
-  KyleKing                main            ✓          —     —   —          2 days ago  │ Template   v0.9.1 → v0.10.0
-  KyleKing.github.io      main            ✓          —     —   —          15 mins ago │ CI (main)  ✓ ci · ✓ release
-  mdformat-admon          main            ✓          —     —   2.9.3      2 days ago  │
-                                                                                      │ PR #—      no PR for main
- j/k nav  enter open  v notes  f filter  s sort  / search  r refresh  ? help  q quit
+ repo-dashboard   62 repos   22 dirty                                                    Name (ASC)
+  NAME                        BRANCH             STATUS     PEERS PRs TEMPLATE          MODIFIED
+> gh-repo-dashboard           main               ↑1         —     —   v0.9.1→v0.10.0    6 mins ago
+  gh-star-search              main               ✓          —     1   v0.9.1→v0.10.0    2 days ago
+  karabiner-actions           main               +1 ↑3  N   —     —   —                 2 days ago
+  mdformat-admon              main               ✓          —     —   2.9.3             2 days ago
+ j/k nav  enter open  v expand  f filter  s sort  / search  r refresh  ? help  q quit
 ```
 
-The panel is the same component as the focused view's overview pane
-([focused-repo-view.md](focused-repo-view.md)), rendered at panel width.
-Building it once and mounting it twice keeps the implementation KISS.
+## Expanded region
 
-Bubble Tea v2 notes: the frame is already `tea.View` with alt-screen; the
-split is plain lipgloss `JoinHorizontal` with the engine sizing each half.
-No new dependency is required, though `bubbles/v2` viewport backs the panel
-scroll if the preview grows taller than the window.
+`v` opens one region below the table for the repo under the cursor, and `esc`
+closes it before it touches the search or the filters. It answers the questions
+the table has no column for, in a fixed order: a rule naming the repo and its
+VCS, then peers, local branches with unpushed commits, open pull requests, and
+the repo's notes in full, closed by a divider captioning the notes.
+
+```
+── dev/gh-repo-dashboard · git · ssh ──────────────────────────────────────────
+Peers      ⧉ 2 wt-refactor, backup-clone
+Branches   7 local · feat/panels ↑3, chore/template ↑1
+PRs        2 open · #42 Add login flow, #7 Bump the template
+  ## 2026-08-11
+  finish the region, then the docs
+
+───────────────────────────────────────────── dev/gh-repo-dashboard · .doing ──
+```
+
+The region takes 60% of the body, bounded so the table keeps six rows and the
+region keeps its head plus a note line. Its height is a function of the body
+height alone, never of the selected repo or of what is still loading, so moving
+the cursor swaps text in place instead of resizing the table under it. Sections
+whose data is outstanding say `reading…` rather than `—`, and a note taller than
+the space has its middle elided so both ends survive.
+
+Branches and pull requests come from the same per-repo read the `:prs` fleet map
+makes, cached per repo for the session, so opening the region costs one fetch per
+repo and reopening it costs none. A terminal too short to seat the region says so
+in the status line instead of swallowing the keypress.
 
 ## Interaction consequences
 

@@ -10,66 +10,45 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
-func TestPanelWidthOnlyAtWideSizes(t *testing.T) {
+// TestListWidthFollowsTheWiderRule pins the redesign's geometry: the table
+// stands alone and takes the focused grid's width wherever that is the wider
+// rule, so a terminal that used to carry the preview panel spends the whole of
+// it on columns, and one that never did keeps every cell it had.
+func TestListWidthFollowsTheWiderRule(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name          string
-		width, height int
-		wantPanel     bool
-	}{
-		{name: "compact has no panel", width: 80, height: 24},
-		{name: "standard has no panel", width: 140, height: 40},
-		{name: "wide has a panel", width: 160, height: 50, wantPanel: true},
-		{name: "a short wide terminal drops the panel", width: 200, height: 18},
-	}
+	for _, width := range []int{80, 100, 140, 160, 180, 220, 260} {
+		m := compactModel(width, 40)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+		if got, floor := m.frameWidth(), contentWidth(width); got < floor {
+			t.Errorf("at %d cells the list frames to %d, narrower than the %d it had", width, got, floor)
+		}
 
-			panel := panelWidth(tt.width, tt.height)
-			if (panel > 0) != tt.wantPanel {
-				t.Fatalf("panelWidth(%d, %d) = %d, want a panel: %v", tt.width, tt.height, panel, tt.wantPanel)
-			}
+		if grid := m.gridWidth(); grid > contentWidth(width) && m.frameWidth() != grid {
+			t.Errorf("at %d cells the list frames to %d and the grid to %d", width, m.frameWidth(), grid)
+		}
 
-			if !tt.wantPanel {
-				return
-			}
-
-			if panel < overviewMinWidth || panel > overviewMaxWidth {
-				t.Errorf("panel is %d cells, want between %d and %d", panel, overviewMinWidth, overviewMaxWidth)
-			}
-
-			if got := listWidth(tt.width, tt.height); got < overviewMinListWidth {
-				t.Errorf("list keeps only %d cells, want at least %d", got, overviewMinListWidth)
-			}
-		})
+		if got := layoutRepoCols(listWidth(width)).Hidden; width >= wideMinWidth && got != 0 {
+			t.Errorf("at %d cells the table hides %d columns; there is width for all of them", width, got)
+		}
 	}
 }
 
-func TestWidePanelPreservesTheFullTable(t *testing.T) {
-	t.Parallel()
-
-	if got := layoutRepoCols(listWidth(180, 40)).Hidden; got != 0 {
-		t.Errorf("the preview panel forced %d repo columns to hide; the list must keep them all", got)
-	}
-}
-
-func TestWidePanelTracksTheCursor(t *testing.T) {
+func TestExpandRegionTracksTheCursor(t *testing.T) {
 	t.Parallel()
 
 	m := compactModel(180, 40)
+	m.expandOpen = true
 
-	first := plainText(m.renderListWithPreview(m.listBodyHeight()))
-	if !strings.Contains(first, "alpha") || !strings.Contains(first, "Stashes") {
-		t.Fatalf("panel missing for the first repo:\n%s", first)
+	first := plainText(m.renderListBody())
+	if !strings.Contains(first, "dev/alpha") {
+		t.Fatalf("the region does not name the first repo:\n%s", first)
 	}
 
 	m.cursor = 1
-	second := plainText(m.renderListWithPreview(m.listBodyHeight()))
-	if !strings.Contains(second, ".doing") {
-		t.Errorf("panel did not follow the cursor to bravo:\n%s", second)
+	second := plainText(m.renderListBody())
+	if !strings.Contains(second, "dev/bravo") {
+		t.Errorf("the region did not follow the cursor to bravo:\n%s", second)
 	}
 }
 

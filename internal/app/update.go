@@ -119,6 +119,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.prMap = make(map[string]PRMapLoadedMsg)
 		}
 		m.prMap[msg.Path] = msg
+		m.finishFetch(msg.Path, fetchExpand)
 
 		return m, nil
 
@@ -401,7 +402,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if newM, handled := m.handleCursorKey(msg); handled {
-		return newM, tea.Batch(append(newM.visibleCICmds(), newM.notesPreviewCmd())...)
+		cmds := append(newM.visibleCICmds(), newM.expandCmd())
+
+		return newM, tea.Batch(cmds...)
 	}
 
 	if newM, handled := m.handleModeKey(msg); handled {
@@ -427,8 +430,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Search):
 		return m.openSearch()
 
-	case key.Matches(msg, m.keys.NotesPreview):
-		return m.toggleNotesPreview()
+	case key.Matches(msg, m.keys.Expand):
+		return m.toggleExpand()
 
 	case key.Matches(msg, m.keys.Peers):
 		return m.openCheckouts()
@@ -666,40 +669,51 @@ func (m Model) handleNotesContentLoaded(msg NotesContentLoadedMsg) (tea.Model, t
 	return m, nil
 }
 
-// toggleNotesPreview opens or closes the list's notes region. A terminal too
-// short to seat one would swallow the keypress with nothing on screen to
-// explain it, so it says so instead.
-func (m Model) toggleNotesPreview() (tea.Model, tea.Cmd) {
-	m.notesPreviewOpen = !m.notesPreviewOpen
+// toggleExpand opens or closes the list's expanded region. A terminal too short
+// to seat one would swallow the keypress with nothing on screen to explain it,
+// so it says so instead.
+func (m Model) toggleExpand() (tea.Model, tea.Cmd) {
+	m.expandOpen = !m.expandOpen
 
-	if m.notesPreviewOpen && m.notesPreviewHeight(m.listBodyHeight()) == 0 {
-		m.notesPreviewOpen = false
-		m.statusMessage = "Terminal too short for the notes preview"
+	if m.expandOpen && m.expandHeight(m.listBodyHeight()) == 0 {
+		m.expandOpen = false
+		m.statusMessage = "Terminal too short for the expanded region"
 
 		return m, clearStatusAfterDelay()
 	}
 
-	return m, m.notesPreviewCmd()
+	cmd := m.expandCmd()
+
+	return m, cmd
 }
 
-// notesPreviewCmd reads the notes of the repo under the cursor when the
-// preview is open and they are not cached yet.
-func (m Model) notesPreviewCmd() tea.Cmd {
-	if !m.notesPreviewOpen || m.cursor >= len(m.filteredPaths) {
+// expandCmd reads what the region shows for the repo under the cursor and is
+// not holding yet: its notes, and the branches and pull requests the fleet map
+// caches beside them.
+func (m *Model) expandCmd() tea.Cmd {
+	if !m.expandOpen || m.cursor >= len(m.filteredPaths) {
 		return nil
 	}
 
 	path := m.filteredPaths[m.cursor]
-	if _, cached := m.notesPreview[path]; cached {
-		return nil
-	}
 
 	summary, ok := m.summaries[path]
-	if !ok || len(summary.NotesFiles) == 0 {
+	if !ok {
 		return nil
 	}
 
-	return loadNotesContentCmd(path, summary.NotesFiles)
+	var cmds []tea.Cmd
+
+	if _, cached := m.notesPreview[path]; !cached && len(summary.NotesFiles) > 0 {
+		cmds = append(cmds, loadNotesContentCmd(path, summary.NotesFiles))
+	}
+
+	if _, cached := m.prMap[path]; !cached && !m.fetchPending(path, fetchExpand) {
+		m.startFetch(path, fetchExpand)
+		cmds = append(cmds, loadPRMapCmd(path, summary.RemoteID, summary.Upstream))
+	}
+
+	return tea.Batch(cmds...)
 }
 
 // handleCursorKey handles the repo-list cursor movement keys (up/down/top/
@@ -786,13 +800,13 @@ func (m Model) handleBackKey() (tea.Model, tea.Cmd) {
 }
 
 // dismissListLayer closes one layer of the repo list, most recently opened
-// first: the notes preview, then the search text, then the filters. The list
+// first: the expanded region, then the search text, then the filters. The list
 // itself has no parent to pop to, so a back key with nothing open does
 // nothing rather than leaving the fleet.
 func (m Model) dismissListLayer() (tea.Model, tea.Cmd) {
 	switch {
-	case m.notesPreviewOpen:
-		m.notesPreviewOpen = false
+	case m.expandOpen:
+		m.expandOpen = false
 
 		return m, nil
 

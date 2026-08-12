@@ -5,12 +5,14 @@ package app
 // rather than "nothing here" while it is outstanding.
 type fetchKind int
 
-// Fetch kinds, one per column the list fills after the summary lands.
+// Fetch kinds: one per column the list fills after the summary lands, plus the
+// branch and pull request read the expanded region makes for one repo at a time.
 const (
 	fetchPR fetchKind = iota
 	fetchPRCount
 	fetchTemplate
 	fetchCI
+	fetchExpand
 )
 
 type fetchKey struct {

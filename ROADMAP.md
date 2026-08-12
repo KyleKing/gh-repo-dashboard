@@ -6,8 +6,8 @@ conventions live in [AGENTS.md](AGENTS.md); the design docs the shipped work was
 built from live in `docs/design/`.
 
 The column engine lives in `internal/ui/table` and every table is sized by it.
-`internal/app/view_overview.go` holds the repo overview pane, mounted by the
-wide layout's preview panel. The focused repo view is a panel grid
+The repo list is one full-width table with an expanded region `v` opens beneath
+it (`internal/app/view_repolist.go`). The focused repo view is a panel grid
 (`panels.go`, `view_panels.go`) and the universal find is `palette.go` and
 `view_palette.go`. The `:prs` fleet map lives in `internal/app/prmap.go`.
 Default-branch CI is fetched lazily for visible rows only, tracked by
@@ -24,7 +24,7 @@ and scriptable headlessly.
 
 The 2026-08 direction adds a second axis: the same data at three densities.
 A compact narrow layout with its own UX, the standard table, and a wide layout
-that spends surplus width on a live preview panel, with a focused single-repo
+that spends surplus width on the table's own columns, with a focused single-repo
 view that answers "what is the state of the repo I am standing in" without any
 drilling.
 

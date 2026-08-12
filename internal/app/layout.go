@@ -25,6 +25,29 @@ func contentWidth(termWidth int) int {
 	return max(min(termWidth-frameSides*frameGutter, maxContentWidth), minContentWidth)
 }
 
+// Width of the dense views: the repo table and the focused repo grid. The
+// single-column views cap at maxContentWidth because a row past that costs more
+// to scan than the density is worth; these two spend surplus width on columns
+// and on a second pane, so they keep a proportional margin and a much later cap.
+const (
+	gridWidthPercent = 90
+	gridMaxWidth     = 200
+)
+
+// wideContentWidth is the width the focused grid renders into.
+func wideContentWidth(termWidth int) int {
+	return max(min(termWidth*gridWidthPercent/percentDenominator, gridMaxWidth), minContentWidth)
+}
+
+// listWidth is the width the repo table renders into: the wider of the two
+// rules. Past roughly 156 cells the grid's proportional rule wins and the table
+// spends the surplus on its columns; below that the single-column width does,
+// because a proportional margin there costs the table cells it needs and frees
+// nothing.
+func listWidth(termWidth int) int {
+	return max(contentWidth(termWidth), wideContentWidth(termWidth))
+}
+
 // frameLeftPad returns the indent that centers a contentW-wide block within
 // termWidth.
 func frameLeftPad(termWidth, contentW int) int {

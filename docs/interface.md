@@ -110,8 +110,9 @@ The STATUS column shows the working tree as symbols:
 - `✓` when the working tree is clean
 
 Alongside it, `N` marks a repo with one notes file and `N3` a repo with three.
-Press `v` to toggle a first-line preview of those files under the cursor, or open
-the repo and focus its Notes panel for the full contents.
+Press `v` to open the expanded region under the table, which reads those files in
+full for the repo under the cursor alongside its peers, local branches, and open
+pull requests. `esc` closes the region, then clears the search, then the filters.
 
 The list has no symbols for stash counts, worktree counts, or workflow runs.
 Those appear in the focused view's panels, and the branch detail pane spells

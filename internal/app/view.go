@@ -78,13 +78,13 @@ func (m Model) renderScreen() string {
 	return content
 }
 
-// frameWidth is the width the frame centers and pads to. Only the repo list
-// widens past the single-column content width, and only to carry the preview
-// panel beside it.
+// frameWidth is the width the frame centers and pads to. The repo list and the
+// focused grid are the dense views and share the later cap; everything else
+// stays within the single-column content width.
 func (m Model) frameWidth() int {
 	switch m.viewMode {
 	case ViewModeRepoList:
-		return frameContentWidth(m.width, m.height)
+		return listWidth(m.width)
 	case ViewModeRepoDetail:
 		return m.gridWidth()
 	default:

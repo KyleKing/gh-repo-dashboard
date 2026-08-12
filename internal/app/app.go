@@ -39,11 +39,13 @@ type Model struct {
 	repoPaths []string
 	summaries map[string]models.RepoSummary
 
-	filteredPaths    []string
-	cursor           int
-	notesPreviewOpen bool
+	filteredPaths []string
+	cursor        int
+	// expandOpen is the one region the list opens below its table, holding the
+	// peers, branches, pull requests, and notes of the repo under the cursor.
+	expandOpen bool
 	// notesPreview caches each repo's notes read in full, keyed by repo path,
-	// so reopening the preview or scrolling back never re-reads a file.
+	// so reopening the region or scrolling back never re-reads a file.
 	notesPreview map[string][]models.NoteFileContent
 
 	activeFilters []models.ActiveFilter

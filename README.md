@@ -25,8 +25,8 @@ Pass the directories that hold your repositories:
 gh repo-dashboard -depth 2 ~/Developer
 ```
 
-Move with `j` and `k`, press `enter` to open a repo, and press `?` for the
-keymap. Set `scan_paths` in the [config file](./docs/configuration.md) once and
+Move with `j` and `k`, press `v` to expand the repo under the cursor without
+leaving the list, `enter` to open it, and `?` for the keymap. Set `scan_paths` in the [config file](./docs/configuration.md) once and
 `gh repo-dashboard` launches from anywhere with no arguments.
 
 Run it inside a repository and it opens that repo directly, listing each branch

@@ -58,6 +58,8 @@ func settleFetches(t *testing.T, start *Model) Model {
 			msg = CopierInfoLoadedMsg{Path: key.path}
 		case fetchCI:
 			msg = WorkflowLoadedMsg{Path: key.path, Error: errGHFailed}
+		case fetchExpand:
+			msg = PRMapLoadedMsg{Path: key.path}
 		}
 
 		updated, _ := m.Update(msg)
@@ -111,7 +113,7 @@ func TestPendingCellsAreDistinctFromAbsentOnes(t *testing.T) {
 	}{
 		{"PR", func(m Model) string { return m.prCell(m.summaries[path]) }},
 		{"PR count", func(m Model) string { return m.prCountText(path) }},
-		{"template", func(m Model) string { return m.templateCell(m.summaries[path], overviewMaxWidth) }},
+		{"template", func(m Model) string { return m.templateCell(m.summaries[path], maxContentWidth) }},
 		{"CI", func(m Model) string {
 			text, _ := m.ciCell(m.summaries[path], plainStyle, false)
 

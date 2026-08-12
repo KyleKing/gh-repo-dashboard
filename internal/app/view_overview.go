@@ -4,126 +4,13 @@ import (
 	"strconv"
 	"strings"
 
-	"charm.land/lipgloss/v2"
-
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
 
-// Preview panel geometry. The panel only appears once the terminal is wide
-// enough to spare the width, and it never grows past overviewMaxWidth because
-// beyond that the list loses more than the panel gains.
-const (
-	overviewMinWidth = 34
-	overviewMaxWidth = 48
-	overviewSepWidth = 3
-	overviewLabelCol = 10
-)
-
-// overviewMinListWidth is the width the repo list keeps for itself before any
-// is spent on a panel: the standard breakpoint's floor, which is the narrowest
-// a full eight-column table reads well at.
-const overviewMinListWidth = standardMinWidth
-
-// splitWidth is the total the list, rule, and panel share. It caps at the
-// single-column content width plus a full panel, so a very wide terminal
-// leaves margin rather than stretching rows past the point of scanning.
-func splitWidth(termWidth int) int {
-	available := max(termWidth-frameSides*frameGutter, minContentWidth)
-
-	return min(available, maxContentWidth+overviewSepWidth+overviewMaxWidth)
-}
-
-// overviewSeparator is the rule drawn between the list and the panel, and
 // overviewEmpty is what a panel with nothing to list shows. The overview's own
 // rows use emDash instead: a column of dashes reads as "nothing here" at a
 // glance, where a column of the word "none" has to be read.
-const (
-	overviewSeparator = " │ "
-	overviewEmpty     = "none"
-)
-
-// panelWidth returns the preview panel's width, or zero when the layout has
-// no panel or the terminal cannot spare one without starving the list.
-func panelWidth(termWidth, height int) int {
-	if breakpointFor(termWidth, height) != breakpointWide {
-		return 0
-	}
-
-	spare := splitWidth(termWidth) - overviewMinListWidth - overviewSepWidth
-	if spare < overviewMinWidth {
-		return 0
-	}
-
-	return min(spare, overviewMaxWidth)
-}
-
-// listWidth returns the width the repo list may render into, which is the full
-// content width unless a preview panel is taking part of it.
-func listWidth(termWidth, height int) int {
-	panel := panelWidth(termWidth, height)
-	if panel == 0 {
-		return contentWidth(termWidth)
-	}
-
-	return splitWidth(termWidth) - panel - overviewSepWidth
-}
-
-// frameContentWidth is the width the frame centers and pads to: the list plus
-// the panel when one is mounted, and the plain content width otherwise.
-func frameContentWidth(termWidth, height int) int {
-	panel := panelWidth(termWidth, height)
-	if panel == 0 {
-		return contentWidth(termWidth)
-	}
-
-	return listWidth(termWidth, height) + overviewSepWidth + panel
-}
-
-// renderOverview summarizes one repo from cached data only, so moving the
-// cursor never blocks on a fetch. Sections whose data has not arrived render
-// their placeholder rather than disappearing, keeping the panel's height
-// stable as data fills in.
-func (m Model) renderOverview(s models.RepoSummary, opts overviewOpts) string {
-	width := opts.width
-	rows := m.overviewRows(s, opts.compact)
-
-	lines := make([]string, 0, len(rows)+overviewHeaderLines)
-
-	if opts.standalone {
-		lines = append(lines,
-			styles.HeaderStyle.Render(table.Truncate(s.Name(), width)),
-			styles.SubtitleStyle.Render(table.Truncate(overviewIdentity(s), width)),
-			"",
-			styles.BranchStyle.Render(table.Truncate(s.Branch, width))+" "+
-				styles.SubtitleStyle.Render(table.Truncate(s.StatusSummary(), width)),
-			"",
-		)
-	}
-
-	for _, row := range rows {
-		lines = append(lines,
-			styles.SubtitleStyle.Render(table.Pad(row.label, overviewLabelCol, table.AlignLeft))+
-				" "+table.Truncate(row.value, width-overviewLabelCol-1))
-	}
-
-	return strings.Join(lines, "\n")
-}
-
-// overviewHeaderLines is how many lines the pane's identity block occupies
-// above the label/value rows.
-const overviewHeaderLines = 5
-
-// overviewOpts configures one mount of the overview pane. The standalone field
-// means the pane carries its own identity block, which the wide preview panel
-// needs (it sits beside a list, not under a breadcrumb) and the focused view
-// does not.
-type overviewOpts struct {
-	width      int
-	compact    bool
-	standalone bool
-}
+const overviewEmpty = "none"
 
 // overviewFullRows is how many rows the non-compact pane holds.
 const overviewFullRows = 8
@@ -182,7 +69,7 @@ func (m Model) overviewRows(s models.RepoSummary, compact bool) []overviewRow {
 		overviewRow{label: tabNameNotes, value: section(unread, overviewNotes(s.NotesFiles))},
 		overviewRow{
 			label: "Template",
-			value: section(unread || m.fetchPending(s.Path, fetchTemplate), formatCopierCell(s, overviewMaxWidth)),
+			value: section(unread || m.fetchPending(s.Path, fetchTemplate), formatCopierCell(s, maxContentWidth)),
 		},
 		overviewRow{label: tabNamePRs, value: section(unread || m.fetchPending(s.Path, fetchPR), overviewPRs(s))},
 		overviewRow{label: "CI", value: section(unread || m.fetchPending(s.Path, fetchCI), m.overviewCI(s))},
@@ -309,39 +196,4 @@ func overviewNotes(notes []models.NoteFile) string {
 	}
 
 	return strings.Join(names, ", ")
-}
-
-// joinListAndPanel places the preview panel to the right of the repo list,
-// separated by a vertical rule that runs the full height of the body whatever
-// either block contains.
-func joinListAndPanel(list, panel string, listW, panelW, height int) string {
-	listLines := strings.Split(list, "\n")
-	panelLines := strings.Split(panel, "\n")
-
-	rule := styles.SubtitleStyle.Render(overviewSeparator)
-
-	joined := make([]string, height)
-	for i := range height {
-		joined[i] = padRight(lineAt(listLines, i), listW) + rule + padRight(lineAt(panelLines, i), panelW)
-	}
-
-	return strings.Join(joined, "\n")
-}
-
-func lineAt(lines []string, i int) string {
-	if i < len(lines) {
-		return lines[i]
-	}
-
-	return ""
-}
-
-// padRight widens an already-styled line to width without truncating it,
-// because cutting a styled line risks slicing an escape sequence in half.
-func padRight(line string, width int) string {
-	if gap := width - lipgloss.Width(line); gap > 0 {
-		return line + strings.Repeat(" ", gap)
-	}
-
-	return line
 }

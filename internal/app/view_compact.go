@@ -54,7 +54,7 @@ func (m Model) renderCompactRow(s models.RepoSummary, selected bool, layout tabl
 		table.Join(renderCells(layout, values, cellStyles, &base))
 
 	signals := m.compactSignals(s)
-	signalWidth := contentWidth(m.width) - len(compactIndent)
+	signalWidth := listWidth(m.width) - len(compactIndent)
 	signalLine := styles.SubtitleStyle.Render(
 		compactIndent + table.Truncate(strings.Join(signals, compactSignalSep), signalWidth))
 
@@ -84,7 +84,7 @@ func (m Model) compactSignals(s models.RepoSummary) []string {
 	}
 
 	if s.TemplateInfo != nil {
-		signals = append(signals, formatCopierCell(s, contentWidth(m.width)))
+		signals = append(signals, formatCopierCell(s, listWidth(m.width)))
 	}
 
 	if s.StashCount > 0 {

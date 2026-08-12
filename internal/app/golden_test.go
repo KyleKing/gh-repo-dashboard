@@ -127,6 +127,39 @@ func TestGoldenPanelGridBreakpoints(t *testing.T) {
 	}
 }
 
+// TestGoldenRepoListExpanded pins the region `v` opens under the table at each
+// breakpoint: the table keeps its rows above it, and the region's four sections
+// hold their order and their share of the height whatever the note says.
+func TestGoldenRepoListExpanded(t *testing.T) {
+	for _, size := range breakpointSizes() {
+		t.Run(size.name, func(t *testing.T) {
+			m := goldenModel()
+			m.width, m.height = size.width, size.height
+			m.cursor = 1
+			m.expandOpen = true
+
+			bravo := m.summaries["/Users/dev/bravo"]
+			bravo.NotesFiles = []models.NoteFile{{Name: ".doing", FirstLine: "wire up the session store"}}
+			m.summaries["/Users/dev/bravo"] = bravo
+
+			m.notesPreview = map[string][]models.NoteFileContent{
+				"/Users/dev/bravo": {{Name: ".doing", Content: "wire up the session store\nthen the logout flow"}},
+			}
+			m.prMap = map[string]PRMapLoadedMsg{
+				"/Users/dev/bravo": {
+					Path: "/Users/dev/bravo",
+					PRs:  []models.PRInfo{{Number: 42, Title: "Add login flow", State: "OPEN", HeadRef: "feature/login"}},
+					Branches: []models.BranchInfo{
+						{Name: mainBranchName, Upstream: "origin/main"},
+						{Name: "feature/login", Upstream: "origin/feature/login", Ahead: 2, IsCurrent: true},
+					},
+				},
+			}
+			golden.RequireEqual(t, []byte(m.renderScreen()))
+		})
+	}
+}
+
 // TestGoldenRepoListLoading pins the list mid-load: charlie's summary has not
 // been read, alpha's summary is in but every fetch it started is still out, and
 // bravo has settled. A pending cell that quietly renders as an absent one shows

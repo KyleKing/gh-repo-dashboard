@@ -461,18 +461,9 @@ func (m Model) renderPanelGrid() string {
 	return b.String()
 }
 
-// Width of the focused repo view. The single-column views cap at
-// maxContentWidth because a row past that costs more to scan than the density
-// is worth; the grid spends its extra width on a second column instead, so it
-// keeps a proportional margin and a much later cap.
-const (
-	gridWidthPercent = 90
-	gridMaxWidth     = 200
-)
-
 // gridWidth is the width the focused repo view renders into.
 func (m Model) gridWidth() int {
-	return max(min(m.width*gridWidthPercent/percentDenominator, gridMaxWidth), minContentWidth)
+	return wideContentWidth(m.width)
 }
 
 // gridStacked reports whether the grid drops its side-by-side split, either
