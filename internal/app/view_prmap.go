@@ -57,7 +57,7 @@ func (m Model) renderPRMapBreadcrumbs(entries []prMapEntry) string {
 	title := styles.TitleStyle.Render("Open PRs across " + strconv.Itoa(len(m.filteredPaths)) + " repos")
 	badges := []string{styles.Badge(prMapSummary(entries), styles.CountBadgeStyle)}
 
-	if pending := len(m.filteredPaths) - len(m.prMap); pending > 0 {
+	if pending := m.prMapPending(); pending > 0 {
 		badges = append(badges, styles.Badge("loading "+strconv.Itoa(pending), styles.CountBadgeStyle))
 	}
 
@@ -66,7 +66,7 @@ func (m Model) renderPRMapBreadcrumbs(entries []prMapEntry) string {
 
 func (m Model) renderPRMapTable(entries []prMapEntry) string {
 	if len(entries) == 0 {
-		if len(m.prMap) < len(m.filteredPaths) {
+		if m.prMapPending() > 0 {
 			return m.loadingPlaceholder("Loading pull requests")
 		}
 

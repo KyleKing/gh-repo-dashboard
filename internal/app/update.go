@@ -107,9 +107,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleActionResult(msg)
 
 	case PRMapLoadedMsg:
-		if m.prMap == nil {
-			m.prMap = make(map[string]PRMapLoadedMsg)
-		}
 		m.prMap[msg.Path] = msg
 		m.finishFetch(msg.Path, fetchExpand)
 
@@ -481,7 +478,6 @@ func (m Model) handlePRMapKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Back):
 		m.viewMode = ViewModeRepoList
-		m.prMap = nil
 		m.prMapCursor = 0
 
 		return m, nil
@@ -524,7 +520,6 @@ func (m Model) openPRMapRepo(entries []prMapEntry) (tea.Model, tea.Cmd) {
 	repo := entries[m.prMapCursor].Repo
 	for _, path := range m.filteredPaths {
 		if filepath.Base(path) == repo {
-			m.prMap = nil
 			m.prMapCursor = 0
 
 			return m.openRepo(path)
@@ -539,11 +534,11 @@ func (m Model) openPRMapRepo(entries []prMapEntry) (tea.Model, tea.Cmd) {
 // view already makes; the branch list is local git.
 func (m Model) openPRMap() (Model, tea.Cmd) {
 	m.viewMode = ViewModePRMap
-	m.prMap = make(map[string]PRMapLoadedMsg, len(m.filteredPaths))
 	m.prMapCursor = 0
 
 	cmds := make([]tea.Cmd, 0, len(m.filteredPaths)+1)
 	for _, path := range m.filteredPaths {
+		m.startFetch(path, fetchExpand)
 		cmds = append(cmds, loadPRMapCmd(path, m.summaries[path].RemoteID, m.summaries[path].Upstream))
 	}
 	cmds = append(cmds, m.spinner.Tick)

@@ -59,6 +59,20 @@ func loadPRMapCmd(path, remoteID, upstream string) tea.Cmd {
 	}
 }
 
+// prMapPending counts the visible repos the map is still waiting on. It reads
+// the fetch tracker rather than the size of prMap, which outlives one visit
+// because the expanded region caches into the same map.
+func (m *Model) prMapPending() int {
+	pending := 0
+	for _, path := range m.filteredPaths {
+		if m.fetchPending(path, fetchExpand) {
+			pending++
+		}
+	}
+
+	return pending
+}
+
 const localOnlyLabel = "(no PR)"
 
 // buildPRMap joins the loaded pull requests against the loaded branch lists,

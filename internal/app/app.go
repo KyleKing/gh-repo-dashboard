@@ -202,6 +202,7 @@ func New(scanPaths []string, maxDepth int) Model {
 		summaries:     make(map[string]models.RepoSummary),
 		notesPreview:  make(map[string][]models.NoteFileContent),
 		prCount:       make(map[string]int),
+		prMap:         make(map[string]PRMapLoadedMsg),
 		activeFilters: activeFilters,
 		activeSorts:   sorts,
 		searchInput:   ti,

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -232,7 +234,42 @@ func TestPRMapEnterOpensTheRepoBehindTheRow(t *testing.T) {
 			opened.selectedRepo, opened.viewMode)
 	}
 
-	if opened.prMap != nil {
-		t.Error("leaving the map should release its per-repo data")
+	if _, ok := opened.prMap["/dev/app"]; !ok {
+		t.Error("drilling into a repo should keep what the map read, for the region to reuse")
+	}
+}
+
+// TestExpandCacheSurvivesThePRMap pins the interaction between the expanded
+// region and the fleet map, which share m.prMap: the region caches a repo's
+// branches and pull requests there so reopening it costs nothing, and the map
+// used to throw that away on both entry and exit.
+func TestExpandCacheSurvivesThePRMap(t *testing.T) {
+	t.Parallel()
+	m := mapFleet()
+	m.viewMode = ViewModeRepoList
+	cached := m.prMap["/dev/app"]
+
+	m, _ = m.openPRMap()
+	if _, ok := m.prMap["/dev/app"]; !ok {
+		t.Error("opening the fleet map dropped what the region had already read")
+	}
+
+	m = afterUpdate(t, m, tea.KeyPressMsg{Code: tea.KeyEscape})
+	if m.viewMode != ViewModeRepoList {
+		t.Fatalf("esc should return to the repo list, got %v", m.viewMode)
+	}
+
+	got, ok := m.prMap["/dev/app"]
+	if !ok {
+		t.Fatal("leaving the fleet map dropped the region's cache")
+	}
+	if len(got.PRs) != len(cached.PRs) {
+		t.Errorf("expected %d cached PRs to survive, got %d", len(cached.PRs), len(got.PRs))
+	}
+
+	m.expandOpen = true
+	m.cursor = 0
+	if cmd := m.expandCmd(); cmd != nil {
+		t.Error("reopening the region on a cached repo should cost no fetch")
 	}
 }
