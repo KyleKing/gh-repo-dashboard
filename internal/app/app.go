@@ -157,6 +157,9 @@ type Model struct {
 	stashFullDiff bool
 	selectedPR    models.PRInfo
 	prDetail      models.PRDetail
+	// prDetailScroll is how far the PR detail page has scrolled past its own
+	// top, since its content can run longer than the terminal.
+	prDetailScroll int
 
 	// Universal find state. The palette answers from cached data only, so it
 	// holds no results of its own: they are recomputed from the query.

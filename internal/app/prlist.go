@@ -155,6 +155,7 @@ func (m Model) openSearchPRDetail() (tea.Model, tea.Cmd) {
 	m.selectedRepo = repo
 	m.selectedPR = pr
 	m.prDetail = models.PRDetail{PRInfo: pr}
+	m.prDetailScroll = 0
 	m.prListReturn = ViewModePRList
 	m.viewMode = ViewModePRDetail
 
@@ -214,7 +215,7 @@ func prListActions() []panelAction {
 	return []panelAction{
 		{key: "c", name: "check out", run: Model.startCheckoutSearchPR},
 		{key: "o", name: "open in browser", run: Model.openSearchPRURL},
-		{key: "u", name: "copy URL", run: Model.copySearchPRURL},
+		{key: "u", name: descCopyURL, run: Model.copySearchPRURL},
 	}
 }
 

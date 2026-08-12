@@ -126,7 +126,7 @@ func (m Model) prMapFooter() string {
 		{key: keyNavPair, desc: descNav, priority: 2},
 		{key: keyEnter, desc: "open repo", priority: 8},
 		{key: "o", desc: "browser", priority: 3},
-		{key: keyEsc, desc: "back", priority: 9},
+		{key: keyEsc, desc: descBack, priority: 9},
 	}
 
 	parts := make([]string, 0, len(hints))

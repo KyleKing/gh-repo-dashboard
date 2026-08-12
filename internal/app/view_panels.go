@@ -881,7 +881,7 @@ const (
 // panel jump keys are absent because each panel's border already carries its
 // own.
 func (m Model) panelFooter(panels []panelContent, focused, width int) string {
-	navDesc, backDesc := descNav, "back"
+	navDesc, backDesc := descNav, descBack
 	if m.detailFocused {
 		navDesc, backDesc = "scroll", "panels"
 	}

@@ -36,7 +36,6 @@ const (
 	prCheckNameMinWidth    = 12
 	prCommentMaxLines      = 24
 	stashDiffMaxLines      = 500
-	statusBarHeight        = 2
 	emptyStateVPad         = 2
 	emptyStateHPad         = 4
 	infoPaddingLeft        = 2

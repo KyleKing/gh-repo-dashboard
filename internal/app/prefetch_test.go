@@ -2,6 +2,7 @@
 package app
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -92,9 +93,8 @@ func TestNavigateBetweenPRsInDetailView(t *testing.T) {
 		Author: "user1",
 	}
 
-	// Press down to go to next PR
-	msg := tea.KeyPressMsg{Code: tea.KeyDown}
-	updatedModel, cmd := m.Update(msg)
+	// Press ] to go to the next PR
+	updatedModel, cmd := m.Update(keyPress(']'))
 	m = mustModel(t, updatedModel)
 
 	if m.selectedPR.Number != 2 {
@@ -109,9 +109,8 @@ func TestNavigateBetweenPRsInDetailView(t *testing.T) {
 		t.Error("navigating to next PR should return commands (load + prefetch)")
 	}
 
-	// Press up to go back
-	msg = tea.KeyPressMsg{Code: tea.KeyUp}
-	updatedModel, cmd = m.Update(msg)
+	// Press [ to go back
+	updatedModel, cmd = m.Update(keyPress('['))
 	m = mustModel(t, updatedModel)
 
 	if m.selectedPR.Number != 1 {
@@ -135,9 +134,8 @@ func TestNavigatePRDetailAtBoundaries(t *testing.T) {
 	m.selectedPR = m.prs[0]
 	m.prDetail = models.PRDetail{PRInfo: m.prs[0]}
 
-	// Try to go down (should do nothing)
-	msg := tea.KeyPressMsg{Code: tea.KeyDown}
-	updatedModel, cmd := m.Update(msg)
+	// Try to go to the next PR (should do nothing, there is only one)
+	updatedModel, cmd := m.Update(keyPress(']'))
 	m = mustModel(t, updatedModel)
 
 	if m.selectedPR.Number != 1 {
@@ -148,9 +146,8 @@ func TestNavigatePRDetailAtBoundaries(t *testing.T) {
 		t.Error("navigating past end should return nil command")
 	}
 
-	// Try to go up (should do nothing)
-	msg = tea.KeyPressMsg{Code: tea.KeyUp}
-	updatedModel, cmd = m.Update(msg)
+	// Try to go to the previous PR (should do nothing, already at the start)
+	updatedModel, cmd = m.Update(keyPress('['))
 	m = mustModel(t, updatedModel)
 
 	if m.selectedPR.Number != 1 {
@@ -159,6 +156,41 @@ func TestNavigatePRDetailAtBoundaries(t *testing.T) {
 
 	if cmd != nil {
 		t.Error("navigating past beginning should return nil command")
+	}
+}
+
+// TestScrollPRDetailClampsAtBothEnds pins that j/k scroll the page's own
+// content, and never move the offset past what the page actually holds.
+func TestScrollPRDetailClampsAtBothEnds(t *testing.T) {
+	t.Parallel()
+	m := New(nil, 1)
+	m.width, m.height = 100, 10
+	m.viewMode = ViewModePRDetail
+	m.selectedRepo = testRepoPath
+	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
+	m.selectedPR = models.PRInfo{Number: 1, Title: "Only PR", State: "OPEN"}
+	m.prDetail = models.PRDetail{
+		PRInfo: m.selectedPR,
+		Author: "user1",
+		Body:   strings.Repeat("a long description line\n", 50),
+	}
+
+	updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyUp})
+	up := mustModel(t, updatedModel)
+	if up.prDetailScroll != 0 {
+		t.Errorf("scrolling up from the top should stay at 0, got %d", up.prDetailScroll)
+	}
+
+	maxScroll := m.maxPRDetailScroll()
+	if maxScroll <= 0 {
+		t.Fatal("expected the long description to overflow the page")
+	}
+
+	m.prDetailScroll = maxScroll
+	updatedModel, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	atBottom := mustModel(t, updatedModel)
+	if atBottom.prDetailScroll != maxScroll {
+		t.Errorf("scrolling down past the bottom should clamp at %d, got %d", maxScroll, atBottom.prDetailScroll)
 	}
 }
 

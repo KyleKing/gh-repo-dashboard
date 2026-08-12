@@ -196,7 +196,7 @@ func TestPRDetailViewRender(t *testing.T) {
 			want: []string{
 				"PR #456", "Add amazing feature", "dev1", "dev2, dev3", "reviewer1",
 				"feature/amazing", mainBranchName, "+250", "-100", "This is the PR description",
-				"copy URL", "copy PR number", "copy branch name",
+				"copy URL", "copy number", "copy branch",
 			},
 			absent: []string{"loading details"},
 		},

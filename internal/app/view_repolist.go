@@ -849,6 +849,12 @@ const (
 	descNav    = "nav"
 )
 
+// Hints repeated across more than one footer.
+const (
+	descBack    = "back"
+	descCopyURL = "copy URL"
+)
+
 // footerHint is one key hint and how readily it is dropped when the footer no
 // longer fits. Priority is the hint's value at a glance, so the lowest goes
 // first and the survivors are the keys a new user needs: enter, /, f, s, ?, q.

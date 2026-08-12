@@ -789,6 +789,7 @@ func (m Model) handleEnterKey() (tea.Model, tea.Cmd) {
 	m.stashFullDiff = false
 	m.branchDetail = models.BranchDetail{}
 	m.prDetail = models.PRDetail{}
+	m.prDetailScroll = 0
 	m.detailLoading = true
 
 	return m, tea.Batch(loadDetailCmd(m.selectedRepo), m.spinner.Tick)
@@ -1300,6 +1301,7 @@ func (m Model) openRepo(path string) (tea.Model, tea.Cmd) {
 	m.stashFullDiff = false
 	m.branchDetail = models.BranchDetail{}
 	m.prDetail = models.PRDetail{}
+	m.prDetailScroll = 0
 	m.detailLoading = true
 
 	return m, tea.Batch(loadDetailCmd(path), m.spinner.Tick)
@@ -1383,6 +1385,7 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		m.prs = nil
 		m.branchDetail = models.BranchDetail{}
 		m.prDetail = models.PRDetail{}
+		m.prDetailScroll = 0
 		cmds = append(cmds, discoverReposCmd(m.scanPaths, m.maxDepth))
 
 	case ViewModeRepoDetail:
@@ -1394,6 +1397,7 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		m.notesFiles = nil
 		m.branchDetail = models.BranchDetail{}
 		m.prDetail = models.PRDetail{}
+		m.prDetailScroll = 0
 		m.detailLoading = true
 
 		if m.selectedRepo != "" {
@@ -1447,6 +1451,7 @@ func (m Model) moveToAdjacentPR(delta int) (tea.Model, tea.Cmd) {
 
 	m.selectedPR = m.prs[newIdx]
 	m.prDetail = models.PRDetail{PRInfo: m.selectedPR}
+	m.prDetailScroll = 0
 
 	cmds := []tea.Cmd{loadPRDetailCmd(m.selectedRepo, m.summaries[m.selectedRepo].RemoteID, m.selectedPR.Number)}
 
@@ -1458,7 +1463,62 @@ func (m Model) moveToAdjacentPR(delta int) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// scrollPRDetail moves the PR detail page by delta lines, clamped so the last
+// line of content never scrolls past the top of the page.
+func (m Model) scrollPRDetail(delta int) Model {
+	m.prDetailScroll = min(max(m.prDetailScroll+delta, 0), m.maxPRDetailScroll())
+
+	return m
+}
+
+// maxPRDetailScroll bounds the scroll offset by the page's actual line count.
+// The breadcrumb strings passed to prDetailContentLines only change text
+// within its first line, never how many lines it produces, so blank
+// placeholders here still measure the same total.
+func (m Model) maxPRDetailScroll() int {
+	lines := m.prDetailContentLines("", "", "")
+	visible := max(m.height-prDetailChromeHeight, 1)
+
+	return max(len(lines)-visible, 0)
+}
+
+// handlePRDetailCopyOrOpenKey answers the PR detail view's open-in-browser and
+// clipboard keys. Handled is false if msg matched none of them.
+func (m Model) handlePRDetailCopyOrOpenKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	switch {
+	case key.Matches(msg, m.keys.OpenURL):
+		if m.prDetail.URL != "" {
+			return m, openURLCmd(m.prDetail.URL), true
+		}
+
+		return m, nil, true
+
+	case key.Matches(msg, m.keys.CopyURL):
+		if m.prDetail.URL != "" {
+			return m, copyToClipboardCmd(m.prDetail.URL), true
+		}
+
+		return m, nil, true
+
+	case key.Matches(msg, m.keys.CopyPRNumber):
+		return m, copyToClipboardCmd(fmt.Sprintf("#%d", m.prDetail.Number)), true
+
+	case key.Matches(msg, m.keys.CopyBranch):
+		if m.prDetail.HeadRef != "" {
+			return m, copyToClipboardCmd(m.prDetail.HeadRef), true
+		}
+
+		return m, nil, true
+	}
+
+	return m, nil, false
+}
+
 func (m Model) handlePRDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if next, cmd, handled := m.handlePRDetailCopyOrOpenKey(msg); handled {
+		return next, cmd
+	}
+
 	switch {
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit
@@ -1475,35 +1535,16 @@ func (m Model) handlePRDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleRefresh()
 
 	case key.Matches(msg, m.keys.Up):
-		return m.moveToAdjacentPR(-1)
+		return m.scrollPRDetail(-1), nil
 
 	case key.Matches(msg, m.keys.Down):
+		return m.scrollPRDetail(1), nil
+
+	case msg.String() == "[":
+		return m.moveToAdjacentPR(-1)
+
+	case msg.String() == "]":
 		return m.moveToAdjacentPR(1)
-
-	case key.Matches(msg, m.keys.OpenURL):
-		if m.prDetail.URL != "" {
-			return m, openURLCmd(m.prDetail.URL)
-		}
-
-		return m, nil
-
-	case key.Matches(msg, m.keys.CopyURL):
-		if m.prDetail.URL != "" {
-			return m, copyToClipboardCmd(m.prDetail.URL)
-		}
-
-		return m, nil
-
-	case key.Matches(msg, m.keys.CopyPRNumber):
-		prNum := fmt.Sprintf("#%d", m.prDetail.Number)
-		return m, copyToClipboardCmd(prNum)
-
-	case key.Matches(msg, m.keys.CopyBranch):
-		if m.prDetail.HeadRef != "" {
-			return m, copyToClipboardCmd(m.prDetail.HeadRef)
-		}
-
-		return m, nil
 
 	case key.Matches(msg, m.keys.Help):
 		m.viewMode = ViewModeHelp

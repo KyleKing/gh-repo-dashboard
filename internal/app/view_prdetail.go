@@ -189,22 +189,31 @@ func writePRDetailLatestComment(
 	writeMarkdown(b, comment.Body, width, prCommentMaxLines)
 }
 
-// writePRDetailActions writes the "Actions" section's footer key hints.
-func writePRDetailActions(b *strings.Builder, sectionStyle lipgloss.Style) {
-	b.WriteString("\n")
-	b.WriteString(sectionStyle.Render("Actions"))
-	b.WriteString("\n")
-
-	actionPadding := lipgloss.NewStyle().PaddingLeft(infoPaddingLeft)
-	actions := []string{
-		styles.FooterKeyStyle.Render("o") + styles.FooterDescStyle.Render(" open in browser"),
-		styles.FooterKeyStyle.Render("M") + styles.FooterDescStyle.Render(" squash-merge"),
-		styles.FooterKeyStyle.Render("u") + styles.FooterDescStyle.Render(" copy URL"),
-		styles.FooterKeyStyle.Render("n") + styles.FooterDescStyle.Render(" copy PR number"),
-		styles.FooterKeyStyle.Render("b") + styles.FooterDescStyle.Render(" copy branch name"),
+// prDetailFooter names every key the PR detail view supports, collapsing by
+// the shared hint rules so the actions stay visible in the one place that
+// never scrolls out of view, rather than in a section the page's own length
+// can push off-screen.
+//
+//nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
+func prDetailFooter(width int) string {
+	hints := []footerHint{
+		{key: keyEsc, desc: descBack, priority: 9},
+		{key: "?", desc: "help", priority: 8},
+		{key: keyNavPair, desc: "scroll", priority: 7},
+		{key: "[/]", desc: "prev/next PR", priority: 6},
+		{key: "o", desc: "browser", priority: 5},
+		{key: "M", desc: "squash-merge", priority: 4},
+		{key: "u", desc: descCopyURL, priority: 3},
+		{key: "n", desc: "copy number", priority: 2},
+		{key: "b", desc: "copy branch", priority: 1},
 	}
-	b.WriteString(actionPadding.Render(strings.Join(actions, "    ")))
-	b.WriteString("\n")
+
+	parts := make([]string, 0, len(hints))
+	for _, h := range fittingHints(hints, width) {
+		parts = append(parts, styles.FooterKeyStyle.Render(h.key)+styles.FooterDescStyle.Render(" "+h.desc))
+	}
+
+	return strings.Join(parts, "  ")
 }
 
 // renderPRDetailLoading renders the placeholder shown before any PR detail
@@ -224,18 +233,11 @@ func (m Model) renderPRDetailLoading(home, sep, repo string) string {
 	return b.String()
 }
 
-func (m Model) renderPRDetail() string {
+// prDetailContentLines builds the PR detail page's body as lines, before
+// windowing to the scroll offset: the breadcrumb and title, the Pull Request
+// info, and the Checks, Description, and Latest comment sections.
+func (m Model) prDetailContentLines(home, sep, repo string) []string {
 	var b strings.Builder
-
-	summary := m.summaries[m.selectedRepo]
-	home := styles.SubtitleStyle.Render("Repos")
-	sep := styles.SubtitleStyle.Render(" > ")
-	repo := styles.BranchStyle.Render(summary.Name())
-
-	// Check if PR detail has been loaded
-	if m.prDetail.Number == 0 {
-		return m.renderPRDetailLoading(home, sep, repo)
-	}
 
 	prTitle := styles.TitleStyle.Render(fmt.Sprintf("PR #%d", m.prDetail.Number))
 	b.WriteString(home + sep + repo + sep + prTitle)
@@ -278,17 +280,45 @@ func (m Model) renderPRDetail() string {
 	writePRDetailChecks(&b, sectionStyle, m.prDetail.CheckDetails, fitDetailCols(checkColSpecs, m.width))
 	writePRDetailDescription(&b, sectionStyle, m.prDetail.Body, m.width)
 	writePRDetailLatestComment(&b, sectionStyle, valueStyle, m.prDetail.LatestComment, m.width)
-	writePRDetailActions(&b, sectionStyle)
 
-	contentLines := strings.Count(b.String(), "\n")
-	paddingNeeded := m.height - contentLines - statusBarHeight
-	if paddingNeeded > 0 {
-		b.WriteString(strings.Repeat("\n", paddingNeeded))
+	return strings.Split(b.String(), "\n")
+}
+
+// prDetailScrollMarker reports how much of the page is on screen, so content
+// running past the bottom is never mistaken for the whole of it.
+func prDetailScrollMarker(scroll, total, visible int) string {
+	if total <= visible {
+		return ""
 	}
 
-	footer := styles.FooterKeyStyle.Render(keyEsc) + styles.FooterDescStyle.Render(" back  ") +
-		styles.FooterKeyStyle.Render("?") + styles.FooterDescStyle.Render(" help")
-	b.WriteString(styles.FooterStyle.Render(footer))
+	shown := min(scroll+visible, total)
 
-	return b.String()
+	return styles.SubtitleStyle.Render("  " + strconv.Itoa(shown) + "/" + strconv.Itoa(total))
+}
+
+// prDetailChromeHeight is how many lines outside the scrollable body are
+// spent: the footer's own line, plus one line of headroom the page has always
+// left at the bottom of the terminal.
+const prDetailChromeHeight = 2
+
+func (m Model) renderPRDetail() string {
+	summary := m.summaries[m.selectedRepo]
+	home := styles.SubtitleStyle.Render("Repos")
+	sep := styles.SubtitleStyle.Render(" > ")
+	repo := styles.BranchStyle.Render(summary.Name())
+
+	// Check if PR detail has been loaded
+	if m.prDetail.Number == 0 {
+		return m.renderPRDetailLoading(home, sep, repo)
+	}
+
+	lines := m.prDetailContentLines(home, sep, repo)
+
+	visible := max(m.height-prDetailChromeHeight, 1)
+	start := min(m.prDetailScroll, max(len(lines)-visible, 0))
+	shown := padBottom(lines[start:min(start+visible, len(lines))], visible)
+
+	footer := prDetailFooter(contentWidth(m.width)) + prDetailScrollMarker(start, len(lines), visible)
+
+	return strings.Join(shown, "\n") + "\n" + footer
 }
