@@ -101,14 +101,25 @@ func applyConfig(cfg config.Config, depth *int) {
 }
 
 func printUsage() {
+	configPath, err := config.Path()
+	if err != nil {
+		configPath = "$XDG_CONFIG_HOME/gh-repo-dashboard/config.toml"
+	}
+
 	fmt.Fprintf(os.Stderr, `Usage: %s [flags] [paths...]
 
 Positional paths are the directories to scan for repos. They take precedence
 over the config file's scan_paths, which takes precedence over the enclosing
 repo (walking up from the current directory) or the current directory itself.
 
+Optional config file (scan_paths, depth, cache_ttl_minutes, notes_filenames,
+cache_to_disk):
+  %s
+
+Run "%s --script -" with a "help" line to list the :commands.
+
 Flags:
-`, os.Args[0])
+`, os.Args[0], configPath, os.Args[0])
 	flag.PrintDefaults()
 }
 
