@@ -3,8 +3,10 @@ package github
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
+	"strings"
 )
 
 type ghRunner func(ctx context.Context, dir string, env []string, args ...string) ([]byte, error)
@@ -31,8 +33,26 @@ func runGH(ctx context.Context, dir string, env []string, args ...string) ([]byt
 
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("running gh: %w", err)
+		return nil, fmt.Errorf("running gh: %w", ghExecError(err))
 	}
 
 	return out, nil
+}
+
+// ghExecError surfaces gh's stderr, since (*exec.ExitError).Error() only
+// reports the exit status and cmd.Output leaves the message on Stderr rather
+// than in err itself.
+func ghExecError(err error) error {
+	var exitErr *exec.ExitError
+
+	stderr := ""
+	if errors.As(err, &exitErr) {
+		stderr = strings.TrimSpace(string(exitErr.Stderr))
+	}
+
+	if stderr == "" {
+		return err
+	}
+
+	return fmt.Errorf("%w: %s", err, stderr)
 }
