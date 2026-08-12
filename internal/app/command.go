@@ -437,7 +437,7 @@ func statusCmd(message string) tea.Cmd {
 }
 
 // statusErrCmd reports a command the app refused: an unknown name, an
-// unparseable predicate, an argument it does not recognize.
+// unparsable predicate, an argument it does not recognize.
 func statusErrCmd(message string) tea.Cmd {
 	return func() tea.Msg {
 		return StatusMsg{Message: message, IsError: true}

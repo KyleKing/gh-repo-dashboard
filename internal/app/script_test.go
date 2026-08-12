@@ -22,7 +22,7 @@ func TestRunScriptLine(t *testing.T) {
 			want: lineOutcome{failed: true}, wantOutput: "Unknown command: bogus",
 		},
 		{
-			name: "unparseable predicate", line: "filter dirty and",
+			name: "unparsable predicate", line: "filter dirty and",
 			want: lineOutcome{failed: true}, wantOutput: "and",
 		},
 		{

@@ -12,7 +12,7 @@ Besides the TUI, two headless modes share the same internals: `--cli` prints rep
 summaries as JSON (optionally narrowed by `--filter <predicate>`) and `--script`
 replays `:command` lines from a file or stdin. A script runs every line even
 after one fails and exits nonzero at the end, so a rejected command or an
-unparseable predicate cannot pass for success.
+unparsable predicate cannot pass for success.
 
 - Framework: Bubble Tea (Go TUI framework)
 - Theme: Catppuccin Macchiato
