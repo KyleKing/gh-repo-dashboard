@@ -87,7 +87,7 @@ func (m Model) renderScreen() string {
 // stays within the single-column content width.
 func (m Model) frameWidth() int {
 	switch m.viewMode {
-	case ViewModeRepoList:
+	case ViewModeRepoList, ViewModePRList:
 		return listWidth(m.width)
 	case ViewModeRepoDetail:
 		return m.gridWidth()
