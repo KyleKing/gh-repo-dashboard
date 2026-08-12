@@ -97,6 +97,55 @@ func TestPRInfoReviewStatus(t *testing.T) {
 	}
 }
 
+func TestPRInfoMatchesUpstream(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		pr       models.PRInfo
+		owner    string
+		upstream string
+		expected bool
+	}{
+		{
+			name:     "matches regardless of local branch name",
+			pr:       models.PRInfo{HeadRef: "feature-x"},
+			owner:    "kyleking",
+			upstream: "origin/feature-x",
+			expected: true,
+		},
+		{
+			name:     "different head ref does not match",
+			pr:       models.PRInfo{HeadRef: "feature-x"},
+			owner:    "kyleking",
+			upstream: "origin/feature-y",
+			expected: false,
+		},
+		{
+			name:     "fork pr never matches on upstream alone",
+			pr:       models.PRInfo{HeadRef: "feature-x", HeadRepoOwner: "someone-else"},
+			owner:    "kyleking",
+			upstream: "origin/feature-x",
+			expected: false,
+		},
+		{
+			name:     "no upstream never matches",
+			pr:       models.PRInfo{HeadRef: "feature-x"},
+			owner:    "kyleking",
+			upstream: "",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := tt.pr.MatchesUpstream(tt.owner, tt.upstream); got != tt.expected {
+				t.Errorf("expected %v, got %v", tt.expected, got)
+			}
+		})
+	}
+}
+
 func TestChecksStatusSummary(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

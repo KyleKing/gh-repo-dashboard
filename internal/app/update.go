@@ -115,6 +115,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
+	case PeerBranchesLoadedMsg:
+		for peerPath, branches := range msg.Branches {
+			m.peerBranches[peerPath] = branches
+		}
+		m.finishFetch(msg.Path, fetchPeerBranches)
+
+		return m, nil
+
 	case PRCountLoadedMsg:
 		m.prCount[msg.Path] = msg.Count
 		m.finishFetch(msg.Path, fetchPRCount)
@@ -716,6 +724,17 @@ func (m *Model) expandCmd() tea.Cmd {
 	if _, cached := m.prMap[path]; !cached && !m.fetchPending(path, fetchExpand) {
 		m.startFetch(path, fetchExpand)
 		cmds = append(cmds, loadPRMapCmd(path, summary.RemoteID, summary.Upstream))
+	}
+
+	var missingPeers []string
+	for _, peer := range m.PeerCheckouts(path) {
+		if _, cached := m.peerBranches[peer.Path]; !cached {
+			missingPeers = append(missingPeers, peer.Path)
+		}
+	}
+	if len(missingPeers) > 0 && !m.fetchPending(path, fetchPeerBranches) {
+		m.startFetch(path, fetchPeerBranches)
+		cmds = append(cmds, loadPeerBranchesCmd(path, missingPeers))
 	}
 
 	return tea.Batch(cmds...)

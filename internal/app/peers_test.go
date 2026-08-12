@@ -42,6 +42,19 @@ func peerFleet(width, height int) Model {
 	}
 	m.updateFilteredPaths()
 
+	// app-a has an open PR on "feature-x"; app-b holds it locally under a
+	// different name, tracking the same upstream ref, so it counts as a
+	// relevant peer regardless of the branch name it checked it out under.
+	m.prMap = map[string]PRMapLoadedMsg{
+		"/dev/app-a": {
+			Path: "/dev/app-a",
+			PRs:  []models.PRInfo{{Number: 1, HeadRef: "feature-x"}},
+		},
+	}
+	m.peerBranches = map[string][]models.BranchInfo{
+		"/dev/app-b": {{Name: "renamed-branch", Upstream: "origin/feature-x"}},
+	}
+
 	return m
 }
 

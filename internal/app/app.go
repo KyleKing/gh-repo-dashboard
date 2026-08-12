@@ -86,6 +86,12 @@ type Model struct {
 	prMap       map[string]PRMapLoadedMsg
 	prMapCursor int
 
+	// peerBranches holds each peer checkout's local branch list, keyed by the
+	// peer's own path rather than by the repo that asked for it, so two rows
+	// sharing a peer share one fetch. Populated only once a row's expand
+	// region has requested it.
+	peerBranches map[string][]models.BranchInfo
+
 	// ciRequested marks the repos a CI fetch has already been issued for, so
 	// scrolling back over a row does not re-request it.
 	ciRequested map[string]bool
@@ -220,6 +226,7 @@ func New(scanPaths []string, maxDepth int) Model {
 		notesPreview:  make(map[string][]models.NoteFileContent),
 		prCount:       make(map[string]int),
 		prMap:         make(map[string]PRMapLoadedMsg),
+		peerBranches:  make(map[string][]models.BranchInfo),
 		activeFilters: activeFilters,
 		activeSorts:   sorts,
 		searchInput:   ti,

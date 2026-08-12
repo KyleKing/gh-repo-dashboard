@@ -46,6 +46,12 @@ func mapFleet() Model {
 		"/dev/lib":    {Path: "/dev/lib", Branches: []models.BranchInfo{{Name: "main"}}},
 	}
 
+	// app-wt is app's peer; pre-warm its branch list so reopening the region
+	// costs no fetch.
+	m.peerBranches = map[string][]models.BranchInfo{
+		"/dev/app-wt": {{Name: "feature/peer"}},
+	}
+
 	return m
 }
 

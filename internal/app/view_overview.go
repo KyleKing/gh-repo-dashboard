@@ -171,6 +171,30 @@ func overviewPeers(peers []models.PeerCheckout) string {
 	return "⧉ " + strconv.Itoa(len(peers)) + " " + strings.Join(folders, ", ")
 }
 
+// overviewRelevantPeers summarizes the peer checkouts holding a branch that
+// tracks one of this repo's open pull requests. Each names its own directory
+// rather than just its folder, since a worktree's folder name alone does not
+// say which checkout it is, and is tagged when discovery found it under a
+// different scan root than the repo currently open.
+func overviewRelevantPeers(peers []relevantPeer) string {
+	if len(peers) == 0 {
+		return emDash
+	}
+
+	entries := make([]string, 0, len(peers))
+	for i := range peers {
+		peer := &peers[i]
+		entry := "#" + strconv.Itoa(peer.PR.Number) + " " + peer.Kind() + " at " + peer.Path
+		if peer.OtherScanRoot {
+			entry += " (other scan root)"
+		}
+
+		entries = append(entries, entry)
+	}
+
+	return "⧉ " + strconv.Itoa(len(peers)) + " " + strings.Join(entries, "; ")
+}
+
 func overviewCount(count int) string {
 	if count == 0 {
 		return emDash

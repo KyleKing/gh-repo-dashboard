@@ -368,11 +368,12 @@ func (m Model) expandLines(width, height int) []string {
 	path := m.filteredPaths[m.cursor]
 	summary := m.rowSummary(path)
 	data, loaded := m.prMap[path]
+	peersPending := m.loading || !loaded || m.fetchPending(path, fetchPeerBranches)
 
 	lines := []string{
 		notesFileRule(qualifiedRepoName(path)+compactSignalSep+
 			section(m.summaryPending(path), overviewIdentity(summary)), width),
-		expandRow("Peers", section(m.loading, overviewPeers(m.PeerCheckouts(path))), width),
+		expandRow("Peers", section(peersPending, overviewRelevantPeers(m.relevantPeers(path))), width),
 		expandRow(tabNameBranches, section(!loaded, expandBranches(data.Branches)), width),
 		expandRow(tabNamePRs, section(!loaded, expandPRs(data.PRs)), width),
 	}
@@ -629,14 +630,17 @@ func renderRepoHeader(layout table.Layout) string {
 	return strings.Repeat(" ", cursorWidth) + table.Header(layout)
 }
 
-// peersCell renders a repo's parallel-checkout count, or the pending-or-absent
-// placeholder when it is the only checkout found so far. Peers are read out of
-// the other repos' summaries, so no repo's count is final until every summary
-// has landed.
+// peersCell renders the count of peer checkouts holding a branch that tracks
+// one of this repo's open pull requests, or the pending-or-absent placeholder
+// while that is still being worked out. A repo with other checkouts but none
+// on a shared pull request reads as absent, not as zero peers: the noise the
+// filter exists to remove.
 func (m Model) peersCell(path string, base lipgloss.Style, selected bool) (string, lipgloss.Style) {
-	peers := m.PeerCheckouts(path)
+	pending := m.loading || m.fetchPending(path, fetchExpand) || m.fetchPending(path, fetchPeerBranches)
+
+	peers := m.relevantPeers(path)
 	if len(peers) == 0 {
-		return absentCell(m.loading), base
+		return absentCell(pending), base
 	}
 
 	cell := "⧉ " + strconv.Itoa(len(peers))

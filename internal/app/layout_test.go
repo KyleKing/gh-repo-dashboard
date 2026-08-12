@@ -24,6 +24,18 @@ func peerModel() Model {
 	m.repoPaths = []string{"/dev/alpha", "/dev/bravo", "/dev/solo"}
 	m.updateFilteredPaths()
 
+	// alpha has an open PR that bravo holds locally, so bravo counts as a
+	// relevant peer.
+	m.prMap = map[string]PRMapLoadedMsg{
+		"/dev/alpha": {
+			Path: "/dev/alpha",
+			PRs:  []models.PRInfo{{Number: 1, HeadRef: "feature-x"}},
+		},
+	}
+	m.peerBranches = map[string][]models.BranchInfo{
+		"/dev/bravo": {{Name: "feature-x", Upstream: "origin/feature-x"}},
+	}
+
 	return m
 }
 

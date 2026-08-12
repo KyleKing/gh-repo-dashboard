@@ -60,6 +60,24 @@ func (p PRInfo) HeadLabel(owner string) string {
 	return p.HeadRef
 }
 
+// MatchesUpstream reports whether upstream (a branch's "remote/name" tracking
+// ref) points at this pull request's head branch, so a local branch never has
+// to share its name with the head ref to prove it holds the same pull
+// request. A fork's head ref lives in a different remote, so it never
+// matches on upstream alone.
+func (p PRInfo) MatchesUpstream(owner, upstream string) bool {
+	if p.FromFork(owner) || upstream == "" {
+		return false
+	}
+
+	_, name, found := strings.Cut(upstream, "/")
+	if !found {
+		name = upstream
+	}
+
+	return name == p.HeadRef
+}
+
 // PRActivity is the most recent comment or review on a pull request: the
 // signal for who a pull request is waiting on.
 type PRActivity struct {

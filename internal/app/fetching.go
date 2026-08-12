@@ -13,6 +13,7 @@ const (
 	fetchTemplate
 	fetchCI
 	fetchExpand
+	fetchPeerBranches
 )
 
 type fetchKey struct {

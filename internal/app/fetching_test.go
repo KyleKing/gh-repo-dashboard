@@ -60,6 +60,8 @@ func settleFetches(t *testing.T, start *Model) Model {
 			msg = WorkflowLoadedMsg{Path: key.path, Error: errGHFailed}
 		case fetchExpand:
 			msg = PRMapLoadedMsg{Path: key.path}
+		case fetchPeerBranches:
+			msg = PeerBranchesLoadedMsg{Path: key.path}
 		}
 
 		updated, _ := m.Update(msg)
