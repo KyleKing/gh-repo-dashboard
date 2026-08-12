@@ -53,11 +53,7 @@ func discoverReposCmd(scanPaths []string, maxDepth int) tea.Cmd {
 
 func loadRepoSummaryCmd(path string) tea.Cmd {
 	return func() tea.Msg {
-		ops := vcs.GetOperations(path)
-		summary, err := ops.GetRepoSummary(context.Background(), path)
-		if err == nil {
-			summary.NotesFiles = models.DetectNotes(path)
-		}
+		summary, err := vcs.ReadSummary(context.Background(), vcs.GetOperations(path), path)
 
 		return RepoSummaryLoadedMsg{
 			Path:    path,

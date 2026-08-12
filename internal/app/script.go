@@ -11,7 +11,6 @@ import (
 
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
@@ -50,13 +49,8 @@ func newScriptModel(ctx context.Context, scanPaths []string, maxDepth int) Model
 	m.repoPaths = discovery.DiscoverRepos(scanPaths, maxDepth)
 
 	for _, path := range m.repoPaths {
-		ops := vcs.GetOperations(path)
-		summary, err := ops.GetRepoSummary(ctx, path)
-		if err != nil {
-			summary = models.RepoSummary{Path: path, VCSType: vcs.DetectVCSType(path), Error: err}
-		} else {
-			summary.NotesFiles = models.DetectNotes(path)
-		}
+		//nolint:errcheck // the summary carries the error for the row to render
+		summary, _ := vcs.ReadSummary(ctx, vcs.GetOperations(path), path)
 		m.summaries[path] = summary
 	}
 	m.updateFilteredPaths()

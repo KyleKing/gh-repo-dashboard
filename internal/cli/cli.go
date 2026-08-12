@@ -153,9 +153,8 @@ func loadRepo(ctx context.Context, client githubClient, path string, opts Option
 		}
 	}
 
-	summary, err := ops.GetRepoSummary(ctx, path)
+	summary, err := vcs.ReadSummary(ctx, ops, path)
 	if err != nil {
-		summary = models.RepoSummary{Path: path, VCSType: vcs.DetectVCSType(path), Error: err}
 		if pred != nil && !pred(summary) {
 			return nil
 		}
@@ -170,7 +169,6 @@ func loadRepo(ctx context.Context, client githubClient, path string, opts Option
 
 	// Worktrees are a best-effort extra column: a failure just reports zero.
 	worktrees, _ := ops.GetWorktreeList(ctx, path) //nolint:errcheck // best-effort, see comment above
-	summary.NotesFiles = models.DetectNotes(path)
 	//nolint:errcheck // absence just leaves the template fields empty
 	summary.TemplateInfo, _ = copier.GetTemplateInfo(ctx, path)
 	pr := lookupPR(ctx, client, path, summary.RemoteID, summary.Branch, summary.Upstream, opts.Fresh)

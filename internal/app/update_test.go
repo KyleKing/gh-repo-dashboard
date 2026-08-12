@@ -128,7 +128,11 @@ func TestRepoSummaryLoadedError(t *testing.T) {
 	m.loadingCount = 1
 	loadErr := errBoom
 
-	msg := RepoSummaryLoadedMsg{Path: testRepo1Path, Error: loadErr}
+	msg := RepoSummaryLoadedMsg{
+		Path:    testRepo1Path,
+		Summary: models.RepoSummary{Path: testRepo1Path, Error: loadErr},
+		Error:   loadErr,
+	}
 	updatedModel, _ := m.Update(msg)
 	m = mustModel(t, updatedModel)
 
@@ -389,14 +393,10 @@ func TestPRDetailLoadedMsgMismatch(t *testing.T) {
 func TestPRCountLoadedMsg(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
-	m.prCount = nil
 
 	updatedModel, cmd := m.Update(PRCountLoadedMsg{Path: testRepo1Path, Count: 3})
 	m = mustModel(t, updatedModel)
 
-	if m.prCount == nil {
-		t.Fatal("prCount map should be initialized")
-	}
 	if m.prCount[testRepo1Path] != 3 {
 		t.Errorf("expected count 3, got %d", m.prCount[testRepo1Path])
 	}

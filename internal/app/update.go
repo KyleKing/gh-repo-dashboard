@@ -52,11 +52,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleRepoSummaryLoaded(msg)
 
 	case PRLoadedMsg:
-		if summary, ok := m.summaries[msg.Path]; ok {
-			summary.PRInfo = msg.PRInfo
-			m.summaries[msg.Path] = summary
-		}
-		m.finishFetch(msg.Path, fetchPR)
+		m.settleSummary(msg.Path, fetchPR, func(s *models.RepoSummary) { s.PRInfo = msg.PRInfo })
 
 		return m, nil
 
@@ -64,11 +60,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleWorkflowLoaded(msg)
 
 	case CopierInfoLoadedMsg:
-		if summary, ok := m.summaries[msg.Path]; ok {
-			summary.TemplateInfo = msg.Info
-			m.summaries[msg.Path] = summary
-		}
-		m.finishFetch(msg.Path, fetchTemplate)
+		m.settleSummary(msg.Path, fetchTemplate, func(s *models.RepoSummary) { s.TemplateInfo = msg.Info })
 
 		return m, nil
 
@@ -124,21 +116,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case PRCountLoadedMsg:
-		if m.prCount == nil {
-			m.prCount = make(map[string]int)
-		}
 		m.prCount[msg.Path] = msg.Count
 		m.finishFetch(msg.Path, fetchPRCount)
 
 		return m, nil
 
 	case CopySuccessMsg:
-		m.statusMessage = "Copied to clipboard: " + msg.Text
-		return m, clearStatusAfterDelay()
+		return m.withFadingStatus("Copied to clipboard: " + msg.Text)
 
 	case URLOpenedMsg:
-		m.statusMessage = "Opened in browser: " + msg.URL
-		return m, clearStatusAfterDelay()
+		return m.withFadingStatus("Opened in browser: " + msg.URL)
 
 	case StatusMsg:
 		m.statusMessage = msg.Message
@@ -149,37 +136,54 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case RefreshCompleteMsg:
-		m.statusMessage = "Data refreshed"
-		return m, clearStatusAfterDelay()
+		return m.withFadingStatus("Data refreshed")
 
 	case batch.TaskProgressMsg:
-		m.batchResults = append(m.batchResults, BatchResult{
-			Path:    msg.Result.Path,
-			Success: msg.Result.Success,
-			Message: msg.Result.Message,
-		})
-		m.batchProgress = len(m.batchResults)
-
-		return m, nil
+		return m.recordBatchResults(msg.Result), nil
 
 	case batch.TaskCompleteMsg:
 		m.batchRunning = false
-		for _, r := range msg.Results {
-			m.batchResults = append(m.batchResults, BatchResult{
-				Path:    r.Path,
-				Success: r.Success,
-				Message: r.Message,
-			})
-		}
-		m.batchProgress = len(m.batchResults)
 
-		return m, nil
+		return m.recordBatchResults(msg.Results...), nil
 
 	case ErrorMsg:
 		return m, nil
 	}
 
 	return m, nil
+}
+
+// settleSummary applies a fetch's result to path's summary when the list still
+// holds one, and marks the fetch settled either way, so a value arriving for a
+// repo that has since gone stops reading as in flight.
+func (m *Model) settleSummary(path string, kind fetchKind, apply func(*models.RepoSummary)) {
+	if summary, ok := m.summaries[path]; ok {
+		apply(&summary)
+		m.summaries[path] = summary
+	}
+
+	m.finishFetch(path, kind)
+}
+
+// withFadingStatus shows text and schedules its own removal, which is what
+// every message reporting a finished action wants.
+func (m Model) withFadingStatus(text string) (tea.Model, tea.Cmd) {
+	m.statusMessage = text
+
+	return m, clearStatusAfterDelay()
+}
+
+func (m Model) recordBatchResults(results ...batch.TaskResult) Model {
+	for _, r := range results {
+		m.batchResults = append(m.batchResults, BatchResult{
+			Path:    r.Path,
+			Success: r.Success,
+			Message: r.Message,
+		})
+	}
+	m.batchProgress = len(m.batchResults)
+
+	return m
 }
 
 // routeKeyMsg dispatches a key press to the handler for the current mode
@@ -254,15 +258,10 @@ func (m Model) handleReposDiscovered(msg ReposDiscoveredMsg) (tea.Model, tea.Cmd
 func (m Model) handleRepoSummaryLoaded(msg RepoSummaryLoadedMsg) (tea.Model, tea.Cmd) {
 	m.loadedCount++
 
+	m.summaries[msg.Path] = msg.Summary
+
 	var cmds []tea.Cmd
-	if msg.Error != nil {
-		m.summaries[msg.Path] = models.RepoSummary{
-			Path:    msg.Path,
-			VCSType: vcs.DetectVCSType(msg.Path),
-			Error:   msg.Error,
-		}
-	} else {
-		m.summaries[msg.Path] = msg.Summary
+	if msg.Error == nil {
 		cmds = append(cmds, m.followUpCmds(msg.Summary)...)
 	}
 
@@ -305,12 +304,7 @@ func (m *Model) followUpCmds(summary models.RepoSummary) []tea.Cmd {
 // remote, or one whose runs cannot be read, arrives with no workflow and is
 // still marked settled so its cell stops showing the in-flight placeholder.
 func (m Model) handleWorkflowLoaded(msg WorkflowLoadedMsg) (tea.Model, tea.Cmd) {
-	if summary, ok := m.summaries[msg.Path]; ok {
-		summary.WorkflowInfo = msg.Workflow
-		m.summaries[msg.Path] = summary
-	}
-
-	m.finishFetch(msg.Path, fetchCI)
+	m.settleSummary(msg.Path, fetchCI, func(s *models.RepoSummary) { s.WorkflowInfo = msg.Workflow })
 
 	if msg.Branch != "" {
 		if m.ciBranch == nil {

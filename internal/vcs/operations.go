@@ -3,6 +3,7 @@ package vcs
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -80,4 +81,21 @@ type Operations interface {
 	StatusReader
 	DetailReader
 	Mutator
+}
+
+// ReadSummary reads path's summary through ops and attaches the notes files
+// sitting beside it. The error is returned alongside a usable summary rather
+// than instead of one, because a repo that cannot be read still gets a row, and
+// every caller renders that row from the same three fields. The summary's own
+// Error stays unwrapped, since it is rendered into a single table cell.
+func ReadSummary(ctx context.Context, ops StatusReader, path string) (models.RepoSummary, error) {
+	summary, err := ops.GetRepoSummary(ctx, path)
+	if err != nil {
+		return models.RepoSummary{Path: path, VCSType: ops.VCSType(), Error: err},
+			fmt.Errorf("reading %s: %w", path, err)
+	}
+
+	summary.NotesFiles = models.DetectNotes(path)
+
+	return summary, nil
 }
