@@ -1,3 +1,24 @@
+## v1.8.0 (2026-08-13)
+
+### Feat
+
+- **app**: show the working-tree diff in Status and Peers, jump between files
+- **vcs**: add uncommitted diff and diffstat reads
+- **app**: scroll the PR detail page and move its actions to the footer
+- **tui**: highlight note lines flagged with a leading !
+- **tui**: divide the notes section from its metadata row
+- **tui**: show a notes count badge in the repo list header
+
+### Fix
+
+- **app**: regenerate stale TestGoldenRepoListExpanded fixtures
+- **app**: only highlight failing or skipped checks in PR detail
+- **app**: stop the PRs tab's status message from sticking
+- **app**: match the fleet map's frame width to the repo list
+- **app**: default the PRs tab's scope to where it was opened from
+- **github**: surface gh's stderr instead of swallowing it
+- **app**: match the PRs tab's frame width to the repo list
+
 ## v1.7.0 (2026-08-12)
 
 ### Feat
