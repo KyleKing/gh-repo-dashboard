@@ -381,6 +381,30 @@ func (g *GitOperations) StashDiffstat(ctx context.Context, repoPath string, inde
 	return out, nil
 }
 
+// UncommittedDiff is the working tree's full patch against HEAD (staged and
+// unstaged changes together), for the focused view's detail pane. Untracked
+// files carry no diff, so they never appear here even though the Status
+// panel's file counts include them.
+func (g *GitOperations) UncommittedDiff(ctx context.Context, repoPath string) (string, error) {
+	out, err := g.runGit(ctx, repoPath, "diff", headRef, "--no-color")
+	if err != nil {
+		return "", err
+	}
+
+	return out, nil
+}
+
+// UncommittedDiffstat summarizes the working tree's changes against HEAD, for
+// the focused view's detail pane once the operator asks past the full diff.
+func (g *GitOperations) UncommittedDiffstat(ctx context.Context, repoPath string) (string, error) {
+	out, err := g.runGit(ctx, repoPath, "diff", headRef, "--stat", "--no-color")
+	if err != nil {
+		return "", err
+	}
+
+	return out, nil
+}
+
 // GetStashList implements Operations.
 func (g *GitOperations) GetStashList(ctx context.Context, repoPath string) ([]models.StashDetail, error) {
 	format := "%gd\t%gs\t%ct"

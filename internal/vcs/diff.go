@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+// headRef names the commit an uncommitted diff compares the working tree
+// against.
+const headRef = "HEAD"
+
 // externalDiff overrides git's own diff.external for the patches this tool
 // renders. Empty means the repo's git config decides.
 var externalDiff string
@@ -50,6 +54,32 @@ func (*GitOperations) StashDiffExternal(
 	}
 
 	args := []string{"stash", "show", "--patch", "--ext-diff", fmt.Sprintf("stash@{%d}", index)}
+
+	out, err := runCommandEnv(ctx, repoPath, env, "git", args...)
+	if err != nil {
+		return "", gitError(args, err)
+	}
+
+	return strings.TrimRight(out, "\n"), nil
+}
+
+// UncommittedDiffExternal is the working tree's patch against HEAD rendered by
+// an external diff command rather than by git, for the same reasons
+// StashDiffExternal sets its environment.
+func (*GitOperations) UncommittedDiffExternal(
+	ctx context.Context, repoPath string, width int, command string,
+) (string, error) {
+	cells := strconv.Itoa(max(width, 1))
+	env := []string{
+		"GIT_EXTERNAL_DIFF=" + command,
+		"COLUMNS=" + cells,
+		"CLICOLOR_FORCE=1",
+		"DFT_COLOR=always",
+		"DFT_DISPLAY=inline",
+		"DFT_WIDTH=" + cells,
+	}
+
+	args := []string{"diff", headRef, "--ext-diff"}
 
 	out, err := runCommandEnv(ctx, repoPath, env, "git", args...)
 	if err != nil {
