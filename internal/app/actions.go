@@ -384,6 +384,7 @@ func panelActionsFor(id panelID) []panelAction {
 	case panelStatus:
 		return []panelAction{
 			{key: "c", name: "cleanup merged", run: Model.startRepoCleanupMerged},
+			{key: "d", name: nameToggleDiff, run: Model.toggleUncommittedDiff},
 			{key: "f", name: nameFetch, run: Model.startRepoFetch},
 			{key: "o", name: "open on remote", run: Model.openRepoURL},
 			{key: "p", name: "prune remote", run: Model.startRepoPruneRemote},
@@ -400,6 +401,7 @@ func panelActionsFor(id panelID) []panelAction {
 		}
 	case panelPeers:
 		return []panelAction{
+			{key: "d", name: nameToggleDiff, run: Model.toggleUncommittedDiff},
 			{key: "y", name: nameCopyPath, run: Model.copyPeerPath},
 		}
 	case panelNotes:
@@ -411,7 +413,7 @@ func panelActionsFor(id panelID) []panelAction {
 		return []panelAction{
 			{key: "a", name: "apply here", run: Model.startApplyStash},
 			{key: "d", name: "drop", run: Model.startDropStash},
-			{key: "o", name: "toggle full diff", run: Model.toggleStashDiff},
+			{key: "o", name: nameToggleDiff, run: Model.toggleStashDiff},
 		}
 	}
 
@@ -468,6 +470,27 @@ func (m Model) toggleStashDiff() (tea.Model, tea.Cmd) {
 	m.detailScroll = 0
 
 	return m, m.stashDetailCmd(stash.Index)
+}
+
+// toggleUncommittedDiff swaps the Status or Peers detail pane between the
+// working tree's diffstat and its full patch, for whichever repo path the
+// focused panel is describing: the current repo for Status, the selected
+// checkout for Peers.
+func (m Model) toggleUncommittedDiff() (tea.Model, tea.Cmd) {
+	path := m.selectedRepo
+	if m.focusedPanel == panelPeers {
+		checkout, ok := m.selectedPanelCheckout()
+		if !ok {
+			return m, nil
+		}
+
+		path = checkout.Path
+	}
+
+	m.uncommittedFullDiff = !m.uncommittedFullDiff
+	m.detailScroll = 0
+
+	return m, m.uncommittedDetailCmd(path)
 }
 
 // startDropStash discards the selected stash after confirmation. Nothing

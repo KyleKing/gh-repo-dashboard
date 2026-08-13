@@ -303,6 +303,52 @@ func loadStashDiffstatCmd(repoPath string, index int) tea.Cmd {
 	}
 }
 
+// loadUncommittedDiffCmd reads the working tree's full patch against HEAD for
+// repoPath, rendered by the configured external diff viewer where there is
+// one. A non-git repo simply reports nothing.
+func loadUncommittedDiffCmd(repoPath string, width int) tea.Cmd {
+	return func() tea.Msg {
+		msg := UncommittedDiffLoadedMsg{Path: repoPath}
+
+		git, ok := vcs.GetOperations(repoPath).(*vcs.GitOperations)
+		if !ok {
+			return msg
+		}
+
+		ctx := context.Background()
+		if viewer := git.ExternalDiffCommand(ctx, repoPath); viewer != "" {
+			if diff, err := git.UncommittedDiffExternal(ctx, repoPath, width, viewer); err == nil {
+				msg.Diff = diff
+
+				return msg
+			}
+		}
+
+		//nolint:errcheck // a repo we cannot read reports an empty diff
+		msg.Diff, _ = git.UncommittedDiff(ctx, repoPath)
+
+		return msg
+	}
+}
+
+// loadUncommittedDiffstatCmd reads the working tree's diffstat against HEAD
+// for repoPath. A non-git repo simply reports nothing.
+func loadUncommittedDiffstatCmd(repoPath string) tea.Cmd {
+	return func() tea.Msg {
+		msg := UncommittedDiffstatLoadedMsg{Path: repoPath}
+
+		git, ok := vcs.GetOperations(repoPath).(*vcs.GitOperations)
+		if !ok {
+			return msg
+		}
+
+		//nolint:errcheck // a repo we cannot read reports an empty diffstat
+		msg.Diffstat, _ = git.UncommittedDiffstat(context.Background(), repoPath)
+
+		return msg
+	}
+}
+
 func copyToClipboardCmd(text string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()

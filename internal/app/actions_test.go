@@ -315,6 +315,7 @@ func TestStashFullDiffVerbSwapsTheDetailPane(t *testing.T) {
 	m := focusedModel(160, 45)
 	m.focusedPanel = panelStashes
 	m.panelActions = true
+	m.stashFullDiff = false
 	m.stashDiffstat = map[int]string{0: " one.go | 2 +-"}
 
 	toggledModel, cmd := m.handleDetailKey(keyPress('o'))

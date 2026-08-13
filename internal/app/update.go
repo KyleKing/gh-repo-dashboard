@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
@@ -103,6 +105,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Path == m.selectedRepo {
 			m.stashDiffstat = withStashText(m.stashDiffstat, msg.Index, msg.Diffstat)
 		}
+
+		return m, nil
+
+	case UncommittedDiffLoadedMsg:
+		m.uncommittedDiff = withPathText(m.uncommittedDiff, msg.Path, msg.Diff)
+
+		return m, nil
+
+	case UncommittedDiffstatLoadedMsg:
+		m.uncommittedDiffstat = withPathText(m.uncommittedDiffstat, msg.Path, msg.Diffstat)
 
 		return m, nil
 
@@ -786,7 +798,10 @@ func (m Model) handleEnterKey() (tea.Model, tea.Cmd) {
 	m.notesFiles = nil
 	m.stashDiffstat = nil
 	m.stashDiff = nil
-	m.stashFullDiff = false
+	m.stashFullDiff = true
+	m.uncommittedDiffstat = nil
+	m.uncommittedDiff = nil
+	m.uncommittedFullDiff = true
 	m.branchDetail = models.BranchDetail{}
 	m.prDetail = models.PRDetail{}
 	m.prDetailScroll = 0
@@ -1038,6 +1053,12 @@ func (m Model) handleDetailPaneKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.detailScroll = m.maxDetailScroll()
 		return m, nil
 
+	case msg.String() == "]":
+		return m.jumpDiffFile(1), nil
+
+	case msg.String() == "[":
+		return m.jumpDiffFile(-1), nil
+
 	case key.Matches(msg, m.keys.Refresh):
 		return m.handleRefresh()
 
@@ -1053,6 +1074,61 @@ func (m Model) handleDetailPaneKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// diffFileHeader recognizes the line that opens each file's hunk, scanned to
+// jump between files in an expanded diff pane (stash, Status, or Peers). Git's
+// own patch format leads with "diff --git a/"; difftastic's inline format (the
+// external viewer this app wires diff.external to) instead prints a bare
+// "path --- language" header with no line-number gutter.
+var diffFileHeader = regexp.MustCompile(`^\S.* --- \S+$`)
+
+// isDiffFileHeader reports whether line opens a new file's diff, once any
+// external viewer's own ANSI styling is stripped.
+func isDiffFileHeader(line string) bool {
+	clean := strings.TrimSpace(ansi.Strip(line))
+
+	return strings.HasPrefix(clean, "diff --git a/") || diffFileHeader.MatchString(clean)
+}
+
+// jumpDiffFile scrolls the detail pane to the next (delta > 0) or previous
+// (delta < 0) file boundary in a rendered diff. A diffstat has no such
+// boundary, so it leaves the scroll position untouched.
+func (m Model) jumpDiffFile(delta int) Model {
+	pane := m.detailPaneSize()
+	lines := m.panelDetailLines(pane.width)
+
+	var boundaries []int
+	for i, line := range lines {
+		if isDiffFileHeader(line) {
+			boundaries = append(boundaries, i)
+		}
+	}
+
+	target := -1
+	if delta > 0 {
+		for _, b := range boundaries {
+			if b > m.detailScroll {
+				target = b
+				break
+			}
+		}
+	} else {
+		for i := len(boundaries) - 1; i >= 0; i-- {
+			if boundaries[i] < m.detailScroll {
+				target = boundaries[i]
+				break
+			}
+		}
+	}
+
+	if target < 0 {
+		return m
+	}
+
+	m.detailScroll = min(target, m.maxDetailScroll())
+
+	return m
 }
 
 // scrollDetailPane moves the detail pane by delta lines, clamped so the last
@@ -1193,6 +1269,16 @@ func (m Model) panelDetailCmd() tea.Cmd {
 
 	case m.focusedPanel == panelStashes && m.detailCursor < len(m.stashes):
 		return m.stashDetailCmd(m.stashes[m.detailCursor].Index)
+
+	case m.focusedPanel == panelStatus:
+		if m.summaries[m.selectedRepo].UncommittedCount() > 0 {
+			return m.uncommittedDetailCmd(m.selectedRepo)
+		}
+
+	case m.focusedPanel == panelPeers:
+		if checkout, ok := m.selectedPanelCheckout(); ok && checkout.Dirty {
+			return m.uncommittedDetailCmd(checkout.Path)
+		}
 	}
 
 	return nil
@@ -1207,6 +1293,15 @@ func withStashText(texts map[int]string, index int, text string) map[int]string 
 	return texts
 }
 
+func withPathText(texts map[string]string, path, text string) map[string]string {
+	if texts == nil {
+		texts = make(map[string]string)
+	}
+	texts[path] = text
+
+	return texts
+}
+
 // stashDetailCmd fetches whichever of the stash's diffstat or full patch the
 // detail pane is showing, and nothing when that one is already cached.
 func (m Model) stashDetailCmd(index int) tea.Cmd {
@@ -1215,7 +1310,7 @@ func (m Model) stashDetailCmd(index int) tea.Cmd {
 			return nil
 		}
 
-		return loadStashDiffCmd(m.selectedRepo, index, m.detailPaneSize().width-stashBodyIndent)
+		return loadStashDiffCmd(m.selectedRepo, index, m.detailPaneSize().width-diffBodyIndent)
 	}
 
 	if _, loaded := m.stashDiffstat[index]; loaded {
@@ -1223,6 +1318,26 @@ func (m Model) stashDetailCmd(index int) tea.Cmd {
 	}
 
 	return loadStashDiffstatCmd(m.selectedRepo, index)
+}
+
+// uncommittedDetailCmd fetches whichever of the working tree's diffstat or
+// full patch the detail pane is showing for repoPath (the current repo for
+// Status, a peer checkout for Peers), and nothing when that one is already
+// cached.
+func (m Model) uncommittedDetailCmd(repoPath string) tea.Cmd {
+	if m.uncommittedFullDiff {
+		if _, loaded := m.uncommittedDiff[repoPath]; loaded {
+			return nil
+		}
+
+		return loadUncommittedDiffCmd(repoPath, m.detailPaneSize().width-diffBodyIndent)
+	}
+
+	if _, loaded := m.uncommittedDiffstat[repoPath]; loaded {
+		return nil
+	}
+
+	return loadUncommittedDiffstatCmd(repoPath)
 }
 
 // handleDetailOpenKey opens the branch-detail or PR-detail view for the
@@ -1298,7 +1413,10 @@ func (m Model) openRepo(path string) (tea.Model, tea.Cmd) {
 	m.notesFiles = nil
 	m.stashDiffstat = nil
 	m.stashDiff = nil
-	m.stashFullDiff = false
+	m.stashFullDiff = true
+	m.uncommittedDiffstat = nil
+	m.uncommittedDiff = nil
+	m.uncommittedFullDiff = true
 	m.branchDetail = models.BranchDetail{}
 	m.prDetail = models.PRDetail{}
 	m.prDetailScroll = 0

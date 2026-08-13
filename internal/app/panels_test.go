@@ -225,6 +225,52 @@ func TestDetailPaneFocus_ScrollStopsAtTheEnd(t *testing.T) {
 	}
 }
 
+// TestJumpDiffFile_MovesBetweenFileBoundaries covers both diff renderers this
+// app wires diff.external to: git's own "diff --git a/" header and
+// difftastic's bare "path --- language" header.
+func TestJumpDiffFile_MovesBetweenFileBoundaries(t *testing.T) {
+	t.Parallel()
+
+	filler := strings.Repeat("context line\n", 30)
+	diff := "diff --git a/one.go b/one.go\n" + filler +
+		"two.go --- Go\n" + filler +
+		"diff --git a/three.go b/three.go\n" + filler
+
+	m := focusedModel(200, 20)
+	m.focusedPanel = panelStashes
+	m.stashes = []models.StashDetail{{Index: 0, Message: "wip"}}
+	m.stashFullDiff = true
+	m.stashDiff = map[int]string{0: diff}
+	m.detailFocused = true
+	m.detailScroll = 0
+
+	afterFirst := m.jumpDiffFile(1)
+	if afterFirst.detailScroll <= 0 {
+		t.Fatalf("] did not scroll to the first file's header, got %d", afterFirst.detailScroll)
+	}
+
+	afterSecond := afterFirst.jumpDiffFile(1)
+	if afterSecond.detailScroll <= afterFirst.detailScroll {
+		t.Fatalf("] did not advance past %d, landed on %d", afterFirst.detailScroll, afterSecond.detailScroll)
+	}
+
+	afterThird := afterSecond.jumpDiffFile(1)
+	if afterThird.detailScroll <= afterSecond.detailScroll {
+		t.Fatalf("] did not advance past %d, landed on %d", afterSecond.detailScroll, afterThird.detailScroll)
+	}
+
+	afterFourth := afterThird.jumpDiffFile(1)
+	if afterFourth.detailScroll != afterThird.detailScroll {
+		t.Errorf("] past the last file moved from %d to %d, want no movement",
+			afterThird.detailScroll, afterFourth.detailScroll)
+	}
+
+	back := afterThird.jumpDiffFile(-1)
+	if back.detailScroll != afterSecond.detailScroll {
+		t.Errorf("[ landed on %d, want the previous boundary %d", back.detailScroll, afterSecond.detailScroll)
+	}
+}
+
 func mustUpdate(t *testing.T, m *Model, msg tea.Msg) tea.Model {
 	t.Helper()
 

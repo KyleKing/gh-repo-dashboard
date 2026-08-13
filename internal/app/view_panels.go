@@ -667,7 +667,7 @@ func (m Model) panelDetailLines(width int) []string {
 	case panelBranches:
 		lines = m.branchDetailLines(width)
 	case panelPeers:
-		lines = m.peerDetailLines()
+		lines = m.peerDetailLines(width)
 	case panelStashes:
 		lines = m.stashDetailLines(width)
 	case panelNotes:
@@ -716,6 +716,10 @@ func (m Model) repoDetailLines(width int) []string {
 		lines = append(lines, detailField(override.Key, override.LocalValue+" ≠ "+override.GlobalValue))
 	}
 
+	if summary.UncommittedCount() > 0 {
+		lines = append(lines, m.workingDiffLines(summary.Path, width)...)
+	}
+
 	return lines
 }
 
@@ -748,19 +752,48 @@ func (m Model) branchDetailLines(width int) []string {
 	return lines
 }
 
-func (m Model) peerDetailLines() []string {
+func (m Model) peerDetailLines(width int) []string {
 	checkout, ok := m.selectedPanelCheckout()
 	if !ok {
 		return nil
 	}
 
-	return []string{
+	lines := []string{
 		detailField("path", checkout.Path),
 		detailField("kind", checkout.Kind()),
 		detailField("branch", orDash(checkout.Branch)),
 		detailField("state", checkoutState(checkout)),
 		detailField("last commit", relativeOrDash(checkout.LastCommit)),
 	}
+
+	if checkout.Dirty {
+		lines = append(lines, m.workingDiffLines(checkout.Path, width)...)
+	}
+
+	return lines
+}
+
+// workingDiffLines renders the cached diff or diffstat of repoPath's working
+// tree, or a loading placeholder if the fetch hasn't landed yet. Shared by the
+// Status and Peers detail panes, which each describe a different repo path
+// but need the same diff/diffstat toggle and truncation.
+func (m Model) workingDiffLines(repoPath string, width int) []string {
+	label, texts := "diffstat", m.uncommittedDiffstat
+	if m.uncommittedFullDiff {
+		label, texts = "diff", m.uncommittedDiff
+	}
+
+	body, loaded := texts[repoPath]
+	if !loaded {
+		return []string{"", styles.SubtitleStyle.Render("loading " + label + "…")}
+	}
+
+	lines := []string{"", styles.HeaderStyle.Render(label)}
+	for _, line := range diffBodyLines(body) {
+		lines = append(lines, diffBodyLine(line, width))
+	}
+
+	return lines
 }
 
 func (m Model) stashDetailLines(width int) []string {
@@ -786,21 +819,21 @@ func (m Model) stashDetailLines(width int) []string {
 	}
 
 	lines = append(lines, "", styles.HeaderStyle.Render(label))
-	for _, line := range stashBodyLines(body) {
-		lines = append(lines, stashBodyLine(line, width))
+	for _, line := range diffBodyLines(body) {
+		lines = append(lines, diffBodyLine(line, width))
 	}
 
 	return lines
 }
 
-// stashBodyIndent is what a patch line is inset by inside the detail pane.
-const stashBodyIndent = 2
+// diffBodyIndent is what a patch line is inset by inside the detail pane.
+const diffBodyIndent = 2
 
-// stashBodyLine renders one line of a patch. A line an external viewer colored
+// diffBodyLine renders one line of a patch. A line an external viewer colored
 // is only clipped, never restyled: the viewer's first reset would end an outer
 // style anyway, leaving the rest of the pane's line unstyled.
-func stashBodyLine(line string, width int) string {
-	indented := strings.Repeat(" ", stashBodyIndent) + line
+func diffBodyLine(line string, width int) string {
+	indented := strings.Repeat(" ", diffBodyIndent) + line
 	if strings.ContainsRune(line, '\x1b') {
 		return lipgloss.NewStyle().MaxWidth(max(width, 1)).Render(indented)
 	}
@@ -808,16 +841,16 @@ func stashBodyLine(line string, width int) string {
 	return styles.TableRowStyle.Render(truncate(indented, width))
 }
 
-// stashBodyLines caps the pane's line count, since the whole detail is
-// re-rendered on every frame and a stash's patch has no upper bound.
-func stashBodyLines(body string) []string {
+// diffBodyLines caps the pane's line count, since the whole detail is
+// re-rendered on every frame and a patch has no upper bound.
+func diffBodyLines(body string) []string {
 	lines := strings.Split(body, "\n")
-	if len(lines) <= stashDiffMaxLines {
+	if len(lines) <= diffMaxLines {
 		return lines
 	}
 
-	return append(lines[:stashDiffMaxLines:stashDiffMaxLines],
-		"… "+strconv.Itoa(len(lines)-stashDiffMaxLines)+" more lines")
+	return append(lines[:diffMaxLines:diffMaxLines],
+		"… "+strconv.Itoa(len(lines)-diffMaxLines)+" more lines")
 }
 
 func (m Model) noteDetailLines(width int) []string {

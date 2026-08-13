@@ -155,8 +155,14 @@ type Model struct {
 	stashDiffstat map[int]string
 	stashDiff     map[int]string
 	stashFullDiff bool
-	selectedPR    models.PRInfo
-	prDetail      models.PRDetail
+	// uncommittedDiffstat/uncommittedDiff cache the working tree's diffstat
+	// and full patch by repo path, shared by the Status panel (the current
+	// repo) and the Peers panel (a peer checkout's own path).
+	uncommittedDiffstat map[string]string
+	uncommittedDiff     map[string]string
+	uncommittedFullDiff bool
+	selectedPR          models.PRInfo
+	prDetail            models.PRDetail
 	// prDetailScroll is how far the PR detail page has scrolled past its own
 	// top, since its content can run longer than the terminal.
 	prDetailScroll int
@@ -240,6 +246,10 @@ func New(scanPaths []string, maxDepth int) Model {
 		loading:       true,
 		keys:          DefaultKeyMap(),
 		help:          help.New(),
+		// A diff without file text is rarely useful, and diffstat is one key
+		// away, so every diff pane opens fully expanded.
+		stashFullDiff:       true,
+		uncommittedFullDiff: true,
 	}
 }
 

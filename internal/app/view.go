@@ -35,7 +35,7 @@ const (
 	prChecksMaxRows        = 12
 	prCheckNameMinWidth    = 12
 	prCommentMaxLines      = 24
-	stashDiffMaxLines      = 500
+	diffMaxLines           = 500
 	emptyStateVPad         = 2
 	emptyStateHPad         = 4
 	infoPaddingLeft        = 2

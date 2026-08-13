@@ -153,6 +153,23 @@ type StashDiffstatLoadedMsg struct {
 	Diffstat string
 }
 
+// UncommittedDiffLoadedMsg reports the working tree's full patch for a repo
+// path (the current repo for the Status panel, a peer checkout for the Peers
+// panel). A failed read arrives as an empty diff so the pane settles instead
+// of waiting forever.
+type UncommittedDiffLoadedMsg struct {
+	Path string
+	Diff string
+}
+
+// UncommittedDiffstatLoadedMsg reports the working tree's diffstat for a repo
+// path. A failed read arrives as an empty diffstat so the pane settles
+// instead of waiting forever.
+type UncommittedDiffstatLoadedMsg struct {
+	Path     string
+	Diffstat string
+}
+
 // PRDetailLoadedMsg reports the loaded detail for a single pull request.
 type PRDetailLoadedMsg struct {
 	Path     string

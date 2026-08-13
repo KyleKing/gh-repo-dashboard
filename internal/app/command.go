@@ -14,18 +14,19 @@ import (
 // Name words shared across command ids, mode names, text objects, and
 // key-help labels.
 const (
-	nameAll      = "all"
-	nameBranch   = "branch"
-	nameCopyPath = "copy path"
-	nameFetch    = "fetch"
-	nameFilter   = "filter"
-	nameHelp     = "help"
-	nameQuit     = "quit"
-	nameRefresh  = "refresh"
-	nameSelect   = "select"
-	nameSelected = "selected"
-	nameSort     = "sort"
-	nameStatus   = "status"
+	nameAll        = "all"
+	nameBranch     = "branch"
+	nameCopyPath   = "copy path"
+	nameFetch      = "fetch"
+	nameFilter     = "filter"
+	nameHelp       = "help"
+	nameQuit       = "quit"
+	nameRefresh    = "refresh"
+	nameSelect     = "select"
+	nameSelected   = "selected"
+	nameSort       = "sort"
+	nameStatus     = "status"
+	nameToggleDiff = "toggle full diff"
 )
 
 // Command is a named `:command` invocable from the TUI's command bar.
