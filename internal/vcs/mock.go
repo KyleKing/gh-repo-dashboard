@@ -2,6 +2,7 @@ package vcs
 
 import (
 	"context"
+	"time"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -15,6 +16,7 @@ type MockOperations struct {
 	CompareBranchesFn       func(ctx context.Context, repoPath, branch, target string) (int, int, error)
 	GetBranchListFn         func(ctx context.Context, repoPath string) ([]models.BranchInfo, error)
 	GetStashListFn          func(ctx context.Context, repoPath string) ([]models.StashDetail, error)
+	GetNewestModifiedFileFn func(ctx context.Context, repoPath string) (string, time.Time, error)
 	GetWorktreeListFn       func(ctx context.Context, repoPath string) ([]models.WorktreeInfo, error)
 	GetCommitLogFn          func(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error)
 	GetLastModifiedFn       func(ctx context.Context, repoPath string) (int64, error)
@@ -130,6 +132,15 @@ func (m *MockOperations) GetStashList(ctx context.Context, repoPath string) ([]m
 	}
 
 	return nil, nil
+}
+
+// GetNewestModifiedFile implements Operations.
+func (m *MockOperations) GetNewestModifiedFile(ctx context.Context, repoPath string) (string, time.Time, error) {
+	if m.GetNewestModifiedFileFn != nil {
+		return m.GetNewestModifiedFileFn(ctx, repoPath)
+	}
+
+	return "", time.Time{}, nil
 }
 
 // GetWorktreeList implements Operations.

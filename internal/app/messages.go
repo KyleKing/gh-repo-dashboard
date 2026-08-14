@@ -1,6 +1,10 @@
 package app
 
-import "github.com/kyleking/gh-repo-dashboard/internal/models"
+import (
+	"time"
+
+	"github.com/kyleking/gh-repo-dashboard/internal/models"
+)
 
 // ReposDiscoveredMsg reports the repo paths found during discovery.
 type ReposDiscoveredMsg struct {
@@ -69,6 +73,11 @@ type DetailLoadedMsg struct {
 	// merged pull request's head OID (safe-to-delete detection). It's
 	// best-effort: a missing gh yields an empty set rather than failing the load.
 	DeletableBranches map[string]bool
+	// NewestFile and NewestFileTime name the working tree's most recently
+	// modified uncommitted file. NewestFile is empty for a clean tree or a jj
+	// repo, where there is nothing to report.
+	NewestFile     string
+	NewestFileTime time.Time
 }
 
 // NotesContentLoadedMsg reports a repo's notes files read in full, for the

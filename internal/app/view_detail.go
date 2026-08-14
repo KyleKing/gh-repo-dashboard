@@ -188,8 +188,26 @@ func renderBranchRow(row branchRow, layout table.Layout) string {
 	if row.deletable {
 		rendered += "  " + styles.Badge("merged", styles.PROpenStyle)
 	}
+	if isStaleBranch(row.branch) {
+		rendered += "  " + styles.Badge("stale", styles.SubtitleStyle)
+	}
 
 	return rendered
+}
+
+// staleBranchAge is how long a branch can sit with no new commits before it's
+// worth flagging as a cleanup candidate. The current and default branches are
+// exempt: a default branch commonly goes untouched for exactly this long
+// without being neglected, and a branch someone is standing on is never stale
+// regardless of its last commit.
+const staleBranchAge = 30 * 24 * time.Hour
+
+func isStaleBranch(b models.BranchInfo) bool {
+	if b.LastCommit.IsZero() || b.IsCurrent || models.IsDefaultBranchName(b.Name) {
+		return false
+	}
+
+	return time.Since(b.LastCommit) > staleBranchAge
 }
 
 func checkoutState(c models.PeerCheckout) string {

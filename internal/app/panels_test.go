@@ -364,3 +364,23 @@ func TestGridWidth_UsesMoreOfAWideTerminal(t *testing.T) {
 		t.Errorf("grid width at 400 cells is %d, want the cap of %d", got, gridMaxWidth)
 	}
 }
+
+func TestStatusPreviewShowsNewestEditAndDefaultBranchMismatch(t *testing.T) {
+	t.Parallel()
+
+	m := focusedModel(140, 35)
+	m.newestFile = "notes.md"
+	m.newestFileTime = time.Now().Add(-time.Hour)
+	m.branches = append(m.branches, models.BranchInfo{Name: "main"})
+	m.summaries["/dev/alpha"] = models.RepoSummary{
+		Path: "/dev/alpha", VCSType: models.VCSTypeGit, Branch: "feature/x",
+	}
+
+	preview := plainText(strings.Join(m.repoDetailLines(contentWidth(m.width)), "\n"))
+	if !strings.Contains(preview, "newest edit") || !strings.Contains(preview, "notes.md") {
+		t.Errorf("Status's full preview does not name the newest edited file: %q", preview)
+	}
+	if !strings.Contains(preview, "default branch") || !strings.Contains(preview, "main") {
+		t.Errorf("Status's full preview does not flag the default-branch mismatch: %q", preview)
+	}
+}

@@ -168,6 +168,9 @@ func loadDetailCmd(path string) tea.Cmd {
 		notesFiles := models.DetectNotes(path)
 		notesContents := models.ReadNotesFiles(path, notesFiles)
 
+		//nolint:errcheck // best-effort, see comment above
+		newestFile, newestFileTime, _ := ops.GetNewestModifiedFile(ctx, path)
+
 		return DetailLoadedMsg{
 			Path:              path,
 			Branches:          branches,
@@ -176,6 +179,8 @@ func loadDetailCmd(path string) tea.Cmd {
 			PRs:               prs,
 			NotesFiles:        notesContents,
 			DeletableBranches: deletableBranches(ctx, path, summary.RemoteID, branches),
+			NewestFile:        newestFile,
+			NewestFileTime:    newestFileTime,
 		}
 	}
 }

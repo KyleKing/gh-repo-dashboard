@@ -2,6 +2,8 @@
 package app
 
 import (
+	"time"
+
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/textinput"
@@ -143,6 +145,8 @@ type Model struct {
 	stashes           []models.StashDetail
 	worktrees         []models.WorktreeInfo
 	notesFiles        []models.NoteFileContent
+	newestFile        string
+	newestFileTime    time.Time
 
 	selectedBranch models.BranchInfo
 	branchDetail   models.BranchDetail

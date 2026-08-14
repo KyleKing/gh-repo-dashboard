@@ -698,7 +698,7 @@ func (m Model) renderPanelDetail(width, height int) string {
 
 // repoDetailFieldCount is how many fixed fields repoDetailLines writes before
 // any config overrides.
-const repoDetailFieldCount = 10
+const repoDetailFieldCount = 12
 
 // repoDetailLines is Status's full preview, opened by focusing the panel: the
 // repo's identity facts that once lived as breadcrumb badges (vcs, protocol,
@@ -732,6 +732,14 @@ func (m Model) repoDetailLines(width int) []string {
 
 	if label := summary.DirtyLabel(); label != "" {
 		lines = append(lines, detailField("dirty", label))
+	}
+
+	if m.newestFile != "" {
+		lines = append(lines, detailField("newest edit", m.newestFile+" "+models.RelativeTime(m.newestFileTime)))
+	}
+
+	if defaultBranch := findDefaultBranch(m.branches); defaultBranch != "" && defaultBranch != summary.Branch {
+		lines = append(lines, detailField("default branch", defaultBranch))
 	}
 
 	if summary.PRInfo != nil {

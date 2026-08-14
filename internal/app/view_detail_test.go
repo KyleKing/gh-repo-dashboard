@@ -4,9 +4,42 @@ package app
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
+
+func TestIsStaleBranch(t *testing.T) {
+	t.Parallel()
+
+	old := time.Now().Add(-2 * staleBranchAge)
+	recent := time.Now().Add(-time.Hour)
+
+	tests := []struct {
+		name   string
+		branch models.BranchInfo
+		want   bool
+	}{
+		{"old commit", models.BranchInfo{Name: "feature/x", LastCommit: old}, true},
+		{"recent commit", models.BranchInfo{Name: "feature/x", LastCommit: recent}, false},
+		{"no commit info", models.BranchInfo{Name: "feature/x"}, false},
+		{
+			"current branch exempt despite age",
+			models.BranchInfo{Name: "feature/x", LastCommit: old, IsCurrent: true},
+			false,
+		},
+		{"default branch exempt despite age", models.BranchInfo{Name: mainBranchName, LastCommit: old}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := isStaleBranch(tt.branch); got != tt.want {
+				t.Errorf("isStaleBranch(%+v) = %v, want %v", tt.branch, got, tt.want)
+			}
+		})
+	}
+}
 
 func TestFormatBranchPRCell(t *testing.T) {
 	t.Parallel()

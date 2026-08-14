@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -246,6 +247,55 @@ func (g *GitOperations) getStatusCounts(ctx context.Context, repoPath string) st
 	}
 
 	return parsePorcelainZ(out)
+}
+
+// changedFilePaths extracts each entry's current path from porcelain -z
+// output, skipping the orig-path entry a rename or copy carries alongside it,
+// the same pairing parsePorcelainZ accounts for.
+func changedFilePaths(out string) []string {
+	var paths []string
+
+	entries := strings.Split(out, "\x00")
+	for i := 0; i < len(entries); i++ {
+		entry := entries[i]
+		if len(entry) < porcelainStatusCodeLen+1 {
+			continue
+		}
+
+		paths = append(paths, entry[porcelainStatusCodeLen+1:])
+
+		if entry[0] == 'R' || entry[0] == 'C' {
+			i++
+		}
+	}
+
+	return paths
+}
+
+// GetNewestModifiedFile implements Operations.
+func (g *GitOperations) GetNewestModifiedFile(ctx context.Context, repoPath string) (string, time.Time, error) {
+	out, err := g.runGitRaw(ctx, repoPath, "status", "--porcelain", "-z")
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	var newestName string
+
+	var newestTime time.Time
+
+	for _, path := range changedFilePaths(out) {
+		info, statErr := os.Stat(filepath.Join(repoPath, path))
+		if statErr != nil {
+			continue
+		}
+
+		if info.ModTime().After(newestTime) {
+			newestTime = info.ModTime()
+			newestName = path
+		}
+	}
+
+	return newestName, newestTime, nil
 }
 
 // GetStagedCount reports the number of staged files.

@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
@@ -79,5 +80,48 @@ func TestGitGetStashListAgainstRealGit(t *testing.T) {
 		if stashes[i].Date.IsZero() {
 			t.Errorf("stash %d: date is zero", i)
 		}
+	}
+}
+
+func TestGitGetNewestModifiedFileAgainstRealGit(t *testing.T) {
+	t.Parallel()
+
+	dir := gitInit(t)
+
+	// The clean tree left by gitInit has nothing uncommitted to report.
+	name, _, err := vcs.NewGitOperations().GetNewestModifiedFile(t.Context(), dir)
+	if err != nil {
+		t.Fatalf("GetNewestModifiedFile on a clean tree: %v", err)
+	}
+
+	if name != "" {
+		t.Errorf("clean tree reported newest file %q, want none", name)
+	}
+
+	older := time.Now().Add(-time.Hour)
+	if err := os.WriteFile(filepath.Join(dir, "file.txt"), []byte("edited\n"), 0o600); err != nil {
+		t.Fatalf("writing file.txt: %v", err)
+	}
+
+	if err := os.Chtimes(filepath.Join(dir, "file.txt"), older, older); err != nil {
+		t.Fatalf("backdating file.txt: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(dir, "newer.txt"), []byte("new\n"), 0o600); err != nil {
+		t.Fatalf("writing newer.txt: %v", err)
+	}
+
+	name, modTime, err := vcs.NewGitOperations().GetNewestModifiedFile(t.Context(), dir)
+	if err != nil {
+		t.Fatalf("GetNewestModifiedFile on a dirty tree: %v", err)
+	}
+
+	if name != "newer.txt" {
+		t.Errorf("newest file = %q, want %q (the untracked file touched after file.txt was backdated)",
+			name, "newer.txt")
+	}
+
+	if modTime.Before(older) {
+		t.Errorf("newest file's mod time %v is not after the backdated file.txt's %v", modTime, older)
 	}
 }

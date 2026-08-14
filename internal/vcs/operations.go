@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -46,6 +47,10 @@ type DetailReader interface {
 	GetCommitLog(ctx context.Context, repoPath string, count int) ([]models.CommitInfo, error)
 	GetStashList(ctx context.Context, repoPath string) ([]models.StashDetail, error)
 	GetWorktreeList(ctx context.Context, repoPath string) ([]models.WorktreeInfo, error)
+	// GetNewestModifiedFile names the working tree's most recently modified
+	// uncommitted file and when it was touched. Name is empty with a nil
+	// error for a clean tree, where there is nothing uncommitted to report.
+	GetNewestModifiedFile(ctx context.Context, repoPath string) (name string, modTime time.Time, err error)
 }
 
 // Mutator performs write operations against a repository. Each method returns

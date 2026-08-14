@@ -322,6 +322,13 @@ func (*JJOperations) GetStashList(_ context.Context, _ string) ([]models.StashDe
 	return nil, nil
 }
 
+// GetNewestModifiedFile implements Operations. A jj working copy is always
+// the tip of a change, so there is no separate porcelain read to comb for a
+// most-recently-touched file the way git's status list gives one.
+func (*JJOperations) GetNewestModifiedFile(_ context.Context, _ string) (string, time.Time, error) {
+	return "", time.Time{}, nil
+}
+
 // GetWorktreeList implements Operations.
 func (j *JJOperations) GetWorktreeList(ctx context.Context, repoPath string) ([]models.WorktreeInfo, error) {
 	out, err := j.runJJ(ctx, repoPath, "workspace", "list", "-T", jjWorkspaceListFormat)

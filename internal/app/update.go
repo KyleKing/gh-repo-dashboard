@@ -404,6 +404,8 @@ func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
 	m.worktrees = msg.Worktrees
 	m.prs = msg.PRs
 	m.notesFiles = msg.NotesFiles
+	m.newestFile = msg.NewestFile
+	m.newestFileTime = msg.NewestFileTime
 	m = m.snapFocusToShownPanel()
 
 	prefetchCount := min(prDetailPrefetchCount, len(msg.PRs))
