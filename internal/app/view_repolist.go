@@ -707,11 +707,40 @@ func ownCheckoutOf(summary *models.RepoSummary) *models.PeerCheckout {
 }
 
 // BranchConflictCount counts the repos sharing a branch with a peer checkout.
+// It groups every summary by remote once rather than checking each repo
+// against a freshly rebuilt full scan of every other repo, which made this
+// call quadratic in fleet size despite running on every render.
 func (m Model) BranchConflictCount() int {
-	count := 0
+	filtered := make(map[string]bool, len(m.filteredPaths))
 	for _, path := range m.filteredPaths {
-		if m.hasBranchConflict(path) {
-			count++
+		filtered[path] = true
+	}
+
+	const minSharedRemote = 2 // a conflict needs at least one peer sharing the remote
+
+	count := 0
+	for _, group := range m.summariesByRemote() {
+		if len(group) < minSharedRemote {
+			continue
+		}
+
+		for i := range group {
+			if !filtered[group[i].Path] {
+				continue
+			}
+
+			own := ownCheckoutOf(&group[i])
+
+			peers := make([]models.PeerCheckout, 0, len(group)-1)
+			for j := range group {
+				if j != i {
+					peers = append(peers, models.OwnCheckout(&group[j]))
+				}
+			}
+
+			if models.ConflictingBranches(own, peers)[group[i].Branch] {
+				count++
+			}
 		}
 	}
 

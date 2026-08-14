@@ -541,6 +541,25 @@ func (m Model) RepoCheckouts() []models.PeerCheckout {
 	)
 }
 
+// summariesByRemote groups every summary by its remote identity, so a caller
+// checking every repo for peer conflicts can look each one up against only
+// the handful of checkouts that share its remote, rather than re-scanning
+// every summary once per repo. A repo with no remote conflicts with nothing
+// and is left out.
+func (m Model) summariesByRemote() map[string][]models.RepoSummary {
+	groups := make(map[string][]models.RepoSummary)
+	for path := range m.summaries {
+		summary := m.summaries[path]
+		if summary.RemoteRepo == "" {
+			continue
+		}
+
+		groups[summary.RemoteRepo] = append(groups[summary.RemoteRepo], summary)
+	}
+
+	return groups
+}
+
 // listableRepos are the discovered repos the fleet list stands for. A linked
 // checkout whose parent was discovered too is dropped: a worktree or jj
 // workspace is a place inside its parent repo, and the parent's Peers panel
