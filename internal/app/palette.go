@@ -3,6 +3,8 @@ package app
 import (
 	"strconv"
 	"strings"
+
+	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 )
 
 // findKind is the object type a palette query targets. A query with no prefix
@@ -85,17 +87,17 @@ func (q findQuery) wants(kind findKind) bool {
 	return q.kind == findAny || q.kind == kind
 }
 
-// matches reports whether a candidate's searchable text satisfies the query.
-// An empty query matches everything, so the palette opens showing the objects
-// in reach rather than a blank list.
+// matches reports whether any field matches the query text, fuzzily: the
+// same substring-then-fuzzy matching the Repos list's own search already
+// uses, so typing fragments of a branch or PR title out of order still finds
+// it here the way it would there.
 func (q findQuery) matches(fields ...string) bool {
 	if q.text == "" {
 		return true
 	}
 
-	needle := strings.ToLower(q.text)
 	for _, field := range fields {
-		if strings.Contains(strings.ToLower(field), needle) {
+		if filters.FuzzyMatch(q.text, field) {
 			return true
 		}
 	}
