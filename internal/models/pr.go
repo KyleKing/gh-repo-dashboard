@@ -313,11 +313,15 @@ type CIWorkflowRun struct {
 	FailingJobs []string  `json:"failing_jobs,omitempty"`
 }
 
-// WorkflowSummary aggregates the CI workflow runs for a commit.
+// WorkflowSummary aggregates the CI workflow runs for a commit. Every run
+// lands in exactly one of Passing, Skipped, Canceled, Failing, or
+// InProgress, so the five sum to Total.
 type WorkflowSummary struct {
 	Runs       []WorkflowRun
 	Total      int
 	Passing    int
+	Skipped    int
+	Canceled   int
 	Failing    int
 	InProgress int
 }

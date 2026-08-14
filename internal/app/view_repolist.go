@@ -547,14 +547,30 @@ func elideMiddle(lines []string, height int) []string {
 	return append(out, lines[len(lines)-tail:]...)
 }
 
-// prCell renders the PR column: the pull request when the repo has one, and
-// the pending-or-absent placeholder when it does not.
-func (m Model) prCell(s models.RepoSummary) string {
-	if s.PRInfo == nil {
-		return absentCell(m.fetchPending(s.Path, fetchPR) || m.summaryPending(s.Path))
+// prCell renders the pull request open on the checked-out branch, if any,
+// plus a "+N" for the repo's other open pull requests once that count has
+// loaded, so the list's PR column carries the count a separate PRs column
+// used to. The own-PR text truncates first, reserving room for the suffix,
+// the same way branchCell does.
+func (m Model) prCell(s models.RepoSummary, width int) string {
+	text := absentCell(m.fetchPending(s.Path, fetchPR) || m.summaryPending(s.Path))
+	if s.PRInfo != nil {
+		text = formatPRCell(s)
 	}
 
-	return formatPRCell(s)
+	others := m.prCount[s.Path]
+	if s.PRInfo != nil {
+		others--
+	}
+
+	suffix := ""
+	if others > 0 {
+		suffix = " +" + strconv.Itoa(others)
+	}
+
+	text = table.Truncate(text, max(width-lipgloss.Width(suffix), 0))
+
+	return text + suffix
 }
 
 // templateCell renders the copier-template column, standing in the
@@ -660,26 +676,100 @@ func (m Model) peersCell(path string, base lipgloss.Style, selected bool) (strin
 	return cell, withSelection(styles.CountStyle, selected)
 }
 
-// ciCell renders the default branch's CI rollup: a check when every run
-// passed, the count of failures when not, the pending glyph while the fetch is
-// in flight, and emDash once it is known there is nothing to report.
-func (m Model) ciCell(s models.RepoSummary, base lipgloss.Style, selected bool) (string, lipgloss.Style) {
+// ciBucketGlyphs names the CI column's four tracked run outcomes, in the
+// fixed order both the header legend and every row's numbers use, alongside
+// the color a nonzero count takes. A count of zero renders dim instead, so
+// the buckets that actually happened are what draws the eye.
+var ciBucketGlyphs = []struct {
+	icon  string
+	style lipgloss.Style
+}{
+	{"✓", styles.CleanStyle},
+	{"⊘", styles.CountStyle},
+	{"⊗", styles.WarningStyle},
+	{"✗", styles.ErrorStyle},
+}
+
+// ciColumnTitle builds the CI column's header: the column name followed by
+// the four outcome icons in their semantic colors, so the row below reads as
+// numbers under a legend rather than requiring the glossary to decode.
+func ciColumnTitle() string {
+	icons := make([]string, len(ciBucketGlyphs))
+	for i := range ciBucketGlyphs {
+		icons[i] = ciBucketGlyphs[i].style.Render(ciBucketGlyphs[i].icon)
+	}
+
+	return colCI + " " + strings.Join(icons, "/")
+}
+
+// ciListCell renders the CI column's per-outcome breakdown for one row: how
+// many of the default branch's most recent workflow runs passed, were
+// skipped, were canceled, and failed, in ciBucketGlyphs' order, padded to
+// width itself so the row's selection background can be painted behind every
+// separator and pad space rather than just the colored digits. A run still
+// in progress prefixes the count rather than taking one of the four slots,
+// since it has not resolved into any of those outcomes yet.
+func (m Model) ciListCell(s models.RepoSummary, width int, selected bool) string {
+	rowStyle := withSelection(styles.TableRowStyle, selected)
+
 	if s.WorkflowInfo == nil {
-		return absentCell(m.fetchPending(s.Path, fetchCI) || m.summaryPending(s.Path)), base
+		text := m.pendingCell(m.fetchPending(s.Path, fetchCI) || m.summaryPending(s.Path))
+
+		return rowStyle.Render(padCell(text, width))
+	}
+
+	wf := s.WorkflowInfo
+	if wf.Total == 0 {
+		return rowStyle.Render(padCell(emDash, width))
+	}
+
+	counts := []int{wf.Passing, wf.Skipped, wf.Canceled, wf.Failing}
+
+	parts := make([]string, len(counts))
+	for i, count := range counts {
+		style := withSelection(styles.SubtitleStyle, selected)
+		if count > 0 {
+			style = withSelection(ciBucketGlyphs[i].style, selected)
+		}
+
+		parts[i] = style.Render(strconv.Itoa(count))
+	}
+
+	sep := rowStyle.Render("/")
+	cell := strings.Join(parts, sep)
+
+	if wf.InProgress > 0 {
+		running := withSelection(styles.WarningStyle, selected).Render("…" + strconv.Itoa(wf.InProgress))
+		cell = running + rowStyle.Render(" ") + cell
+	}
+
+	if gap := width - lipgloss.Width(cell); gap > 0 {
+		cell += rowStyle.Render(strings.Repeat(" ", gap))
+	}
+
+	return cell
+}
+
+// ciCell renders the default branch's CI rollup as a single word: a check
+// when every run passed, the count of failures when not, the pending glyph
+// while the fetch is in flight, and emDash once it is known there is nothing
+// to report. Used where a line of text has room for one signal, not a table
+// column; see ciListCell for the Repos list's fuller breakdown.
+func (m Model) ciCell(s models.RepoSummary) string {
+	if s.WorkflowInfo == nil {
+		return absentCell(m.fetchPending(s.Path, fetchCI) || m.summaryPending(s.Path))
 	}
 
 	wf := s.WorkflowInfo
 	switch {
 	case wf.Total == 0:
-		return emDash, base
+		return emDash
 	case wf.Failing > 0:
-		text := "✗ " + strconv.Itoa(wf.Failing) + "/" + strconv.Itoa(wf.Total)
-
-		return text, withSelection(styles.ErrorStyle, selected)
+		return "✗ " + strconv.Itoa(wf.Failing) + "/" + strconv.Itoa(wf.Total)
 	case wf.InProgress > 0:
-		return "…" + strconv.Itoa(wf.InProgress), withSelection(styles.WarningStyle, selected)
+		return "…" + strconv.Itoa(wf.InProgress)
 	default:
-		return "✓", withSelection(styles.CleanStyle, selected)
+		return "✓"
 	}
 }
 
@@ -790,9 +880,7 @@ func (m Model) repoCell(col string, s models.RepoSummary, width int, base lipglo
 	case colName:
 		return base.Render(padCell(s.Name(), width))
 	case colBranch:
-		return withSelection(styles.BranchStyle, selected).Render(padCell(s.Branch, width))
-	case colBranches:
-		return base.Render(padCell(m.branchCountText(s.Path), width))
+		return withSelection(styles.BranchStyle, selected).Render(padCell(m.branchCell(s, width), width))
 	case colStatus:
 		return m.statusCell(s, width, base, selected)
 	case colPeers:
@@ -800,15 +888,11 @@ func (m Model) repoCell(col string, s models.RepoSummary, width int, base lipglo
 
 		return style.Render(padCell(text, width))
 	case colPR:
-		return prCellStyle(s, base, selected).Render(padCell(m.prCell(s), width))
-	case colPRs:
-		return base.Render(padCell(m.prCountText(s.Path), width))
+		return prCellStyle(s, base, selected).Render(padCell(m.prCell(s, width), width))
 	case colTemplate:
 		return templateCellStyle(s, base, selected).Render(padCell(m.templateCell(s, width), width))
 	case colCI:
-		text, style := m.ciCell(s, base, selected)
-
-		return style.Render(padCell(text, width))
+		return m.ciListCell(s, width, selected)
 	case colModified:
 		if m.summaryPending(s.Path) {
 			return base.Render(padCell(pendingGlyph, width))
@@ -838,23 +922,21 @@ func (m Model) statusCell(s models.RepoSummary, width int, base lipgloss.Style, 
 		notesStyle.Render(padCell(notesText, notesMarkerWidth))
 }
 
-func (m Model) prCountText(path string) string {
-	if count, ok := m.prCount[path]; ok && count > 0 {
-		return strconv.Itoa(count)
+// branchCell renders the checked-out branch name plus, once the repo's local
+// branch count has loaded, a "+N" for the other branches it holds, so the
+// list's BRANCH column carries the same count a separate BRs column used to.
+// The name truncates first, reserving room for the suffix, so a long branch
+// name never crowds out the count the way trimming the combined string from
+// the tail would.
+func (m Model) branchCell(s models.RepoSummary, width int) string {
+	suffix := ""
+	if count, ok := m.branchCount[s.Path]; ok && count > 1 {
+		suffix = " +" + strconv.Itoa(count-1)
 	}
 
-	return m.pendingCell(m.fetchPending(path, fetchPRCount) || m.summaryPending(path))
-}
+	name := table.Truncate(s.Branch, max(width-lipgloss.Width(suffix), 0))
 
-// branchCountText reports the repo's local branch count, read once per repo
-// as soon as its summary lands rather than waiting on the expanded region,
-// which only ever loads branches for whichever one row currently has it open.
-func (m Model) branchCountText(path string) string {
-	if count, ok := m.branchCount[path]; ok && count > 0 {
-		return strconv.Itoa(count)
-	}
-
-	return m.pendingCell(m.fetchPending(path, fetchBranchCount) || m.summaryPending(path))
+	return name + suffix
 }
 
 // pendingCell marks a cell whose fetch is still in flight with the spinner

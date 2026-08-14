@@ -112,35 +112,24 @@ func TestPendingCellsAreDistinctFromAbsentOnes(t *testing.T) {
 
 	path := "/dev/alpha"
 	cells := []struct {
-		name    string
-		cell    func(Model) string
-		spinner bool
+		name string
+		cell func(Model) string
 	}{
-		{"PR", func(m Model) string { return m.prCell(m.summaries[path]) }, false},
-		{"PR count", func(m Model) string { return m.prCountText(path) }, true},
-		{"branch count", func(m Model) string { return m.branchCountText(path) }, true},
-		{"template", func(m Model) string { return m.templateCell(m.summaries[path], maxContentWidth) }, false},
+		{"PR", func(m Model) string { return m.prCell(m.summaries[path], maxContentWidth) }},
+		{"template", func(m Model) string { return m.templateCell(m.summaries[path], maxContentWidth) }},
 		{"CI", func(m Model) string {
-			text, _ := m.ciCell(m.summaries[path], plainStyle, false)
+			text := m.ciCell(m.summaries[path])
 
 			return text
-		}, false},
+		}},
 	}
 
 	for _, cell := range cells {
 		t.Run(cell.name, func(t *testing.T) {
 			t.Parallel()
 
-			// BRs and PRs read from their own fetch and mark it in flight with
-			// the spinner rather than the plain pending glyph the other cells
-			// use, so a count still loading is never mistaken for a zero.
-			want := pendingGlyph
-			if cell.spinner {
-				want = plainText(pending.spinner.View())
-			}
-
-			if got := plainText(cell.cell(pending)); got != want {
-				t.Errorf("in-flight %s cell = %q, want %q", cell.name, got, want)
+			if got := plainText(cell.cell(pending)); got != pendingGlyph {
+				t.Errorf("in-flight %s cell = %q, want %q", cell.name, got, pendingGlyph)
 			}
 			if got := cell.cell(settled); got != emDash {
 				t.Errorf("settled %s cell = %q, want %q", cell.name, got, emDash)

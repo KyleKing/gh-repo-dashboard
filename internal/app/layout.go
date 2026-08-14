@@ -88,11 +88,9 @@ func padCell(text string, width int) string {
 const (
 	colName     = "NAME"
 	colBranch   = "BRANCH"
-	colBranches = "BRs"
 	colStatus   = "STATUS"
 	colPeers    = "PEERS"
 	colPR       = "PR"
-	colPRs      = "PRs"
 	colTemplate = "TEMPLATE"
 	colCI       = "CI"
 	colModified = "MODIFIED"
@@ -101,26 +99,27 @@ const (
 // cursorWidth is the leading cursor plus selection-mark gutter on every row.
 const cursorWidth = 2
 
-// repoColSpecs lists the repo table's columns in render order.
+// repoColSpecs lists the repo table's columns in render order. BRANCH and PR
+// each fold in the count they used to give a whole column of their own (a
+// "+N" for the branches or pull requests beyond the one shown), so a narrow
+// terminal spends its width on TEMPLATE, CI, and MODIFIED instead of a second
+// column repeating a number the first one already displays.
 //
 // Collapse priority is information value measured against the real fleet, so
-// the lowest priority hides first: BRs already duplicates the count the
-// expand region shows, PR is nearly always emDash on a default branch, while
-// PEERS and TEMPLATE are the signals worth acting on and survive longest.
-// Name, branch, and status carry no priority and never hide.
+// the lowest priority hides first: PR is nearly always emDash on a default
+// branch, while PEERS and TEMPLATE are the signals worth acting on and
+// survive longest. Name, branch, and status carry no priority and never hide.
 //
 //nolint:mnd // the numbers are this table's data: column geometry, not constants used elsewhere
 var repoColSpecs = []table.Column{
 	{Key: colName, Title: colName, Min: 16, Weight: 3},
-	{Key: colBranch, Title: colBranch, Min: 10, Weight: 2},
-	{Key: colBranches, Title: colBranches, Min: 4, Priority: 1},
+	{Key: colBranch, Title: colBranch, Min: 14, Weight: 2},
 	{Key: colStatus, Title: colStatus, Min: 12},
-	{Key: colPeers, Title: colPeers, Min: 5, Priority: 4},
-	{Key: colPR, Title: colPR, Min: 8, Priority: 2},
-	{Key: colPRs, Title: colPRs, Min: 6, Priority: 5},
-	{Key: colTemplate, Title: colTemplate, Min: 10, Weight: 1, Priority: 6},
-	{Key: colCI, Title: colCI, Min: 8, Priority: 7},
-	{Key: colModified, Title: colModified, Min: 12, Priority: 3},
+	{Key: colPeers, Title: colPeers, Min: 5, Priority: 3},
+	{Key: colPR, Title: colPR, Min: 10, Priority: 1},
+	{Key: colTemplate, Title: colTemplate, Min: 10, Weight: 1, Priority: 4},
+	{Key: colCI, Title: ciColumnTitle(), Min: 12, Priority: 5},
+	{Key: colModified, Title: colModified, Min: 12, Priority: 2},
 }
 
 // layoutRepoCols fits the repo table into width, leaving room for the cursor

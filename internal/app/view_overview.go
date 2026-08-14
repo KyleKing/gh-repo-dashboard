@@ -78,7 +78,7 @@ func (m Model) overviewRows(s models.RepoSummary, compact bool) []overviewRow {
 // overviewCI reports the default branch's CI rollup, naming the branch it
 // belongs to so the line is not mistaken for the current branch's checks.
 func (m Model) overviewCI(s models.RepoSummary) string {
-	text, _ := m.ciCell(s, plainStyle, false)
+	text := m.ciCell(s)
 
 	if branch := m.ciBranch[s.Path]; branch != "" {
 		return text + " on " + branch

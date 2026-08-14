@@ -78,7 +78,14 @@ func GetWorkflowRunsForCommit(
 			summary.InProgress++
 		case r.Conclusion == "success":
 			summary.Passing++
-		case r.Conclusion == checkStateFailure:
+		case r.Conclusion == "skipped" || r.Conclusion == "neutral":
+			summary.Skipped++
+		case r.Conclusion == "cancelled": //nolint:misspell // GitHub's API spells its own conclusion this way
+			summary.Canceled++
+		default:
+			// checkStateFailure, timed_out, action_required, startup_failure,
+			// stale: every other conclusion GitHub can report reads as a
+			// failure here rather than silently dropping out of the total.
 			summary.Failing++
 		}
 	}

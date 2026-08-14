@@ -48,7 +48,7 @@ func TestCICellStates(t *testing.T) {
 			summary := models.RepoSummary{Path: "/dev/app", WorkflowInfo: tt.workflow}
 			m.summaries["/dev/app"] = summary
 
-			if got, _ := m.ciCell(summary, plainStyle, false); got != tt.want {
+			if got := m.ciCell(summary); got != tt.want {
 				t.Errorf("ciCell = %q, want %q", got, tt.want)
 			}
 		})
@@ -66,7 +66,7 @@ func TestFailedCIFetchSettlesTheCell(t *testing.T) {
 	updated, _ := m.Update(WorkflowLoadedMsg{Path: "/dev/app", Error: errGHFailed})
 	m = mustModel(t, updated)
 
-	if got, _ := m.ciCell(m.summaries["/dev/app"], plainStyle, false); got != emDash {
+	if got := m.ciCell(m.summaries["/dev/app"]); got != emDash {
 		t.Errorf("ciCell after a failed fetch = %q, want %q; the placeholder must not spin forever", got, emDash)
 	}
 }
