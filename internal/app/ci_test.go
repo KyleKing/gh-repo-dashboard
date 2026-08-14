@@ -118,7 +118,7 @@ func TestOverviewNamesTheBranchItsCIRanOn(t *testing.T) {
 	}
 }
 
-func TestFocusedHeaderShowsCIStatus(t *testing.T) {
+func TestStatusPreviewShowsCIStatus(t *testing.T) {
 	t.Parallel()
 
 	m := focusedModel(140, 35)
@@ -126,7 +126,8 @@ func TestFocusedHeaderShowsCIStatus(t *testing.T) {
 	summary.WorkflowInfo = &models.WorkflowSummary{Total: 2, Passing: 1, Failing: 1}
 	m.summaries["/dev/alpha"] = summary
 
-	if header := plainText(m.renderRepoDetailBreadcrumbs()); !strings.Contains(header, "CI ✗ 1/2") {
-		t.Errorf("focused header does not carry the CI badge: %q", header)
+	preview := plainText(strings.Join(m.repoDetailLines(contentWidth(m.width)), "\n"))
+	if !strings.Contains(preview, "ci ✗ 1/2") {
+		t.Errorf("Status's full preview does not carry the CI status: %q", preview)
 	}
 }

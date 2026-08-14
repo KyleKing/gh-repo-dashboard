@@ -54,9 +54,9 @@ func TestEmptyPanelsSayLoadingThenDisappear(t *testing.T) {
 		}
 	}
 
-	status := plainText(renderPanel(settled, panelStatus))
-	if !strings.Contains(status, "no PRs, peers, stashes, or notes") {
-		t.Errorf("Status must name the dropped panels, got %q", status)
+	preview := plainText(strings.Join(settled.repoDetailLines(contentWidth(settled.width)), "\n"))
+	if !strings.Contains(preview, "no PRs, peers, stashes, or notes") {
+		t.Errorf("Status's full preview must name the dropped panels, got %q", preview)
 	}
 }
 

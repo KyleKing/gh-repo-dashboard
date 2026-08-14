@@ -12,6 +12,11 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
 
+// renderRepoDetailBreadcrumbs names the repo alone. Its identity facts (vcs,
+// protocol, detached/dirty state, pull request, parallel checkouts, config
+// drift) used to ride along as badges here; they now live in the Status
+// panel's full preview, the one place a reader already goes to ask "what is
+// this repo's situation," rather than duplicated in both places.
 func (m Model) renderRepoDetailBreadcrumbs() string {
 	summary, ok := m.summaries[m.selectedRepo]
 	if !ok {
@@ -22,37 +27,7 @@ func (m Model) renderRepoDetailBreadcrumbs() string {
 	sep := styles.SubtitleStyle.Render(" > ")
 	repo := styles.TitleStyle.Render(summary.Name())
 
-	var badges []string
-	badges = append(badges, styles.Badge(summary.VCSType.String(), styles.CountBadgeStyle))
-	if summary.IsDetached() {
-		badges = append(badges, styles.Badge("detached "+summary.Branch, styles.WarningStyle))
-	}
-	if label := summary.DirtyLabel(); label != "" {
-		badges = append(badges, styles.Badge(label, styles.FilterBadgeStyle))
-	}
-	if summary.PRInfo != nil {
-		badges = append(badges, styles.Badge(fmt.Sprintf("PR #%d", summary.PRInfo.Number), styles.PROpenStyle))
-	}
-	if checkouts := m.RepoCheckouts(); len(checkouts) > 0 {
-		label := fmt.Sprintf("⧉ %d parallel checkouts", len(checkouts))
-		if len(checkouts) == 1 {
-			label = "⧉ " + checkouts[0].Folder()
-		}
-		badges = append(badges, styles.Badge(label, styles.WarningStyle))
-	}
-	if summary.WorkflowInfo != nil && summary.WorkflowInfo.Total > 0 {
-		text, style := m.ciCell(summary, styles.CountBadgeStyle, false)
-		badges = append(badges, styles.Badge("CI "+text, style))
-	}
-	if summary.RemoteProtocol != "" {
-		badges = append(badges, styles.Badge(summary.RemoteProtocol, styles.CountBadgeStyle))
-	}
-	for _, override := range summary.ConfigOverrides {
-		text := fmt.Sprintf("%s: %s≠%s", override.Key, override.LocalValue, override.GlobalValue)
-		badges = append(badges, styles.Badge(text, styles.WarningStyle))
-	}
-
-	return joinWithinWidth(home+sep+repo, badges, contentWidth(m.width))
+	return home + sep + repo
 }
 
 func (m Model) renderRepoDetail() string {

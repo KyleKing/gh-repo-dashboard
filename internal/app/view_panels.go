@@ -33,7 +33,7 @@ func (m Model) panelSet(width int) []panelContent {
 	summary := m.summaries[m.selectedRepo]
 
 	built := []panelContent{
-		m.statusPanel(summary, width),
+		statusPanel(summary, width),
 		m.branchesPanel(width),
 		m.peersPanel(summary, width),
 	}
@@ -95,7 +95,11 @@ func panelIndex(panels []panelContent, id panelID) int {
 	return 0
 }
 
-func (m Model) statusPanel(summary models.RepoSummary, width int) panelContent {
+// statusPanel is the grid's collapsed view of the repo: sync and working-tree
+// state, the two facts worth a glance without opening it. Everything else
+// (identity, template, CI, config drift, absent panels) lives in the full
+// preview repoDetailLines renders once Status is focused.
+func statusPanel(summary models.RepoSummary, width int) panelContent {
 	files := overviewFiles(summary)
 	if extras := statusExtras(summary); extras != "" {
 		files += compactSignalSep + extras
@@ -104,11 +108,6 @@ func (m Model) statusPanel(summary models.RepoSummary, width int) panelContent {
 	lines := []string{
 		overviewSync(summary),
 		files,
-		"template " + formatCopierCell(summary, width) + compactSignalSep + "CI " + m.overviewCI(summary),
-	}
-
-	if absent := m.statusAbsences(summary); absent != "" {
-		lines = append(lines, absent)
 	}
 
 	rows := make([]string, 0, len(lines))
@@ -699,21 +698,58 @@ func (m Model) renderPanelDetail(width, height int) string {
 
 // repoDetailFieldCount is how many fixed fields repoDetailLines writes before
 // any config overrides.
-const repoDetailFieldCount = 7
+const repoDetailFieldCount = 10
 
+// repoDetailLines is Status's full preview, opened by focusing the panel: the
+// repo's identity facts that once lived as breadcrumb badges (vcs, protocol,
+// detached/dirty state, the branch's pull request, parallel checkouts),
+// alongside the fields the collapsed panel already carried and the config
+// drift and absent-panel notes that have nowhere else to show.
 func (m Model) repoDetailLines(width int) []string {
 	summary := m.summaries[m.selectedRepo]
+
+	branch := summary.Branch
+	if summary.IsDetached() {
+		branch = "detached at " + summary.Branch
+	}
+
+	remote := orDash(summary.RemoteRepo)
+	if summary.RemoteProtocol != "" {
+		remote += " (" + summary.RemoteProtocol + ")"
+	}
 
 	lines := make([]string, 0, len(summary.ConfigOverrides)+repoDetailFieldCount)
 	lines = append(lines,
 		detailField("path", truncate(summary.Path, width)),
 		detailField("vcs", summary.VCSType.String()),
-		detailField("branch", summary.Branch),
+		detailField("branch", branch),
 		detailField("upstream", orDash(summary.Upstream)),
-		detailField("remote", orDash(summary.RemoteRepo)),
+		detailField("remote", remote),
 		detailField("files", overviewFiles(summary)),
+		detailField("template", formatCopierCell(summary, width)),
 		detailField("ci", m.overviewCI(summary)),
 	)
+
+	if label := summary.DirtyLabel(); label != "" {
+		lines = append(lines, detailField("dirty", label))
+	}
+
+	if summary.PRInfo != nil {
+		lines = append(lines, detailField("pull request", formatPRCell(summary)+" "+summary.PRInfo.Title))
+	}
+
+	if checkouts := m.RepoCheckouts(); len(checkouts) > 0 {
+		label := "⧉ " + strconv.Itoa(len(checkouts)) + " parallel checkouts"
+		if len(checkouts) == 1 {
+			label = "⧉ " + checkouts[0].Folder()
+		}
+
+		lines = append(lines, detailField("checkouts", label))
+	}
+
+	if absent := m.statusAbsences(summary); absent != "" {
+		lines = append(lines, detailField("absent", absent))
+	}
 
 	for _, override := range summary.ConfigOverrides {
 		lines = append(lines, detailField(override.Key, override.LocalValue+" ≠ "+override.GlobalValue))
