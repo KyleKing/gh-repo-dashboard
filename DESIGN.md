@@ -132,6 +132,39 @@ covers both. Results merge by number, newest first. A failed fetch is never
 cached: an empty list would otherwise read as "this repo has no pull requests"
 for the whole TTL and hide the panel on the strength of a timeout.
 
+## Glossary
+
+Terms this codebase uses precisely, for readers coming from just one of git,
+jj, or GitHub's PR model.
+
+| Term | Meaning |
+|------|---------|
+| Ref | Git's umbrella name for anything pointing at a commit: a branch, a tag, `HEAD`, or a remote-tracking ref like `refs/remotes/origin/main`. |
+| Upstream / tracking branch | The remote ref a local branch is configured to compare against (`git rev-parse @{upstream}`), e.g. `origin/main`. A branch with no upstream has nothing to be ahead or behind of. |
+| Ahead / behind | Commit counts between a branch and its upstream: ahead is unpushed local work, behind is unpulled remote work (`git rev-list --left-right --count`). |
+| `for-each-ref` | The single git subprocess `GetBranchList` runs to list every local branch, its upstream, and its ahead/behind counts in one call, rather than one call per branch. |
+| Default branch | The repo's main line (`main`, `master`, or whatever `origin/HEAD` resolves to). `findDefaultBranch` guesses by name; `DefaultBranchHead` resolves `origin/HEAD` for an authoritative answer. |
+| Worktree / workspace | A second working directory checked out from the same repo (git worktree, jj workspace), so one clone can have two branches checked out at once without cloning again. |
+| Squash-merge | A PR merged by squashing its commits into one on the target branch, so the source branch's own commits never appear as merged even though the work landed. `models.BranchInfo.Head` catches this by comparing tip OIDs instead of ancestry. |
+| Subprocess / exec | Spawning `git` (or `jj`, `gh`) as a child process and reading its output. Each spawn costs a fork/exec (roughly 5-20ms) on top of whatever the command itself does, so a view built from many small git calls pays that overhead once per call. |
+| Peer checkout | Another clone or worktree of the same remote repository found elsewhere in the scanned fleet, tracked in `models.PeerCheckout`. |
+
+### Why branch loading is slower in the single-repo view than the list
+
+Branch enumeration itself is not the expensive part: `GetBranchList` reads
+every local branch's name, upstream, and ahead/behind count with one
+`for-each-ref` call regardless of branch count, and the Repos list reuses
+that same call (see `BRs`, above). What is expensive is opening or switching
+branches in the single-repo detail view, which chains roughly ten sequential
+subprocess spawns (`for-each-ref`, `stash list`, `worktree list`, plus the
+seven separate git calls inside `GetRepoSummary`) and two GitHub API round
+trips, one after another with nothing running concurrently. Selecting a
+different branch re-runs the whole `GetRepoSummary` chain again rather than
+reusing the summary the detail view already loaded, so every branch click
+pays that cost a second time. None of this is a per-branch cost; it is a long
+serial chain that runs once per view a fleet with many branches happens to
+make more often.
+
 ## Batch Tasks
 
 `BatchTaskRunner` runs maintenance tasks sequentially across the currently filtered
