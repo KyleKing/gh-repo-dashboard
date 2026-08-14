@@ -158,6 +158,10 @@ func overviewPRs(s models.RepoSummary) string {
 	return formatPRCell(s) + " " + s.PRInfo.Title
 }
 
+// overviewPeers lists the fleet's other checkouts of this repo, naming the
+// branch alongside any peer that holds one of its own. A peer just sitting on
+// the default branch is not doing anything a reader needs to know about, so
+// it names only its folder.
 func overviewPeers(peers []models.PeerCheckout) string {
 	if len(peers) == 0 {
 		return emDash
@@ -165,7 +169,12 @@ func overviewPeers(peers []models.PeerCheckout) string {
 
 	folders := make([]string, 0, len(peers))
 	for _, peer := range peers {
-		folders = append(folders, peer.Folder())
+		folder := peer.Folder()
+		if peer.Branch != "" && !models.IsDefaultBranchName(peer.Branch) {
+			folder += " (" + peer.Branch + ")"
+		}
+
+		folders = append(folders, folder)
 	}
 
 	return "⧉ " + strconv.Itoa(len(peers)) + " " + strings.Join(folders, ", ")

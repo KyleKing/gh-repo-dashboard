@@ -233,7 +233,10 @@ func (m Model) peersPanel(summary models.RepoSummary, width int) panelContent {
 		style := rowStyleFor(selected)
 
 		branch := checkout.Branch
-		branchStyle := styles.BranchStyle
+		branchStyle := styles.SubtitleStyle
+		if !models.IsDefaultBranchName(checkout.Branch) {
+			branchStyle = styles.BranchStyle
+		}
 		if conflicts[branch] {
 			branch += " " + conflictMark
 			branchStyle = styles.WarningStyle
