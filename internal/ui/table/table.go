@@ -282,7 +282,7 @@ func Truncate(text string, width int) string {
 
 // TruncateLeft shortens text to at most width display cells by removing its
 // head, so the tail survives the cut. Use it where a shared prefix carries no
-// information, such as a branch name under dependabot/github_actions/.
+// information, such as a batch result's repo path.
 func TruncateLeft(text string, width int) string {
 	if lipgloss.Width(text) <= width {
 		return text

@@ -316,10 +316,10 @@ func TestGrid_FillsTheTerminalExactly(t *testing.T) {
 // A row wider than its panel wraps inside the box and pushes the column past
 // the bottom of the terminal, so every row is cut to fit. A branch name is cut
 // from the left, because its head is the part every sibling shares.
-func TestPanelRowsFitTheirBoxAndKeepTheBranchTail(t *testing.T) {
+func TestPanelRowsFitTheirBoxAndKeepTheBranchHead(t *testing.T) {
 	t.Parallel()
 
-	const longBranch = "dependabot/github_actions/all-dependencies-56744d620d"
+	const longBranch = "kyleking/dev-1234-all-dependencies-56744d620d"
 
 	sizes := [][2]int{{80, 24}, {100, 30}, {160, 40}, {220, 50}}
 
@@ -345,8 +345,8 @@ func TestPanelRowsFitTheirBoxAndKeepTheBranchTail(t *testing.T) {
 				}
 			}
 
-			if !strings.Contains(branchRows, "d620d") {
-				t.Errorf("the branch name lost its tail, which is the part that identifies it:\n%s", branchRows)
+			if !strings.Contains(branchRows, "kyleking") {
+				t.Errorf("the branch name lost its head, which is the part that identifies it:\n%s", branchRows)
 			}
 		})
 	}

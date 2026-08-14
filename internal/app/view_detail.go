@@ -152,6 +152,17 @@ const (
 	peerPrefix          = "⧉ "
 )
 
+// stripRemotePrefix drops the leading "<remote>/" off a tracking ref. The
+// remote name is boilerplate in a narrow column, where the branch name it
+// prefixes is what a reader is scanning for.
+func stripRemotePrefix(ref string) string {
+	if _, rest, ok := strings.Cut(ref, "/"); ok {
+		return rest
+	}
+
+	return ref
+}
+
 func renderBranchRow(row branchRow, layout table.Layout) string {
 	name := row.branch.Name
 	if row.branch.IsCurrent {
@@ -184,7 +195,7 @@ func renderBranchRow(row branchRow, layout table.Layout) string {
 
 	values := map[string]string{
 		colBranchName:  name,
-		colUpstream:    row.branch.Upstream,
+		colUpstream:    stripRemotePrefix(row.branch.Upstream),
 		colBranchState: branchAheadBehindStatus(row.branch),
 		colBranchPR:    formatBranchPRCell(row.pr),
 		colChecks:      formatChecksCell(row.pr),

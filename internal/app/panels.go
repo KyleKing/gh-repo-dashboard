@@ -88,7 +88,7 @@ const panelMinHeight = panelChromeHeight + panelTitleHeight + 1
 //nolint:mnd // the numbers are each panel's geometry, not constants reused elsewhere
 var (
 	branchPanelSpecs = []table.Column{
-		{Key: colBranchName, Title: colBranchName, Min: 12, Weight: 3, Trim: table.TrimLeft},
+		{Key: colBranchName, Title: colBranchName, Min: 12, Weight: 3},
 		{Key: colBranchState, Title: colBranchState, Min: 6},
 		{Key: colBranchPR, Title: colBranchPR, Min: 8, Priority: 3},
 		{Key: colChecks, Title: colChecks, Min: 12, Priority: 2},
@@ -99,7 +99,7 @@ var (
 	peerPanelSpecs = []table.Column{
 		{Key: colCheckoutName, Title: colCheckoutName, Min: 12, Weight: 2},
 		{Key: colCheckoutKind, Title: colCheckoutKind, Min: 8, Priority: 1},
-		{Key: colCheckoutBranch, Title: colCheckoutBranch, Min: 12, Weight: 1, Priority: 2, Trim: table.TrimLeft},
+		{Key: colCheckoutBranch, Title: colCheckoutBranch, Min: 12, Weight: 1, Priority: 2},
 	}
 
 	stashPanelSpecs = []table.Column{

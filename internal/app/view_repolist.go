@@ -763,6 +763,8 @@ func (m Model) repoCell(col string, s models.RepoSummary, width int, base lipglo
 		return base.Render(padCell(s.Name(), width))
 	case colBranch:
 		return withSelection(styles.BranchStyle, selected).Render(padCell(s.Branch, width))
+	case colBranches:
+		return base.Render(padCell(m.branchCountText(s.Path), width))
 	case colStatus:
 		return m.statusCell(s, width, base, selected)
 	case colPeers:
@@ -814,6 +816,16 @@ func (m Model) prCountText(path string) string {
 	}
 
 	return absentCell(m.fetchPending(path, fetchPRCount) || m.summaryPending(path))
+}
+
+// branchCountText reports the repo's local branch count, reading the branch
+// list the fleet map already loaded rather than fetching one of its own.
+func (m Model) branchCountText(path string) string {
+	if data, ok := m.prMap[path]; ok {
+		return strconv.Itoa(len(data.Branches))
+	}
+
+	return absentCell(m.fetchPending(path, fetchExpand) || m.summaryPending(path))
 }
 
 func statusCellStyle(s models.RepoSummary, base lipgloss.Style) lipgloss.Style {
