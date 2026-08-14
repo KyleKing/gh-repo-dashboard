@@ -50,6 +50,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ReposDiscoveredMsg:
 		return m.handleReposDiscovered(msg)
 
+	case GHAuthCheckedMsg:
+		if msg.Message == "" {
+			return m, nil
+		}
+
+		return m.withFadingStatus(msg.Message)
+
 	case RepoSummaryLoadedMsg:
 		return m.handleRepoSummaryLoaded(msg)
 
@@ -138,6 +145,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case PRCountLoadedMsg:
 		m.prCount[msg.Path] = msg.Count
 		m.finishFetch(msg.Path, fetchPRCount)
+
+		return m, nil
+
+	case BranchCountLoadedMsg:
+		m.branchCount[msg.Path] = msg.Count
+		m.finishFetch(msg.Path, fetchBranchCount)
 
 		return m, nil
 
@@ -307,6 +320,7 @@ func (m *Model) followUpCmds(summary models.RepoSummary) []tea.Cmd {
 	}{
 		{fetchPR, loadPRCmd(summary.Path, summary.Branch, summary.Upstream)},
 		{fetchPRCount, loadPRCountCmd(summary.Path, summary.RemoteID, summary.Upstream)},
+		{fetchBranchCount, loadBranchCountCmd(summary.Path)},
 		{fetchTemplate, loadCopierInfoCmd(summary.Path)},
 	}
 
@@ -1493,6 +1507,7 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		m.loading = true
 		m.summaries = make(map[string]models.RepoSummary)
 		m.prCount = make(map[string]int)
+		m.branchCount = make(map[string]int)
 		// Every fetch is reissued from discovery, so the old bookkeeping would
 		// otherwise suppress the new CI requests and leave phantom pending cells.
 		m.fetching = nil

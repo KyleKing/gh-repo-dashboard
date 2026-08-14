@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -30,17 +29,16 @@ func TestPreflight(t *testing.T) {
 		expectErr    bool
 		expectNotice string
 	}{
-		{"all tools present", []string{"git", "jj", "gh"}, false, ""},
+		{"all tools present", []string{"git", "jj"}, false, ""},
 		{"no vcs at all", nil, true, ""},
-		{"git only warns about jj and gh", []string{"git"}, false, "jj not found"},
-		{"missing gh warns", []string{"git", "jj"}, false, "gh not found"},
+		{"git only warns about jj", []string{"git"}, false, "jj not found"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("PATH", fakeBinDir(t, tt.binaries...))
 
 			var buf strings.Builder
-			err := preflight(context.Background(), &buf)
+			err := preflight(&buf)
 			if tt.expectErr {
 				if !errors.Is(err, errNoVCS) {
 					t.Fatalf("preflight error = %v; want errNoVCS", err)

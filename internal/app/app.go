@@ -147,8 +147,9 @@ type Model struct {
 	selectedBranch models.BranchInfo
 	branchDetail   models.BranchDetail
 
-	prs     []models.PRInfo
-	prCount map[string]int
+	prs         []models.PRInfo
+	prCount     map[string]int
+	branchCount map[string]int
 	// stashDiffstat caches each stash's diffstat by index, filled lazily as
 	// the panel cursor lands on one. stashDiff caches the full patch the same
 	// way, but only once the Stashes panel's full-diff verb asks for it.
@@ -234,6 +235,7 @@ func New(scanPaths []string, maxDepth int) Model {
 		summaries:     make(map[string]models.RepoSummary),
 		notesPreview:  make(map[string][]models.NoteFileContent),
 		prCount:       make(map[string]int),
+		branchCount:   make(map[string]int),
 		prMap:         make(map[string]PRMapLoadedMsg),
 		peerBranches:  make(map[string][]models.BranchInfo),
 		activeFilters: activeFilters,
@@ -259,7 +261,7 @@ const paletteInputWidth = 40
 
 // Init kicks off the initial repo discovery command.
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(discoverReposCmd(m.scanPaths, m.maxDepth), m.spinner.Tick)
+	return tea.Batch(discoverReposCmd(m.scanPaths, m.maxDepth), checkGHAuthCmd(), m.spinner.Tick)
 }
 
 // anyLoading reports whether any view is waiting on data. The spinner ticks

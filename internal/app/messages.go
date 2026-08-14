@@ -7,6 +7,12 @@ type ReposDiscoveredMsg struct {
 	Paths []string
 }
 
+// GHAuthCheckedMsg reports what, if anything, is wrong with the gh CLI setup.
+// Message is empty when gh is present and authenticated.
+type GHAuthCheckedMsg struct {
+	Message string
+}
+
 // RepoSummaryLoadedMsg reports a loaded repo summary or its load error.
 type RepoSummaryLoadedMsg struct {
 	Path    string
@@ -196,6 +202,12 @@ type ActionResultMsg struct {
 
 // PRCountLoadedMsg reports the loaded pull request count for a repo.
 type PRCountLoadedMsg struct {
+	Path  string
+	Count int
+}
+
+// BranchCountLoadedMsg reports the loaded local branch count for a repo.
+type BranchCountLoadedMsg struct {
 	Path  string
 	Count int
 }

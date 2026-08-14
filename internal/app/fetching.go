@@ -10,6 +10,7 @@ type fetchKind int
 const (
 	fetchPR fetchKind = iota
 	fetchPRCount
+	fetchBranchCount
 	fetchTemplate
 	fetchCI
 	fetchExpand

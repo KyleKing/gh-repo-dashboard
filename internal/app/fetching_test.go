@@ -54,6 +54,8 @@ func settleFetches(t *testing.T, start *Model) Model {
 			msg = PRLoadedMsg{Path: key.path}
 		case fetchPRCount:
 			msg = PRCountLoadedMsg{Path: key.path}
+		case fetchBranchCount:
+			msg = BranchCountLoadedMsg{Path: key.path}
 		case fetchTemplate:
 			msg = CopierInfoLoadedMsg{Path: key.path}
 		case fetchCI:
@@ -110,25 +112,35 @@ func TestPendingCellsAreDistinctFromAbsentOnes(t *testing.T) {
 
 	path := "/dev/alpha"
 	cells := []struct {
-		name string
-		cell func(Model) string
+		name    string
+		cell    func(Model) string
+		spinner bool
 	}{
-		{"PR", func(m Model) string { return m.prCell(m.summaries[path]) }},
-		{"PR count", func(m Model) string { return m.prCountText(path) }},
-		{"template", func(m Model) string { return m.templateCell(m.summaries[path], maxContentWidth) }},
+		{"PR", func(m Model) string { return m.prCell(m.summaries[path]) }, false},
+		{"PR count", func(m Model) string { return m.prCountText(path) }, true},
+		{"branch count", func(m Model) string { return m.branchCountText(path) }, true},
+		{"template", func(m Model) string { return m.templateCell(m.summaries[path], maxContentWidth) }, false},
 		{"CI", func(m Model) string {
 			text, _ := m.ciCell(m.summaries[path], plainStyle, false)
 
 			return text
-		}},
+		}, false},
 	}
 
 	for _, cell := range cells {
 		t.Run(cell.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := cell.cell(pending); got != pendingGlyph {
-				t.Errorf("in-flight %s cell = %q, want %q", cell.name, got, pendingGlyph)
+			// BRs and PRs read from their own fetch and mark it in flight with
+			// the spinner rather than the plain pending glyph the other cells
+			// use, so a count still loading is never mistaken for a zero.
+			want := pendingGlyph
+			if cell.spinner {
+				want = plainText(pending.spinner.View())
+			}
+
+			if got := plainText(cell.cell(pending)); got != want {
+				t.Errorf("in-flight %s cell = %q, want %q", cell.name, got, want)
 			}
 			if got := cell.cell(settled); got != emDash {
 				t.Errorf("settled %s cell = %q, want %q", cell.name, got, emDash)

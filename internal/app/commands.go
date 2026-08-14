@@ -51,6 +51,37 @@ func discoverReposCmd(scanPaths []string, maxDepth int) tea.Cmd {
 	}
 }
 
+// ghAuthTimeout bounds how long checkGHAuthCmd waits on gh's own network call
+// before assuming it is unreachable.
+const ghAuthTimeout = 2 * time.Second
+
+// checkGHAuthCmd reports what, if anything, is wrong with the gh CLI setup.
+// It runs as a normal tea.Cmd rather than blocking startup: gh's own PR and
+// workflow reads already degrade to a dash when it cannot authenticate, so
+// this is an advisory notice, not worth holding the first frame on a network
+// round trip that can take the better part of a second.
+func checkGHAuthCmd() tea.Cmd {
+	return func() tea.Msg {
+		if _, err := exec.LookPath("gh"); err != nil {
+			return GHAuthCheckedMsg{
+				Message: "gh not found on PATH; PR and workflow columns will be blank." +
+					" Install https://cli.github.com and run 'gh auth login'.",
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), ghAuthTimeout)
+		defer cancel()
+
+		if err := exec.CommandContext(ctx, "gh", "auth", "status").Run(); err != nil && ctx.Err() == nil {
+			return GHAuthCheckedMsg{
+				Message: "gh is not authenticated; PR and workflow columns will be blank. Run 'gh auth login'.",
+			}
+		}
+
+		return GHAuthCheckedMsg{}
+	}
+}
+
 func loadRepoSummaryCmd(path string) tea.Cmd {
 	return func() tea.Msg {
 		summary, err := vcs.ReadSummary(context.Background(), vcs.GetOperations(path), path)
@@ -203,6 +234,24 @@ func loadPRCountCmd(path, remoteID, upstream string) tea.Cmd {
 		}
 
 		return PRCountLoadedMsg{Path: path, Count: count}
+	}
+}
+
+// loadBranchCountCmd reads a repo's local branch count for the Repos list.
+// The list's BRs column used to piggyback on the branch list the expanded
+// region loads, which only ever runs for whichever repo has that region open,
+// so every other row's count sat empty forever. This is its own read, local
+// and cheap, that runs for every repo the way the PR count does.
+func loadBranchCountCmd(path string) tea.Cmd {
+	return func() tea.Msg {
+		ctx := context.Background()
+
+		branches, err := vcs.GetOperations(path).GetBranchList(ctx, path)
+		if err != nil {
+			return BranchCountLoadedMsg{Path: path, Count: 0}
+		}
+
+		return BranchCountLoadedMsg{Path: path, Count: len(branches)}
 	}
 }
 

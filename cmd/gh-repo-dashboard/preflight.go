@@ -1,27 +1,27 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os/exec"
-	"time"
 )
 
 var errNoVCS = errors.New(
 	"neither git nor jj was found on PATH; install git (https://git-scm.com) or jj (https://jj-vcs.github.io)")
 
-const ghAuthTimeout = 2 * time.Second
-
 func notice(warn io.Writer, msg string) {
 	fmt.Fprintln(warn, "Note: "+msg) //nolint:errcheck // best-effort stderr notice
 }
 
-// preflight verifies the CLI tools the dashboard shells out to, writing a
-// one-line notice per degraded feature. It only errors when no VCS binary is
-// available at all.
-func preflight(ctx context.Context, warn io.Writer) error {
+// preflight verifies the VCS binaries the dashboard shells out to, writing a
+// one-line notice per degraded one, and erroring only when neither is
+// available at all. The gh CLI's own presence and auth state are checked once
+// the TUI is already running (see checkGHAuthCmd): "gh auth status" is a
+// network call that can take the better part of a second, and gh's PR and
+// workflow reads already degrade to a dash on their own when it fails, so
+// there is nothing to gain by holding the first frame on it.
+func preflight(warn io.Writer) error {
 	_, gitErr := exec.LookPath("git")
 	_, jjErr := exec.LookPath("jj")
 	if gitErr != nil && jjErr != nil {
@@ -33,19 +33,6 @@ func preflight(ctx context.Context, warn io.Writer) error {
 	if jjErr != nil {
 		notice(warn, "jj not found on PATH; colocated repositories fall back to git"+
 			" and jj-only repositories will show errors.")
-	}
-
-	if _, err := exec.LookPath("gh"); err != nil {
-		notice(warn, "gh not found on PATH; PR and workflow columns will be blank."+
-			" Install https://cli.github.com and run 'gh auth login'.")
-
-		return nil
-	}
-
-	authCtx, cancel := context.WithTimeout(ctx, ghAuthTimeout)
-	defer cancel()
-	if err := exec.CommandContext(authCtx, "gh", "auth", "status").Run(); err != nil && authCtx.Err() == nil {
-		notice(warn, "gh is not authenticated; PR and workflow columns will be blank. Run 'gh auth login'.")
 	}
 
 	return nil

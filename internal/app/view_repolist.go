@@ -814,17 +814,29 @@ func (m Model) prCountText(path string) string {
 		return strconv.Itoa(count)
 	}
 
-	return absentCell(m.fetchPending(path, fetchPRCount) || m.summaryPending(path))
+	return m.pendingCell(m.fetchPending(path, fetchPRCount) || m.summaryPending(path))
 }
 
-// branchCountText reports the repo's local branch count, reading the branch
-// list the fleet map already loaded rather than fetching one of its own.
+// branchCountText reports the repo's local branch count, read once per repo
+// as soon as its summary lands rather than waiting on the expanded region,
+// which only ever loads branches for whichever one row currently has it open.
 func (m Model) branchCountText(path string) string {
-	if data, ok := m.prMap[path]; ok {
-		return strconv.Itoa(len(data.Branches))
+	if count, ok := m.branchCount[path]; ok && count > 0 {
+		return strconv.Itoa(count)
 	}
 
-	return absentCell(m.fetchPending(path, fetchExpand) || m.summaryPending(path))
+	return m.pendingCell(m.fetchPending(path, fetchBranchCount) || m.summaryPending(path))
+}
+
+// pendingCell marks a cell whose fetch is still in flight with the spinner
+// rather than emDash, so a count still loading cannot be mistaken for a count
+// of zero.
+func (m Model) pendingCell(pending bool) string {
+	if pending {
+		return m.spinner.View()
+	}
+
+	return emDash
 }
 
 func statusCellStyle(s models.RepoSummary, base lipgloss.Style) lipgloss.Style {
