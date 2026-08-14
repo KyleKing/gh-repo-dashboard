@@ -13,10 +13,9 @@ import (
 // Stamp is what a checkout looked like when a value was read from it. The
 // cache compares Fingerprint for equality and never interprets it; Scope names
 // the checkout it came from, so an entry several checkouts of one remote share
-// is only evicted for the checkout that actually changed.
-//
-// An empty Fingerprint proves nothing: it is what a caller passes for a value
-// no local state can invalidate, and what vcs returns for a checkout it could
+// is only evicted for the checkout that actually changed. An empty
+// Fingerprint proves nothing: it is what a caller passes for a value no
+// local state can invalidate, and what vcs returns for a checkout it could
 // not read.
 type Stamp struct {
 	Scope       string

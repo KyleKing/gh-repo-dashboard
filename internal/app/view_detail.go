@@ -14,9 +14,7 @@ import (
 
 // renderRepoDetailBreadcrumbs names the repo alone. Its identity facts (vcs,
 // protocol, detached/dirty state, pull request, parallel checkouts, config
-// drift) used to ride along as badges here; they now live in the Status
-// panel's full preview, the one place a reader already goes to ask "what is
-// this repo's situation," rather than duplicated in both places.
+// drift) live in the Status panel's full preview instead.
 func (m Model) renderRepoDetailBreadcrumbs() string {
 	summary, ok := m.summaries[m.selectedRepo]
 	if !ok {

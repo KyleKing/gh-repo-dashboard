@@ -279,11 +279,8 @@ func (m Model) countForFilter(mode models.FilterMode) int {
 	return len(filters.FilterRepos(m.repoPaths, m.summaries, mode))
 }
 
-// buildSortModalRows orders activeSorts for display: enabled sorts first (with
-// their priority gaps compacted), then disabled sorts.
-// CompactSortPriorities closes any gaps in sortsByPriority's Priority values
-// (e.g. after a sort was disabled) so priorities are a contiguous 0..n-1
-// sequence, in place.
+// compactSortPriorities closes gaps in sortsByPriority's Priority values in
+// place, so they stay a contiguous 0..n-1 sequence after a sort is disabled.
 func compactSortPriorities(sortsByPriority []models.ActiveSort) {
 	for i := range sortsByPriority {
 		hasPriority := slices.ContainsFunc(sortsByPriority, func(s models.ActiveSort) bool {

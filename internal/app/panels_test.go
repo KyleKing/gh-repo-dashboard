@@ -319,7 +319,7 @@ func TestGrid_FillsTheTerminalExactly(t *testing.T) {
 func TestPanelRowsFitTheirBoxAndKeepTheBranchHead(t *testing.T) {
 	t.Parallel()
 
-	const longBranch = "kyleking/dev-1234-all-dependencies-56744d620d"
+	const longBranch = "kyleking/eng-1234-all-dependencies-56744d620d"
 
 	sizes := [][2]int{{80, 24}, {100, 30}, {160, 40}, {220, 50}}
 

@@ -41,11 +41,10 @@ func overviewIdentity(s models.RepoSummary) string {
 }
 
 // overviewRows builds the panel's body in a fixed order, so the same line
-// always sits at the same height whatever the repo's state. Each row
-// summarizes one panel, so the pane doubles as a table of contents.
+// always sits at the same height whatever the repo's state. The compact
+// layout keeps only Sync and Files: at that width the rest costs more rows
+// than the answers are worth.
 //
-// The compact layout keeps only Sync and Files: at that width the rest costs
-// more rows than the answers are worth.
 // Each row names what it is waiting on rather than what it would say if the
 // answer were in: a row read from the repo's own summary waits on that summary,
 // Peers waits on every summary because a peer is another repo, and the rows

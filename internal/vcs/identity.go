@@ -11,11 +11,9 @@ import (
 // works on. A git worktree and a jj workspace share their parent's object
 // store and branch list, so both resolve to the parent; every other checkout
 // resolves to itself. Fleet-wide joins key on this to avoid counting one
-// branch once per checkout that can see it.
-//
-// The answer comes from the pointer files git and jj write into a linked
-// checkout, so it costs no subprocess and works for a repo that no longer
-// exists.
+// branch once per checkout that can see it. The answer comes from the
+// pointer files git and jj write into a linked checkout, so it costs no
+// subprocess and works even for a repo that no longer exists.
 func CheckoutIdentity(repoPath string) string {
 	if parent, ok := gitWorktreeParent(repoPath); ok {
 		return parent

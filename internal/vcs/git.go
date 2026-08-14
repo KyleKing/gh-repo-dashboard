@@ -698,9 +698,8 @@ func (g *GitOperations) PreviewMergedBranches(ctx context.Context, repoPath stri
 // mergedBranchNames lists deletable local branches fully merged into
 // mainBranch, excluding mainBranch/master itself and anything checked out
 // here or in a linked worktree. It reads refs directly rather than parsing
-// `git branch --merged`, whose porcelain marks the current branch with "* ",
-// worktree checkouts with "+ ", and a detached HEAD with a "(HEAD detached
-// at …)" line that is no branch at all.
+// `git branch --merged`, whose porcelain marks the current branch, worktree
+// checkouts, and a detached HEAD in ways that are not branch names at all.
 func (g *GitOperations) mergedBranchNames(ctx context.Context, repoPath, mainBranch string) ([]string, error) {
 	out, err := g.runGit(ctx, repoPath,
 		"for-each-ref", "--format=%(refname:short)", "--merged", mainBranch, "refs/heads")

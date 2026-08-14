@@ -14,11 +14,8 @@ import (
 // without spawning a subprocess: the OID HEAD resolves to, the current branch
 // and the upstream it tracks, that upstream's remote-tracking OID, and the
 // mtimes of the ref files a commit, switch, push, or fetch touches. Cheap
-// enough to take on every render.
-//
-// The ref trees it stats are the leaf directories, refs/heads and
-// refs/remotes/<remote>, because a directory's mtime tracks only its own
-// entries: refs/ never moves when a branch is created.
+// enough to take on every render. It stats refs/heads and refs/remotes/<remote>
+// directly, since a directory's mtime tracks only its own entries.
 //
 // A jj repo is stamped on its git refs alone, which a colocated repo keeps in
 // step with every operation. A workspace with no .git yields cache.NoStamp,

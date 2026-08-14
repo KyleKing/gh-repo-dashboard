@@ -136,8 +136,8 @@ type PRListLoadedMsg struct {
 }
 
 // StashDiffLoadedMsg reports one stash's full patch for the focused view's
-// detail pane. A failed read arrives as an empty diff so the pane settles
-// instead of waiting forever.
+// detail pane (empty on a failed read, so the pane settles instead of
+// waiting forever).
 type StashDiffLoadedMsg struct {
 	Path  string
 	Index int
@@ -145,8 +145,7 @@ type StashDiffLoadedMsg struct {
 }
 
 // StashDiffstatLoadedMsg reports one stash's diffstat for the focused view's
-// detail pane. A failed read arrives as an empty diffstat so the pane settles
-// instead of waiting forever.
+// detail pane (empty on a failed read).
 type StashDiffstatLoadedMsg struct {
 	Path     string
 	Index    int
@@ -155,16 +154,14 @@ type StashDiffstatLoadedMsg struct {
 
 // UncommittedDiffLoadedMsg reports the working tree's full patch for a repo
 // path (the current repo for the Status panel, a peer checkout for the Peers
-// panel). A failed read arrives as an empty diff so the pane settles instead
-// of waiting forever.
+// panel; empty on a failed read).
 type UncommittedDiffLoadedMsg struct {
 	Path string
 	Diff string
 }
 
 // UncommittedDiffstatLoadedMsg reports the working tree's diffstat for a repo
-// path. A failed read arrives as an empty diffstat so the pane settles
-// instead of waiting forever.
+// path (empty on a failed read).
 type UncommittedDiffstatLoadedMsg struct {
 	Path     string
 	Diffstat string

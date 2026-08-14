@@ -26,15 +26,10 @@ const (
 
 // DiskCache persists remote-derived cache values between runs, one file per
 // upstream identity, so a cold start on a large fleet does not re-issue a
-// network call per repo.
-//
-// What it holds is deliberately narrow: counts, states, numbers, pull request
-// titles, and workflow and job names. Bodies and comment text stay in memory.
-// Titles and job names from a private repository are already more than the app
-// has otherwise put on disk, so the files are mode 0600 under a 0700 directory.
-//
-// Every failure is a miss. A corrupt, truncated, or unreadable file is dropped
-// and refetched rather than reported.
+// network call per repo. It holds only counts, states, numbers, and titles
+// (never bodies or comment text) in mode 0600 files under a 0700 directory.
+// A corrupt, truncated, or unreadable file is dropped and refetched, never
+// reported as an error.
 type DiskCache struct {
 	mu       sync.Mutex
 	dir      string

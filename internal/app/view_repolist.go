@@ -271,8 +271,7 @@ func (m Model) renderTable() string {
 // full, so it takes the larger share of the body; the table keeps enough rows
 // above it that scrolling still moves through the fleet rather than
 // re-centering a two-row window on every keypress. The minimum is the region's
-// own fixed head plus a note line and the divider that captions it, since a
-// region too short for those says nothing the table did not already.
+// own fixed head plus a note line and the divider that captions it.
 const (
 	expandPercent = 60
 	expandMinRows = expandHeadRows + 2
