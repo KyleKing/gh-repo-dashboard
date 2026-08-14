@@ -134,36 +134,68 @@ for the whole TTL and hide the panel on the strength of a timeout.
 
 ## Glossary
 
-Terms this codebase uses precisely, for readers coming from just one of git,
-jj, or GitHub's PR model.
+This app's own vocabulary: the two top-level views, the Repos list's columns,
+and the five panels the single-repo view opens into. Skips anything a git or
+GitHub user already knows (upstream, ahead/behind, worktree, and so on); see
+the [git vs jj mapping](#git-vs-jj-concept-mapping) above for those.
+
+### Views
 
 | Term | Meaning |
 |------|---------|
-| Ref | Git's umbrella name for anything pointing at a commit: a branch, a tag, `HEAD`, or a remote-tracking ref like `refs/remotes/origin/main`. |
-| Upstream / tracking branch | The remote ref a local branch is configured to compare against (`git rev-parse @{upstream}`), e.g. `origin/main`. A branch with no upstream has nothing to be ahead or behind of. |
-| Ahead / behind | Commit counts between a branch and its upstream: ahead is unpushed local work, behind is unpulled remote work (`git rev-list --left-right --count`). |
-| `for-each-ref` | The single git subprocess `GetBranchList` runs to list every local branch, its upstream, and its ahead/behind counts in one call, rather than one call per branch. |
-| Default branch | The repo's main line (`main`, `master`, or whatever `origin/HEAD` resolves to). `findDefaultBranch` guesses by name; `DefaultBranchHead` resolves `origin/HEAD` for an authoritative answer. |
-| Worktree / workspace | A second working directory checked out from the same repo (git worktree, jj workspace), so one clone can have two branches checked out at once without cloning again. |
-| Squash-merge | A PR merged by squashing its commits into one on the target branch, so the source branch's own commits never appear as merged even though the work landed. `models.BranchInfo.Head` catches this by comparing tip OIDs instead of ancestry. |
-| Subprocess / exec | Spawning `git` (or `jj`, `gh`) as a child process and reading its output. Each spawn costs a fork/exec (roughly 5-20ms) on top of whatever the command itself does, so a view built from many small git calls pays that overhead once per call. |
-| Peer checkout | Another clone or worktree of the same remote repository found elsewhere in the scanned fleet, tracked in `models.PeerCheckout`. |
+| Repos tab (`[R]`) | The default view: one row per scanned repo. Pressing `v` on a row opens the expand region, an inline detail block for that one repo (its branches and pull requests) without leaving the list. Pressing enter opens the single-repo view. |
+| PRs tab (`[P]`) | Every open pull request across the scanned repos, joined against each repo's local branches so a PR with no local checkout and a local branch with no PR are both visible in one table (internally the "fleet map" or "PR map", `prmap.go`). |
+| Single-repo view | Opened by selecting a repo from the Repos tab: a breadcrumb naming the repo, and a grid of panels beside a detail pane. |
+| Panel | One of the five boxes in the single-repo view's left column: Status (`s`), Branches (`b`), Peers (`e`), Stashes (`t`), Notes (`n`). Each panel's own key both jumps to it and, in the collapsed grid, shows its row count. A jj repo has no Stashes panel. |
+| Detail pane / full preview | The pane to the right of the panel column. It always shows the focused panel's selected row in full; for Status, that full preview is the repo's identity facts (vcs, protocol, detached/dirty state, PR, checkouts, config drift) that don't fit the panel's own two-line collapsed view. |
+
+### Repos list columns
+
+| Column | Meaning |
+|--------|---------|
+| BRANCH | The branch currently checked out. |
+| BRs | The repo's total local branch count, read once per repo as soon as its summary lands. |
+| STATUS | The working tree's state: sync position against the upstream plus uncommitted file counts. |
+| PEERS | How many *other* checkouts in the scanned fleet share this repo's branch and are tracking one of its open pull requests. Empty for the common case of a repo with no other checkout in play. |
+| PR | The pull request open on the branch currently checked out here, or a dash if there isn't one. |
+| PRs | The repo's total count of open pull requests, regardless of which branch is checked out. |
+| TEMPLATE | Whether the repo has drifted from the copier template it was generated from. |
+| CI | The default branch's most recent workflow run rollup. |
+
+`PR` and `PRs` answer different questions and sit side by side, which reads
+easily once you know the distinction but is easy to misread at a glance;
+see the note below.
+
+### Terminology worth reconsidering
+
+- `PR` (singular, current branch's own pull request) beside `PRs` (plural,
+  the repo's total open count) is precise but relies on a reader noticing
+  the trailing `s`. A clearer pair of names (e.g. `THIS PR` / `OPEN PRs`, or
+  moving one of the two into the STATUS line) would remove the need to read
+  carefully to tell them apart.
+- `BRs` is a fleet-dashboard abbreviation with no standard meaning outside
+  this app; `Br` or spelling it `BRANCHES` (there is no separate branch-list
+  column to collide with) would read more immediately.
+- PEERS answers a narrower question than its name suggests: it is peers
+  relevant to an open pull request, not every other checkout of the repo. A
+  name like `RELEVANT PEERS` or `PR PEERS` would set that expectation up
+  front instead of requiring a look at the glossary.
 
 ### Why branch loading is slower in the single-repo view than the list
 
 Branch enumeration itself is not the expensive part: `GetBranchList` reads
 every local branch's name, upstream, and ahead/behind count with one
-`for-each-ref` call regardless of branch count, and the Repos list reuses
-that same call (see `BRs`, above). What is expensive is opening or switching
-branches in the single-repo detail view, which chains roughly ten sequential
-subprocess spawns (`for-each-ref`, `stash list`, `worktree list`, plus the
-seven separate git calls inside `GetRepoSummary`) and two GitHub API round
-trips, one after another with nothing running concurrently. Selecting a
-different branch re-runs the whole `GetRepoSummary` chain again rather than
-reusing the summary the detail view already loaded, so every branch click
-pays that cost a second time. None of this is a per-branch cost; it is a long
-serial chain that runs once per view a fleet with many branches happens to
-make more often.
+`for-each-ref` call regardless of branch count, and the Repos list's BRs
+column runs that same one call per repo. What is expensive is opening or
+switching branches in the single-repo detail view, which chains roughly ten
+sequential subprocess spawns (`for-each-ref`, `stash list`, `worktree list`,
+plus the seven separate git calls inside `GetRepoSummary`) and two GitHub
+API round trips, one after another with nothing running concurrently.
+Selecting a different branch re-runs the whole `GetRepoSummary` chain again
+rather than reusing the summary the detail view already loaded, so every
+branch click pays that cost a second time. None of this is a per-branch
+cost; it is a long serial chain that runs once per view a fleet with many
+branches happens to make more often.
 
 ## Batch Tasks
 

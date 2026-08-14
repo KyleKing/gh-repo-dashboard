@@ -39,7 +39,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.help.SetWidth(msg.Width)
 
-		return m, tea.Batch(m.visibleCICmds()...)
+		return m, tea.Batch(append(m.visibleCICmds(), m.visiblePeerDataCmds()...)...)
 
 	case spinner.TickMsg:
 		return m.handleSpinnerTick(msg)
@@ -304,6 +304,7 @@ func (m Model) handleRepoSummaryLoaded(msg RepoSummaryLoadedMsg) (tea.Model, tea
 		m.loading = false
 		m.updateFilteredPaths()
 		cmds = append(cmds, m.visibleCICmds()...)
+		cmds = append(cmds, m.visiblePeerDataCmds()...)
 	}
 
 	return m, tea.Batch(cmds...)
@@ -318,7 +319,7 @@ func (m *Model) followUpCmds(summary models.RepoSummary) []tea.Cmd {
 		kind fetchKind
 		cmd  tea.Cmd
 	}{
-		{fetchPR, loadPRCmd(summary.Path, summary.Branch, summary.Upstream)},
+		{fetchPR, loadPRCmd(summary.Path, summary.RemoteID, summary.Branch, summary.Upstream)},
 		{fetchPRCount, loadPRCountCmd(summary.Path, summary.RemoteID, summary.Upstream)},
 		{fetchBranchCount, loadBranchCountCmd(summary.Path)},
 		{fetchTemplate, loadCopierInfoCmd(summary.Path)},
@@ -434,7 +435,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if newM, handled := m.handleCursorKey(msg); handled {
-		cmds := append(newM.visibleCICmds(), newM.expandCmd())
+		cmds := append(newM.visibleCICmds(), newM.visiblePeerDataCmds()...)
+		cmds = append(cmds, newM.expandCmd())
 
 		return newM, tea.Batch(cmds...)
 	}
@@ -726,9 +728,12 @@ func (m Model) toggleExpand() (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// expandCmd reads what the region shows for the repo under the cursor and is
-// not holding yet: its notes, and the branches and pull requests the fleet map
-// caches beside them.
+// expandCmd reads the one thing the region shows that visiblePeerDataCmds
+// does not: the cursor row's own notes preview. The branches and pull
+// requests the region also shows come from the fleet map, which loads for
+// every visible row rather than only the one under the cursor, since a
+// repo's PEERS column needs the same data and a reader scrolling past it
+// should not have to open the region first to fill it in.
 func (m *Model) expandCmd() tea.Cmd {
 	if !m.expandOpen || m.cursor >= len(m.filteredPaths) {
 		return nil
@@ -741,29 +746,53 @@ func (m *Model) expandCmd() tea.Cmd {
 		return nil
 	}
 
-	var cmds []tea.Cmd
-
 	if _, cached := m.notesPreview[path]; !cached && len(summary.NotesFiles) > 0 {
-		cmds = append(cmds, loadNotesContentCmd(path, summary.NotesFiles))
+		return loadNotesContentCmd(path, summary.NotesFiles)
 	}
 
-	if _, cached := m.prMap[path]; !cached && !m.fetchPending(path, fetchExpand) {
-		m.startFetch(path, fetchExpand)
-		cmds = append(cmds, loadPRMapCmd(path, summary.RemoteID, summary.Upstream))
+	return nil
+}
+
+// visiblePeerDataCmds loads the fleet map's pull requests and each peer
+// checkout's branch list for every row on screen, the data PEERS and the
+// expand region's branches/PRs rows need. Bounded to the viewport rather than
+// the whole fleet, the way visibleCICmds is: each repo's PR list costs a
+// GitHub call, not worth paying for a repo the operator has not scrolled to.
+func (m *Model) visiblePeerDataCmds() []tea.Cmd {
+	rowHeight := 1
+	if m.isCompact() {
+		rowHeight = compactRowHeight
 	}
 
-	var missingPeers []string
-	for _, peer := range m.PeerCheckouts(path) {
-		if _, cached := m.peerBranches[peer.Path]; !cached {
-			missingPeers = append(missingPeers, peer.Path)
+	window := m.visibleRepoRange(rowHeight)
+
+	var cmds []tea.Cmd
+	for i := window.start; i < window.end; i++ {
+		path := m.filteredPaths[i]
+
+		summary, ok := m.summaries[path]
+		if !ok {
+			continue
+		}
+
+		if _, cached := m.prMap[path]; !cached && !m.fetchPending(path, fetchExpand) {
+			m.startFetch(path, fetchExpand)
+			cmds = append(cmds, loadPRMapCmd(path, summary.RemoteID, summary.Upstream))
+		}
+
+		var missingPeers []string
+		for _, peer := range m.PeerCheckouts(path) {
+			if _, cached := m.peerBranches[peer.Path]; !cached {
+				missingPeers = append(missingPeers, peer.Path)
+			}
+		}
+		if len(missingPeers) > 0 && !m.fetchPending(path, fetchPeerBranches) {
+			m.startFetch(path, fetchPeerBranches)
+			cmds = append(cmds, loadPeerBranchesCmd(path, missingPeers))
 		}
 	}
-	if len(missingPeers) > 0 && !m.fetchPending(path, fetchPeerBranches) {
-		m.startFetch(path, fetchPeerBranches)
-		cmds = append(cmds, loadPeerBranchesCmd(path, missingPeers))
-	}
 
-	return tea.Batch(cmds...)
+	return cmds
 }
 
 // handleCursorKey handles the repo-list cursor movement keys (up/down/top/

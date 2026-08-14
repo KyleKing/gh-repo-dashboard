@@ -94,13 +94,20 @@ func loadRepoSummaryCmd(path string) tea.Cmd {
 	}
 }
 
-func loadPRCmd(path, _, upstream string) tea.Cmd {
+// loadPRCmd reads the pull request open on the repo's checked-out branch, the
+// one the Repos list's PR column reports.
+func loadPRCmd(path, remoteID, branch, upstream string) tea.Cmd {
 	if upstream == "" {
 		return nil
 	}
 
 	return func() tea.Msg {
-		return PRLoadedMsg{Path: path, PRInfo: nil}
+		info, err := github.GetPRForBranch(context.Background(), path, remoteID, branch, upstream)
+		if err != nil {
+			return PRLoadedMsg{Path: path, PRInfo: nil}
+		}
+
+		return PRLoadedMsg{Path: path, PRInfo: info}
 	}
 }
 
