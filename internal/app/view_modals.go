@@ -74,7 +74,7 @@ func helpSections() []helpSection {
 			[]struct{ key, desc string }{
 				{"f", "Filter menu (enter/key cycles, *=reset)"},
 				{"s", "Sort menu (enter/key cycles, [/]=reorder, *=reset)"},
-				{"/", "Search repositories"},
+				{"/", "Search repositories (r:/b: to scope name or branch)"},
 			},
 		},
 		{

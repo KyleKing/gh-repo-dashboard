@@ -248,7 +248,7 @@ example, the `DIRTY` filter plus an `api` search yields dirty repos containing "
 
 - Filter modes: `ALL`, `DIRTY`, `AHEAD`, `BEHIND`, `HAS_PR`, `HAS_STASH`, `HAS_NOTES` (multi-filter with AND logic)
 - Sort modes: `NAME`, `MODIFIED`, `STATUS`, `BRANCH`, with multi-field priority and ASC/DESC direction
-- Search: case-insensitive fuzzy matching via `sahilm/fuzzy`, applied after filter mode and before sort, updating in real time
+- Search: case-insensitive fuzzy matching via `sahilm/fuzzy`, applied after filter mode and before sort, updating in real time. Matches repo name or checked-out branch by default; an `r:` or `b:` prefix scopes to just one field, e.g. `b:main` finds only repos sitting on a branch named "main" rather than also a repo named "main"
 
 Adding a filter mode: add the const to `models/enums.go`, a filter function in
 `filters/filter.go`, a case in `FilterRepos()`, and tests in `filters/filter_test.go`.
@@ -336,7 +336,10 @@ one-letter prefix for branches/stashes/notes/repos, `*` to widen the scope, bare
 text for everything) and `view_palette.go` answers it from cache-resident data
 only, so no keystroke costs a fetch. `tab` marks rows, `!` opens the verbs for
 the target set, and selecting a repo set commits it to the selected-repos text
-object so `F`/`P`/`C`/`R` compose with a find.
+object so `F`/`P`/`C`/`R` compose with a find. The input's placeholder spells
+the grammar out (`find... (#12, r/b/s/n, *)`) so it is visible the moment the
+palette opens rather than living only behind `?`; the Repos list's own `/`
+search carries the matching hint for its narrower `r:`/`b:` scope prefix.
 
 Adding a view mode: add the const in `app/app.go`, rendering in a `view_*.go`
 file (dispatched from `renderView` in `view.go`), update handling in
