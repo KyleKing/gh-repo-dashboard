@@ -35,8 +35,15 @@ func (m Model) renderRepoList() string {
 	b.WriteString(m.renderStatusBar())
 	b.WriteString("\n\n")
 
-	if m.searching {
+	switch {
+	case m.searching:
 		b.WriteString(m.searchInput.View())
+		b.WriteString("\n\n")
+	case m.viewMode == ViewModeFilter:
+		b.WriteString(m.renderFilterDock())
+		b.WriteString("\n\n")
+	case m.viewMode == ViewModeSort:
+		b.WriteString(m.renderSortDock())
 		b.WriteString("\n\n")
 	}
 
@@ -48,10 +55,19 @@ func (m Model) renderRepoList() string {
 }
 
 // listBodyHeight is how many lines the table and the expanded region share.
+// Search, Filter, and Sort each dock an editor above the table instead of
+// covering it, so the table shrinks by whichever one is open rather than
+// disappearing behind a full-screen takeover.
 func (m Model) listBodyHeight() int {
 	height := m.height - listChromeHeight
-	if m.searching {
+
+	switch {
+	case m.searching:
 		height -= searchChromeHeight
+	case m.viewMode == ViewModeFilter:
+		height -= filterDockHeight()
+	case m.viewMode == ViewModeSort:
+		height -= sortDockHeight()
 	}
 
 	return max(height, 1)
@@ -168,6 +184,130 @@ func appendSortBadges(parts []string, activeSorts []models.ActiveSort) []string 
 	}
 
 	return parts
+}
+
+// renderModalRow renders one cursor/mark/key/label row, shared by the docked
+// filter and sort editors. Trailing is an extra styled column (a per-filter
+// match count), left empty where there is none.
+func renderModalRow(selected bool, mark, shortKey, label string, markStyle lipgloss.Style, trailing string) string {
+	cursor := "  "
+	rowStyle := styles.TableRowStyle
+	if selected {
+		cursor = "> "
+		rowStyle = styles.SelectedRowStyle
+	}
+
+	keyStyle := lipgloss.NewStyle().Foreground(styles.Mauve).Bold(true)
+
+	row := fmt.Sprintf("%s%s  %s  %s",
+		cursor,
+		markStyle.Render(padCell(mark, modalMarkColWidth)),
+		keyStyle.Render(padCell(shortKey, modalKeyColWidth)),
+		rowStyle.Render(padCell(label, filterLabelColWidth)))
+
+	if trailing != "" {
+		row += "  " + styles.SubtitleStyle.Render(trailing)
+	}
+
+	return row
+}
+
+// dockHeaderAndSpacerLines is the header row plus the blank separator line
+// every docked editor (search, filter, sort) spends besides its own rows.
+const dockHeaderAndSpacerLines = 2
+
+// filterDockHeight is the line count renderFilterDock spends, so
+// listBodyHeight can shrink the table by exactly that much.
+func filterDockHeight() int {
+	return len(models.SelectableFilterModes()) + dockHeaderAndSpacerLines
+}
+
+// renderFilterDock renders the filter editor docked above the table: a
+// header row, one row per filter mode showing its cycle state and how many
+// repos it alone would match. The combined result of every active filter is
+// already visible in the breadcrumb's "N/M repos" badge above, since docking
+// (instead of a full-screen takeover) keeps that badge on screen while editing.
+func (m Model) renderFilterDock() string {
+	modes := models.SelectableFilterModes()
+
+	headerStyle := lipgloss.NewStyle().Foreground(styles.Subtext0).Bold(true)
+	header := fmt.Sprintf("  %s  %s  %s  %s",
+		padCell("", modalMarkColWidth), padCell("Key", modalKeyColWidth),
+		padCell("Filter", filterLabelColWidth), "Count")
+
+	lines := make([]string, 1, 1+len(modes))
+	lines[0] = headerStyle.Render(header)
+
+	for i, mode := range modes {
+		var filterState models.ActiveFilter
+		for _, f := range m.activeFilters {
+			if f.Mode == mode {
+				filterState = f
+				break
+			}
+		}
+
+		mark := "   "
+		markStyle := lipgloss.NewStyle().Foreground(styles.Green)
+
+		switch {
+		case filterState.Enabled && filterState.Inverted:
+			mark = "NOT"
+			markStyle = lipgloss.NewStyle().Foreground(styles.Peach)
+		case filterState.Enabled:
+			mark = " ✓ "
+		}
+
+		lines = append(lines, renderModalRow(i == m.filterCursor, mark, mode.ShortKey(), mode.String(),
+			markStyle, strconv.Itoa(m.countForFilter(mode))))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+// sortDockHeight is the line count renderSortDock spends, so listBodyHeight
+// can shrink the table by exactly that much.
+func sortDockHeight() int {
+	return len(models.AllSortModes()) + dockHeaderAndSpacerLines
+}
+
+// renderSortDock renders the sort editor docked above the table: a header
+// row, then one row per sort mode, active ones first in priority order.
+func (m Model) renderSortDock() string {
+	displaySorts := buildSortModalRows(m.activeSorts)
+
+	headerStyle := lipgloss.NewStyle().Foreground(styles.Subtext0).Bold(true)
+	header := fmt.Sprintf("  %s  %s  %s",
+		padCell("", modalMarkColWidth), padCell("Key", modalKeyColWidth), "Sort By")
+
+	lines := make([]string, 1, 1+len(displaySorts))
+	lines[0] = headerStyle.Render(header)
+
+	cursorIndex := -1
+
+	for i, s := range displaySorts {
+		if s.Mode == m.activeSorts[m.sortCursor].Mode {
+			cursorIndex = i
+			break
+		}
+	}
+
+	for i, sortState := range displaySorts {
+		mark := "   "
+		if sortState.IsEnabled() {
+			mark = fmt.Sprintf(" %d ", sortState.Priority+1)
+		}
+
+		label := sortState.DisplayName()
+		if !sortState.IsEnabled() {
+			label = sortState.Mode.String()
+		}
+
+		lines = append(lines, renderModalRow(i == cursorIndex, mark, sortState.ShortKey(), label,
+			lipgloss.NewStyle().Foreground(styles.Green), ""))
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 // renderListBody renders the repo table with the expanded region under it. The

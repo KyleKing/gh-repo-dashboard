@@ -86,7 +86,7 @@ func (m Model) renderScreen() string {
 // stays within the single-column content width.
 func (m Model) frameWidth() int {
 	switch m.viewMode {
-	case ViewModeRepoList, ViewModePRList, ViewModePRMap:
+	case ViewModeRepoList, ViewModePRList, ViewModePRMap, ViewModeFilter, ViewModeSort:
 		return listWidth(m.width)
 	case ViewModeRepoDetail:
 		return m.gridWidth()
@@ -100,7 +100,7 @@ func (m Model) frameWidth() int {
 // a second time.
 func (m Model) selfCentering() bool {
 	switch m.viewMode {
-	case ViewModeFilter, ViewModeSort, ViewModeConfirm:
+	case ViewModeConfirm:
 		return true
 	default:
 		return false
@@ -149,10 +149,8 @@ func (m Model) renderView() string {
 		return m.renderBranchDetail()
 	case ViewModePRDetail:
 		return m.renderPRDetail()
-	case ViewModeFilter:
-		return m.renderFilterModal()
-	case ViewModeSort:
-		return m.renderSortModal()
+	case ViewModeFilter, ViewModeSort:
+		return m.renderRepoList()
 	case ViewModeBatchProgress:
 		return m.renderBatchProgress()
 	case ViewModeConfirm:

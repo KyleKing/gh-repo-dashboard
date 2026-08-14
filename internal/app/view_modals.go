@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -122,94 +121,6 @@ func helpSections() []helpSection {
 	}
 }
 
-func (m Model) renderFilterModal() string {
-	var b strings.Builder
-
-	b.WriteString(styles.TitleStyle.Render("Filter Repositories"))
-	b.WriteString("\n\n")
-
-	modes := models.SelectableFilterModes()
-
-	headerStyle := lipgloss.NewStyle().
-		Foreground(styles.Subtext0).
-		Bold(true)
-
-	header := fmt.Sprintf("  %s  %s  %s  %s",
-		padCell("", modalMarkColWidth), padCell("Key", modalKeyColWidth),
-		padCell("Filter", filterLabelColWidth), "Count")
-	b.WriteString(headerStyle.Render(header))
-	b.WriteString("\n")
-
-	for i, mode := range modes {
-		cursor := "  "
-		if i == m.filterCursor {
-			cursor = "> "
-		}
-
-		var filterState models.ActiveFilter
-		for _, f := range m.activeFilters {
-			if f.Mode == mode {
-				filterState = f
-				break
-			}
-		}
-
-		checkbox := "   "
-		if filterState.Enabled && filterState.Inverted {
-			checkbox = "NOT"
-		} else if filterState.Enabled {
-			checkbox = " ✓ "
-		}
-
-		shortKey := mode.ShortKey()
-		label := mode.String()
-		count := m.countForFilter(mode)
-
-		var rowStyle lipgloss.Style
-		if i == m.filterCursor {
-			rowStyle = styles.SelectedRowStyle
-		} else {
-			rowStyle = styles.TableRowStyle
-		}
-
-		checkStyle := lipgloss.NewStyle().Foreground(styles.Green)
-		if filterState.Inverted {
-			checkStyle = lipgloss.NewStyle().Foreground(styles.Peach)
-		}
-
-		keyStyle := lipgloss.NewStyle().
-			Foreground(styles.Mauve).
-			Bold(true)
-
-		formattedCheck := padCell(checkbox, modalMarkColWidth)
-		formattedKey := padCell(shortKey, modalKeyColWidth)
-		formattedLabel := padCell(label, filterLabelColWidth)
-		formattedCount := strconv.Itoa(count)
-
-		row := fmt.Sprintf("%s%s  %s  %s  %s",
-			cursor,
-			checkStyle.Render(formattedCheck),
-			keyStyle.Render(formattedKey),
-			rowStyle.Render(formattedLabel),
-			styles.SubtitleStyle.Render(formattedCount),
-		)
-		b.WriteString(row)
-		b.WriteString("\n")
-	}
-
-	b.WriteString("\n")
-	helpLines := []string{
-		styles.FooterKeyStyle.Render("enter/key") + styles.FooterDescStyle.Render(" cycle (off/on/NOT)"),
-		styles.FooterKeyStyle.Render("*") + styles.FooterDescStyle.Render(" reset"),
-		styles.FooterKeyStyle.Render(keyEsc) + styles.FooterDescStyle.Render(" close"),
-	}
-	b.WriteString(strings.Join(helpLines, "  "))
-
-	content := b.String()
-
-	return centerModal(m, content)
-}
-
 // renderConfirmModal asks for confirmation of a parked write action, naming
 // what it will run against.
 func (m Model) renderConfirmModal() string {
@@ -320,88 +231,6 @@ func buildSortModalRows(activeSorts []models.ActiveSort) []models.ActiveSort {
 	displaySorts = append(displaySorts, inactiveSorts...)
 
 	return displaySorts
-}
-
-func renderSortModalRow(sortState models.ActiveSort, isSelected bool) string {
-	cursor := "  "
-	if isSelected {
-		cursor = "> "
-	}
-
-	indicator := "   "
-	if sortState.IsEnabled() {
-		indicator = fmt.Sprintf(" %d ", sortState.Priority+1)
-	}
-
-	shortKey := sortState.ShortKey()
-	label := sortState.DisplayName()
-	if !sortState.IsEnabled() {
-		label = sortState.Mode.String()
-	}
-
-	rowStyle := styles.TableRowStyle
-	if isSelected {
-		rowStyle = styles.SelectedRowStyle
-	}
-
-	checkStyle := lipgloss.NewStyle().Foreground(styles.Green)
-	keyStyle := lipgloss.NewStyle().
-		Foreground(styles.Mauve).
-		Bold(true)
-
-	formattedIndicator := padCell(indicator, modalMarkColWidth)
-	formattedKey := padCell(shortKey, modalKeyColWidth)
-
-	return fmt.Sprintf("%s%s  %s  %s",
-		cursor,
-		checkStyle.Render(formattedIndicator),
-		keyStyle.Render(formattedKey),
-		rowStyle.Render(label),
-	)
-}
-
-func (m Model) renderSortModal() string {
-	var b strings.Builder
-
-	b.WriteString(styles.TitleStyle.Render("Sort Repositories"))
-	b.WriteString("\n\n")
-
-	displaySorts := buildSortModalRows(m.activeSorts)
-
-	headerStyle := lipgloss.NewStyle().
-		Foreground(styles.Subtext0).
-		Bold(true)
-
-	header := fmt.Sprintf("  %s  %s  %s",
-		padCell("", modalMarkColWidth), padCell("Key", modalKeyColWidth), "Sort By")
-	b.WriteString(headerStyle.Render(header))
-	b.WriteString("\n")
-
-	cursorIndex := -1
-	for i, s := range displaySorts {
-		if s.Mode == m.activeSorts[m.sortCursor].Mode {
-			cursorIndex = i
-			break
-		}
-	}
-
-	for i, sortState := range displaySorts {
-		b.WriteString(renderSortModalRow(sortState, i == cursorIndex))
-		b.WriteString("\n")
-	}
-
-	b.WriteString("\n")
-	helpLines := []string{
-		styles.FooterKeyStyle.Render("enter/key") + styles.FooterDescStyle.Render(" cycle (off/ASC/DESC)"),
-		styles.FooterKeyStyle.Render("[/]") + styles.FooterDescStyle.Render(" reorder"),
-		styles.FooterKeyStyle.Render("*") + styles.FooterDescStyle.Render(" reset"),
-		styles.FooterKeyStyle.Render(keyEsc) + styles.FooterDescStyle.Render(" close"),
-	}
-	b.WriteString(strings.Join(helpLines, "  "))
-
-	content := b.String()
-
-	return centerModal(m, content)
 }
 
 func (m Model) renderBatchProgress() string {
