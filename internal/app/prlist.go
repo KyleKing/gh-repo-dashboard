@@ -148,6 +148,54 @@ func (m Model) searchPRRepoPath(pr models.PRInfo) (string, bool) {
 	return "", false
 }
 
+// prPreviewKey identifies a PRs tab row's cached preview: a repo-scoped pull
+// request number alone isn't unique across a fleet-wide search.
+func prPreviewKey(repoPath string, number int) string {
+	return repoPath + "#" + strconv.Itoa(number)
+}
+
+// togglePRPreview opens or closes the inline preview under the PRs tab's
+// table, reading the row under the cursor when it opens.
+func (m Model) togglePRPreview() (tea.Model, tea.Cmd) {
+	m.prPreviewOpen = !m.prPreviewOpen
+	cmd := m.prPreviewCmd()
+
+	return m, cmd
+}
+
+// prPreviewCmd loads the cursor row's own preview if the region is open and
+// it hasn't been read yet.
+func (m *Model) prPreviewCmd() tea.Cmd {
+	if !m.prPreviewOpen {
+		return nil
+	}
+
+	pr, ok := m.selectedSearchPR()
+	if !ok {
+		return nil
+	}
+
+	repo, found := m.searchPRRepoPath(pr)
+	if !found {
+		return nil
+	}
+
+	previewKey := prPreviewKey(repo, pr.Number)
+	if _, cached := m.prPreview[previewKey]; cached {
+		return nil
+	}
+	if m.prPreviewRequested[previewKey] {
+		return nil
+	}
+
+	if m.prPreviewRequested == nil {
+		m.prPreviewRequested = make(map[string]bool)
+	}
+	m.prPreviewRequested[previewKey] = true
+
+	return loadPRPreviewCmd(repo, m.summaries[repo].RemoteID, pr.Number, previewKey)
+}
+
 // cyclePRView moves to the next saved view in the given direction and reads it.
 func (m Model) cyclePRView(step int) (tea.Model, tea.Cmd) {
 	views := models.PRViews()
@@ -280,26 +328,38 @@ func (m Model) handlePRListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Up):
 		m.prSearchCursor = max(m.prSearchCursor-1, 0)
+		cmd := m.prPreviewCmd()
 
-		return m, nil
+		return m, cmd
 
 	case key.Matches(msg, m.keys.Down):
 		m.prSearchCursor = min(m.prSearchCursor+1, last)
+		cmd := m.prPreviewCmd()
 
-		return m, nil
+		return m, cmd
 
 	case key.Matches(msg, m.keys.Top):
 		m.prSearchCursor = 0
+		cmd := m.prPreviewCmd()
 
-		return m, nil
+		return m, cmd
 
 	case key.Matches(msg, m.keys.Bottom):
 		m.prSearchCursor = last
+		cmd := m.prPreviewCmd()
 
-		return m, nil
+		return m, cmd
 
 	case key.Matches(msg, m.keys.Enter):
 		return m.openSearchPRDetail()
+
+	case key.Matches(msg, m.keys.Expand):
+		return m.togglePRPreview()
+
+	case key.Matches(msg, m.keys.Help):
+		m.viewMode = ViewModeHelp
+
+		return m, nil
 	}
 
 	return m.handlePRViewKey(msg)

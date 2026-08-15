@@ -101,6 +101,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case PRSearchLoadedMsg:
 		return m.handlePRSearchLoaded(msg)
 
+	case PRPreviewLoadedMsg:
+		return m.handlePRPreviewLoaded(msg)
+
 	case StashDiffLoadedMsg:
 		if msg.Path == m.selectedRepo {
 			m.stashDiff = withStashText(m.stashDiff, msg.Index, msg.Diff)
@@ -365,6 +368,22 @@ func (m Model) handlePRDetailLoaded(msg PRDetailLoadedMsg) (tea.Model, tea.Cmd) 
 		return m, clearStatusAfterDelay()
 	}
 	m.prDetail = msg.Detail
+
+	return m, nil
+}
+
+// handlePRPreviewLoaded stores a PRs tab preview once read; a failed read
+// leaves the row showing its loading state rather than a wrong one, since the
+// row can still be retried by closing and reopening the preview.
+func (m Model) handlePRPreviewLoaded(msg PRPreviewLoadedMsg) (tea.Model, tea.Cmd) {
+	if msg.Error != nil {
+		return m, nil
+	}
+
+	if m.prPreview == nil {
+		m.prPreview = make(map[string]models.PRDetail)
+	}
+	m.prPreview[msg.Key] = msg.Detail
 
 	return m, nil
 }
@@ -1925,10 +1944,11 @@ func (m Model) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // commandCompletionCandidates computes the completion candidates for the
-// token under the cursor: command names if completing the first word, or
-// that command's own Complete func for its arguments. The bool is false if
-// the first word doesn't resolve to a completable command.
-func (m Model) commandCompletionCandidates() ([]string, bool) {
+// token under the cursor, each paired with its own one-line description:
+// every registered command if completing the first word, or that command's
+// own Complete/Describe funcs for its arguments. The bool is false if the
+// first word doesn't resolve to a completable command.
+func (m Model) commandCompletionCandidates() ([]CompletionCandidate, bool) {
 	line := m.commandInput.Value()
 	fields := strings.Fields(line)
 	endsWithSpace := strings.HasSuffix(line, " ")
@@ -1939,7 +1959,7 @@ func (m Model) commandCompletionCandidates() ([]string, bool) {
 			prefix = fields[0]
 		}
 
-		return m.registry.Candidates(prefix), true
+		return m.registry.CandidatesWithDescriptions(prefix), true
 	}
 
 	cmd, found := m.registry.Lookup(fields[0])
@@ -1952,7 +1972,17 @@ func (m Model) commandCompletionCandidates() ([]string, bool) {
 		args = append(args, "")
 	}
 
-	return cmd.Complete(m, args), true
+	names := cmd.Complete(m, args)
+	candidates := make([]CompletionCandidate, len(names))
+	for i, name := range names {
+		desc := ""
+		if cmd.Describe != nil {
+			desc = cmd.Describe(m, name)
+		}
+		candidates[i] = CompletionCandidate{Name: name, Description: desc}
+	}
+
+	return candidates, true
 }
 
 // completeCommand cycles through completion candidates for the token
@@ -1976,7 +2006,7 @@ func (m *Model) completeCommand() {
 
 	line := m.commandInput.Value()
 	fields := strings.Fields(line)
-	candidate := m.completionCandidates[m.completionIndex]
+	candidate := m.completionCandidates[m.completionIndex].Name
 
 	var newLine string
 	switch {

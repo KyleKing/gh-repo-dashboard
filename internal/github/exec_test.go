@@ -314,7 +314,8 @@ func TestGetPRsForRepo(t *testing.T) {
 			"isDraft": false,
 			"headRefName": "one",
 			"baseRefName": "main",
-			"reviewDecision": "APPROVED"
+			"reviewDecision": "APPROVED",
+			"reviewRequests": [{"login": "erin"}]
 		},
 		{
 			"number": 2,
@@ -353,7 +354,7 @@ func TestGetPRsForRepo(t *testing.T) {
 				},
 				{
 					Number: 1, Title: "First", State: "OPEN", URL: "https://github.com/owner/repo/pull/1",
-					HeadRef: "one", BaseRef: "main", ReviewDecision: "APPROVED",
+					HeadRef: "one", BaseRef: "main", ReviewDecision: "APPROVED", Reviewers: []string{"erin"},
 				},
 			},
 			expectGH: true,

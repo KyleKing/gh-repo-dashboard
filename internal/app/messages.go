@@ -190,6 +190,15 @@ type PRDetailLoadedMsg struct {
 	Error    error
 }
 
+// PRPreviewLoadedMsg reports the loaded detail for one PRs tab row's inline
+// preview, keyed by prPreviewKey so a stale in-flight answer can be told apart
+// from the row the cursor is on now.
+type PRPreviewLoadedMsg struct {
+	Key    string
+	Detail models.PRDetail
+	Error  error
+}
+
 // PRSearchLoadedMsg reports the pull requests one saved view returned. Query
 // and fleet identify which read this was, so an answer that arrives after the
 // view or the scope moved on is discarded rather than shown under the wrong

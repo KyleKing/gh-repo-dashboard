@@ -287,6 +287,21 @@ func loadPRDetailCmd(repoPath, remoteID string, prNumber int) tea.Cmd {
 	}
 }
 
+// loadPRPreviewCmd reads one pull request's full detail for the PRs tab's
+// inline preview, distinct from loadPRDetailCmd's message so it never
+// clobbers the full-screen detail view's own state.
+func loadPRPreviewCmd(repoPath, remoteID string, prNumber int, key string) tea.Cmd {
+	return func() tea.Msg {
+		ctx := context.Background()
+		detail, err := github.GetPRDetail(ctx, repoPath, remoteID, prNumber)
+		if err != nil {
+			return PRPreviewLoadedMsg{Key: key, Error: err}
+		}
+
+		return PRPreviewLoadedMsg{Key: key, Detail: *detail}
+	}
+}
+
 func prefetchPRDetailCmd(repoPath, remoteID string, prNumber int) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()

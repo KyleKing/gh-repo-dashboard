@@ -318,7 +318,7 @@ func GetPRDetail(ctx context.Context, repoPath, remoteID string, prNumber int) (
 // comes back 504. Thirty is what fits with room to spare.
 const (
 	prListFields = "number,title,state,url,isDraft,headRefName,headRepositoryOwner,baseRefName," +
-		"reviewDecision,statusCheckRollup,comments,reviews,author,updatedAt"
+		"reviewDecision,reviewRequests,statusCheckRollup,comments,reviews,author,updatedAt"
 	prListLimit = "30"
 	// Number of filtered pages that make up one repo's list.
 	prListPages = 2
@@ -400,7 +400,10 @@ func prListPage(ctx context.Context, repoPath string, env []string, filter ...st
 		HeadRepositoryOwner struct {
 			Login string `json:"login"`
 		} `json:"headRepositoryOwner"`
-		ReviewDecision    string        `json:"reviewDecision"`
+		ReviewDecision string `json:"reviewDecision"`
+		ReviewRequests []struct {
+			Login string `json:"login"`
+		} `json:"reviewRequests"`
 		StatusCheckRollup []statusCheck `json:"statusCheckRollup"`
 		Comments          []prComment   `json:"comments"`
 		Reviews           []prReview    `json:"reviews"`
@@ -417,6 +420,12 @@ func prListPage(ctx context.Context, repoPath string, env []string, filter ...st
 	result := make([]models.PRInfo, 0, len(prList))
 	for i := range prList {
 		pr := &prList[i]
+
+		var reviewers []string
+		for _, r := range pr.ReviewRequests {
+			reviewers = append(reviewers, r.Login)
+		}
+
 		result = append(result, models.PRInfo{
 			Number:         pr.Number,
 			Title:          pr.Title,
@@ -427,6 +436,7 @@ func prListPage(ctx context.Context, repoPath string, env []string, filter ...st
 			HeadRepoOwner:  pr.HeadRepositoryOwner.Login,
 			BaseRef:        pr.BaseRefName,
 			ReviewDecision: pr.ReviewDecision,
+			Reviewers:      reviewers,
 			Checks:         parseChecks(pr.StatusCheckRollup),
 			Activity:       latestActivity(pr.Comments, pr.Reviews),
 			Author:         pr.Author.Login,

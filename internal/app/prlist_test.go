@@ -212,6 +212,75 @@ func TestPRSearchLandingSetsNoStatusMessage(t *testing.T) {
 	}
 }
 
+// TestReviewerBadgeFlagsAnUnassignedOpenPR confirms the row-level signal:
+// an open, non-draft pull request with nobody requested to review it is
+// flagged, a request narrows it to a count, and neither shows once the pull
+// request is no longer open for review.
+func TestReviewerBadgeFlagsAnUnassignedOpenPR(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		pr   models.PRInfo
+		want string
+	}{
+		{"needs a reviewer", models.PRInfo{State: "OPEN"}, "needs reviewer"},
+		{"one requested", models.PRInfo{State: "OPEN", Reviewers: []string{"erin"}}, "1 reviewer"},
+		{"two requested", models.PRInfo{State: "OPEN", Reviewers: []string{"erin", "dave"}}, "2 reviewers"},
+		{"draft carries neither", models.PRInfo{State: "OPEN", IsDraft: true}, ""},
+		{"merged carries neither", models.PRInfo{State: "MERGED"}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := reviewerBadge(&tt.pr); !strings.Contains(got, tt.want) || (tt.want == "" && got != "") {
+				t.Errorf("reviewerBadge(%+v) = %q, want to contain %q", tt.pr, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestPRPreviewLoadsAndRendersTheCursorRow exercises the "v" inline preview:
+// opening it requests the cursor row's own detail, and once that detail
+// lands it renders the row's reviewers rather than a loading placeholder.
+func TestPRPreviewLoadsAndRendersTheCursorRow(t *testing.T) {
+	t.Parallel()
+
+	m := prTabModel()
+
+	opened, cmd := m.togglePRPreview()
+	o := mustModel(t, opened)
+	if !o.prPreviewOpen {
+		t.Fatal("expected the preview region to open")
+	}
+	if cmd == nil {
+		t.Fatal("expected opening the preview to request the cursor row's detail")
+	}
+
+	key := prPreviewKey("/dev/alpha", 11)
+	if !o.prPreviewRequested[key] {
+		t.Fatalf("expected the row's fetch to be marked requested, got %+v", o.prPreviewRequested)
+	}
+
+	loading := plainText(o.renderPRList())
+	if !strings.Contains(loading, readingLabel) {
+		t.Errorf("expected the preview to show its loading placeholder, got:\n%s", loading)
+	}
+
+	landed := mustModel(t, mustUpdate(t, &o, PRPreviewLoadedMsg{
+		Key: key,
+		Detail: models.PRDetail{
+			PRInfo:    models.PRInfo{Number: 11},
+			Reviewers: []string{"erin"},
+		},
+	}))
+
+	rendered := plainText(landed.renderPRList())
+	if !strings.Contains(rendered, "erin") {
+		t.Errorf("expected the loaded reviewer to render, got:\n%s", rendered)
+	}
+}
+
 func TestCheckoutFromThePRTabResolvesTheRepoAndAsksFirst(t *testing.T) {
 	t.Parallel()
 

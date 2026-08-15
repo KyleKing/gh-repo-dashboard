@@ -63,7 +63,7 @@ type Model struct {
 	commandMode          bool
 	commandInput         textinput.Model
 	registry             Registry
-	completionCandidates []string
+	completionCandidates []CompletionCandidate
 	completionIndex      int
 	commandHistory       []string
 	pendingRepeat        bool
@@ -138,6 +138,19 @@ type Model struct {
 	prSearchLoading bool
 	prViewMenu      bool
 	prSearchError   string
+	// prPreviewOpen shows the row under the PRs tab cursor in full underneath
+	// the table: its description, every requested reviewer, and its CI
+	// checks, the same "read one row in full without leaving the list" idea
+	// as the Repos tab's own expanded region.
+	prPreviewOpen bool
+	// prPreview caches each row's full detail once read, keyed by
+	// prPreviewKey, so paging the cursor back over a row already open never
+	// re-fetches it.
+	prPreview map[string]models.PRDetail
+	// prPreviewRequested marks the rows a preview fetch has already been
+	// issued for, so scrolling back over one mid-flight does not re-request
+	// it.
+	prPreviewRequested map[string]bool
 	// prListReturn is where esc goes from a pull request opened out of the PRs
 	// tab, which is the tab rather than the repo grid it was never in.
 	prListReturn ViewMode
@@ -240,25 +253,27 @@ func New(scanPaths []string, maxDepth int) Model {
 	sp.Style = lipgloss.NewStyle().Foreground(styles.Blue)
 
 	return Model{
-		spinner:       sp,
-		scanPaths:     scanPaths,
-		maxDepth:      maxDepth,
-		summaries:     make(map[string]models.RepoSummary),
-		notesPreview:  make(map[string][]models.NoteFileContent),
-		prCount:       make(map[string]int),
-		branchCount:   make(map[string]int),
-		prMap:         make(map[string]PRMapLoadedMsg),
-		peerBranches:  make(map[string][]models.BranchInfo),
-		activeFilters: activeFilters,
-		activeSorts:   sorts,
-		searchInput:   ti,
-		commandInput:  ci,
-		paletteInput:  pi,
-		registry:      DefaultRegistry(),
-		viewMode:      ViewModeRepoList,
-		loading:       true,
-		keys:          DefaultKeyMap(),
-		help:          help.New(),
+		spinner:            sp,
+		scanPaths:          scanPaths,
+		maxDepth:           maxDepth,
+		summaries:          make(map[string]models.RepoSummary),
+		notesPreview:       make(map[string][]models.NoteFileContent),
+		prCount:            make(map[string]int),
+		branchCount:        make(map[string]int),
+		prMap:              make(map[string]PRMapLoadedMsg),
+		peerBranches:       make(map[string][]models.BranchInfo),
+		prPreview:          make(map[string]models.PRDetail),
+		prPreviewRequested: make(map[string]bool),
+		activeFilters:      activeFilters,
+		activeSorts:        sorts,
+		searchInput:        ti,
+		commandInput:       ci,
+		paletteInput:       pi,
+		registry:           DefaultRegistry(),
+		viewMode:           ViewModeRepoList,
+		loading:            true,
+		keys:               DefaultKeyMap(),
+		help:               help.New(),
 		// A diff without file text is rarely useful, and diffstat is one key
 		// away, so every diff pane opens fully expanded.
 		stashFullDiff:       true,

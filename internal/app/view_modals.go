@@ -77,7 +77,7 @@ func helpSections() []helpSection {
 				{":filter", "Boolean expression over the dock modes plus clean/https/ssh/" +
 					"has_upstream/config_override/error/template_drift (and/or/not, parens)"},
 				{":filter (PRs tab)", "Narrows the fetched list: draft/approved/changes_requested/" +
-					"review_required/failing/passing"},
+					"review_required/needs_reviewer/failing/passing"},
 				{":pr-query", "Override the PRs tab's GitHub search for this session (PRs tab only)"},
 			},
 		},
@@ -91,6 +91,7 @@ func helpSections() []helpSection {
 				{panelActionLeader + "n", "Create a PR for the selected branch"},
 				{panelActionLeader + "c", "Check the selected PR's branch out here"},
 				{"f, [/], *", "PRs tab: pick a saved view, cycle views, widen the scope"},
+				{"v (PRs tab)", "Preview the selected row's description, reviewers, and checks"},
 				{panelActionLeader + "m", "Squash-merge the PR and delete its branch"},
 			},
 		},

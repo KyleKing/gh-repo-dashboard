@@ -8,8 +8,9 @@ import (
 // Display values shared by PRInfo/ChecksStatus/WorkflowSummary and the views
 // that render them, so both sides compare against the same constant.
 const (
-	PRStatusMerged         = "MERGED"
 	PRStatusClosed         = "CLOSED"
+	PRStatusMerged         = "MERGED"
+	PRStatusOpen           = "OPEN"
 	ReviewApproved         = "approved"
 	ReviewChangesRequested = "changes requested"
 	StatusCompleted        = "completed"
@@ -32,6 +33,7 @@ type PRInfo struct {
 	ReviewDecision  string       `json:"review_decision,omitempty"`
 	ApprovedBy      []string     `json:"approved_by,omitempty"`
 	ChangesRequests int          `json:"changes_requests,omitempty"`
+	Reviewers       []string     `json:"reviewers,omitempty"`
 	Activity        *PRActivity  `json:"activity,omitempty"`
 	// Repo, Author, and UpdatedAt are carried by rows a saved search produced,
 	// where the list spans repositories and the owner of a pull request is not
@@ -93,6 +95,13 @@ func (p *PRInfo) ActivitySummary() string {
 	}
 
 	return RelativeTime(p.Activity.At) + " " + p.Activity.Author
+}
+
+// NeedsReviewer reports whether an open, non-draft pull request has nobody
+// currently requested to review it, the case GitHub's own reviewDecision
+// leaves unflagged since it only tracks reviews already submitted.
+func (p PRInfo) NeedsReviewer() bool {
+	return p.State == PRStatusOpen && !p.IsDraft && len(p.Reviewers) == 0
 }
 
 // ReviewGlyph marks an approval or a change request, or is empty otherwise.

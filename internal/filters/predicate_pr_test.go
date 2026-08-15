@@ -12,6 +12,9 @@ func TestParsePredicatePR(t *testing.T) {
 	draftFailing := models.PRInfo{IsDraft: true, Checks: models.ChecksStatus{Total: 3, Failing: 1}}
 	readyPassing := models.PRInfo{ReviewDecision: "APPROVED", Checks: models.ChecksStatus{Total: 3}}
 	changesRequested := models.PRInfo{ReviewDecision: "CHANGES_REQUESTED"}
+	unassigned := models.PRInfo{State: "OPEN"}
+	assigned := models.PRInfo{State: "OPEN", Reviewers: []string{"erin"}}
+	draftUnassigned := models.PRInfo{State: "OPEN", IsDraft: true}
 
 	tests := []struct {
 		name     string
@@ -28,6 +31,9 @@ func TestParsePredicatePR(t *testing.T) {
 		{"changes_requested match", "changes_requested", changesRequested, true},
 		{"draft and failing", "draft and failing", draftFailing, true},
 		{"not draft", "not draft", readyPassing, true},
+		{"needs_reviewer match", "needs_reviewer", unassigned, true},
+		{"needs_reviewer excludes assigned", "needs_reviewer", assigned, false},
+		{"needs_reviewer excludes draft", "needs_reviewer", draftUnassigned, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
