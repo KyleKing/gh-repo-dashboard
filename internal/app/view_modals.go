@@ -73,9 +73,12 @@ func helpSections() []helpSection {
 			[]struct{ key, desc string }{
 				{"f", "Filter menu (enter/key cycles, *=reset)"},
 				{"s", "Sort menu (enter/key cycles, [/]=reorder, *=reset)"},
-				{"/", "Search repositories (r:/b: to scope name or branch)"},
+				{"/", "Search repos: r:/b:/p:/t:/n:/c: to scope, */?/^/$ to glob or anchor"},
 				{":filter", "Boolean expression over the dock modes plus clean/https/ssh/" +
 					"has_upstream/config_override/error/template_drift (and/or/not, parens)"},
+				{":filter (PRs tab)", "Narrows the fetched list: draft/approved/changes_requested/" +
+					"review_required/failing/passing"},
+				{":pr-query", "Override the PRs tab's GitHub search for this session (PRs tab only)"},
 			},
 		},
 		{

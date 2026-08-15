@@ -206,7 +206,7 @@ type Model struct {
 // New builds the initial Model for the given repo scan roots.
 func New(scanPaths []string, maxDepth int) Model {
 	ti := textinput.New()
-	ti.Placeholder = "Search repos... (r:/b: to scope)"
+	ti.Placeholder = "Search... (r/b/p/t/n/c: scope, * glob)"
 	ti.CharLimit = 100
 	// textinput truncates its placeholder to a single rune at width zero.
 	ti.SetWidth(lipgloss.Width(ti.Placeholder))
