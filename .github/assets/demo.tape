@@ -57,13 +57,13 @@ Set Height 1000
 
 Hide
 Type `cd ~/Developer/kyleking/gh-repo-dashboard`  Enter  Sleep 500ms
-Type `go build -o gh-repo-dashboard .`  Enter  Sleep 2s
+Type `go build -o gh-repo-dashboard ./cmd/gh-repo-dashboard`  Enter  Sleep 2s
 Type `cd ~/Developer/kyleking`  Enter  Sleep 500ms
 Type `clear`  Enter
 Show
 
 # Start the TUI
-Type `./gh-repo-dashboard/gh-repo-dashboard . --depth 2`  Sleep 500ms  Enter
+Type `./gh-repo-dashboard/gh-repo-dashboard -depth 2 .`  Sleep 500ms  Enter
 Sleep 2s
 
 # Navigate repos
@@ -123,6 +123,37 @@ Sleep 400ms
 # Exit search
 Escape
 Sleep 700ms
+
+# Jump to this project so its PRs tab (this-repo scope, one repo's own
+# search) answers quickly, then filter to what needs a reviewer and preview it
+Type `/`
+Sleep 400ms
+Type `gh-repo-dashboard`
+Sleep 800ms
+Escape
+Sleep 500ms
+Enter
+Sleep 1s
+Type `P`
+Sleep 3s
+Type `:filter needs_reviewer`
+Sleep 500ms
+Enter
+Sleep 1s
+Type `v`
+Sleep 2s
+Type `v`
+Sleep 500ms
+Escape
+Sleep 700ms
+
+# Clear the search before continuing
+Type `/`
+Sleep 300ms
+Ctrl+u
+Sleep 300ms
+Escape
+Sleep 500ms
 
 # Select a repo to drill down
 Space
