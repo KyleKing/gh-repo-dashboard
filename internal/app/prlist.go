@@ -91,13 +91,34 @@ func (m Model) handlePRSearchLoaded(msg PRSearchLoadedMsg) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
+// visiblePRs is what the PRs tab actually shows: the fetched rows narrowed by
+// the local ":filter" predicate, if one is set. Every read of the PRs tab's
+// rows goes through this rather than m.prSearch directly, so the cursor and
+// Enter always resolve against what's actually on screen.
+func (m Model) visiblePRs() []models.PRInfo {
+	if m.prPredicate == nil {
+		return m.prSearch
+	}
+
+	visible := make([]models.PRInfo, 0, len(m.prSearch))
+
+	for i := range m.prSearch {
+		if m.prPredicate(m.prSearch[i]) {
+			visible = append(visible, m.prSearch[i])
+		}
+	}
+
+	return visible
+}
+
 // selectedSearchPR is the pull request under the PRs tab cursor.
 func (m Model) selectedSearchPR() (models.PRInfo, bool) {
-	if m.prSearchCursor < 0 || m.prSearchCursor >= len(m.prSearch) {
+	visible := m.visiblePRs()
+	if m.prSearchCursor < 0 || m.prSearchCursor >= len(visible) {
 		return models.PRInfo{}, false
 	}
 
-	return m.prSearch[m.prSearchCursor], true
+	return visible[m.prSearchCursor], true
 }
 
 // searchPRRepoPath is the local checkout a search row belongs to. A row read
@@ -233,7 +254,7 @@ func (m Model) handlePRListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.openTab(tab)
 	}
 
-	last := max(len(m.prSearch)-1, 0)
+	last := max(len(m.visiblePRs())-1, 0)
 
 	switch {
 	case key.Matches(msg, m.keys.Quit):

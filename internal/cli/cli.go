@@ -95,9 +95,9 @@ type Options struct {
 
 // Run discovers repos under scanPaths and writes their summaries as JSON to w.
 func Run(ctx context.Context, w io.Writer, scanPaths []string, opts Options) error {
-	var pred filters.Predicate
+	var pred filters.Predicate[models.RepoSummary]
 	if opts.Predicate != "" {
-		parsed, err := filters.ParsePredicate(opts.Predicate)
+		parsed, err := filters.ParsePredicate(opts.Predicate, filters.RepoAtoms())
 		if err != nil {
 			return fmt.Errorf("invalid --filter predicate: %w", err)
 		}
@@ -115,7 +115,7 @@ func Run(ctx context.Context, w io.Writer, scanPaths []string, opts Options) err
 }
 
 func collectRepos(
-	ctx context.Context, client githubClient, paths []string, opts Options, pred filters.Predicate,
+	ctx context.Context, client githubClient, paths []string, opts Options, pred filters.Predicate[models.RepoSummary],
 ) []Repo {
 	repos := make([]*Repo, len(paths))
 	sem := make(chan struct{}, maxConcurrentRepos)
@@ -144,7 +144,9 @@ func collectRepos(
 
 // loadRepo builds the Repo for path, or nil when pred is set and the repo's
 // summary doesn't match it.
-func loadRepo(ctx context.Context, client githubClient, path string, opts Options, pred filters.Predicate) *Repo {
+func loadRepo(
+	ctx context.Context, client githubClient, path string, opts Options, pred filters.Predicate[models.RepoSummary],
+) *Repo {
 	ops := vcs.GetOperations(path)
 
 	if opts.Fetch {

@@ -47,7 +47,7 @@ func TestParsePredicate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			pred, err := filters.ParsePredicate(tt.expr)
+			pred, err := filters.ParsePredicate(tt.expr, filters.RepoAtoms())
 			if err != nil {
 				t.Fatalf("filters.ParsePredicate(%q) error: %v", tt.expr, err)
 			}
@@ -76,7 +76,7 @@ func TestParsePredicateErrors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := filters.ParsePredicate(tt.expr)
+			_, err := filters.ParsePredicate(tt.expr, filters.RepoAtoms())
 			if err == nil {
 				t.Fatalf("filters.ParsePredicate(%q) expected error", tt.expr)
 			}
@@ -90,7 +90,7 @@ func TestParsePredicateErrors(t *testing.T) {
 
 func TestAtomNamesSorted(t *testing.T) {
 	t.Parallel()
-	names := filters.AtomNames()
+	names := filters.AtomNames(filters.RepoAtoms())
 	if len(names) == 0 {
 		t.Fatal("expected atoms")
 	}

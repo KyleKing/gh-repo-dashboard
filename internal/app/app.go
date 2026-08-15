@@ -70,8 +70,11 @@ type Model struct {
 	pendingTop           bool
 
 	predicateText string
-	predicate     filters.Predicate
+	predicate     filters.Predicate[models.RepoSummary]
 	selectedPaths map[string]bool
+
+	prPredicateText string
+	prPredicate     filters.Predicate[models.PRInfo]
 
 	pendingOperator string
 	pendingObject   string
@@ -470,9 +473,15 @@ func (m *Model) ResetFilters() {
 }
 
 // SetPredicate sets the active filter predicate and its source text.
-func (m *Model) SetPredicate(text string, pred filters.Predicate) {
+func (m *Model) SetPredicate(text string, pred filters.Predicate[models.RepoSummary]) {
 	m.predicate = pred
 	m.predicateText = text
+}
+
+// SetPRPredicate sets the active PR-tab filter predicate and its source text.
+func (m *Model) SetPRPredicate(text string, pred filters.Predicate[models.PRInfo]) {
+	m.prPredicate = pred
+	m.prPredicateText = text
 }
 
 // SelectedCount returns the number of repos currently selected for batch operations.

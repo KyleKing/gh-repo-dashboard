@@ -183,21 +183,34 @@ func DefaultRegistry() Registry {
 	)
 }
 
-// filterCommand builds the ":filter" command: a bare mode name, or a
-// predicate expression, or no args to open the filter modal.
+// filterCommand builds the ":filter" command. On the Repos tab: a bare mode
+// name, a predicate expression, or no args to open the filter dock. On the
+// PRs tab: a predicate expression over PRAtoms narrows what's already been
+// fetched, instantly and with no refetch; no args clears it, since there is
+// no PR-side dock to open.
 func filterCommand() Command {
 	return Command{
-		Name:        nameFilter,
-		Description: "Filter repos: :filter <mode|predicate> or :filter to open the modal",
-		Complete: func(_ Model, args []string) []string {
+		Name: nameFilter,
+		Description: "Filter repos: :filter <mode|predicate> or :filter to open the modal. " +
+			"On the PRs tab, filters the fetched list: :filter <predicate>",
+		Complete: func(m Model, args []string) []string {
 			prefix := ""
 			if len(args) > 0 {
 				prefix = args[len(args)-1]
 			}
 
-			return predicateCandidates(prefix)
+			atomNames := filters.AtomNames(filters.RepoAtoms())
+			if m.viewMode == ViewModePRList {
+				atomNames = filters.AtomNames(filters.PRAtoms())
+			}
+
+			return predicateCandidates(prefix, atomNames)
 		},
 		Run: func(m Model, args []string) (Model, tea.Cmd) {
+			if m.viewMode == ViewModePRList {
+				return runPRFilterCommand(m, args)
+			}
+
 			if len(args) == 0 {
 				m.viewMode = ViewModeFilter
 				return m, nil
@@ -216,7 +229,7 @@ func filterCommand() Command {
 				}
 			}
 			expr := strings.Join(args, " ")
-			pred, err := filters.ParsePredicate(expr)
+			pred, err := filters.ParsePredicate(expr, filters.RepoAtoms())
 			if err != nil {
 				return m, statusErrCmd(err.Error())
 			}
@@ -227,6 +240,25 @@ func filterCommand() Command {
 			return m, nil
 		},
 	}
+}
+
+// runPRFilterCommand implements ":filter" on the PRs tab: no args clears the
+// active PR predicate, args parse against PRAtoms and narrow m.visiblePRs().
+func runPRFilterCommand(m Model, args []string) (Model, tea.Cmd) {
+	if len(args) == 0 {
+		m.SetPRPredicate("", nil)
+
+		return m, statusCmd("PR filter cleared")
+	}
+
+	expr := strings.Join(args, " ")
+	pred, err := filters.ParsePredicate(expr, filters.PRAtoms())
+	if err != nil {
+		return m, statusErrCmd(err.Error())
+	}
+	m.SetPRPredicate(expr, pred)
+
+	return m, nil
 }
 
 // selectCommand builds the ":select" command: "all", "none", or
@@ -245,7 +277,7 @@ func selectCommand() Command {
 				return namesMatching(map[string]struct{}{nameAll: {}, overviewEmpty: {}, "where": {}}, prefix)
 			}
 
-			return predicateCandidates(args[len(args)-1])
+			return predicateCandidates(args[len(args)-1], filters.AtomNames(filters.RepoAtoms()))
 		},
 		Run: runSelectCommand,
 	}
@@ -268,7 +300,7 @@ func runSelectCommand(m Model, args []string) (Model, tea.Cmd) {
 		return m, statusCmd(fmt.Sprintf("Selected %d repos", len(m.selectedPaths)))
 	case "where":
 		expr := strings.Join(args[1:], " ")
-		pred, err := filters.ParsePredicate(expr)
+		pred, err := filters.ParsePredicate(expr, filters.RepoAtoms())
 		if err != nil {
 			return m, statusErrCmd(err.Error())
 		}
@@ -330,7 +362,7 @@ func batchCommand(name, description, taskName string, taskCmd func([]string) tea
 				prefix = args[len(args)-1]
 			}
 
-			return predicateCandidates(prefix)
+			return predicateCandidates(prefix, filters.AtomNames(filters.RepoAtoms()))
 		},
 		Run: func(m Model, args []string) (Model, tea.Cmd) {
 			return runBatchCommand(m, args, taskName, false, taskCmd)
@@ -348,7 +380,7 @@ func runBatchCommand(
 	label := taskName
 	if len(args) > 0 {
 		expr := strings.Join(args, " ")
-		pred, err := filters.ParsePredicate(expr)
+		pred, err := filters.ParsePredicate(expr, filters.RepoAtoms())
 		if err != nil {
 			return m, statusErrCmd(err.Error())
 		}
@@ -386,7 +418,7 @@ func cleanupCommand() Command {
 				prefix = args[len(args)-1]
 			}
 
-			candidates := predicateCandidates(prefix)
+			candidates := predicateCandidates(prefix, filters.AtomNames(filters.RepoAtoms()))
 			if !slices.Contains(args, dryRunFlag) && strings.HasPrefix(dryRunFlag, prefix) {
 				candidates = append([]string{dryRunFlag}, candidates...)
 			}
@@ -415,9 +447,9 @@ func cleanupCommand() Command {
 	}
 }
 
-func predicateCandidates(prefix string) []string {
+func predicateCandidates(prefix string, atomNames []string) []string {
 	var names []string
-	for _, name := range filters.AtomNames() {
+	for _, name := range atomNames {
 		if strings.HasPrefix(name, prefix) {
 			names = append(names, name)
 		}

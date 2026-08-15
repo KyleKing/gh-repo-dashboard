@@ -88,8 +88,15 @@ func (m Model) renderPRListHeading(width int) string {
 		badge = styles.SubtitleStyle.Render("searching…")
 	case m.prSearchError != "":
 		badge = styles.ErrorStyle.Render(m.prSearchError)
+	case m.prPredicateText != "":
+		counts := strconv.Itoa(len(m.visiblePRs())) + "/" + strconv.Itoa(len(m.prSearch))
+		badge = styles.SubtitleStyle.Render(counts + " open")
 	default:
 		badge = styles.SubtitleStyle.Render(strconv.Itoa(len(m.prSearch)) + " open")
+	}
+
+	if m.prPredicateText != "" {
+		badge += "  " + styles.Badge(m.prPredicateText, styles.FilterBadgeStyle)
 	}
 
 	return truncate(head+"  "+badge, width) + "\n" +
@@ -108,17 +115,18 @@ func (m Model) effectiveQuery(view models.PRView) string {
 }
 
 func (m Model) renderPRListBody(width int) string {
-	if len(m.prSearch) == 0 {
+	visible := m.visiblePRs()
+	if len(visible) == 0 {
 		return styles.SubtitleStyle.Render(m.prListEmptyLabel())
 	}
 
 	layout := table.Fit(prSearchCols(m.prFleet), width-cursorWidth)
 	height := max(m.height-prListChromeHeight, 1)
-	window := visibleRange(m.prSearchCursor, len(m.prSearch), height)
+	window := visibleRange(m.prSearchCursor, len(visible), height)
 
 	lines := []string{detailHeader(layout)}
 	for i := window.start; i < window.end; i++ {
-		lines = append(lines, renderPRSearchRow(&m.prSearch[i], layout, i == m.prSearchCursor))
+		lines = append(lines, renderPRSearchRow(&visible[i], layout, i == m.prSearchCursor))
 	}
 
 	return strings.Join(lines, "\n")
@@ -130,6 +138,8 @@ func (m Model) prListEmptyLabel() string {
 		return "searching…"
 	case m.prSearchError != "":
 		return m.prSearchError
+	case m.prPredicateText != "" && len(m.prSearch) > 0:
+		return "No pull requests match " + m.prPredicateText
 	}
 
 	return "Nothing matches this view"

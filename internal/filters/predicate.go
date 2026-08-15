@@ -8,8 +8,8 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
-// Predicate reports whether a repo summary matches a filter expression.
-type Predicate func(models.RepoSummary) bool
+// Predicate reports whether a value of T matches a filter expression.
+type Predicate[T any] func(T) bool
 
 // ParseError reports a filter predicate expression that failed to parse.
 type ParseError struct {
@@ -21,8 +21,9 @@ func (e *ParseError) Error() string {
 	return fmt.Sprintf("parsing %q: %s", e.Input, e.Message)
 }
 
-func atoms() map[string]Predicate {
-	return map[string]Predicate{
+// RepoAtoms returns the predicate atoms available over a repo summary.
+func RepoAtoms() map[string]Predicate[models.RepoSummary] {
+	return map[string]Predicate[models.RepoSummary]{
 		"ahead":           func(s models.RepoSummary) bool { return s.Ahead > 0 },
 		"behind":          func(s models.RepoSummary) bool { return s.Behind > 0 },
 		"clean":           func(s models.RepoSummary) bool { return !s.IsDirty() },
@@ -43,10 +44,10 @@ func atoms() map[string]Predicate {
 	}
 }
 
-// AtomNames returns the valid predicate atoms, sorted, for completion.
-func AtomNames() []string {
-	names := make([]string, 0, len(atoms()))
-	for name := range atoms() {
+// AtomNames returns atoms' names, sorted, for completion and error messages.
+func AtomNames[T any](atoms map[string]Predicate[T]) []string {
+	names := make([]string, 0, len(atoms))
+	for name := range atoms {
 		names = append(names, name)
 	}
 	slices.Sort(names)
@@ -54,17 +55,19 @@ func AtomNames() []string {
 	return names
 }
 
-type parser struct {
+type parser[T any] struct {
 	input  string
 	tokens []string
 	pos    int
+	atoms  map[string]Predicate[T]
 }
 
 // ParsePredicate parses expressions like "dirty and has_pr",
-// "behind or ahead", "not clean", and "(dirty or behind) and has_pr".
+// "behind or ahead", "not clean", and "(dirty or behind) and has_pr" against
+// atoms, an atom name to Predicate map such as RepoAtoms() or PRAtoms().
 // Precedence: not > and > or.
-func ParsePredicate(input string) (Predicate, error) {
-	p := &parser{input: input, tokens: tokenize(input)}
+func ParsePredicate[T any](input string, atoms map[string]Predicate[T]) (Predicate[T], error) {
+	p := &parser[T]{input: input, tokens: tokenize(input), atoms: atoms}
 	if len(p.tokens) == 0 {
 		return nil, &ParseError{Input: input, Message: "empty expression"}
 	}
@@ -84,7 +87,7 @@ func tokenize(input string) []string {
 	return strings.Fields(replaced)
 }
 
-func (p *parser) peek() (string, bool) {
+func (p *parser[T]) peek() (string, bool) {
 	if p.pos < len(p.tokens) {
 		return p.tokens[p.pos], true
 	}
@@ -92,7 +95,7 @@ func (p *parser) peek() (string, bool) {
 	return "", false
 }
 
-func (p *parser) parseOr() (Predicate, error) {
+func (p *parser[T]) parseOr() (Predicate[T], error) {
 	left, err := p.parseAnd()
 	if err != nil {
 		return nil, err
@@ -108,11 +111,11 @@ func (p *parser) parseOr() (Predicate, error) {
 			return nil, err
 		}
 		l := left
-		left = func(s models.RepoSummary) bool { return l(s) || right(s) }
+		left = func(v T) bool { return l(v) || right(v) }
 	}
 }
 
-func (p *parser) parseAnd() (Predicate, error) {
+func (p *parser[T]) parseAnd() (Predicate[T], error) {
 	left, err := p.parseUnary()
 	if err != nil {
 		return nil, err
@@ -128,11 +131,11 @@ func (p *parser) parseAnd() (Predicate, error) {
 			return nil, err
 		}
 		l := left
-		left = func(s models.RepoSummary) bool { return l(s) && right(s) }
+		left = func(v T) bool { return l(v) && right(v) }
 	}
 }
 
-func (p *parser) parseUnary() (Predicate, error) {
+func (p *parser[T]) parseUnary() (Predicate[T], error) {
 	tok, ok := p.peek()
 	if !ok {
 		return nil, &ParseError{Input: p.input, Message: "unexpected end of expression"}
@@ -146,7 +149,7 @@ func (p *parser) parseUnary() (Predicate, error) {
 			return nil, err
 		}
 
-		return func(s models.RepoSummary) bool { return !inner(s) }, nil
+		return func(v T) bool { return !inner(v) }, nil
 
 	case "(":
 		p.pos++
@@ -166,9 +169,9 @@ func (p *parser) parseUnary() (Predicate, error) {
 		return nil, &ParseError{Input: p.input, Message: fmt.Sprintf("unexpected token %q", tok)}
 
 	default:
-		atom, found := atoms()[tok]
+		atom, found := p.atoms[tok]
 		if !found {
-			msg := fmt.Sprintf("unknown atom %q (valid: %s)", tok, strings.Join(AtomNames(), ", "))
+			msg := fmt.Sprintf("unknown atom %q (valid: %s)", tok, strings.Join(AtomNames(p.atoms), ", "))
 			return nil, &ParseError{Input: p.input, Message: msg}
 		}
 		p.pos++

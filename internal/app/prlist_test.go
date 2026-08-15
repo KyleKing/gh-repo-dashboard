@@ -21,6 +21,41 @@ func prTabModel() Model {
 	return m
 }
 
+// TestPRFilterNarrowsVisiblePRsAndCursor exercises the local ":filter" on the
+// PRs tab: it should narrow what's rendered without touching repo state, and
+// the cursor/Enter must resolve against the filtered list, not the raw fetch.
+func TestPRFilterNarrowsVisiblePRsAndCursor(t *testing.T) {
+	t.Parallel()
+	m := prTabModel()
+	m.prSearch = []models.PRInfo{
+		{Number: 11, Title: "Ready one", State: "OPEN", Repo: "acme/alpha"},
+		{Number: 12, Title: "Draft one", State: "OPEN", Repo: "acme/alpha", IsDraft: true},
+	}
+
+	m2, _ := m.ExecuteCommand("filter draft")
+	if m2.prPredicateText != "draft" {
+		t.Fatalf("expected PR predicate recorded, got %q", m2.prPredicateText)
+	}
+
+	visible := m2.visiblePRs()
+	if len(visible) != 1 || visible[0].Number != 12 {
+		t.Fatalf("expected only the draft PR visible, got %v", visible)
+	}
+
+	pr, ok := m2.selectedSearchPR()
+	if !ok || pr.Number != 12 {
+		t.Fatalf("expected the cursor to resolve to the draft PR, got %+v ok=%v", pr, ok)
+	}
+
+	m3, _ := m2.ExecuteCommand("filter")
+	if m3.prPredicateText != "" || m3.prPredicate != nil {
+		t.Errorf("expected bare :filter to clear the PR predicate, got %q", m3.prPredicateText)
+	}
+	if len(m3.visiblePRs()) != 2 {
+		t.Errorf("expected both PRs visible again, got %v", m3.visiblePRs())
+	}
+}
+
 // The bar has to name the key that opens each tab, in the case it is typed.
 func TestTabBarBracketsTheKeyAsTyped(t *testing.T) {
 	t.Parallel()
