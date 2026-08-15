@@ -2042,7 +2042,7 @@ func (m *Model) searchNotes(paths []string, query string) []string {
 
 	for _, path := range paths {
 		for _, note := range m.notesPreview[path] {
-			if strings.Contains(strings.ToLower(note.Content), queryLower) {
+			if filters.GlobMatch(queryLower, strings.ToLower(note.Content)) {
 				results = append(results, path)
 
 				break

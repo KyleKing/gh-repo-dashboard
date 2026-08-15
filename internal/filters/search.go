@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -52,17 +53,99 @@ func parseSearchScope(searchText string) (searchScope, string) {
 	}
 }
 
-// matchesScope reports whether name or branch (already lowercased) contains
-// query, narrowed to just the field scope names.
+// matchesScope reports whether name or branch (already lowercased) matches
+// query via GlobMatch, narrowed to just the field scope names.
 func matchesScope(scope searchScope, name, branch, query string) bool {
 	switch scope {
 	case scopeName:
-		return strings.Contains(name, query)
+		return GlobMatch(query, name)
 	case scopeBranch:
-		return strings.Contains(branch, query)
+		return GlobMatch(query, branch)
 	default:
-		return strings.Contains(name, query) || strings.Contains(branch, query)
+		return GlobMatch(query, name) || GlobMatch(query, branch)
 	}
+}
+
+// GlobMatch reports whether target matches a search query using shell-glob
+// syntax: "*" matches any run of characters (including "/", unlike
+// path.Match, since branch names and template sources both use it) and "?"
+// matches any single character; both are literal when escaped ("\*", "\?").
+// The query is auto-wrapped with "*" on whichever end isn't pinned by a
+// leading "^" or trailing "$" anchor, so a bare query keeps the "found
+// anywhere" convenience of a plain substring search while "^"/"$" (or both,
+// for an exact match) opt into pinning an edge. A literal "^" or "$" is
+// written escaped too: "\^", "\$". Actual matching is delegated to Go's
+// regexp engine once the glob syntax is translated.
+func GlobMatch(query, target string) bool {
+	re, err := regexp.Compile(globRegexp(query))
+
+	return err == nil && re.MatchString(target)
+}
+
+// globRegexp turns a search query into the anchored regular expression
+// GlobMatch runs: the "^"/"$" auto-wrap rule described on GlobMatch, then
+// "*"/"?"/escapes translated into regexp syntax via QuoteMeta for every
+// literal run.
+func globRegexp(query string) string {
+	prefixAnchor := false
+
+	switch {
+	case strings.HasPrefix(query, `\^`):
+		query = "^" + query[2:]
+	case strings.HasPrefix(query, "^"):
+		prefixAnchor = true
+		query = query[1:]
+	}
+
+	suffixAnchor := false
+
+	switch {
+	case strings.HasSuffix(query, `\$`):
+		query = query[:len(query)-2] + "$"
+	case strings.HasSuffix(query, "$"):
+		suffixAnchor = true
+		query = query[:len(query)-1]
+	}
+
+	var b strings.Builder
+
+	b.WriteByte('^')
+
+	if !prefixAnchor {
+		b.WriteString(".*")
+	}
+
+	escaped := false
+
+	for i := range len(query) {
+		c := query[i]
+
+		switch {
+		case escaped:
+			b.WriteString(regexp.QuoteMeta(string(c)))
+			escaped = false
+		case c == '\\':
+			escaped = true
+		case c == '*':
+			b.WriteString(".*")
+		case c == '?':
+			b.WriteString(".")
+		default:
+			b.WriteString(regexp.QuoteMeta(string(c)))
+		}
+	}
+
+	if escaped {
+		b.WriteString(regexp.QuoteMeta(`\`))
+	}
+
+	if !suffixAnchor {
+		b.WriteString(".*")
+	}
+
+	b.WriteByte('$')
+
+	return b.String()
 }
 
 // SearchRepos filters paths by searchText. With no scope prefix (or "r:"/
@@ -147,7 +230,7 @@ func filterByPR(paths []string, summaries map[string]models.RepoSummary, query s
 	var results []string
 
 	for _, path := range paths {
-		if pr := summaries[path].PRInfo; pr != nil && strings.Contains(strings.ToLower(pr.Title), queryLower) {
+		if pr := summaries[path].PRInfo; pr != nil && GlobMatch(queryLower, strings.ToLower(pr.Title)) {
 			results = append(results, path)
 		}
 	}
@@ -163,7 +246,7 @@ func filterByTemplate(paths []string, summaries map[string]models.RepoSummary, q
 
 	for _, path := range paths {
 		info := summaries[path].TemplateInfo
-		if info != nil && strings.Contains(strings.ToLower(info.SrcPath), queryLower) {
+		if info != nil && GlobMatch(queryLower, strings.ToLower(info.SrcPath)) {
 			results = append(results, path)
 		}
 	}

@@ -152,6 +152,39 @@ func TestSearchReposCommitRecencyScope(t *testing.T) {
 	}
 }
 
+func TestGlobMatch(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		query    string
+		target   string
+		expected bool
+	}{
+		{"bare query found anywhere", "main", "kyle/dev-main-fix", true},
+		{"bare query not found", "main", "kyle/dev-trunk-fix", false},
+		{"star wildcard spans separators", "dev-*-fix", "kyle/dev-1234-fix", true},
+		{"prefix anchor matches start", "^kyle", "kyle/dev-main-fix", true},
+		{"prefix anchor rejects non-start", "^dev", "kyle/dev-main-fix", false},
+		{"suffix anchor matches end", "fix$", "kyle/dev-main-fix", true},
+		{"suffix anchor rejects non-end", "main$", "kyle/dev-main-fix", false},
+		{"both anchors require exact match", "^main$", "main", true},
+		{"both anchors reject partial", "^main$", "mainline", false},
+		{"escaped literal asterisk", `v1\*`, "v1*", true},
+		{"escaped asterisk is not a wildcard", `v1\*`, "v1beta", false},
+		{"escaped leading caret is literal", `\^weird`, "^weird-name", true},
+		{"question mark matches one char", "v?.0", "v2.0", true},
+		{"question mark rejects extra char", "v?.0", "v20.0", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := filters.GlobMatch(tt.query, tt.target); got != tt.expected {
+				t.Errorf("GlobMatch(%q, %q) = %v; want %v", tt.query, tt.target, got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestSearchReposFuzzy(t *testing.T) {
 	t.Parallel()
 	paths := []string{"/authentication-service", "/other-app"}
