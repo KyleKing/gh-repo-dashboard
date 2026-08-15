@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -137,22 +138,44 @@ func overlayBottomLine(content, line string, height int) string {
 	return strings.Join(lines, "\n") + "\n" + line
 }
 
+// maxRenderedCompletions caps how many candidates the command bar lists at
+// once. A bare ":" matches every registered command, and a predicate atom's
+// prefix can match most of the atom table, so an uncapped list would swallow
+// most of the screen rather than sitting as a hint above the command line.
+const maxRenderedCompletions = 8
+
 // renderCompletionCandidates renders what the command bar's current text
 // could complete to, live as each key lands, so the grammar (command names,
 // then that command's own arguments) is visible before Tab is ever pressed
-// rather than only revealed by pressing it.
+// rather than only revealed by pressing it. Each candidate carries its own
+// one-line description underneath its name, the same explanation the full
+// help overlay gives it, so the meaning of an atom or a command never has to
+// be memorized or looked up separately.
 func (m Model) renderCompletionCandidates(width int) string {
 	candidates, ok := m.commandCompletionCandidates()
 	if !ok || len(candidates) == 0 {
 		return ""
 	}
 
-	parts := make([]string, len(candidates))
-	for i, name := range candidates {
-		parts[i] = styles.SubtitleStyle.Render(name)
+	shown, hidden := candidates, 0
+	if len(shown) > maxRenderedCompletions {
+		hidden = len(shown) - maxRenderedCompletions
+		shown = shown[:maxRenderedCompletions]
 	}
 
-	return table.Truncate(strings.Join(parts, "  "), width)
+	lines := make([]string, 0, len(shown)+1)
+	for _, c := range shown {
+		line := styles.SubtitleStyle.Bold(true).Render(c.Name)
+		if c.Description != "" {
+			line += styles.SubtitleStyle.Render("  " + c.Description)
+		}
+		lines = append(lines, table.Truncate(line, width))
+	}
+	if hidden > 0 {
+		lines = append(lines, styles.SubtitleStyle.Render(fmt.Sprintf("+%d more", hidden)))
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 func (m Model) renderView() string {

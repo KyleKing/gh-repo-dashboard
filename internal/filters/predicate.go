@@ -21,6 +21,13 @@ func (e *ParseError) Error() string {
 	return fmt.Sprintf("parsing %q: %s", e.Input, e.Message)
 }
 
+// Remote protocol atom names, shared by RepoAtoms and RepoAtomDescriptions so
+// each spells the name once rather than duplicating the literal.
+const (
+	atomHTTPS = "https"
+	atomSSH   = "ssh"
+)
+
 // RepoAtoms returns the predicate atoms available over a repo summary.
 func RepoAtoms() map[string]Predicate[models.RepoSummary] {
 	return map[string]Predicate[models.RepoSummary]{
@@ -35,12 +42,34 @@ func RepoAtoms() map[string]Predicate[models.RepoSummary] {
 		"has_pr":          func(s models.RepoSummary) bool { return s.PRInfo != nil },
 		"has_stash":       func(s models.RepoSummary) bool { return s.StashCount > 0 },
 		"has_upstream":    func(s models.RepoSummary) bool { return s.Upstream != "" },
-		"https":           func(s models.RepoSummary) bool { return s.RemoteProtocol == "https" },
+		atomHTTPS:         func(s models.RepoSummary) bool { return s.RemoteProtocol == atomHTTPS },
 		"jj":              func(s models.RepoSummary) bool { return s.VCSType == models.VCSTypeJJ },
-		"ssh":             func(s models.RepoSummary) bool { return s.RemoteProtocol == "ssh" },
+		atomSSH:           func(s models.RepoSummary) bool { return s.RemoteProtocol == atomSSH },
 		"template_drift": func(s models.RepoSummary) bool {
 			return s.TemplateInfo != nil && (s.TemplateInfo.Behind || !s.TemplateInfo.IsTag)
 		},
+	}
+}
+
+// RepoAtomDescriptions gives each RepoAtoms() name a one-line explanation, for
+// the command bar's completion candidates.
+func RepoAtomDescriptions() map[string]string {
+	return map[string]string{
+		"ahead":           "local branch has unpushed commits",
+		"behind":          "local branch is missing commits from upstream",
+		"clean":           "no uncommitted changes",
+		"config_override": "repo has local git config overrides",
+		"dirty":           "has uncommitted changes",
+		"error":           "the last scan of this repo failed",
+		"git":             "uses git rather than jj",
+		"has_notes":       "has a NOTES file",
+		"has_pr":          "has an open pull request",
+		"has_stash":       "has stashed changes",
+		"has_upstream":    "current branch tracks a remote",
+		atomHTTPS:         "remote uses an https URL",
+		"jj":              "uses Jujutsu rather than git",
+		atomSSH:           "remote uses an ssh URL",
+		"template_drift":  "behind or mismatched with its copier template",
 	}
 }
 

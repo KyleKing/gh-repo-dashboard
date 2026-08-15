@@ -51,7 +51,8 @@ func TestFooterCollapsesByPriorityInsteadOfClipping(t *testing.T) {
 }
 
 // TestCommandBarShowsCompletionsLive confirms the completion candidates
-// render as soon as text matches them, without a Tab press first.
+// render as soon as text matches them, without a Tab press first, each with
+// its own one-line explanation.
 func TestCommandBarShowsCompletionsLive(t *testing.T) {
 	t.Parallel()
 
@@ -63,6 +64,29 @@ func TestCommandBarShowsCompletionsLive(t *testing.T) {
 	rendered := plainText(m.renderScreen())
 	if !strings.Contains(rendered, "dirty") {
 		t.Errorf("expected the live completion candidate before any Tab press:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "uncommitted changes") {
+		t.Errorf("expected the atom's one-line description alongside it:\n%s", rendered)
+	}
+}
+
+// TestBareCommandPromptListsEveryCommandWithItsDescription confirms a bare
+// ":" is itself a discoverability surface: every registered command, each
+// with the same description the help overlay gives it.
+func TestBareCommandPromptListsEveryCommandWithItsDescription(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil, 1)
+	m.width, m.height = 120, 30
+	m.commandMode = true
+	m.commandInput.SetValue("")
+
+	rendered := plainText(m.renderScreen())
+	if !strings.Contains(rendered, nameFilter) {
+		t.Errorf("expected the filter command listed:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "Filter repos") {
+		t.Errorf("expected the filter command's own description alongside it:\n%s", rendered)
 	}
 }
 

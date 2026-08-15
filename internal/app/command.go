@@ -15,6 +15,7 @@ import (
 // key-help labels.
 const (
 	nameAll        = "all"
+	nameAnd        = "and"
 	nameBranch     = "branch"
 	nameCopyPath   = "copy path"
 	nameFetch      = "fetch"
@@ -28,6 +29,7 @@ const (
 	nameSort       = "sort"
 	nameStatus     = "status"
 	nameToggleDiff = "toggle full diff"
+	nameWhere      = "where"
 )
 
 // Command is a named `:command` invocable from the TUI's command bar.
@@ -35,7 +37,18 @@ type Command struct {
 	Name        string
 	Description string
 	Complete    func(m Model, args []string) []string
-	Run         func(m Model, args []string) (Model, tea.Cmd)
+	// Describe gives one of Complete's own candidates its one-line
+	// explanation for the command bar's completion list; nil (or an empty
+	// return) shows the candidate's name alone.
+	Describe func(m Model, candidate string) string
+	Run      func(m Model, args []string) (Model, tea.Cmd)
+}
+
+// CompletionCandidate pairs one completion result with its one-line
+// explanation, so the command bar can show both without a second lookup.
+type CompletionCandidate struct {
+	Name        string
+	Description string
 }
 
 // Registry holds the set of available commands.
@@ -97,6 +110,20 @@ func (r Registry) Candidates(prefix string) []string {
 	return names
 }
 
+// CandidatesWithDescriptions returns every command starting with the given
+// prefix, paired with its own Description, for the command bar's completion
+// list.
+func (r Registry) CandidatesWithDescriptions(prefix string) []CompletionCandidate {
+	var candidates []CompletionCandidate
+	for _, c := range r.commands {
+		if strings.HasPrefix(c.Name, prefix) {
+			candidates = append(candidates, CompletionCandidate{Name: c.Name, Description: c.Description})
+		}
+	}
+
+	return candidates
+}
+
 func filterModeNames() map[string]models.FilterMode {
 	return map[string]models.FilterMode{
 		"ahead":     models.FilterModeAhead,
@@ -116,6 +143,15 @@ func sortModeNames() map[string]models.SortMode {
 		"modified": models.SortModeModified,
 		"name":     models.SortModeName,
 		nameStatus: models.SortModeStatus,
+	}
+}
+
+func sortModeDescriptions() map[string]string {
+	return map[string]string{
+		nameBranch: "sort by current branch name",
+		"modified": "sort by most recently modified",
+		"name":     "sort by repo name",
+		nameStatus: "sort by dirty/clean status",
 	}
 }
 
@@ -195,53 +231,72 @@ func filterCommand() Command {
 		Name: nameFilter,
 		Description: "Filter repos: :filter <mode|predicate> or :filter to open the modal. " +
 			"On the PRs tab, filters the fetched list: :filter <predicate>",
-		Complete: func(m Model, args []string) []string {
-			prefix := ""
-			if len(args) > 0 {
-				prefix = args[len(args)-1]
-			}
+		Complete: completeFilterCommand,
+		Describe: describeFilterCommand,
+		Run:      runFilterCommand,
+	}
+}
 
-			atomNames := filters.AtomNames(filters.RepoAtoms())
-			if m.viewMode == ViewModePRList {
-				atomNames = filters.AtomNames(filters.PRAtoms())
-			}
+// completeFilterCommand answers ":filter"'s own completion candidates: repo
+// atoms normally, or PR atoms on the PRs tab, since the predicate it parses
+// against switches the same way.
+func completeFilterCommand(m Model, args []string) []string {
+	prefix := ""
+	if len(args) > 0 {
+		prefix = args[len(args)-1]
+	}
 
-			return predicateCandidates(prefix, atomNames)
-		},
-		Run: func(m Model, args []string) (Model, tea.Cmd) {
-			if m.viewMode == ViewModePRList {
-				return runPRFilterCommand(m, args)
-			}
+	atomNames := filters.AtomNames(filters.RepoAtoms())
+	if m.viewMode == ViewModePRList {
+		atomNames = filters.AtomNames(filters.PRAtoms())
+	}
 
-			if len(args) == 0 {
-				m.viewMode = ViewModeFilter
-				return m, nil
-			}
-			if len(args) == 1 {
-				if mode, ok := filterModeNames()[args[0]]; ok {
-					if mode == models.FilterModeAll {
-						m.ResetFilters()
-					} else {
-						m.SetFilter(mode)
-					}
-					m.updateFilteredPaths()
-					m.cursor = 0
+	return predicateCandidates(prefix, atomNames)
+}
 
-					return m, nil
-				}
+// describeFilterCommand explains one of completeFilterCommand's own
+// candidates, from whichever atom table is in play.
+func describeFilterCommand(m Model, candidate string) string {
+	atomDescs := filters.RepoAtomDescriptions()
+	if m.viewMode == ViewModePRList {
+		atomDescs = filters.PRAtomDescriptions()
+	}
+
+	return predicateDescription(candidate, atomDescs)
+}
+
+func runFilterCommand(m Model, args []string) (Model, tea.Cmd) {
+	if m.viewMode == ViewModePRList {
+		return runPRFilterCommand(m, args)
+	}
+
+	if len(args) == 0 {
+		m.viewMode = ViewModeFilter
+		return m, nil
+	}
+	if len(args) == 1 {
+		if mode, ok := filterModeNames()[args[0]]; ok {
+			if mode == models.FilterModeAll {
+				m.ResetFilters()
+			} else {
+				m.SetFilter(mode)
 			}
-			expr := strings.Join(args, " ")
-			pred, err := filters.ParsePredicate(expr, filters.RepoAtoms())
-			if err != nil {
-				return m, statusErrCmd(err.Error())
-			}
-			m.SetPredicate(expr, pred)
 			m.updateFilteredPaths()
 			m.cursor = 0
 
 			return m, nil
-		},
+		}
 	}
+	expr := strings.Join(args, " ")
+	pred, err := filters.ParsePredicate(expr, filters.RepoAtoms())
+	if err != nil {
+		return m, statusErrCmd(err.Error())
+	}
+	m.SetPredicate(expr, pred)
+	m.updateFilteredPaths()
+	m.cursor = 0
+
+	return m, nil
 }
 
 // runPRFilterCommand implements ":filter" on the PRs tab: no args clears the
@@ -299,10 +354,22 @@ func selectCommand() Command {
 					prefix = args[0]
 				}
 
-				return namesMatching(map[string]struct{}{nameAll: {}, overviewEmpty: {}, "where": {}}, prefix)
+				return namesMatching(map[string]struct{}{nameAll: {}, overviewEmpty: {}, nameWhere: {}}, prefix)
 			}
 
 			return predicateCandidates(args[len(args)-1], filters.AtomNames(filters.RepoAtoms()))
+		},
+		Describe: func(_ Model, candidate string) string {
+			switch candidate {
+			case nameAll:
+				return "select every visible repo"
+			case overviewEmpty:
+				return "clear the current selection"
+			case nameWhere:
+				return "select repos matching a predicate: :select where <predicate>"
+			default:
+				return predicateDescription(candidate, filters.RepoAtomDescriptions())
+			}
 		},
 		Run: runSelectCommand,
 	}
@@ -323,7 +390,7 @@ func runSelectCommand(m Model, args []string) (Model, tea.Cmd) {
 		}
 
 		return m, statusCmd(fmt.Sprintf("Selected %d repos", len(m.selectedPaths)))
-	case "where":
+	case nameWhere:
 		expr := strings.Join(args[1:], " ")
 		pred, err := filters.ParsePredicate(expr, filters.RepoAtoms())
 		if err != nil {
@@ -355,6 +422,9 @@ func sortCommand() Command {
 			}
 
 			return namesMatching(sortModeNames(), prefix)
+		},
+		Describe: func(_ Model, candidate string) string {
+			return sortModeDescriptions()[candidate]
 		},
 		Run: func(m Model, args []string) (Model, tea.Cmd) {
 			if len(args) == 0 {
@@ -388,6 +458,9 @@ func batchCommand(name, description, taskName string, taskCmd func([]string) tea
 			}
 
 			return predicateCandidates(prefix, filters.AtomNames(filters.RepoAtoms()))
+		},
+		Describe: func(_ Model, candidate string) string {
+			return predicateDescription(candidate, filters.RepoAtomDescriptions())
 		},
 		Run: func(m Model, args []string) (Model, tea.Cmd) {
 			return runBatchCommand(m, args, taskName, false, taskCmd)
@@ -450,6 +523,13 @@ func cleanupCommand() Command {
 
 			return candidates
 		},
+		Describe: func(_ Model, candidate string) string {
+			if candidate == dryRunFlag {
+				return "preview deletions instead of performing them"
+			}
+
+			return predicateDescription(candidate, filters.RepoAtomDescriptions())
+		},
 		Run: func(m Model, args []string) (Model, tea.Cmd) {
 			taskName := taskCleanupMerged
 			taskCmd := batchCleanupMergedCmd
@@ -472,6 +552,24 @@ func cleanupCommand() Command {
 	}
 }
 
+// predicateDescription explains one predicateCandidates() result: an atom
+// looked up in atomDescs, or one of the boolean words every predicate
+// expression accepts regardless of which atom table is in play.
+func predicateDescription(candidate string, atomDescs map[string]string) string {
+	switch candidate {
+	case nameAnd:
+		return "matches when both sides are true"
+	case "or":
+		return "matches when either side is true"
+	case "not":
+		return "negates the atom or group that follows"
+	case nameAll:
+		return "clears the filter back to everything"
+	default:
+		return atomDescs[candidate]
+	}
+}
+
 func predicateCandidates(prefix string, atomNames []string) []string {
 	var names []string
 	for _, name := range atomNames {
@@ -479,7 +577,7 @@ func predicateCandidates(prefix string, atomNames []string) []string {
 			names = append(names, name)
 		}
 	}
-	for _, word := range []string{"and", nameAll, "not", "or"} {
+	for _, word := range []string{nameAnd, nameAll, "not", "or"} {
 		if strings.HasPrefix(word, prefix) && prefix != "" {
 			names = append(names, word)
 		}
