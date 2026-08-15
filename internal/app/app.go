@@ -128,8 +128,11 @@ type Model struct {
 	detailScroll  int
 	// prViewIndex selects which of models.PRViews the PRs tab is showing, and
 	// prFleet widens that view from this repo to everything the search reaches.
-	prViewIndex     int
-	prFleet         bool
+	prViewIndex int
+	prFleet     bool
+	// prQueryOverride is a session-scoped ":pr-query" replacement for the
+	// current view's own Search string; empty means use the view's Search.
+	prQueryOverride string
 	prSearch        []models.PRInfo
 	prSearchCursor  int
 	prSearchLoading bool

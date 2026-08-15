@@ -162,6 +162,37 @@ func TestASearchAnswerForAnotherViewIsDropped(t *testing.T) {
 	}
 }
 
+// TestPRQueryOverrideSurvivesRefetchButNotViewSwitch guards the staleness
+// check: an overridden query's result must not be dropped as stale, but the
+// override itself must not silently carry over onto a different view.
+func TestPRQueryOverrideSurvivesRefetchButNotViewSwitch(t *testing.T) {
+	t.Parallel()
+
+	m := prTabModel()
+	overridden, _ := m.ExecuteCommand("pr-query is:open label:bug")
+	m2 := mustModel(t, overridden)
+	if m2.prQueryOverride != "is:open label:bug" {
+		t.Fatalf("expected override recorded, got %q", m2.prQueryOverride)
+	}
+	if !m2.prSearchLoading {
+		t.Fatal("expected :pr-query to trigger a refetch")
+	}
+
+	landed := mustModel(t, mustUpdate(t, &m2, PRSearchLoadedMsg{
+		Query: "is:open label:bug",
+		PRs:   []models.PRInfo{{Number: 42}},
+	}))
+	if len(landed.prSearch) != 1 || landed.prSearchLoading {
+		t.Errorf("overridden query's result should land, got rows=%d loading=%v",
+			len(landed.prSearch), landed.prSearchLoading)
+	}
+
+	cycled := mustModel(t, mustUpdate(t, &landed, keyPress(']')))
+	if cycled.prQueryOverride != "" {
+		t.Errorf("expected the override to clear on view switch, got %q", cycled.prQueryOverride)
+	}
+}
+
 // A landed search's row count is already in the heading badge
 // (renderPRListHeading); a status message duplicating it never gets cleared,
 // so it would sit permanently over the footer.

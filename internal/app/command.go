@@ -20,6 +20,7 @@ const (
 	nameFetch      = "fetch"
 	nameFilter     = "filter"
 	nameHelp       = "help"
+	namePRQuery    = "pr-query"
 	nameQuit       = "quit"
 	nameRefresh    = "refresh"
 	nameSelect     = "select"
@@ -151,6 +152,7 @@ func DefaultRegistry() Registry {
 			},
 		},
 		historyCommand(),
+		prQueryCommand(),
 		Command{
 			Name:        "prs",
 			Description: "Map open PRs to the local branches and checkouts that hold them",
@@ -259,6 +261,29 @@ func runPRFilterCommand(m Model, args []string) (Model, tea.Cmd) {
 	m.SetPRPredicate(expr, pred)
 
 	return m, nil
+}
+
+// prQueryCommand builds the ":pr-query" command: on the PRs tab, replaces the
+// current saved view's own GitHub search query for this session, for
+// anything the local ":filter" predicate can't express (labels, dates,
+// anything GitHub's search syntax supports). No args reverts to the view's
+// own query. The override is cleared automatically when a different view is
+// picked or cycled to, so it never silently outlives the view it was written
+// for.
+func prQueryCommand() Command {
+	return Command{
+		Name:        namePRQuery,
+		Description: "Override the PRs tab's GitHub query for this session: :pr-query <search> or :pr-query to revert",
+		Run: func(m Model, args []string) (Model, tea.Cmd) {
+			if m.viewMode != ViewModePRList {
+				return m, statusErrCmd(":pr-query only applies to the PRs tab")
+			}
+
+			m.prQueryOverride = strings.Join(args, " ")
+
+			return m.runPRSearch()
+		},
+	}
 }
 
 // selectCommand builds the ":select" command: "all", "none", or

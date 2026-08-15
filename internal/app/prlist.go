@@ -49,9 +49,20 @@ func (m Model) openPRList() (Model, tea.Cmd) {
 	return m.runPRSearch()
 }
 
-// runPRSearch reads the current view. The cache behind it answers a repeat
-// within the TTL without touching the network, so cycling back to a view
-// already read is free and refresh is what forces a re-read.
+// prQueryText is the GitHub search query that actually runs: the
+// session-scoped ":pr-query" override when one is set, else the current
+// view's own Search string.
+func (m Model) prQueryText() string {
+	if m.prQueryOverride != "" {
+		return m.prQueryOverride
+	}
+
+	return m.currentPRView().Search
+}
+
+// runPRSearch reads the current view (or its override). The cache behind it
+// answers a repeat within the TTL without touching the network, so cycling
+// back to a view already read is free and refresh is what forces a re-read.
 func (m Model) runPRSearch() (Model, tea.Cmd) {
 	repo := m.prSearchRepo()
 	if repo == "" {
@@ -65,15 +76,13 @@ func (m Model) runPRSearch() (Model, tea.Cmd) {
 	m.prSearchError = ""
 	m.prSearchLoading = true
 
-	view := m.currentPRView()
-
-	return m, loadPRSearchCmd(repo, m.summaries[repo].RemoteID, view.Search, m.prFleet)
+	return m, loadPRSearchCmd(repo, m.summaries[repo].RemoteID, m.prQueryText(), m.prFleet)
 }
 
 // handlePRSearchLoaded takes the rows a search returned, ignoring an answer to
 // a question that is no longer on screen.
 func (m Model) handlePRSearchLoaded(msg PRSearchLoadedMsg) (tea.Model, tea.Cmd) {
-	if msg.Query != m.currentPRView().Search || msg.Fleet != m.prFleet {
+	if msg.Query != m.prQueryText() || msg.Fleet != m.prFleet {
 		return m, nil
 	}
 
@@ -147,6 +156,7 @@ func (m Model) cyclePRView(step int) (tea.Model, tea.Cmd) {
 	}
 
 	m.prViewIndex = (m.prViewIndex + step + len(views)) % len(views)
+	m.prQueryOverride = ""
 
 	return m.runPRSearch()
 }
@@ -331,11 +341,14 @@ func (m Model) handlePRViewMenuKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	if pick, err := strconv.Atoi(msg.String()); err == nil && pick >= 1 && pick <= len(views) {
 		m.prViewIndex = pick - 1
+		m.prQueryOverride = ""
 
 		return m.runPRSearch()
 	}
 
 	if msg.String() == keyEnter {
+		m.prQueryOverride = ""
+
 		return m.runPRSearch()
 	}
 

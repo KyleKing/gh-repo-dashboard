@@ -100,18 +100,20 @@ func (m Model) renderPRListHeading(width int) string {
 	}
 
 	return truncate(head+"  "+badge, width) + "\n" +
-		styles.SubtitleStyle.Render(truncate(m.effectiveQuery(view), width))
+		styles.SubtitleStyle.Render(truncate(m.effectiveQuery(), width))
 }
 
-// effectiveQuery is the query as it will actually run, which for a widened
-// search is not what the view says: the subject and the sort are rewritten for
-// the command that answers it.
-func (m Model) effectiveQuery(view models.PRView) string {
+// effectiveQuery is the query as it will actually run: the session-scoped
+// ":pr-query" override when one is set, else the current view's own Search,
+// rewritten for a widened search where the subject and sort differ from what
+// the view says.
+func (m Model) effectiveQuery() string {
+	query := m.prQueryText()
 	if !m.prFleet {
-		return view.Search
+		return query
 	}
 
-	return strings.Join(github.FleetSearchArgs(view.Search), " ")
+	return strings.Join(github.FleetSearchArgs(query), " ")
 }
 
 func (m Model) renderPRListBody(width int) string {
