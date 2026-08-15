@@ -1992,14 +1992,25 @@ func (m *Model) completeCommand() {
 	m.commandInput.CursorEnd()
 }
 
+// notesSearchPrefix scopes a search to note content. It's handled entirely in
+// this package rather than internal/filters, since note bodies (m.notesPreview)
+// are only ever loaded here.
+const notesSearchPrefix = "n:"
+
 func (m *Model) updateFilteredPaths() {
-	m.filteredPaths = filters.FilterAndSortMulti(
-		m.listableRepos(),
-		m.summaries,
-		m.activeFilters,
-		m.activeSorts,
-		m.searchText,
-	)
+	if strings.HasPrefix(m.searchText, notesSearchPrefix) {
+		filtered := filters.FilterReposMulti(m.listableRepos(), m.summaries, m.activeFilters)
+		filtered = m.searchNotes(filtered, strings.TrimPrefix(m.searchText, notesSearchPrefix))
+		m.filteredPaths = filters.SortPathsMulti(filtered, m.summaries, m.activeSorts)
+	} else {
+		m.filteredPaths = filters.FilterAndSortMulti(
+			m.listableRepos(),
+			m.summaries,
+			m.activeFilters,
+			m.activeSorts,
+			m.searchText,
+		)
+	}
 
 	if m.predicate != nil {
 		var matched []string
@@ -2018,6 +2029,28 @@ func (m *Model) updateFilteredPaths() {
 			m.cursor = 0
 		}
 	}
+}
+
+// searchNotes filters paths to those whose loaded notes contain query,
+// case-insensitively. A repo whose notes haven't loaded yet (m.notesPreview
+// has no entry for it) simply doesn't match, the same pending-data behavior
+// the rest of the app already has for other async fields.
+func (m *Model) searchNotes(paths []string, query string) []string {
+	queryLower := strings.ToLower(query)
+
+	var results []string
+
+	for _, path := range paths {
+		for _, note := range m.notesPreview[path] {
+			if strings.Contains(strings.ToLower(note.Content), queryLower) {
+				results = append(results, path)
+
+				break
+			}
+		}
+	}
+
+	return results
 }
 
 // confirmBatchTask gates a batch run that deletes things behind the same
