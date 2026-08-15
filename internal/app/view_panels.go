@@ -343,21 +343,23 @@ func (m Model) shownNote() (models.NoteFileContent, bool) {
 	return m.notesFiles[0], true
 }
 
+// notesPreviewMaxLines caps how many lines of a note the side panel shows, so
+// an especially long note can't crowd out the panels beside it the way an
+// unbounded panelWant would.
+const notesPreviewMaxLines = 8
+
 // noteBodyRows are a note's text, rendered below the file list so the panel's
 // earned height carries the note itself rather than blank rows. They sit past
-// the selectable rows, so the cursor never lands on one.
+// the selectable rows, so the cursor never lands on one. Rendering (including
+// the bang-line highlight and the elided preview) reuses the Repos list's own
+// note-preview logic, so a note reads the same way in both places.
 func noteBodyRows(content string, width int) []string {
-	body := strings.Split(strings.TrimSpace(content), "\n")
+	lines := elideMiddle(notesBodyLines(content, width), notesPreviewMaxLines)
 
-	rows := make([]string, 0, len(body)+1)
+	rows := make([]string, 0, len(lines)+1)
 	rows = append(rows, "")
 
-	for _, line := range body {
-		rows = append(rows, styles.NotesPreviewLineStyle.Render(
-			table.TruncateMiddle("  "+strings.TrimRight(line, " \t"), width)))
-	}
-
-	return rows
+	return append(rows, lines...)
 }
 
 // firstContentLine returns a note's first line that carries content, skipping
