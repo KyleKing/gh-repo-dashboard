@@ -74,6 +74,8 @@ func helpSections() []helpSection {
 				{"f", "Filter menu (enter/key cycles, *=reset)"},
 				{"s", "Sort menu (enter/key cycles, [/]=reorder, *=reset)"},
 				{"/", "Search repositories (r:/b: to scope name or branch)"},
+				{":filter", "Boolean expression over the dock modes plus clean/https/ssh/" +
+					"has_upstream/config_override/error/template_drift (and/or/not, parens)"},
 			},
 		},
 		{
@@ -186,8 +188,46 @@ func (m Model) renderActionModal() string {
 	return centerModal(m, content)
 }
 
+// countForFilter previews the fleet-wide count with mode forced to
+// enabled and non-inverted, combined with every other currently active
+// filter, predicate, and search, so a dock row shows what turning it on
+// would yield rather than that mode's count in isolation.
 func (m Model) countForFilter(mode models.FilterMode) int {
-	return len(filters.FilterRepos(m.repoPaths, m.summaries, mode))
+	hypothetical := make([]models.ActiveFilter, 0, len(m.activeFilters)+1)
+
+	found := false
+
+	for _, f := range m.activeFilters {
+		if f.Mode == mode {
+			f.Enabled, f.Inverted = true, false
+			found = true
+		}
+
+		hypothetical = append(hypothetical, f)
+	}
+
+	if !found {
+		hypothetical = append(hypothetical, models.ActiveFilter{Mode: mode, Enabled: true})
+	}
+
+	matched := filters.FilterReposMulti(m.listableRepos(), m.summaries, hypothetical)
+	if m.searchText != "" {
+		matched = filters.SearchRepos(matched, m.summaries, m.searchText)
+	}
+
+	if m.predicate == nil {
+		return len(matched)
+	}
+
+	count := 0
+
+	for _, path := range matched {
+		if summary, ok := m.summaries[path]; ok && m.predicate(summary) {
+			count++
+		}
+	}
+
+	return count
 }
 
 // compactSortPriorities closes gaps in sortsByPriority's Priority values in

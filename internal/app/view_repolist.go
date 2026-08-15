@@ -65,7 +65,7 @@ func (m Model) listBodyHeight() int {
 	case m.searching:
 		height -= searchChromeHeight
 	case m.viewMode == ViewModeFilter:
-		height -= filterDockHeight()
+		height -= m.filterDockHeight()
 	case m.viewMode == ViewModeSort:
 		height -= sortDockHeight()
 	}
@@ -217,25 +217,34 @@ func renderModalRow(selected bool, mark, shortKey, label string, markStyle lipgl
 const dockHeaderAndSpacerLines = 2
 
 // filterDockHeight is the line count renderFilterDock spends, so
-// listBodyHeight can shrink the table by exactly that much.
-func filterDockHeight() int {
-	return len(models.SelectableFilterModes()) + dockHeaderAndSpacerLines
+// listBodyHeight can shrink the table by exactly that much. An active
+// predicate adds one more line for its own row.
+func (m Model) filterDockHeight() int {
+	height := len(models.SelectableFilterModes()) + dockHeaderAndSpacerLines
+	if m.predicateText != "" {
+		height++
+	}
+
+	return height
 }
 
 // renderFilterDock renders the filter editor docked above the table: a
-// header row, one row per filter mode showing its cycle state and how many
-// repos it alone would match. The combined result of every active filter is
+// header row, one row per filter mode showing its cycle state and the
+// fleet-wide count if that mode were turned on, combined with everything
+// else already active. The combined result of every active filter is
 // already visible in the breadcrumb's "N/M repos" badge above, since docking
-// (instead of a full-screen takeover) keeps that badge on screen while editing.
+// (instead of a full-screen takeover) keeps that badge on screen while
+// editing. An active :filter predicate gets its own row below the modes,
+// since it is an extra AND term the mode rows can't represent or clear.
 func (m Model) renderFilterDock() string {
 	modes := models.SelectableFilterModes()
 
 	headerStyle := lipgloss.NewStyle().Foreground(styles.Subtext0).Bold(true)
 	header := fmt.Sprintf("  %s  %s  %s  %s",
 		padCell("", modalMarkColWidth), padCell("Key", modalKeyColWidth),
-		padCell("Filter", filterLabelColWidth), "Count")
+		padCell("Filter", filterLabelColWidth), "If on")
 
-	lines := make([]string, 1, 1+len(modes))
+	lines := make([]string, 1, 1+len(modes)+1)
 	lines[0] = headerStyle.Render(header)
 
 	for i, mode := range modes {
@@ -260,6 +269,11 @@ func (m Model) renderFilterDock() string {
 
 		lines = append(lines, renderModalRow(i == m.filterCursor, mark, mode.ShortKey(), mode.String(),
 			markStyle, strconv.Itoa(m.countForFilter(mode))))
+	}
+
+	if m.predicateText != "" {
+		lines = append(lines, renderModalRow(false, "AND", "x", m.predicateText,
+			lipgloss.NewStyle().Foreground(styles.Peach), "clear"))
 	}
 
 	return strings.Join(lines, "\n")
@@ -1163,6 +1177,40 @@ func footerHints(expandOpen bool) []footerHint {
 	}
 }
 
+// filterDockFooterHints lists the filter dock's own keys, so the grammar
+// (cycle, invert, reset, clear the predicate) is visible while the dock is
+// actually open rather than only behind the help overlay.
+//
+//nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
+func filterDockFooterHints(hasPredicate bool) []footerHint {
+	hints := []footerHint{
+		{key: keyNavPair, desc: descNav, priority: 5},
+		{key: "enter/key", desc: "cycle", priority: 6},
+		{key: "*", desc: "reset", priority: 4},
+		{key: keyEsc, desc: descBack, priority: 7},
+		{key: "q", desc: nameQuit, priority: 8},
+	}
+	if hasPredicate {
+		hints = append(hints, footerHint{key: "x", desc: "clear predicate", priority: 3})
+	}
+
+	return hints
+}
+
+// sortDockFooterHints lists the sort dock's own keys.
+//
+//nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
+func sortDockFooterHints() []footerHint {
+	return []footerHint{
+		{key: keyNavPair, desc: descNav, priority: 5},
+		{key: "enter/key", desc: "cycle", priority: 6},
+		{key: keyBracketPair, desc: "reorder", priority: 4},
+		{key: "*", desc: "reset", priority: 3},
+		{key: keyEsc, desc: descBack, priority: 7},
+		{key: "q", desc: nameQuit, priority: 8},
+	}
+}
+
 func (m Model) renderFooter() string {
 	prefix := ""
 	if m.pendingOperator != "" {
@@ -1172,7 +1220,18 @@ func (m Model) renderFooter() string {
 		prefix = styles.FooterKeyStyle.Render(hint) + styles.FooterDescStyle.Render(pendingHint) + "  "
 	}
 
-	hints := fittingHints(footerHints(m.expandOpen), listWidth(m.width)-lipgloss.Width(prefix))
+	var dockHints []footerHint
+
+	switch m.viewMode {
+	case ViewModeFilter:
+		dockHints = filterDockFooterHints(m.predicateText != "")
+	case ViewModeSort:
+		dockHints = sortDockFooterHints()
+	default:
+		dockHints = footerHints(m.expandOpen)
+	}
+
+	hints := fittingHints(dockHints, listWidth(m.width)-lipgloss.Width(prefix))
 
 	parts := make([]string, 0, len(hints))
 	for _, h := range hints {

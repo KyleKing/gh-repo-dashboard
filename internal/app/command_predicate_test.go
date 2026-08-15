@@ -2,6 +2,7 @@
 package app
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -146,6 +147,58 @@ func TestSelectionMarkerRendered(t *testing.T) {
 	}
 	if !strings.Contains(output, "1 selected") {
 		t.Error("expected selection badge in status bar")
+	}
+}
+
+func TestCountForFilterReflectsActiveFilters(t *testing.T) {
+	t.Parallel()
+	m := New([]string{"/test"}, 1)
+	m.loading = false
+	m.repoPaths = []string{"/test/dirty-pr", "/test/clean-pr", "/test/dirty"}
+	m.summaries = map[string]models.RepoSummary{
+		"/test/dirty-pr": {
+			Path: "/test/dirty-pr", Branch: mainBranchName, Unstaged: 1, PRInfo: &models.PRInfo{Number: 1},
+		},
+		"/test/clean-pr": {Path: "/test/clean-pr", Branch: mainBranchName, PRInfo: &models.PRInfo{Number: 2}},
+		"/test/dirty":    {Path: "/test/dirty", Branch: mainBranchName, Unstaged: 1},
+	}
+	m.updateFilteredPaths()
+
+	if got := m.countForFilter(models.FilterModeHasPR); got != 2 {
+		t.Errorf("expected 2 repos with a PR before Dirty is active, got %d", got)
+	}
+
+	m.CycleFilterState(models.FilterModeDirty)
+	m.updateFilteredPaths()
+
+	if got := m.countForFilter(models.FilterModeHasPR); got != 1 {
+		t.Errorf("expected Has PR's preview to narrow to 1 once Dirty is active, got %d", got)
+	}
+}
+
+func TestClearPredicateKeyLeavesDockFiltersIntact(t *testing.T) {
+	t.Parallel()
+	m := predicateModel()
+	m.CycleFilterState(models.FilterModeDirty)
+
+	m2, _ := m.ExecuteCommand("filter dirty and has_pr")
+	if m2.predicateText == "" {
+		t.Fatal("expected predicate set before clearing")
+	}
+
+	m2.viewMode = ViewModeFilter
+
+	updated, _ := m2.handleFilterKey(keyPress('x'))
+	result, ok := updated.(Model)
+	if !ok {
+		t.Fatalf("expected Model, got %T", updated)
+	}
+
+	if result.predicateText != "" {
+		t.Errorf("expected predicate cleared, got %q", result.predicateText)
+	}
+	if !slices.Contains(result.ActiveFilterModes(), models.FilterModeDirty) {
+		t.Errorf("expected dock's Dirty filter to remain enabled, got %v", result.ActiveFilterModes())
 	}
 }
 

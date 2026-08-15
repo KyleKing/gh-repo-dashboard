@@ -102,6 +102,7 @@ func filterModeNames() map[string]models.FilterMode {
 		nameAll:     models.FilterModeAll,
 		"behind":    models.FilterModeBehind,
 		"dirty":     models.FilterModeDirty,
+		"git":       models.FilterModeGit,
 		"has_notes": models.FilterModeHasNotes,
 		"has_pr":    models.FilterModeHasPR,
 		"has_stash": models.FilterModeHasStash,

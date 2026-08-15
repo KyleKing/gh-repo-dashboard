@@ -246,12 +246,16 @@ the installed ref plus a warning icon when it isn't a tag.
 Filtering is compositional: `FilterMode -> SearchText -> SortMode -> Display`. For
 example, the `DIRTY` filter plus an `api` search yields dirty repos containing "api".
 
-- Filter modes: `ALL`, `DIRTY`, `AHEAD`, `BEHIND`, `HAS_PR`, `HAS_STASH`, `HAS_NOTES` (multi-filter with AND logic)
+- Filter modes: `ALL`, `DIRTY`, `AHEAD`, `BEHIND`, `HAS_PR`, `HAS_STASH`, `HAS_NOTES`, `GIT` (multi-filter with AND logic). The `f` dock shows one row per mode with its cycle state (off, on, `NOT`) and a live "if on" count: the fleet-wide total that mode would produce combined with every other filter, the predicate, and the search already active, not that mode evaluated alone.
 - Sort modes: `NAME`, `MODIFIED`, `STATUS`, `BRANCH`, with multi-field priority and ASC/DESC direction
 - Search: case-insensitive fuzzy matching via `sahilm/fuzzy`, applied after filter mode and before sort, updating in real time. Matches repo name or checked-out branch by default; an `r:` or `b:` prefix scopes to just one field, e.g. `b:main` finds only repos sitting on a branch named "main" rather than also a repo named "main"
+- `:filter <expr>` layers a boolean predicate (`and`/`or`/`not`, parens) on top of the dock's filters as an extra AND term. Its atoms are a superset of the dock modes: `ahead`, `behind`, `clean` (`not dirty`), `dirty`, `has_pr`, `has_stash`, `has_notes`, `git`, plus dock-absent atoms `jj`, `https`, `ssh`, `has_upstream`, `config_override`, `error`, `template_drift`. The predicate shows as its own row in the `f` dock when set, cleared independently with `x` (the dock's `*` resets everything, filters and predicate alike).
 
 Adding a filter mode: add the const to `models/enums.go`, a filter function in
-`filters/filter.go`, a case in `FilterRepos()`, and tests in `filters/filter_test.go`.
+`filters/filter.go`, a case in `FilterRepos()`, and tests in `filters/filter_test.go`. A
+boolean criterion doesn't need dock promotion to be usable — it can live as a
+`:filter`-only predicate atom in `filters/predicate.go`'s `atoms()` map instead; promote
+one to the dock only when it is common enough to earn permanent screen space.
 
 ## UI Design
 

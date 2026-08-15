@@ -200,7 +200,7 @@ func prDetailFooter(width int) string {
 		{key: keyEsc, desc: descBack, priority: 9},
 		{key: "?", desc: "help", priority: 8},
 		{key: keyNavPair, desc: "scroll", priority: 7},
-		{key: "[/]", desc: "prev/next PR", priority: 6},
+		{key: keyBracketPair, desc: "prev/next PR", priority: 6},
 		{key: "o", desc: "browser", priority: 5},
 		{key: "M", desc: "squash-merge", priority: 4},
 		{key: "u", desc: descCopyURL, priority: 3},

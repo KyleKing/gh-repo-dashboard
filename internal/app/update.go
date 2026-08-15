@@ -1758,6 +1758,13 @@ func (m Model) handleFilterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
+	case msg.String() == "x" && m.predicateText != "":
+		m.SetPredicate("", nil)
+		m.updateFilteredPaths()
+		m.cursor = 0
+
+		return m, nil
+
 	default:
 		for _, mode := range modes {
 			if msg.String() == mode.ShortKey() {

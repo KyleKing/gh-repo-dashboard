@@ -126,6 +126,23 @@ func TestFilterReposHasNotes(t *testing.T) {
 	}
 }
 
+func TestFilterReposGit(t *testing.T) {
+	t.Parallel()
+	paths := []string{testRepo1Path, "/repo2"}
+	summaries := map[string]models.RepoSummary{
+		testRepo1Path: {Path: testRepo1Path, VCSType: models.VCSTypeGit},
+		"/repo2":      {Path: "/repo2", VCSType: models.VCSTypeJJ},
+	}
+
+	result := filters.FilterRepos(paths, summaries, models.FilterModeGit)
+	if len(result) != 1 {
+		t.Errorf("expected 1 repo, got %d", len(result))
+	}
+	if result[0] != testRepo1Path {
+		t.Errorf("expected /repo1, got %s", result[0])
+	}
+}
+
 func TestFilterReposMultiNoFilters(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2", "/repo3"}

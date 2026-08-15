@@ -163,7 +163,7 @@ func (m Model) prListFooter(width int) string {
 		{key: keyNavPair, desc: descNav, priority: panelHintPriority},
 		{key: keyEnter, desc: descDetail, priority: panelHintPriority - navHintStep},
 		{key: "f", desc: descView, priority: panelHintPriority - navHintStep},
-		{key: "[/]", desc: "cycle views", priority: panelHintPriority - navHintStep*3},
+		{key: keyBracketPair, desc: "cycle views", priority: panelHintPriority - navHintStep*3},
 		{key: "*", desc: m.prScopeHint(), priority: panelHintPriority - navHintStep*2},
 		{key: panelActionLeader, desc: "act", priority: panelHintPriority - navHintStep*2},
 		{key: keyEsc, desc: "repos", priority: panelHintPriority - navHintStep*4},

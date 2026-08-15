@@ -34,6 +34,7 @@ const (
 	FilterModeHasPR
 	FilterModeHasStash
 	FilterModeHasNotes
+	FilterModeGit
 )
 
 func (f FilterMode) String() string {
@@ -52,6 +53,8 @@ func (f FilterMode) String() string {
 		return "Has Stash"
 	case FilterModeHasNotes:
 		return "Has Notes"
+	case FilterModeGit:
+		return "Git"
 	default:
 		return "Unknown"
 	}
@@ -74,6 +77,8 @@ func (f FilterMode) ShortKey() string {
 		return "s"
 	case FilterModeHasNotes:
 		return "n"
+	case FilterModeGit:
+		return "g"
 	default:
 		return "?"
 	}
@@ -89,6 +94,7 @@ func AllFilterModes() []FilterMode {
 		FilterModeHasPR,
 		FilterModeHasStash,
 		FilterModeHasNotes,
+		FilterModeGit,
 	}
 }
 
@@ -101,6 +107,7 @@ func SelectableFilterModes() []FilterMode {
 		FilterModeHasPR,
 		FilterModeHasStash,
 		FilterModeHasNotes,
+		FilterModeGit,
 	}
 }
 

@@ -4,9 +4,10 @@ import "charm.land/bubbles/v2/key"
 
 // Key name strings shared across key bindings, key handling, footers, and fixture tests.
 const (
-	keyEnter = "enter"
-	keyEsc   = "esc"
-	keyTab   = "tab"
+	keyEnter       = "enter"
+	keyEsc         = "esc"
+	keyTab         = "tab"
+	keyBracketPair = "[/]"
 )
 
 // KeyMap holds the key bindings used across the TUI.

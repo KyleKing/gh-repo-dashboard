@@ -82,6 +82,8 @@ func passesFilter(s *models.RepoSummary, mode models.FilterMode) bool {
 		return s.StashCount > 0
 	case models.FilterModeHasNotes:
 		return s.HasNotes()
+	case models.FilterModeGit:
+		return s.VCSType == models.VCSTypeGit
 	default:
 		return true
 	}
