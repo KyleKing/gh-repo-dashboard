@@ -7,3 +7,6 @@ extend-exclude = ["CHANGELOG.md"]
 [default.extend-words]
 decorder = "decorder"
 importas = "importas"
+# "[c]ommit:" (a bracketed-shortcut legend) tokenizes as "ommit", which typos
+# otherwise reads as a misspelling of "omit".
+ommit = "ommit"
