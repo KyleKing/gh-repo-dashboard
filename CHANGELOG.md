@@ -1,3 +1,38 @@
+## v1.9.0 (2026-08-15)
+
+### Feat
+
+- **app**: show a one-line explanation for every command-bar completion
+- **app**: flag PRs missing a requested reviewer, preview a row in place
+- **app**: show live command completion and a search scope legend
+- **app**: support * and ? glob wildcards in search, with ^/$ anchors
+- **app**: add p:, t:, c:, and n: search prefixes
+- **app**: add :pr-query to override a PR view's GitHub search this session
+- **app**: let :filter narrow the PRs tab like it does the repo list
+- **app**: preview combined filter counts, surface the predicate and Git mode
+- **app**: dock the filter and sort editors instead of a full-screen takeover
+- **app**: surface find grammar as placeholder hints instead of help-only
+- **app**: show the newest edited file, flag stale and off-default branches
+- **app**: search matches branch name too, palette search goes fuzzy
+- **app**: merge BRANCH/PR count columns, break CI down by outcome
+- **app**: call out peers holding a real branch, not just main
+- **app**: show local branch count in Repo List, trim branch names from the right
+
+### Fix
+
+- **demo**: correct the build and flag order, add the PRs tab
+- **app**: cap the repo detail Notes panel preview and highlight ! lines
+- **app**: make PR and PEERS load for real instead of a permanent dash
+- **app**: give BRs its own fetch, spin while BRs/PRs load, stop blocking startup on gh auth
+
+### Refactor
+
+- **app**: move repo identity badges from breadcrumb into Status's preview
+
+### Perf
+
+- **app**: fix quadratic BranchConflictCount, add a scroll-latency regression test
+
 ## v1.8.0 (2026-08-13)
 
 ### Feat
