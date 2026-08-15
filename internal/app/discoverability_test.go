@@ -50,6 +50,39 @@ func TestFooterCollapsesByPriorityInsteadOfClipping(t *testing.T) {
 	}
 }
 
+// TestCommandBarShowsCompletionsLive confirms the completion candidates
+// render as soon as text matches them, without a Tab press first.
+func TestCommandBarShowsCompletionsLive(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil, 1)
+	m.width, m.height = 120, 30
+	m.commandMode = true
+	m.commandInput.SetValue("filter di")
+
+	rendered := plainText(m.renderScreen())
+	if !strings.Contains(rendered, "dirty") {
+		t.Errorf("expected the live completion candidate before any Tab press:\n%s", rendered)
+	}
+}
+
+// TestSearchBoxShowsScopeLegend confirms every scope prefix is spelled out,
+// short and long form, the moment the search box opens.
+func TestSearchBoxShowsScopeLegend(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil, 1)
+	m.width, m.height = 120, 30
+	m.searching = true
+
+	rendered := plainText(m.renderRepoList())
+	for _, want := range []string{"[r]epo:", "[b]ranch:", "[p]r:", "[t]emplate:", "[n]otes:", "[c]ommit:"} {
+		if !strings.Contains(rendered, want) {
+			t.Errorf("search legend is missing %q:\n%s", want, rendered)
+		}
+	}
+}
+
 func TestHelpCoversTheCommandLayer(t *testing.T) {
 	t.Parallel()
 

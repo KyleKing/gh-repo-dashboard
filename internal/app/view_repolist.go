@@ -18,8 +18,16 @@ import (
 // shorter repo set) can move the footer.
 const (
 	listChromeHeight   = 8
-	searchChromeHeight = 2
+	searchChromeHeight = 3
 )
+
+// searchScopeLegend spells out every scope prefix "/" search accepts, short
+// key and long name together, so the grammar is visible the moment the
+// search box opens rather than living only behind "?" help.
+func searchScopeLegend() string {
+	return styles.SubtitleStyle.Render(
+		"[r]epo:  [b]ranch:  [p]r:  [t]emplate:  [n]otes:  [c]ommit:")
+}
 
 func (m Model) renderRepoList() string {
 	if m.panelActions {
@@ -38,6 +46,8 @@ func (m Model) renderRepoList() string {
 	switch {
 	case m.searching:
 		b.WriteString(m.searchInput.View())
+		b.WriteString("\n")
+		b.WriteString(searchScopeLegend())
 		b.WriteString("\n\n")
 	case m.viewMode == ViewModeFilter:
 		b.WriteString(m.renderFilterDock())

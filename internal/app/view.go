@@ -70,7 +70,12 @@ func (m Model) renderScreen() string {
 	}
 
 	if m.commandMode {
-		return overlayBottomLine(content, frame(m.commandInput.View(), m.width, frameW), m.height)
+		line := frame(m.commandInput.View(), m.width, frameW)
+		if candidates := m.renderCompletionCandidates(frameW); candidates != "" {
+			line = frame(candidates, m.width, frameW) + "\n" + line
+		}
+
+		return overlayBottomLine(content, line, m.height)
 	}
 	if m.statusMessage != "" {
 		line := frame(styles.StatusMessageStyle.Render(m.statusMessage), m.width, frameW)
@@ -107,23 +112,47 @@ func (m Model) selfCentering() bool {
 	}
 }
 
-// overlayBottomLine pins line onto the last row of content, padding or
-// truncating content to keep the overall height stable.
+// overlayBottomLine pins line (itself one line or several) onto the bottom
+// rows of content, padding or truncating content to keep the overall height
+// stable.
 func overlayBottomLine(content, line string, height int) string {
+	blockHeight := strings.Count(line, "\n") + 1
+
 	lines := strings.Split(content, "\n")
-	if height < 1 {
+	if height < blockHeight {
 		return content
 	}
+
+	room := height - blockHeight
+
 	switch {
-	case len(lines) >= height:
-		lines = lines[:height-1]
+	case len(lines) >= room:
+		lines = lines[:room]
 	default:
-		for len(lines) < height-1 {
+		for len(lines) < room {
 			lines = append(lines, "")
 		}
 	}
 
 	return strings.Join(lines, "\n") + "\n" + line
+}
+
+// renderCompletionCandidates renders what the command bar's current text
+// could complete to, live as each key lands, so the grammar (command names,
+// then that command's own arguments) is visible before Tab is ever pressed
+// rather than only revealed by pressing it.
+func (m Model) renderCompletionCandidates(width int) string {
+	candidates, ok := m.commandCompletionCandidates()
+	if !ok || len(candidates) == 0 {
+		return ""
+	}
+
+	parts := make([]string, len(candidates))
+	for i, name := range candidates {
+		parts[i] = styles.SubtitleStyle.Render(name)
+	}
+
+	return table.Truncate(strings.Join(parts, "  "), width)
 }
 
 func (m Model) renderView() string {
