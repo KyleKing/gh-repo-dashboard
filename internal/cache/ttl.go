@@ -1,216 +1,59 @@
-// Package cache provides a generic in-memory TTL cache used to avoid
-// redundant gh/git/jj calls across TUI refreshes.
 package cache
 
 import (
 	"strconv"
-	"sync"
 	"time"
 
+	acache "github.com/kyleking/aragonite/cache"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
-// Stamp is what a checkout looked like when a value was read from it. The
-// cache compares Fingerprint for equality and never interprets it; Scope names
-// the checkout it came from, so an entry several checkouts of one remote share
-// is only evicted for the checkout that actually changed. An empty
-// Fingerprint proves nothing: it is what a caller passes for a value no
-// local state can invalidate, and what vcs returns for a checkout it could
-// not read.
-type Stamp struct {
-	Scope       string
-	Fingerprint string
-}
-
-// NoStamp is the stamp for a value no local state can invalidate.
-var NoStamp = Stamp{} //nolint:gochecknoglobals // an empty-value constant, never assigned to
-
-type entry[T any] struct {
-	value     T
-	expiresAt time.Time
-	seen      map[string]string
-}
-
-// TTLCache is a generic in-memory cache whose entries expire after a fixed duration.
-type TTLCache[T any] struct {
-	mu      sync.RWMutex
-	entries map[string]entry[T]
-	ttl     time.Duration
-	now     func() time.Time
-}
-
-// NewTTLCache returns an empty TTLCache with the given entry lifetime.
-func NewTTLCache[T any](ttl time.Duration) *TTLCache[T] {
-	return &TTLCache[T]{
-		entries: make(map[string]entry[T]),
-		ttl:     ttl,
-		now:     time.Now,
-	}
-}
-
-// clearer is satisfied by any TTLCache, letting the registry hold caches of
-// differing type parameters.
-type clearer interface {
-	Clear()
-	setTTL(ttl time.Duration)
-}
-
-var (
-	registryMu sync.Mutex
-	registry   []clearer
+type (
+	Stamp     = acache.Stamp
+	DiskCache = acache.DiskCache
 )
 
-// newRegisteredTTLCache builds a TTLCache like NewTTLCache and appends it to
-// the package-level registry that ClearAll drains. Reserved for the
-// package-level cache variables below; tests wanting a throwaway cache should
-// use NewTTLCache directly so they don't accumulate in the registry.
-func newRegisteredTTLCache[T any](ttl time.Duration) *TTLCache[T] {
-	c := NewTTLCache[T](ttl)
+type TTLCache[T any] = acache.TTLCache[T]
 
-	registryMu.Lock()
-	defer registryMu.Unlock()
-	registry = append(registry, c)
+var NoStamp = acache.NoStamp //nolint:gochecknoglobals // an empty-value constant, never assigned to
 
-	return c
+var (
+	RemoteScope       = acache.RemoteScope
+	NewDiskCache      = acache.NewDiskCache
+	NewSizedDiskCache = acache.NewSizedDiskCache
+	DiskPath          = acache.DiskPath
+	UserDiskCache     = acache.UserDiskCache
+	SetDiskCache      = acache.SetDiskCache
+	ClearAll          = acache.ClearAll
+	SetAllTTLs        = acache.SetAllTTLs
+)
+
+func NewTTLCache[T any](ttl time.Duration) *acache.TTLCache[T] {
+	return acache.NewTTLCache[T](ttl)
 }
 
-// Get returns the cached value for key, for a value the checkout cannot prove
-// still correct. The TTL is the ceiling and stamp only lowers it: a checkout
-// whose stamp moved since it last touched this entry evicts it early, because
-// a local change (a push above all) is exactly when a remote-derived value
-// stops matching. Pass NoStamp for a value no local state bears on.
-//
-//nolint:ireturn // T is the cache's own type parameter, not an abstraction leak
-func (c *TTLCache[T]) Get(key string, stamp Stamp) (T, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	var zero T
-
-	e, ok := c.entries[key]
-	if !ok {
-		return zero, false
-	}
-
-	if c.now().After(e.expiresAt) {
-		delete(c.entries, key)
-
-		return zero, false
-	}
-
-	if stamp.Fingerprint != "" {
-		prev, recorded := e.seen[stamp.Scope]
-		switch {
-		case recorded && prev != stamp.Fingerprint:
-			delete(c.entries, key)
-
-			return zero, false
-		case !recorded:
-			e.seen[stamp.Scope] = stamp.Fingerprint
-		}
-	}
-
-	return e.value, true
+func NewTTLCacheWithClock[T any](ttl time.Duration, now func() time.Time) *acache.TTLCache[T] {
+	return acache.NewTTLCacheWithClock[T](ttl, now)
 }
 
-// Fresh returns the cached value for key when stamp matches the one it was
-// written under, for a value derived from local state alone. An unchanged
-// checkout cannot have changed the answer, so the entry stays correct however
-// old it is and the TTL never evicts it. A checkout that could not be stamped
-// always misses.
-//
-//nolint:ireturn // T is the cache's own type parameter, not an abstraction leak
-func (c *TTLCache[T]) Fresh(key string, stamp Stamp) (T, bool) {
-	var zero T
-
-	if stamp.Fingerprint == "" {
-		return zero, false
-	}
-
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	e, ok := c.entries[key]
-	if !ok || e.seen[stamp.Scope] != stamp.Fingerprint {
-		return zero, false
-	}
-
-	return e.value, true
+func newRegisteredTTLCache[T any](ttl time.Duration) *acache.TTLCache[T] {
+	return acache.NewRegistered[T](ttl)
 }
 
-// Set stores value under key as read from the checkout stamp describes,
-// expiring after the cache's configured TTL.
-func (c *TTLCache[T]) Set(key string, stamp Stamp, value T) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	seen := make(map[string]string, 1)
-	if stamp.Fingerprint != "" {
-		seen[stamp.Scope] = stamp.Fingerprint
-	}
-
-	c.entries[key] = entry[T]{
-		value:     value,
-		expiresAt: c.now().Add(c.ttl),
-		seen:      seen,
-	}
+func Persist[T any](c *acache.TTLCache[T], upstream, key string, stamp Stamp, value T) {
+	acache.Persist(c, upstream, key, stamp, value)
 }
 
-// restore seeds an entry read back from disk, keeping the expiry and the
-// fingerprints it was written under so a persisted value neither restarts its
-// TTL nor forgets which checkouts have already read it.
-func (c *TTLCache[T]) restore(key string, value T, expiresAt time.Time, seen map[string]string, stamp Stamp) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	merged := make(map[string]string, len(seen)+1)
-	for scope, fingerprint := range seen {
-		merged[scope] = fingerprint
-	}
-
-	if stamp.Fingerprint != "" {
-		merged[stamp.Scope] = stamp.Fingerprint
-	}
-
-	c.entries[key] = entry[T]{value: value, expiresAt: expiresAt, seen: merged}
+func Persisted[T any](c *acache.TTLCache[T], upstream, key string, stamp Stamp) (T, bool) {
+	return acache.Persisted[T](c, upstream, key, stamp)
 }
 
-// deadline is when an entry written now would expire.
-func (c *TTLCache[T]) deadline() time.Time {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	return c.now().Add(c.ttl)
+func PersistUsing[T any](d *DiskCache, c *acache.TTLCache[T], upstream, key string, stamp Stamp, value T) {
+	acache.PersistUsing(d, c, upstream, key, stamp, value)
 }
 
-func (c *TTLCache[T]) clock() time.Time {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	return c.now()
-}
-
-// Clear removes all entries from the cache.
-func (c *TTLCache[T]) Clear() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.entries = make(map[string]entry[T])
-}
-
-// Delete removes the entry for key, if any.
-func (c *TTLCache[T]) Delete(key string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	delete(c.entries, key)
-}
-
-func (c *TTLCache[T]) setTTL(ttl time.Duration) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.ttl = ttl
+func PersistedUsing[T any](d *DiskCache, c *acache.TTLCache[T], upstream, key string, stamp Stamp) (T, bool) {
+	return acache.PersistedUsing(d, c, upstream, key, stamp)
 }
 
 const (
@@ -254,30 +97,4 @@ func BranchCacheKey(repoPath string) string {
 // because a deeper log is a different value.
 func CommitCacheKey(repoPath string, count int) string {
 	return repoPath + "\x00commits:" + strconv.Itoa(count)
-}
-
-// ClearAll clears every registered package-level cache, and the installed disk
-// store with them.
-func ClearAll() {
-	registryMu.Lock()
-	defer registryMu.Unlock()
-
-	for _, c := range registry {
-		c.Clear()
-	}
-
-	if d := installedDiskCache(); d != nil {
-		d.Clear()
-	}
-}
-
-// SetAllTTLs overrides every registered cache's entry lifetime. Intended for
-// startup config application; existing entries keep their original expiry.
-func SetAllTTLs(ttl time.Duration) {
-	registryMu.Lock()
-	defer registryMu.Unlock()
-
-	for _, c := range registry {
-		c.setTTL(ttl)
-	}
 }
