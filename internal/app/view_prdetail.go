@@ -199,19 +199,14 @@ func prDetailFooter(width int) string {
 		{key: "?", desc: "help", priority: 8},
 		{key: keyNavPair, desc: "scroll", priority: 7},
 		{key: keyBracketPair, desc: "prev/next PR", priority: 6},
-		{key: "o", desc: "browser", priority: 5},
+		{key: "o", desc: descOpen, priority: 5},
 		{key: "M", desc: "squash-merge", priority: 4},
 		{key: "u", desc: descCopyURL, priority: 3},
 		{key: "n", desc: "copy number", priority: 2},
 		{key: "b", desc: "copy branch", priority: 1},
 	}
 
-	parts := make([]string, 0, len(hints))
-	for _, h := range fittingHints(hints, width) {
-		parts = append(parts, styles.FooterKeyStyle.Render(h.key)+styles.FooterDescStyle.Render(" "+h.desc))
-	}
-
-	return strings.Join(parts, "  ")
+	return renderHints(fittingHints(hints, width))
 }
 
 // renderPRDetailLoading renders the placeholder shown before any PR detail

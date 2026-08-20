@@ -1151,6 +1151,8 @@ const (
 const (
 	descBack    = "back"
 	descCopyURL = "copy URL"
+	descOpen    = "open"
+	descOpenPR  = "open in browser"
 )
 
 // footerHint is one key hint and how readily it is dropped when the footer no
@@ -1241,16 +1243,51 @@ func (m Model) renderFooter() string {
 		dockHints = footerHints(m.expandOpen)
 	}
 
-	hints := fittingHints(dockHints, listWidth(m.width)-lipgloss.Width(prefix))
+	return prefix + renderHints(fittingHints(dockHints, listWidth(m.width)-lipgloss.Width(prefix)))
+}
 
-	parts := make([]string, 0, len(hints))
-	for _, h := range hints {
-		parts = append(parts,
-			styles.FooterKeyStyle.Render(h.key)+
-				styles.FooterDescStyle.Render(" "+h.desc))
+// hintLabel writes one hint and says which bytes of it are the key, so the two
+// can be colored apart. A description containing its own key gets the key
+// bracketed inside the word it triggers ("pre[v]iew"), the way the tab bar and
+// the panel borders write theirs. A description that does not contain it takes
+// the key in front of it bare, since brackets around a letter that is not in
+// the word say nothing the color has not already said.
+func hintLabel(h footerHint) hintPart {
+	marked := markHotkey(h.desc, h.key)
+	if strings.HasPrefix(h.key, "[") || marked == "["+h.key+"] "+h.desc {
+		return hintPart{key: h.key, after: " " + h.desc}
 	}
 
-	return prefix + strings.Join(parts, "  ")
+	bracketed := "[" + h.key + "]"
+	before, after, _ := strings.Cut(marked, bracketed)
+
+	return hintPart{before: before, key: bracketed, after: after}
+}
+
+// hintPart is one rendered hint split at its key.
+type hintPart struct {
+	before string
+	key    string
+	after  string
+}
+
+func (p hintPart) width() int {
+	return lipgloss.Width(p.before) + lipgloss.Width(p.key) + lipgloss.Width(p.after)
+}
+
+// renderHints draws a fitted hint row, styling each hint's key apart from the
+// words around it.
+func renderHints(hints []footerHint) string {
+	parts := make([]string, 0, len(hints))
+
+	for _, h := range hints {
+		label := hintLabel(h)
+		parts = append(parts, styles.FooterDescStyle.Render(label.before)+
+			styles.FooterKeyStyle.Render(label.key)+
+			styles.FooterDescStyle.Render(label.after))
+	}
+
+	return strings.Join(parts, "  ")
 }
 
 // fittingHints drops the lowest-priority hints until the rendered footer fits
@@ -1280,7 +1317,7 @@ func hintsWidth(hints []footerHint) int {
 			total += table.Gutter
 		}
 
-		total += lipgloss.Width(h.key) + 1 + lipgloss.Width(h.desc)
+		total += hintLabel(h).width()
 	}
 
 	return total

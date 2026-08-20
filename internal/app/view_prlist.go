@@ -303,6 +303,7 @@ func (m Model) prListFooter(width int) string {
 		{key: keyNavPair, desc: descNav, priority: panelHintPriority},
 		{key: keyEnter, desc: descDetail, priority: panelHintPriority - navHintStep},
 		{key: "v", desc: previewHint, priority: panelHintPriority - navHintStep},
+		{key: "o", desc: descOpenPR, priority: panelHintPriority - navHintStep},
 		{key: "f", desc: descView, priority: panelHintPriority - navHintStep},
 		{key: keyBracketPair, desc: "cycle views", priority: panelHintPriority - navHintStep*3},
 		{key: "*", desc: m.prScopeHint(), priority: panelHintPriority - navHintStep*2},
@@ -311,12 +312,7 @@ func (m Model) prListFooter(width int) string {
 		{key: keyEsc, desc: "repos", priority: panelHintPriority - navHintStep*4},
 	}
 
-	parts := make([]string, 0, len(hints))
-	for _, h := range fittingHints(hints, width) {
-		parts = append(parts, styles.FooterKeyStyle.Render(h.key)+styles.FooterDescStyle.Render(" "+h.desc))
-	}
-
-	return strings.Join(parts, "  ")
+	return renderHints(fittingHints(hints, width))
 }
 
 func (m Model) prScopeHint() string {

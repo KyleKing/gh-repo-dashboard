@@ -986,12 +986,7 @@ func (m Model) panelFooter(panels []panelContent, focused, width int) string {
 		})
 	}
 
-	parts := make([]string, 0, len(hints))
-	for _, h := range fittingHints(hints, width) {
-		parts = append(parts, styles.FooterKeyStyle.Render(h.key)+styles.FooterDescStyle.Render(" "+h.desc))
-	}
-
-	return strings.Join(parts, "  ")
+	return renderHints(fittingHints(hints, width))
 }
 
 func detailField(label, value string) string {

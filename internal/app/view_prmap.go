@@ -125,14 +125,9 @@ func (m Model) prMapFooter() string {
 	hints := []footerHint{
 		{key: keyNavPair, desc: descNav, priority: 2},
 		{key: keyEnter, desc: "open repo", priority: 8},
-		{key: "o", desc: "browser", priority: 3},
+		{key: "o", desc: descOpen, priority: 3},
 		{key: keyEsc, desc: descBack, priority: 9},
 	}
 
-	parts := make([]string, 0, len(hints))
-	for _, h := range fittingHints(hints, listWidth(m.width)) {
-		parts = append(parts, styles.FooterKeyStyle.Render(h.key)+styles.FooterDescStyle.Render(" "+h.desc))
-	}
-
-	return strings.Join(parts, "  ")
+	return renderHints(fittingHints(hints, listWidth(m.width)))
 }

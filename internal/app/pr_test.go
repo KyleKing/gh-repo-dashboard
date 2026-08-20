@@ -196,7 +196,7 @@ func TestPRDetailViewRender(t *testing.T) {
 			want: []string{
 				"PR #456", "Add amazing feature", "dev1", "dev2, dev3", "reviewer1",
 				"feature/amazing", mainBranchName, "+250", "-100", "This is the PR description",
-				"copy URL", "copy number", "copy branch",
+				"copy URL", "copy [n]umber", "copy [b]ranch",
 			},
 			absent: []string{"loading details"},
 		},
@@ -218,7 +218,7 @@ func TestPRDetailViewRender(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			output := prDetailModel(&tt.detail).renderScreen()
+			output := plainText(prDetailModel(&tt.detail).renderScreen())
 
 			for _, want := range tt.want {
 				if !strings.Contains(output, want) {

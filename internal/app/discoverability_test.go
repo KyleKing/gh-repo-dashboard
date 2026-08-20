@@ -42,7 +42,7 @@ func TestFooterCollapsesByPriorityInsteadOfClipping(t *testing.T) {
 
 		// A dropped hint takes its key with it, so no half-rendered hint is left.
 		plain := plainText(footer)
-		for _, essential := range []string{"enter select", "? help", "q quit"} {
+		for _, essential := range []string{"enter select", "? help", "[q]uit"} {
 			if !strings.Contains(plain, essential) {
 				t.Errorf("width %d: footer dropped %q, which must survive: %q", termWidth, essential, plain)
 			}

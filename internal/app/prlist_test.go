@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -360,5 +362,30 @@ func TestCheckoutFromThePRTabResolvesTheRepoAndAsksFirst(t *testing.T) {
 	}
 	if status, ok := cmd().(StatusMsg); !ok || !strings.Contains(status.Message, "someone/else") {
 		t.Errorf("refusal does not name the repository, got %v", cmd())
+	}
+}
+
+// TestPRsTabOpensTheCursorRowInTheBrowser covers "o" reaching the row under
+// the cursor without the "!" leader, which is what the tab's own footer
+// promises. A row with no URL is the observable half: the refusal proves the
+// key routed to the open action rather than falling through unhandled.
+func TestPRsTabOpensTheCursorRowInTheBrowser(t *testing.T) {
+	t.Parallel()
+
+	m := prTabModel()
+	m.prSearch[0].URL = ""
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'o', Text: "o"})
+	if cmd == nil {
+		t.Fatal("expected o to act on the cursor row")
+	}
+
+	status, ok := cmd().(StatusMsg)
+	if !ok || !strings.Contains(status.Message, "No pull request URL") {
+		t.Errorf("expected the missing-URL refusal, got %#v", cmd())
+	}
+
+	if mustModel(t, updated).viewMode != ViewModePRList {
+		t.Error("o must not leave the PRs tab")
 	}
 }
