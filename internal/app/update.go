@@ -104,6 +104,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case PRPreviewLoadedMsg:
 		return m.handlePRPreviewLoaded(msg)
 
+	case PRPreviewTickMsg:
+		return m.handlePRPreviewTick(msg)
+
 	case StashDiffLoadedMsg:
 		if msg.Path == m.selectedRepo {
 			m.stashDiff = withStashText(m.stashDiff, msg.Index, msg.Diff)
@@ -372,18 +375,21 @@ func (m Model) handlePRDetailLoaded(msg PRDetailLoadedMsg) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
-// handlePRPreviewLoaded stores a PRs tab preview once read; a failed read
-// leaves the row showing its loading state rather than a wrong one, since the
-// row can still be retried by closing and reopening the preview.
+// handlePRPreviewLoaded stores a PRs tab preview once read. A failed read is
+// recorded too, and clears the in-flight mark, so the region says what went
+// wrong and reopening it tries again instead of showing a loading state that
+// resolves for nobody.
 func (m Model) handlePRPreviewLoaded(msg PRPreviewLoadedMsg) (tea.Model, tea.Cmd) {
+	delete(m.prPreviewRequested, msg.Key)
+
 	if msg.Error != nil {
+		m.prPreviewError[msg.Key] = msg.Error.Error()
+
 		return m, nil
 	}
 
-	if m.prPreview == nil {
-		m.prPreview = make(map[string]models.PRDetail)
-	}
-	m.prPreview[msg.Key] = msg.Detail
+	delete(m.prPreviewError, msg.Key)
+	m.prPreview[msg.Key] = msg.Preview
 
 	return m, nil
 }

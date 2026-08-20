@@ -190,13 +190,20 @@ type PRDetailLoadedMsg struct {
 	Error    error
 }
 
-// PRPreviewLoadedMsg reports the loaded detail for one PRs tab row's inline
-// preview, keyed by prPreviewKey so a stale in-flight answer can be told apart
-// from the row the cursor is on now.
+// PRPreviewLoadedMsg reports one PRs tab row's inline preview, keyed by the
+// pull request URL so a stale in-flight answer can be told apart from the row
+// the cursor is on now.
 type PRPreviewLoadedMsg struct {
-	Key    string
-	Detail models.PRDetail
-	Error  error
+	Key     string
+	Preview models.PRPreview
+	Error   error
+}
+
+// PRPreviewTickMsg fires once the cursor has held still long enough to be
+// worth reading. Seq is the cursor-move counter the tick was scheduled at, so
+// every move but the last one is dropped.
+type PRPreviewTickMsg struct {
+	Seq int
 }
 
 // PRSearchLoadedMsg reports the pull requests one saved view returned. Query

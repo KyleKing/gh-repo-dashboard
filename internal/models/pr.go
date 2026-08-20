@@ -135,7 +135,11 @@ func (p PRInfo) StatusDisplay() string {
 
 // ReviewStatus returns a human-readable summary of the pull request's review decision.
 func (p PRInfo) ReviewStatus() string {
-	switch p.ReviewDecision {
+	return reviewStatus(p.ReviewDecision, p.ApprovedBy)
+}
+
+func reviewStatus(decision string, approvedBy []string) string {
+	switch decision {
 	case "APPROVED":
 		return ReviewApproved
 	case "CHANGES_REQUESTED":
@@ -143,7 +147,7 @@ func (p PRInfo) ReviewStatus() string {
 	case "REVIEW_REQUIRED":
 		return "review required"
 	default:
-		if len(p.ApprovedBy) > 0 {
+		if len(approvedBy) > 0 {
 			return ReviewApproved
 		}
 
@@ -351,4 +355,21 @@ func (w WorkflowSummary) StatusDisplay() string {
 	}
 
 	return "mixed"
+}
+
+// PRPreview is the little a PRs-tab row needs to show under the table: enough
+// to judge whether the pull request is worth opening, and nothing that costs
+// GitHub a second query to answer.
+type PRPreview struct {
+	Body           string
+	Reviewers      []string
+	ReviewDecision string
+	Additions      int
+	Deletions      int
+}
+
+// ReviewStatus reports the preview's review state in the same vocabulary the
+// full detail uses.
+func (p PRPreview) ReviewStatus() string {
+	return reviewStatus(p.ReviewDecision, nil)
 }

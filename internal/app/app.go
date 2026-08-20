@@ -143,14 +143,21 @@ type Model struct {
 	// checks, the same "read one row in full without leaving the list" idea
 	// as the Repos tab's own expanded region.
 	prPreviewOpen bool
-	// prPreview caches each row's full detail once read, keyed by
-	// prPreviewKey, so paging the cursor back over a row already open never
+	// prPreview caches each row's preview once read, keyed by the pull
+	// request's URL, so paging the cursor back over a row already open never
 	// re-fetches it.
-	prPreview map[string]models.PRDetail
+	prPreview map[string]models.PRPreview
+	// prPreviewError records the rows whose preview read failed, so the region
+	// says so instead of showing a loading state that will never resolve.
+	prPreviewError map[string]string
 	// prPreviewRequested marks the rows a preview fetch has already been
 	// issued for, so scrolling back over one mid-flight does not re-request
 	// it.
 	prPreviewRequested map[string]bool
+	// prPreviewSeq counts cursor moves so a debounce tick can tell whether the
+	// cursor is still on the row it was scheduled for. Holding j or k must
+	// read the row it lands on, not every row it passes over.
+	prPreviewSeq int
 	// prListReturn is where esc goes from a pull request opened out of the PRs
 	// tab, which is the tab rather than the repo grid it was never in.
 	prListReturn ViewMode
@@ -262,7 +269,8 @@ func New(scanPaths []string, maxDepth int) Model {
 		branchCount:        make(map[string]int),
 		prMap:              make(map[string]PRMapLoadedMsg),
 		peerBranches:       make(map[string][]models.BranchInfo),
-		prPreview:          make(map[string]models.PRDetail),
+		prPreview:          make(map[string]models.PRPreview),
+		prPreviewError:     make(map[string]string),
 		prPreviewRequested: make(map[string]bool),
 		activeFilters:      activeFilters,
 		activeSorts:        sorts,

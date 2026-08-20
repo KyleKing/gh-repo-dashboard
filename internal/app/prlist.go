@@ -3,6 +3,7 @@ package app
 import (
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
@@ -148,52 +149,76 @@ func (m Model) searchPRRepoPath(pr models.PRInfo) (string, bool) {
 	return "", false
 }
 
-// prPreviewKey identifies a PRs tab row's cached preview: a repo-scoped pull
-// request number alone isn't unique across a fleet-wide search.
-func prPreviewKey(repoPath string, number int) string {
-	return repoPath + "#" + strconv.Itoa(number)
-}
+// prPreviewDebounce is how long the cursor must hold still before its row is
+// read. Every keystroke used to spawn a gh invocation, so holding j queued a
+// dozen of them and the row finally landed on waited behind all of them.
+const prPreviewDebounce = 180 * time.Millisecond
 
 // togglePRPreview opens or closes the inline preview under the PRs tab's
 // table, reading the row under the cursor when it opens.
 func (m Model) togglePRPreview() (tea.Model, tea.Cmd) {
 	m.prPreviewOpen = !m.prPreviewOpen
-	cmd := m.prPreviewCmd()
 
-	return m, cmd
+	return m, m.prPreviewCmd()
 }
 
-// prPreviewCmd loads the cursor row's own preview if the region is open and
-// it hasn't been read yet.
-func (m *Model) prPreviewCmd() tea.Cmd {
-	if !m.prPreviewOpen {
-		return nil
-	}
-
-	pr, ok := m.selectedSearchPR()
+// prPreviewCmd reads the cursor row now, without waiting out the debounce.
+// Opening the region is a deliberate act rather than a cursor passing through.
+func (m Model) prPreviewCmd() tea.Cmd {
+	pr, ok := m.previewablePR()
 	if !ok {
 		return nil
 	}
 
-	repo, found := m.searchPRRepoPath(pr)
-	if !found {
-		return nil
+	m.prPreviewRequested[pr.URL] = true
+
+	return loadPRPreviewCmd(m.prSearchRepo(), pr.URL)
+}
+
+// schedulePRPreview defers the read until the cursor stops. It returns the
+// model because the sequence number it bumps is what makes every earlier
+// pending tick a no-op.
+func (m Model) schedulePRPreview() (Model, tea.Cmd) {
+	if !m.prPreviewOpen {
+		return m, nil
 	}
 
-	previewKey := prPreviewKey(repo, pr.Number)
-	if _, cached := m.prPreview[previewKey]; cached {
-		return nil
-	}
-	if m.prPreviewRequested[previewKey] {
-		return nil
+	m.prPreviewSeq++
+
+	return m, prPreviewTickCmd(m.prPreviewSeq)
+}
+
+// handlePRPreviewTick reads the row the cursor settled on, ignoring a tick
+// scheduled for a row it has since moved off.
+func (m Model) handlePRPreviewTick(msg PRPreviewTickMsg) (tea.Model, tea.Cmd) {
+	if msg.Seq != m.prPreviewSeq {
+		return m, nil
 	}
 
-	if m.prPreviewRequested == nil {
-		m.prPreviewRequested = make(map[string]bool)
-	}
-	m.prPreviewRequested[previewKey] = true
+	return m, m.prPreviewCmd()
+}
 
-	return loadPRPreviewCmd(repo, m.summaries[repo].RemoteID, pr.Number, previewKey)
+// previewablePR is the row under the cursor when it still needs reading: the
+// region is open, the row has a URL to read by, and neither a cached answer
+// nor an in-flight request already covers it.
+func (m Model) previewablePR() (models.PRInfo, bool) {
+	if !m.prPreviewOpen {
+		return models.PRInfo{}, false
+	}
+
+	pr, ok := m.selectedSearchPR()
+	if !ok || pr.URL == "" {
+		return models.PRInfo{}, false
+	}
+
+	if _, cached := m.prPreview[pr.URL]; cached {
+		return models.PRInfo{}, false
+	}
+	if m.prPreviewRequested[pr.URL] {
+		return models.PRInfo{}, false
+	}
+
+	return pr, true
 }
 
 // cyclePRView moves to the next saved view in the given direction and reads it.
@@ -328,33 +353,32 @@ func (m Model) handlePRListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Up):
 		m.prSearchCursor = max(m.prSearchCursor-1, 0)
-		cmd := m.prPreviewCmd()
 
-		return m, cmd
+		return m.schedulePRPreview()
 
 	case key.Matches(msg, m.keys.Down):
 		m.prSearchCursor = min(m.prSearchCursor+1, last)
-		cmd := m.prPreviewCmd()
 
-		return m, cmd
+		return m.schedulePRPreview()
 
 	case key.Matches(msg, m.keys.Top):
 		m.prSearchCursor = 0
-		cmd := m.prPreviewCmd()
 
-		return m, cmd
+		return m.schedulePRPreview()
 
 	case key.Matches(msg, m.keys.Bottom):
 		m.prSearchCursor = last
-		cmd := m.prPreviewCmd()
 
-		return m, cmd
+		return m.schedulePRPreview()
 
 	case key.Matches(msg, m.keys.Enter):
 		return m.openSearchPRDetail()
 
 	case key.Matches(msg, m.keys.Expand):
 		return m.togglePRPreview()
+
+	case key.Matches(msg, m.keys.OpenURL):
+		return m.openSearchPRURL()
 
 	case key.Matches(msg, m.keys.Help):
 		m.viewMode = ViewModeHelp

@@ -2,11 +2,14 @@
 package app
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
+
+var errExplodedPreview = errors.New("gh exploded")
 
 // prTabModel is a model sitting on the PRs tab with one row loaded, from a
 // repo the fleet knows.
@@ -15,7 +18,10 @@ func prTabModel() Model {
 	m.viewMode = ViewModePRList
 	m.summaries["/dev/alpha"] = models.RepoSummary{Path: "/dev/alpha", RemoteRepo: "acme/alpha"}
 	m.prSearch = []models.PRInfo{
-		{Number: 11, Title: "Bump the deps", State: "OPEN", HeadRef: "deps", Repo: "acme/alpha"},
+		{
+			Number: 11, Title: "Bump the deps", State: "OPEN", HeadRef: "deps",
+			Repo: "acme/alpha", URL: "https://github.com/acme/alpha/pull/11",
+		},
 	}
 
 	return m
@@ -257,7 +263,7 @@ func TestPRPreviewLoadsAndRendersTheCursorRow(t *testing.T) {
 		t.Fatal("expected opening the preview to request the cursor row's detail")
 	}
 
-	key := prPreviewKey("/dev/alpha", 11)
+	key := "https://github.com/acme/alpha/pull/11"
 	if !o.prPreviewRequested[key] {
 		t.Fatalf("expected the row's fetch to be marked requested, got %+v", o.prPreviewRequested)
 	}
@@ -268,16 +274,66 @@ func TestPRPreviewLoadsAndRendersTheCursorRow(t *testing.T) {
 	}
 
 	landed := mustModel(t, mustUpdate(t, &o, PRPreviewLoadedMsg{
-		Key: key,
-		Detail: models.PRDetail{
-			PRInfo:    models.PRInfo{Number: 11},
-			Reviewers: []string{"erin"},
-		},
+		Key:     key,
+		Preview: models.PRPreview{Reviewers: []string{"erin"}},
 	}))
 
 	rendered := plainText(landed.renderPRList())
 	if !strings.Contains(rendered, "erin") {
 		t.Errorf("expected the loaded reviewer to render, got:\n%s", rendered)
+	}
+}
+
+// TestPRPreviewFailureIsSaidOnceAndRetried covers the read that never lands:
+// the region has to say so rather than sit on its loading placeholder, and
+// the row must be requestable again rather than marked in-flight forever.
+func TestPRPreviewFailureIsSaidOnceAndRetried(t *testing.T) {
+	t.Parallel()
+
+	opened, _ := prTabModel().togglePRPreview()
+	o := mustModel(t, opened)
+
+	key := "https://github.com/acme/alpha/pull/11"
+	failed := mustModel(t, mustUpdate(t, &o, PRPreviewLoadedMsg{Key: key, Error: errExplodedPreview}))
+
+	if failed.prPreviewRequested[key] {
+		t.Error("a failed read should clear its in-flight mark so the row can be retried")
+	}
+
+	rendered := plainText(failed.renderPRList())
+	if !strings.Contains(rendered, "gh exploded") {
+		t.Errorf("expected the failure to render, got:\n%s", rendered)
+	}
+	if strings.Contains(rendered, readingLabel) {
+		t.Errorf("a failed read must not keep showing the loading placeholder, got:\n%s", rendered)
+	}
+}
+
+// TestPRPreviewDebouncesAMovingCursor covers holding j: only the row the
+// cursor settles on may be read, since every intermediate row used to spawn
+// its own gh invocation for the settled row to queue behind.
+func TestPRPreviewDebouncesAMovingCursor(t *testing.T) {
+	t.Parallel()
+
+	m := prTabModel()
+	m.prSearch = append(m.prSearch, models.PRInfo{
+		Number: 12, State: "OPEN", Repo: "acme/alpha", URL: "https://github.com/acme/alpha/pull/12",
+	})
+	m.prPreviewOpen = true
+
+	moved, cmd := m.schedulePRPreview()
+	if cmd == nil {
+		t.Fatal("a cursor move with the preview open should schedule a read")
+	}
+
+	stale := mustModel(t, mustUpdate(t, &moved, PRPreviewTickMsg{Seq: moved.prPreviewSeq - 1}))
+	if len(stale.prPreviewRequested) != 0 {
+		t.Errorf("a tick from an earlier cursor position must not read, got %+v", stale.prPreviewRequested)
+	}
+
+	settled := mustModel(t, mustUpdate(t, &moved, PRPreviewTickMsg{Seq: moved.prPreviewSeq}))
+	if !settled.prPreviewRequested["https://github.com/acme/alpha/pull/11"] {
+		t.Errorf("the settled row should be read, got %+v", settled.prPreviewRequested)
 	}
 }
 

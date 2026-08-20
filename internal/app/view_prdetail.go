@@ -61,9 +61,7 @@ func (m Model) writePRDetailInfo(writeLine func(label, value string)) {
 		return
 	}
 
-	writeLine("Changes:",
-		styles.CleanStyle.Render(fmt.Sprintf("+%d", m.prDetail.Additions))+" "+
-			styles.ErrorStyle.Render(fmt.Sprintf("-%d", m.prDetail.Deletions)))
+	writeLine("Changes:", diffStat(m.prDetail.Additions, m.prDetail.Deletions))
 
 	if m.prDetail.Comments > 0 {
 		writeLine("Comments:", strconv.Itoa(m.prDetail.Comments))
@@ -321,4 +319,10 @@ func (m Model) renderPRDetail() string {
 	footer := prDetailFooter(contentWidth(m.width)) + prDetailScrollMarker(start, len(lines), visible)
 
 	return strings.Join(shown, "\n") + "\n" + footer
+}
+
+// diffStat renders a pull request's line counts, added over removed.
+func diffStat(additions, deletions int) string {
+	return styles.CleanStyle.Render(fmt.Sprintf("+%d", additions)) + " " +
+		styles.ErrorStyle.Render(fmt.Sprintf("-%d", deletions))
 }

@@ -75,6 +75,7 @@ func InvalidatePRCaches() {
 	cache.PRCache.Clear()
 	cache.PRListCache.Clear()
 	cache.PRDetailCache.Clear()
+	cache.PRPreviewCache.Clear()
 	cache.MergedPRHeadsCache.Clear()
 }
 

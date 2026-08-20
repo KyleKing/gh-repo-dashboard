@@ -190,46 +190,50 @@ func (m Model) renderPRPreviewBlock(width, height int) string {
 	return strings.Join(append(lines, notesDivider(repoLabel, "#"+strconv.Itoa(pr.Number), width)), "\n")
 }
 
-// renderPRPreviewLines renders the row's description, reviewers, and CI
-// checks, or a placeholder while the detail behind them is still loading.
+// renderPRPreviewLines renders the row's reviewers, review state, diffstat,
+// and description, or why none of them is on screen yet.
 func (m Model) renderPRPreviewLines(pr models.PRInfo, width int) []string {
-	repo, found := m.searchPRRepoPath(pr)
-	if !found {
-		return []string{styles.SubtitleStyle.Render("no local checkout to preview from")}
+	if pr.URL == "" {
+		return []string{styles.SubtitleStyle.Render("no pull request URL to preview from")}
 	}
 
-	detail, loaded := m.prPreview[prPreviewKey(repo, pr.Number)]
+	if failure, failed := m.prPreviewError[pr.URL]; failed {
+		return []string{styles.ErrorStyle.Render("preview failed: " + failure)}
+	}
+
+	preview, loaded := m.prPreview[pr.URL]
 	if !loaded {
 		return []string{styles.SubtitleStyle.Render(readingLabel)}
 	}
 
 	reviewers := "none requested"
-	if len(detail.Reviewers) > 0 {
-		reviewers = strings.Join(detail.Reviewers, ", ")
+	if len(preview.Reviewers) > 0 {
+		reviewers = strings.Join(preview.Reviewers, ", ")
 	}
 
 	reviewStyle := styles.SubtitleStyle
-	switch detail.ReviewStatus() {
+	switch preview.ReviewStatus() {
 	case models.ReviewApproved:
 		reviewStyle = styles.CleanStyle
 	case models.ReviewChangesRequested:
 		reviewStyle = styles.ErrorStyle
 	}
 
-	// The preview's own detail read carries no CI rollup (only the full detail
-	// page's CheckDetails list does), so the checks summary comes from the
-	// row's own aggregate instead, already populated when the search ran.
+	// The preview asks for no check rollup, since that is the expensive half
+	// of a detail read, so the checks summary comes from the row's own
+	// aggregate instead, already populated when the search ran.
 	const summaryLines = 3
 
 	lines := make([]string, 0, summaryLines+prPreviewMaxDescLines)
 	lines = append(lines,
 		styles.SubtitleStyle.Render("Reviewers: ")+reviewers,
-		styles.SubtitleStyle.Render("Review: ")+reviewStyle.Render(detail.ReviewStatus())+
-			"   "+styles.SubtitleStyle.Render("Checks: ")+formatChecksCell(&pr),
+		styles.SubtitleStyle.Render("Review: ")+reviewStyle.Render(preview.ReviewStatus())+
+			"   "+styles.SubtitleStyle.Render("Checks: ")+formatChecksCell(&pr)+
+			"   "+diffStat(preview.Additions, preview.Deletions),
 		"",
 	)
 
-	return append(lines, markdown.Render(orDash(strings.TrimSpace(detail.Body)), width, prPreviewMaxDescLines)...)
+	return append(lines, markdown.Render(orDash(strings.TrimSpace(preview.Body)), width, prPreviewMaxDescLines)...)
 }
 
 func (m Model) prListEmptyLabel() string {

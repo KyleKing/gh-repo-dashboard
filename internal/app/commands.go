@@ -287,19 +287,26 @@ func loadPRDetailCmd(repoPath, remoteID string, prNumber int) tea.Cmd {
 	}
 }
 
-// loadPRPreviewCmd reads one pull request's full detail for the PRs tab's
-// inline preview, distinct from loadPRDetailCmd's message so it never
-// clobbers the full-screen detail view's own state.
-func loadPRPreviewCmd(repoPath, remoteID string, prNumber int, key string) tea.Cmd {
+// loadPRPreviewCmd reads the light preview for one PRs tab row, addressing the
+// pull request by URL so a repository that was never scanned locally previews
+// like any other. Only gh's credentials come from repoPath.
+func loadPRPreviewCmd(repoPath, prURL string) tea.Cmd {
 	return func() tea.Msg {
-		ctx := context.Background()
-		detail, err := github.GetPRDetail(ctx, repoPath, remoteID, prNumber)
+		preview, err := github.GetPRPreview(context.Background(), repoPath, prURL)
 		if err != nil {
-			return PRPreviewLoadedMsg{Key: key, Error: err}
+			return PRPreviewLoadedMsg{Key: prURL, Error: err}
 		}
 
-		return PRPreviewLoadedMsg{Key: key, Detail: *detail}
+		return PRPreviewLoadedMsg{Key: prURL, Preview: *preview}
 	}
+}
+
+// prPreviewTickCmd waits out the debounce window before a moving cursor reads
+// anything.
+func prPreviewTickCmd(seq int) tea.Cmd {
+	return tea.Tick(prPreviewDebounce, func(_ time.Time) tea.Msg {
+		return PRPreviewTickMsg{Seq: seq}
+	})
 }
 
 func prefetchPRDetailCmd(repoPath, remoteID string, prNumber int) tea.Cmd {
