@@ -146,8 +146,8 @@ func TestSelectionMarkerRendered(t *testing.T) {
 	if !strings.Contains(output, "•") {
 		t.Error("expected selection marker in view")
 	}
-	if !strings.Contains(output, "1 selected") {
-		t.Error("expected selection badge in status bar")
+	if !strings.Contains(output, "1 marked") {
+		t.Error("expected the mark badge in the status bar")
 	}
 }
 

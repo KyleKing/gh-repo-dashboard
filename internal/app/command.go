@@ -20,12 +20,13 @@ const (
 	nameCopyPath   = "copy path"
 	nameFetch      = "fetch"
 	nameFilter     = "filter"
+	nameActions    = "actions"
 	nameHelp       = "help"
 	namePRQuery    = "pr-query"
 	nameQuit       = "quit"
 	nameRefresh    = "refresh"
 	nameSelect     = "select"
-	nameSelected   = "selected"
+	nameMarked     = "marked"
 	nameSort       = "sort"
 	nameStatus     = "status"
 	nameToggleDiff = "toggle full diff"
@@ -389,7 +390,7 @@ func runSelectCommand(m Model, args []string) (Model, tea.Cmd) {
 			m.selectedPaths[path] = true
 		}
 
-		return m, statusCmd(fmt.Sprintf("Selected %d repos", len(m.selectedPaths)))
+		return m, statusCmd(fmt.Sprintf("Marked %d repos", len(m.selectedPaths)))
 	case nameWhere:
 		expr := strings.Join(args[1:], " ")
 		pred, err := filters.ParsePredicate(expr, filters.RepoAtoms())
@@ -403,7 +404,7 @@ func runSelectCommand(m Model, args []string) (Model, tea.Cmd) {
 			}
 		}
 
-		return m, statusCmd(fmt.Sprintf("Selected %d repos", len(m.selectedPaths)))
+		return m, statusCmd(fmt.Sprintf("Marked %d repos", len(m.selectedPaths)))
 	default:
 		return m, statusErrCmd("Unknown select action: " + args[0])
 	}

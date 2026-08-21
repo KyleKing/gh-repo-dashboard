@@ -4,8 +4,7 @@ Where gh-repo-dashboard is going, and the shape of what it already has.
 Architecture and domain context live in [DESIGN.md](DESIGN.md); Go and workflow
 conventions live in [AGENTS.md](AGENTS.md); the design docs the shipped work was
 built from live in `docs/design/`, alongside
-[selection-and-verbs.md](docs/design/selection-and-verbs.md), which is proposed
-rather than shipped.
+[selection-and-verbs.md](docs/design/selection-and-verbs.md).
 
 The column engine lives in `internal/ui/table` and every table is sized by it.
 The repo list is one full-width table with an expanded region `v` opens beneath

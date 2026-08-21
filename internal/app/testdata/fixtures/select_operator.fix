@@ -4,5 +4,5 @@ when :select where dirty
 then selected = dirty dirty-pr
 when keys ! f s r
 then view = batch
-then task = Fetch All (selected)
+then task = Fetch All (marked)
 then total = 2

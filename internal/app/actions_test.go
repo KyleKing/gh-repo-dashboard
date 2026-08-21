@@ -251,7 +251,7 @@ func TestPanelActionMenuRunsAVerbAndClosesOnAnythingElse(t *testing.T) {
 	m.focusedPanel = panelBranches
 	m.branches = []models.BranchInfo{{Name: "feature/thing", Upstream: "origin/feature/thing"}}
 
-	openedModel, _ := m.handleDetailKey(keyPress(rune(panelActionLeader[0])))
+	openedModel, _ := m.handleDetailKey(keyPress(rune(actionLeader[0])))
 	opened := mustModel(t, openedModel)
 	if !opened.panelActions {
 		t.Fatal("the leader key should open the verb menu")

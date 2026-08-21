@@ -156,8 +156,8 @@ func (m Model) renderStatusBar() string {
 		parts = append(parts, styles.Badge("\""+m.searchText+"\"", styles.SearchBadgeStyle))
 	}
 
-	if count := m.SelectedCount(); count > 0 {
-		parts = append(parts, styles.Badge(fmt.Sprintf("%d selected", count), styles.SortBadgeStyle))
+	if summary := m.markSummary(); summary != "" {
+		parts = append(parts, styles.Badge(summary, styles.SortBadgeStyle))
 	}
 
 	return strings.Join(parts, " ")
@@ -1000,7 +1000,7 @@ func (m Model) renderTableRow(s models.RepoSummary, selected bool, layout table.
 
 	gutter := base.Render(strings.Repeat(" ", table.Gutter))
 
-	return base.Render(rowCursor(m.selectedPaths[s.Path], selected)) +
+	return base.Render(rowCursor(m.isMarked(s.Path), selected)) +
 		strings.Join(cells, gutter)
 }
 
@@ -1151,20 +1151,30 @@ type footerHint struct {
 // key that closes a region taking most of the screen must stay on offer.
 //
 //nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
-func footerHints(expandOpen bool) []footerHint {
+func footerHints(expandOpen bool, marked string) []footerHint {
 	expand := footerHint{key: "v", desc: "expand", priority: 3}
 	if expandOpen {
 		expand = footerHint{key: "v", desc: "hide", priority: 11}
+	}
+
+	// The mark hint states the count once there is one, since that count is
+	// what every operator is about to act on and nothing else on screen says
+	// it. With nothing marked it names the key's job instead.
+	mark := footerHint{key: markToggleKey, desc: "mark", priority: 2}
+	if marked != "" {
+		mark = footerHint{key: markToggleKey, desc: marked, priority: 12}
 	}
 
 	return []footerHint{
 		{key: keyNavPair, desc: descNav, priority: 4},
 		{key: keyEnter, desc: nameSelect, priority: 8},
 		expand,
+		mark,
+		{key: actionLeader, desc: nameActions, priority: 7},
 		{key: "f", desc: nameFilter, priority: 6},
 		{key: "s", desc: nameSort, priority: 5},
-		{key: "/", desc: "search", priority: 7},
-		{key: ":", desc: "command", priority: 2},
+		{key: "/", desc: "search", priority: 5},
+		{key: ":", desc: "command", priority: 1},
 		{key: "r", desc: nameRefresh, priority: 1},
 		{key: "?", desc: nameHelp, priority: 9},
 		{key: "q", desc: nameQuit, priority: 10},
@@ -1222,7 +1232,7 @@ func (m Model) renderFooter() string {
 	case ViewModeSort:
 		dockHints = sortDockFooterHints()
 	default:
-		dockHints = footerHints(m.expandOpen)
+		dockHints = footerHints(m.expandOpen, m.markSummary())
 	}
 
 	return prefix + renderHints(fittingHints(dockHints, listWidth(m.width)-lipgloss.Width(prefix)))

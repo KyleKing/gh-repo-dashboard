@@ -366,17 +366,22 @@ func TestCheckoutFromThePRTabResolvesTheRepoAndAsksFirst(t *testing.T) {
 	}
 }
 
-// TestPRsTabOpensTheCursorRowInTheBrowser covers "o" reaching the row under
-// the cursor without the "!" leader, which is what the tab's own footer
-// promises. A row with no URL is the observable half: the refusal proves the
-// key routed to the open action rather than falling through unhandled.
-func TestPRsTabOpensTheCursorRowInTheBrowser(t *testing.T) {
+// TestPRsTabOpensTheCursorRowFromTheMenu covers "ao" reaching the row under
+// the cursor: the verb lives behind the action leader rather than on a
+// top-level key. A row with no URL is the observable half, since the refusal
+// proves the keys routed to the open action rather than falling through.
+func TestPRsTabOpensTheCursorRowFromTheMenu(t *testing.T) {
 	t.Parallel()
 
 	m := prTabModel()
 	m.prSearch[0].URL = ""
 
-	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'o', Text: "o"})
+	opened := mustModel(t, mustUpdate(t, &m, tea.KeyPressMsg{Code: 'a', Text: actionLeader}))
+	if !opened.panelActions {
+		t.Fatal("expected the action leader to open the verb menu")
+	}
+
+	updated, cmd := opened.Update(tea.KeyPressMsg{Code: 'o', Text: "o"})
 	if cmd == nil {
 		t.Fatal("expected o to act on the cursor row")
 	}
@@ -387,6 +392,6 @@ func TestPRsTabOpensTheCursorRowInTheBrowser(t *testing.T) {
 	}
 
 	if mustModel(t, updated).viewMode != ViewModePRList {
-		t.Error("o must not leave the PRs tab")
+		t.Error("the verb must not leave the PRs tab")
 	}
 }

@@ -248,7 +248,8 @@ func (m Model) closePalette() (tea.Model, tea.Cmd) {
 }
 
 // handlePaletteKey drives the find line: typing requeries, tab marks, enter
-// acts on the highlighted row, and "!" opens the verbs for the whole set.
+// acts on the highlighted row, and the action leader opens the verbs for the
+// whole set.
 func (m Model) handlePaletteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	results := m.findResults()
 
@@ -263,7 +264,7 @@ func (m Model) handlePaletteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case keyTab:
 		return m.togglePaletteMark(results)
 
-	case "!":
+	case actionLeader:
 		if len(results) > 0 {
 			m.paletteActions = true
 		}
@@ -373,7 +374,7 @@ func mustAppModel(model tea.Model) Model {
 	return Model{}
 }
 
-// paletteAction is one verb the "!" menu offers for a result set.
+// paletteAction is one verb the action menu offers for a result set.
 type paletteAction struct {
 	key  string
 	name string
@@ -447,7 +448,7 @@ func openResultPRs(m Model, results []findResult) (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// handlePaletteActionKey answers the "!" menu: a verb key runs it against the
+// handlePaletteActionKey answers the action menu: a verb key runs it against the
 // target set, anything else backs out to the query.
 func (m Model) handlePaletteActionKey(msg tea.KeyMsg, targets []findResult) (tea.Model, tea.Cmd) {
 	m.paletteActions = false
@@ -593,7 +594,7 @@ func paletteFooter(actions bool) string {
 	hints := [][2]string{
 		{keyEnter, "open"},
 		{keyTab, "mark"},
-		{"!", "act on set"},
+		{actionLeader, "act on set"},
 		{"*", "widen to fleet"},
 		{keyEsc, "close"},
 	}

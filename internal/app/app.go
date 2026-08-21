@@ -73,6 +73,14 @@ type Model struct {
 	predicateText string
 	predicate     filters.Predicate[models.RepoSummary]
 	selectedPaths map[string]bool
+	// visualMode is the line-wise range V opens, anchored at visualAnchor and
+	// extended by every motion until esc closes it. It shows over the toggled
+	// marks rather than merging into them, so leaving restores what was there.
+	visualMode   bool
+	visualAnchor int
+	// operatorLeaderPending is "!" waiting for the verb that follows it, the
+	// step before pendingOperator holds one.
+	operatorLeaderPending bool
 
 	prPredicateText string
 	prPredicate     filters.Predicate[forge.PullRequest]

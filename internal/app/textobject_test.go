@@ -136,8 +136,8 @@ func TestOperatorSelectedComposition(t *testing.T) {
 	m := operatorModel()
 	m2, _ := m.ExecuteCommand("select where dirty")
 	m3, cmd := pressKeys(t, m2, "!fsr")
-	if m3.batchTask != "Fetch All (selected)" {
-		t.Errorf("expected selected scope, got %q", m3.batchTask)
+	if m3.batchTask != "Fetch All (marked)" {
+		t.Errorf("expected the marked scope, got %q", m3.batchTask)
 	}
 	if m3.batchTotal != 2 {
 		t.Errorf("expected 2 repos, got %d", m3.batchTotal)

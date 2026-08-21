@@ -16,7 +16,7 @@ func TestRunScriptLine(t *testing.T) {
 		wantOutput string
 	}{
 		{name: "filter", line: ":filter dirty", wantOutput: "2 repos visible"},
-		{name: "status message", line: "select where has_pr", wantOutput: "Selected 1 repos"},
+		{name: "status message", line: "select where has_pr", wantOutput: "Marked 1 repos"},
 		{
 			name: "unknown command", line: "bogus",
 			want: lineOutcome{failed: true}, wantOutput: "Unknown command: bogus",

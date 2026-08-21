@@ -2,9 +2,9 @@
 
 The Vision in [ROADMAP.md](../../ROADMAP.md) promises text objects, operators, and
 composition. Two of the three shipped. This is the design for the third, and for
-the leader key that got stuck carrying both grammars at once.
+the leader key that ended up the only door to both.
 
-Status: proposed. Nothing here is implemented.
+Status: shipped. What the build settled records the calls made along the way.
 
 ## Problem
 
@@ -63,7 +63,7 @@ The three are cumulative, not exclusive. The third is the one that finishes the
 paradigm; the second is the prerequisite that stops `!` from being ambiguous once
 operators can be reached two ways.
 
-## Proposed shape
+## Shape
 
 ```
 x            toggle the row under the cursor
@@ -82,27 +82,49 @@ without a second indicator:
   PRs   · #594 ci: Pin GitHub…  a on the PRs tab
 ```
 
-An operator with marks live skips the object prompt: `!f` fetches the marks rather
-than waiting for `dr`. With nothing marked it behaves as it does today. That keeps
-one rule — an operator acts on the marks if there are any, otherwise on what you
-name — instead of two modes to remember.
+The menu's batch verbs act on the marks when there are marks, and ask for a text
+object when there are none, which is the discoverable path. The `!` grammar always
+asks for its object, because `sr` already names the marked repos: consuming them
+before the object would retire a text object rather than fill one. `x` is what
+finally fills `sr`, so `!fsr` became a sentence the keyboard can say.
 
-## What breaks
+## What broke
 
-`!` no longer opens the verb menu. It is a single key with a year of muscle memory
-behind it, and the fix is a one-line status message on the first `!` press that
-names `a`, removed a release later. `:select` and the palette keep writing the same
-`selectedPaths` map, so both reach the new marks for free.
+`!` no longer opens the verb menu; `a` does. `!` became the direct operator prefix
+the help text always claimed it was, so `!fdr` now works without going through the
+menu first.
 
-`x` is unbound today. `V` is unbound. `esc` currently backs out of the expanded
-region and the docks, so clearing marks has to sit below those in the same handler
-rather than in front of them.
+Ordering matters and is load-bearing. `ar` is a text object and `a` is the menu
+leader, so an operator waiting for its object has to be dispatched before the
+leader keys. `handleGrammarKey` is that order, and reversing two of its cases
+breaks `!par` in a way no type checks.
 
-## Open questions
+`esc` clears the marks ahead of closing the expanded region, since a range the
+user just drew is the nearest layer to back out of.
 
-- `x` or `space` for the toggle. `space` is the universal find today (`;` is its
-  synonym), so taking it means moving find to `;` alone
-- Whether the PRs tab gets marks too, or whether selection stays a repo-list idea
-  until a batch verb over pull requests exists to justify it
-- Whether `a` should also be the operator prefix, retiring `!` entirely. One key is
-  simpler to teach; two keep the menu and the grammar visibly separate
+`:select` and the palette still write `selectedPaths`, so both fill the same marks.
+The word in the interface is "marked" everywhere: the badge, the footer, the menu
+title, and the `sr` object's own name. `:select` keeps its name as a command verb.
+
+## What the build settled
+
+**`x` for the toggle.** In a vim-paradigm TUI, `t` (till), `c` (change), `m`
+(mark), `d`, `y`, `w`, `e`, and `b` are all motions or operators worth keeping
+free. `x` is delete-char, which a read-mostly dashboard will never want, so it is
+the letter with the least future value.
+
+**Marking steps past the row.** One key held down marks a run, the way ranger and
+lf behave, rather than alternating `x` and `j`.
+
+**The range shows over the marks rather than merging into them.** Leaving visual
+mode restores whatever was marked before it opened, so `V` can never silently eat
+a set built with `x`.
+
+## Still open
+
+- Whether the PRs tab gets marks. It stays a repo-list idea until a batch verb over
+  pull requests exists to justify it
+- `x` also clears the predicate in the filter dock. Different mode, no collision
+  today, but two meanings for one letter is worth revisiting
+- Counted motions (`5j`) and structural ones (`}`), which the table above lists as
+  a gap and this change did not close

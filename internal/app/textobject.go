@@ -31,8 +31,8 @@ func textObjects() []TextObject {
 		{Key: "pr", Name: "with PRs", Matches: func(m Model, path string) bool {
 			return m.summaries[path].PRInfo != nil
 		}},
-		{Key: "sr", Name: nameSelected, Matches: func(m Model, path string) bool {
-			return m.selectedPaths[path]
+		{Key: "sr", Name: nameMarked, Matches: func(m Model, path string) bool {
+			return m.isMarked(path)
 		}},
 	}
 }

@@ -300,10 +300,15 @@ func (m Model) startSquashMergePR() (tea.Model, tea.Cmd) {
 	return m.confirmAction("Squash-merge pull request?", detail, squashMergePRCmd(m.selectedRepo, pr.Number))
 }
 
-// panelActionLeader opens the verb menu for whatever the focused panel has
-// selected. It is the same key the universal find uses to act on its result
-// set, so one idiom covers both.
-const panelActionLeader = "!"
+// actionLeader opens the verb menu over whatever is targeted, and
+// operatorLeader starts an operator waiting for its text object. They are
+// separate keys because they are separate grammars: a menu is a list you read,
+// an operator is a sentence you compose. One key introducing both is what made
+// neither discoverable.
+const (
+	actionLeader   = "a"
+	operatorLeader = "!"
+)
 
 // panelAction is one verb the leader key offers. Keys are scoped to a panel,
 // so the same letter can mean different things in different panels and each
@@ -328,11 +333,12 @@ func (m Model) actionMenu() actionMenu {
 		return actionMenu{title: tabNamePRs, target: target, actions: prListActions()}
 
 	case ViewModeRepoList:
-		return actionMenu{
-			title:   "Fleet",
-			target:  strconv.Itoa(len(m.filteredPaths)) + " repos match the current filters",
-			actions: listActions(),
+		target := strconv.Itoa(len(m.filteredPaths)) + " repos match the current filters"
+		if summary := m.markSummary(); summary != "" {
+			target = summary
 		}
+
+		return actionMenu{title: "Fleet", target: target, actions: listActions(m.markSummary() != "")}
 	}
 
 	panels := m.panelSet(m.gridWidth())
@@ -359,19 +365,37 @@ type actionMenu struct {
 // after the verb ("!fdr" fetches the dirty repos, "!ff" the filtered set).
 // They sit behind the leader rather than on capital letters of their own,
 // which is what frees those letters for the tab bar.
-func listActions() []panelAction {
+func listActions(marked bool) []panelAction {
+	suffix := " + object"
+	if marked {
+		suffix = " marked"
+	}
+
 	return []panelAction{
-		{key: "c", name: "cleanup merged + object", run: startOperator("C")},
-		{key: "f", name: nameFetch + " + object", run: startOperator("F")},
-		{key: "p", name: "prune remote + object", run: startOperator("P")},
-		{key: "r", name: "refresh PRs + object", run: startOperator("R")},
+		{key: "c", name: "cleanup merged" + suffix, run: startOperator("C")},
+		{key: "f", name: nameFetch + suffix, run: startOperator("F")},
+		{key: "p", name: "prune remote" + suffix, run: startOperator("P")},
+		{key: "r", name: "refresh PRs" + suffix, run: startOperator("R")},
 	}
 }
 
-// startOperator parks an operator waiting for its text object, exactly as
-// typing its key used to.
+// startOperator runs the operator over the marks when there are any, and parks
+// it waiting for a text object when there are not. One rule covers both, which
+// is what keeps marks from being a second mode to remember.
 func startOperator(key string) func(Model) (tea.Model, tea.Cmd) {
 	return func(m Model) (tea.Model, tea.Cmd) {
+		op, ok := lookupOperator(key)
+		if !ok {
+			return m, nil
+		}
+
+		if marked := m.markedPaths(); len(marked) > 0 {
+			summary := m.markSummary()
+			cleared, _ := m.clearMarks()
+
+			return cleared.confirmBatchTask(op.TaskName+" ("+summary+")", op.Destructive, marked, op.Cmd)
+		}
+
 		m.pendingOperator = key
 		m.pendingObject = ""
 

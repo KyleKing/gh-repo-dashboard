@@ -102,7 +102,7 @@ pressing `:`; bare keys act on the repo list.
 | Input | Result |
 |---|---|
 | `:select where dirty` | selects dirty, dirty-pr |
-| press `!` `f` `s` `r` | opens the batch view; starts batch Fetch All (selected); over 2 repos |
+| press `!` `f` `s` `r` | opens the batch view; starts batch Fetch All (marked); over 2 repos |
 
 ## Find across the fleet, then commit the result set to a batch operator
 
@@ -110,6 +110,6 @@ pressing `:`; bare keys act on the repo list.
 |---|---|
 | press `;` | opens the find view |
 | press `d` `i` `r` `t` `y` | find: dirty; matches: repo:dirty repo:dirty-pr |
-| press `!` | opens the find view |
+| press `a` | opens the find view |
 | press `s` | selects dirty, dirty-pr |
-| press `!` `f` `s` `r` | opens the batch view; starts batch Fetch All (selected); over 2 repos |
+| press `!` `f` `s` `r` | opens the batch view; starts batch Fetch All (marked); over 2 repos |

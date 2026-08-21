@@ -445,21 +445,8 @@ func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if m.panelActions {
-		return m.handlePanelActionKey(msg)
-	}
-
-	if newM, cmd, handled := m.handleLeaderOrTabKey(msg); handled {
+	if newM, cmd, handled := m.handleGrammarKey(msg); handled {
 		return newM, cmd
-	}
-
-	if m.pendingOperator != "" {
-		return m.handleOperatorPendingKey(msg)
-	}
-
-	if key.Matches(msg, m.keys.Repeat) {
-		m.pendingRepeat = true
-		return m, nil
 	}
 
 	if newM, handled := m.handleCursorKey(msg); handled {
@@ -502,10 +489,56 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handleGrammarKey answers everything that composes: a menu already open, an
+// operator mid-sentence, a leader, a mark. Order is the design. An operator
+// waiting for its object owns the keyboard, because "ar" is a text object and
+// "a" is the menu leader, and only the operator's own state tells them apart.
+// Handled is false if msg belongs to none of them.
+func (m Model) handleGrammarKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	switch {
+	case m.panelActions:
+		next, cmd := m.handlePanelActionKey(msg)
+
+		return next, cmd, true
+
+	case m.operatorLeaderPending:
+		next, cmd := m.handleOperatorLeaderKey(msg)
+
+		return next, cmd, true
+
+	case m.pendingOperator != "":
+		next, cmd := m.handleOperatorPendingKey(msg)
+
+		return next, cmd, true
+	}
+
+	if newM, cmd, handled := m.handleLeaderOrTabKey(msg); handled {
+		return newM, cmd, true
+	}
+
+	if key.Matches(msg, m.keys.Repeat) {
+		m.pendingRepeat = true
+
+		return m, nil, true
+	}
+
+	if newM, handled := m.handleMarkKey(msg); handled {
+		return newM, nil, true
+	}
+
+	if msg.String() == operatorLeader {
+		m.operatorLeaderPending = true
+
+		return m, nil, true
+	}
+
+	return m, nil, false
+}
+
 // handleLeaderOrTabKey answers the two keys that leave the list behind: the
 // verb leader, and a tab bar key. Handled is false if msg is neither.
 func (m Model) handleLeaderOrTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
-	if msg.String() == panelActionLeader {
+	if msg.String() == actionLeader {
 		m.panelActions = true
 
 		return m, nil, true
@@ -915,6 +948,10 @@ func (m Model) handleBackKey() (tea.Model, tea.Cmd) {
 // itself has no parent to pop to, so a back key with nothing open does
 // nothing rather than leaving the fleet.
 func (m Model) dismissListLayer() (tea.Model, tea.Cmd) {
+	if cleared, did := m.clearMarks(); did {
+		return cleared, statusCmd("Marks cleared")
+	}
+
 	switch {
 	case m.expandOpen:
 		m.expandOpen = false
@@ -936,6 +973,30 @@ func (m Model) dismissListLayer() (tea.Model, tea.Cmd) {
 
 		return m, statusCmd("Filters cleared")
 	}
+
+	return m, nil
+}
+
+// handleOperatorLeaderKey takes the verb after "!" and parks it waiting for a
+// text object, which is what "!fdr" has always spelled and what the leader now
+// reaches without going through the menu first. The object is always asked
+// for: "sr" already names the marked repos, so consuming the marks here would
+// retire a text object rather than fill one.
+func (m Model) handleOperatorLeaderKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	m.operatorLeaderPending = false
+
+	keyStr := msg.String()
+	if keyStr == keyEsc {
+		return m, nil
+	}
+
+	op, ok := lookupOperator(strings.ToUpper(keyStr))
+	if !ok {
+		return m, statusCmd("Unknown operator: " + keyStr)
+	}
+
+	m.pendingOperator = op.Key
+	m.pendingObject = ""
 
 	return m, nil
 }
@@ -1008,7 +1069,7 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handlePanelActionKey(msg)
 	}
 
-	if msg.String() == panelActionLeader {
+	if msg.String() == actionLeader {
 		m.panelActions = true
 		return m, nil
 	}

@@ -23,7 +23,7 @@ the scope is always explicit before anything runs.
 | `dr` | Dirty repos |
 | `nr` | Repos with notes |
 | `pr` | Repos with PRs |
-| `sr` | Selected repos |
+| `sr` | Marked repos (`x` marks one, `V` opens a range, `:select` fills the same set) |
 
 `!fdr` fetches every dirty repo, and repeating the verb (`!ff`) runs it over the
 filtered set. `@:` repeats the last `:command`.

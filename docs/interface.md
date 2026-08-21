@@ -15,17 +15,21 @@ start.
 | `f` / `s` | Filter and sort modals |
 | `:` | Command mode |
 | `r` | Refresh, clearing caches |
-| `!` | Verbs for whatever the current view has selected |
+| `x` / `V` | Mark the row under the cursor / open a line-wise range motions extend |
+| `a` | Verbs for what is marked, or for whatever the current view has selected |
+| `!` | Batch operator, then a text object |
 | `R` / `P` | Switch tabs: Repos and PRs |
 | `?` | Help overlay |
 | `q` | Quit |
 
 Batch operations use a vim-style operator plus a text object, so `!f` alone
-waits for a scope. See [batch operations](./batch-operations.md).
+waits for a scope. `x` marks rows and `sr` is the text object naming them, so
+`x x x !fsr` fetches three repos you pointed at. See
+[batch operations](./batch-operations.md).
 
-Everything that writes lives behind `!` rather than on a key of its own, which
+Everything that writes lives behind `a` rather than on a key of its own, which
 keeps the single-key namespace for moving around and means the verbs on offer
-always match what is selected. `!` then a letter runs one:
+always match what is marked or selected. `a` then a letter runs one:
 
 | Where | Verbs |
 |---|---|
@@ -71,8 +75,8 @@ view.
 fleet-wide from the list, and `*` widens a repo-scoped query). Type `#12` for a
 pull request number, `b`, `s`, `n`, or `r` plus a space to narrow to branches,
 stashes, notes, or repos, or plain text to search everything. `enter` opens the
-highlighted result where it lives, `tab` marks rows, and `!` offers verbs for the
-whole set, including committing its repos to the selected-repos text object so
+highlighted result where it lives, `tab` marks rows, and `a` offers verbs for the
+whole set, including committing its repos to the marked-repos text object so
 batch operators compose with the find.
 
 ## The PRs tab

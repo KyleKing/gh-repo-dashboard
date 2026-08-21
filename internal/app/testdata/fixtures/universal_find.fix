@@ -5,11 +5,11 @@ then view = find
 when keys d i r t y
 then find = dirty
 then matches = repo:dirty repo:dirty-pr
-when keys !
+when keys a
 then view = find
 when keys s
 then selected = dirty dirty-pr
 when keys ! f s r
 then view = batch
-then task = Fetch All (selected)
+then task = Fetch All (marked)
 then total = 2

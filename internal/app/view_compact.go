@@ -50,7 +50,7 @@ func (m Model) renderCompactRow(s models.RepoSummary, selected bool, layout tabl
 		colCompactState:  withSelection(statusCellStyle(s, base), selected),
 	}
 
-	identity := base.Render(rowCursor(m.selectedPaths[s.Path], selected)) +
+	identity := base.Render(rowCursor(m.isMarked(s.Path), selected)) +
 		table.Join(renderCells(layout, values, cellStyles, &base))
 
 	signals := m.compactSignals(s)

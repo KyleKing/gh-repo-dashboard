@@ -378,9 +378,6 @@ func (m Model) handlePRListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Expand):
 		return m.togglePRPreview()
 
-	case key.Matches(msg, m.keys.OpenURL):
-		return m.openSearchPRURL()
-
 	case key.Matches(msg, m.keys.Help):
 		m.viewMode = ViewModeHelp
 
@@ -394,7 +391,7 @@ func (m Model) handlePRListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // wide it looks, rather than where the cursor is.
 func (m Model) handlePRViewKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case panelActionLeader:
+	case actionLeader:
 		m.panelActions = true
 
 		return m, nil

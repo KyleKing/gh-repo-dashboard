@@ -983,7 +983,7 @@ func (m Model) panelFooter(panels []panelContent, focused, width int) string {
 
 	if focused >= 0 && focused < len(panels) && len(panelActionsFor(panels[focused].id)) > 0 {
 		hints = append(hints, footerHint{
-			key: panelActionLeader, desc: "act", priority: panelHintPriority - navHintStep,
+			key: actionLeader, desc: nameActions, priority: panelHintPriority - navHintStep,
 		})
 	}
 

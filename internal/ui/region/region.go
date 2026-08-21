@@ -62,11 +62,10 @@ const (
 // factGutter separates a fact's value from the label of the fact beside it.
 const factGutter = 3
 
-// factMinWidth is the narrowest a fact column may be before the head drops to
-// a single column, below which a label and its value have no room to sit on
-// one line. factMaxWidth caps how far apart a wide terminal pushes two facts,
-// since a pair the eye has to travel between reads worse than a pair that
-// does not fill the line.
+// Fact columns are bounded at both ends: below factMinWidth a label and its
+// value have no room to sit on one line, so the head drops to a single column,
+// and above factMaxWidth a wide terminal would push a pair so far apart that
+// the eye has to travel between them.
 const (
 	factMinWidth = 28
 	factMaxWidth = 52
