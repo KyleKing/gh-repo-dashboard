@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -65,9 +67,9 @@ type WindowSizeMsg struct {
 // DetailLoadedMsg reports the branches, stashes, worktrees, PRs, and notes files loaded for a repo's detail view.
 type DetailLoadedMsg struct {
 	Path       string
-	Branches   []models.BranchInfo
-	Stashes    []models.StashDetail
-	Worktrees  []models.WorktreeInfo
+	Branches   []vcs.BranchInfo
+	Stashes    []vcs.StashDetail
+	Worktrees  []vcs.WorktreeInfo
 	PRs        []forge.PullRequest
 	NotesFiles []models.NoteFileContent
 	// DeletableBranches names local, non-current branches whose tip matches a

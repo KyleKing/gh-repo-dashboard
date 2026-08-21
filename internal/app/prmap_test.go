@@ -8,8 +8,9 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -22,9 +23,25 @@ func mapFleet() Model {
 	m.loading = false
 	m.viewMode = ViewModePRMap
 	m.summaries = map[string]models.RepoSummary{
-		"/dev/app":    {Path: "/dev/app", Branch: "main", RemoteRepo: "acme/app", Upstream: "origin/main"},
-		"/dev/app-wt": {Path: "/dev/app-wt", Branch: "feature/peer", RemoteRepo: "acme/app"},
-		"/dev/lib":    {Path: "/dev/lib", Branch: "main", RemoteRepo: "acme/lib", Upstream: "origin/main"},
+		"/dev/app": {
+			RepoSummary: vcs.RepoSummary{
+				Path:       "/dev/app",
+				Branch:     "main",
+				RemoteRepo: "acme/app",
+				Upstream:   "origin/main",
+			},
+		},
+		"/dev/app-wt": {
+			RepoSummary: vcs.RepoSummary{Path: "/dev/app-wt", Branch: "feature/peer", RemoteRepo: "acme/app"},
+		},
+		"/dev/lib": {
+			RepoSummary: vcs.RepoSummary{
+				Path:       "/dev/lib",
+				Branch:     "main",
+				RemoteRepo: "acme/lib",
+				Upstream:   "origin/main",
+			},
+		},
 	}
 	m.repoPaths = []string{"/dev/app", "/dev/app-wt", "/dev/lib"}
 	m.updateFilteredPaths()
@@ -37,19 +54,19 @@ func mapFleet() Model {
 				{Number: 9, Title: "Bump a dependency", State: "OPEN", HeadRef: "dependabot/bump"},
 				{Number: 8, Title: "Wire the peer branch", State: "OPEN", HeadRef: "feature/peer"},
 			},
-			Branches: []models.BranchInfo{
+			Branches: []vcs.BranchInfo{
 				{Name: "main"},
 				{Name: "feature/login", Ahead: 2},
 				{Name: "feature/orphan", Ahead: 3},
 			},
 		},
 		"/dev/app-wt": {Path: "/dev/app-wt"},
-		"/dev/lib":    {Path: "/dev/lib", Branches: []models.BranchInfo{{Name: "main"}}},
+		"/dev/lib":    {Path: "/dev/lib", Branches: []vcs.BranchInfo{{Name: "main"}}},
 	}
 
 	// app-wt is app's peer; pre-warm its branch list so reopening the region
 	// costs no fetch.
-	m.peerBranches = map[string][]models.BranchInfo{
+	m.peerBranches = map[string][]vcs.BranchInfo{
 		"/dev/app-wt": {{Name: "feature/peer"}},
 	}
 
@@ -99,7 +116,7 @@ func TestPRMapForkPRDoesNotClaimALocalBranch(t *testing.T) {
 		PRs: []forge.PullRequest{
 			{Number: 63, Title: "Fix the parser", State: "OPEN", HeadRef: "patch-1", HeadRepoOwner: "camoz"},
 		},
-		Branches: []models.BranchInfo{{Name: "patch-1", Ahead: 4}},
+		Branches: []vcs.BranchInfo{{Name: "patch-1", Ahead: 4}},
 	}
 
 	var pr, local prMapEntry
@@ -142,7 +159,7 @@ func TestPRMapSkipsTheDefaultBranchAndSharedCheckouts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	shared := PRMapLoadedMsg{Branches: []models.BranchInfo{
+	shared := PRMapLoadedMsg{Branches: []vcs.BranchInfo{
 		{Name: mainBranchName, Ahead: 3},
 		{Name: "feature/shared", Ahead: 1},
 	}}
@@ -151,8 +168,8 @@ func TestPRMapSkipsTheDefaultBranchAndSharedCheckouts(t *testing.T) {
 	m.loading = false
 	m.repoPaths = []string{parent, worktree}
 	m.summaries = map[string]models.RepoSummary{
-		parent:   {Path: parent, RemoteRepo: "acme/app"},
-		worktree: {Path: worktree, RemoteRepo: "acme/app"},
+		parent:   {RepoSummary: vcs.RepoSummary{Path: parent, RemoteRepo: "acme/app"}},
+		worktree: {RepoSummary: vcs.RepoSummary{Path: worktree, RemoteRepo: "acme/app"}},
 	}
 	m.updateFilteredPaths()
 	m.prMap = map[string]PRMapLoadedMsg{

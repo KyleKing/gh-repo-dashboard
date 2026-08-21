@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -37,13 +39,13 @@ func RepoAtoms() map[string]Predicate[models.RepoSummary] {
 		"config_override": models.RepoSummary.HasConfigOverrides,
 		"dirty":           models.RepoSummary.IsDirty,
 		"error":           func(s models.RepoSummary) bool { return s.Error != nil },
-		"git":             func(s models.RepoSummary) bool { return s.VCSType == models.VCSTypeGit },
+		"git":             func(s models.RepoSummary) bool { return s.VCSType == vcs.TypeGit },
 		"has_notes":       models.RepoSummary.HasNotes,
 		"has_pr":          func(s models.RepoSummary) bool { return s.PRInfo != nil },
 		"has_stash":       func(s models.RepoSummary) bool { return s.StashCount > 0 },
 		"has_upstream":    func(s models.RepoSummary) bool { return s.Upstream != "" },
 		atomHTTPS:         func(s models.RepoSummary) bool { return s.RemoteProtocol == atomHTTPS },
-		"jj":              func(s models.RepoSummary) bool { return s.VCSType == models.VCSTypeJJ },
+		"jj":              func(s models.RepoSummary) bool { return s.VCSType == vcs.TypeJJ },
 		atomSSH:           func(s models.RepoSummary) bool { return s.RemoteProtocol == atomSSH },
 		"template_drift": func(s models.RepoSummary) bool {
 			return s.TemplateInfo != nil && (s.TemplateInfo.Behind || !s.TemplateInfo.IsTag)

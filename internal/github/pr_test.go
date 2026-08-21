@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/kyleking/aragonite/forge"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
 )
 

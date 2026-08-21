@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -60,8 +62,8 @@ func TestSearchReposMatchesBranch(t *testing.T) {
 	t.Parallel()
 	paths := []string{"/repo-a", "/repo-b"}
 	summaries := map[string]models.RepoSummary{
-		"/repo-a": {Branch: "kyle/dev-1234-fix-thing"},
-		"/repo-b": {Branch: "main"},
+		"/repo-a": {RepoSummary: vcs.RepoSummary{Branch: "kyle/dev-1234-fix-thing"}},
+		"/repo-b": {RepoSummary: vcs.RepoSummary{Branch: "main"}},
 	}
 
 	result := filters.SearchRepos(paths, summaries, "dev-1234")
@@ -74,8 +76,8 @@ func TestSearchReposScopePrefix(t *testing.T) {
 	t.Parallel()
 	paths := []string{"/main-service", "/other-repo"}
 	summaries := map[string]models.RepoSummary{
-		"/main-service": {Branch: "feature/x"},
-		"/other-repo":   {Branch: "main"},
+		"/main-service": {RepoSummary: vcs.RepoSummary{Branch: "feature/x"}},
+		"/other-repo":   {RepoSummary: vcs.RepoSummary{Branch: "main"}},
 	}
 
 	byName := filters.SearchRepos(paths, summaries, "r:main")
@@ -127,8 +129,8 @@ func TestSearchReposCommitRecencyScope(t *testing.T) {
 	t.Parallel()
 	paths := []string{"/recent", "/stale", "/unknown"}
 	summaries := map[string]models.RepoSummary{
-		"/recent":  {LastModified: time.Now().Add(-2 * 24 * time.Hour)},
-		"/stale":   {LastModified: time.Now().Add(-60 * 24 * time.Hour)},
+		"/recent":  {RepoSummary: vcs.RepoSummary{LastModified: time.Now().Add(-2 * 24 * time.Hour)}},
+		"/stale":   {RepoSummary: vcs.RepoSummary{LastModified: time.Now().Add(-60 * 24 * time.Hour)}},
 		"/unknown": {},
 	}
 

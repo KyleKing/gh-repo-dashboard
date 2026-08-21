@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
-
 	"github.com/kyleking/aragonite/forge"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
 
@@ -22,15 +22,15 @@ func detailTableModel(termWidth int) Model {
 	m := New(nil, 1)
 	m.width = termWidth
 	m.height = 40
-	m.branches = []models.BranchInfo{
+	m.branches = []vcs.BranchInfo{
 		{Name: "main", Upstream: "origin/main", IsCurrent: true, LastCommit: now},
 		{Name: "feature/a-rather-long-branch-name", Upstream: "origin/feature/a-rather-long-branch-name"},
 	}
-	m.stashes = []models.StashDetail{
+	m.stashes = []vcs.StashDetail{
 		{Index: 0, Message: "On main: spike the parser", Date: now},
 		{Index: 1, Message: "On main: revert the spike", Date: now},
 	}
-	m.worktrees = []models.WorktreeInfo{
+	m.worktrees = []vcs.WorktreeInfo{
 		{Path: "/repos/app", Branch: "main"},
 		{Path: "/repos/app-feature", Branch: "feature/a-rather-long-branch-name", IsLocked: true},
 	}

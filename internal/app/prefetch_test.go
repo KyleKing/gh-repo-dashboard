@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -17,7 +18,7 @@ func TestPrefetchOnCursorMovement(t *testing.T) {
 	m.viewMode = ViewModeRepoDetail
 	m.focusedPanel = panelBranches
 	m.selectedRepo = testRepoPath
-	m.branches = []models.BranchInfo{{Name: "one"}, {Name: "two"}, {Name: "three"}}
+	m.branches = []vcs.BranchInfo{{Name: "one"}, {Name: "two"}, {Name: "three"}}
 	m.detailCursor = 0
 
 	// Move down - should trigger prefetch
@@ -61,7 +62,7 @@ func TestPrefetchOnDetailLoad(t *testing.T) {
 
 	msg := DetailLoadedMsg{
 		Path:     testRepoPath,
-		Branches: []models.BranchInfo{},
+		Branches: []vcs.BranchInfo{},
 		PRs:      prs,
 	}
 
@@ -82,7 +83,7 @@ func TestNavigateBetweenPRsInDetailView(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
 	m.selectedRepo = testRepoPath
-	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
+	m.summaries[testRepoPath] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepoPath}}
 	m.prs = []forge.PullRequest{
 		{Number: 1, Title: "First PR", State: "OPEN"},
 		{Number: 2, Title: "Second PR", State: "OPEN"},
@@ -128,7 +129,7 @@ func TestNavigatePRDetailAtBoundaries(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
 	m.selectedRepo = testRepoPath
-	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
+	m.summaries[testRepoPath] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepoPath}}
 	m.prs = []forge.PullRequest{
 		{Number: 1, Title: "Only PR", State: "OPEN"},
 	}
@@ -168,7 +169,7 @@ func TestScrollPRDetailClampsAtBothEnds(t *testing.T) {
 	m.width, m.height = 100, 10
 	m.viewMode = ViewModePRDetail
 	m.selectedRepo = testRepoPath
-	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
+	m.summaries[testRepoPath] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepoPath}}
 	m.selectedPR = forge.PullRequest{Number: 1, Title: "Only PR", State: "OPEN"}
 	m.prDetail = forge.PRDetail{
 		PullRequest: m.selectedPR,
@@ -202,9 +203,9 @@ func TestPanelsWithNoDetailFetchIssueNoCommand(t *testing.T) {
 	m.focusedPanel = panelPeers
 	m.selectedRepo = testRepoPath
 	m.summaries = map[string]models.RepoSummary{
-		testRepoPath: {Path: testRepoPath, RemoteRepo: "acme/app"},
-		"/other":     {Path: "/other", RemoteRepo: "acme/app", Branch: "feature"},
-		"/third":     {Path: "/third", RemoteRepo: "acme/app", Branch: "spike"},
+		testRepoPath: {RepoSummary: vcs.RepoSummary{Path: testRepoPath, RemoteRepo: "acme/app"}},
+		"/other":     {RepoSummary: vcs.RepoSummary{Path: "/other", RemoteRepo: "acme/app", Branch: "feature"}},
+		"/third":     {RepoSummary: vcs.RepoSummary{Path: "/third", RemoteRepo: "acme/app", Branch: "spike"}},
 	}
 
 	updatedModel, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyDown})

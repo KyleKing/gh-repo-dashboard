@@ -3,7 +3,7 @@ package batch
 import (
 	"context"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
+	"github.com/kyleking/aragonite/vcs"
 )
 
 // RepoName exposes the unexported repoName helper to black-box tests.

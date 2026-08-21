@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
@@ -20,7 +21,7 @@ func TestRenderPRDetailShowsChecksAndLatestComment(t *testing.T) {
 	m := New(nil, 1)
 	m.width, m.height = 120, 40
 	m.selectedRepo = testRepo1Path
-	m.summaries[testRepo1Path] = models.RepoSummary{Path: testRepo1Path}
+	m.summaries[testRepo1Path] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepo1Path}}
 	m.prDetail = forge.PRDetail{
 		PullRequest: forge.PullRequest{Number: 42, Title: "Add login", State: "OPEN", HeadRef: featureBranchName},
 		Author:      "alice",
@@ -85,7 +86,7 @@ func TestRenderPRDetailWithoutChecksOrComments(t *testing.T) {
 	m := New(nil, 1)
 	m.width, m.height = 120, 40
 	m.selectedRepo = testRepo1Path
-	m.summaries[testRepo1Path] = models.RepoSummary{Path: testRepo1Path}
+	m.summaries[testRepo1Path] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepo1Path}}
 	m.prDetail = forge.PRDetail{
 		PullRequest: forge.PullRequest{Number: 42, Title: "Add login", State: "OPEN"},
 		Author:      "alice",

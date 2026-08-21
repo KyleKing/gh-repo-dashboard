@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -24,7 +25,7 @@ func newListModel(paths ...string) Model {
 	m.loading = false
 	m.repoPaths = paths
 	for _, p := range paths {
-		m.summaries[p] = models.RepoSummary{Path: p}
+		m.summaries[p] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: p}}
 	}
 	m.updateFilteredPaths()
 
@@ -243,7 +244,7 @@ func TestDetailCursorMovement(t *testing.T) {
 	t.Parallel()
 	m := focusedModel(160, 45)
 	m.focusedPanel = panelBranches
-	m.branches = []models.BranchInfo{{Name: "a"}, {Name: "b"}, {Name: "c"}}
+	m.branches = []vcs.BranchInfo{{Name: "a"}, {Name: "b"}, {Name: "c"}}
 
 	updatedModel, _ := m.Update(keyPress('j'))
 	m = mustModel(t, updatedModel)
@@ -304,7 +305,7 @@ func TestDetailCursorCrossesPanelsWithNothingToMoveThrough(t *testing.T) {
 			t.Parallel()
 			m := focusedModel(160, 45)
 			m.focusedPanel = tt.start
-			m.branches = []models.BranchInfo{{Name: "only"}}
+			m.branches = []vcs.BranchInfo{{Name: "only"}}
 
 			updated, _ := m.Update(keyPress(tt.key))
 			m = mustModel(t, updated)
@@ -337,8 +338,8 @@ func TestDetailEnterOpensBranchDetail(t *testing.T) {
 	m.selectedRepo = testRepo1Path
 	m.focusedPanel = panelBranches
 	m.detailCursor = 1
-	m.branches = []models.BranchInfo{{Name: mainBranchName}, {Name: featureBranchName}}
-	m.branchDetail = models.BranchDetail{Branch: models.BranchInfo{Name: "stale"}}
+	m.branches = []vcs.BranchInfo{{Name: mainBranchName}, {Name: featureBranchName}}
+	m.branchDetail = models.BranchDetail{Branch: vcs.BranchInfo{Name: "stale"}}
 
 	updatedModel, cmd := m.Update(openDetailKey())
 	m = mustModel(t, updatedModel)

@@ -2,26 +2,6 @@ package models
 
 const unknownEnumString = "unknown"
 
-// VCSType identifies the version control system managing a repo.
-type VCSType int
-
-// VCSType values.
-const (
-	VCSTypeGit VCSType = iota
-	VCSTypeJJ
-)
-
-func (v VCSType) String() string {
-	switch v {
-	case VCSTypeGit:
-		return "git"
-	case VCSTypeJJ:
-		return "jj"
-	default:
-		return unknownEnumString
-	}
-}
-
 // FilterMode identifies a repo list filter criterion.
 type FilterMode int
 
@@ -168,35 +148,6 @@ func AllSortModes() []SortMode {
 		SortModeModified,
 		SortModeStatus,
 		SortModeBranch,
-	}
-}
-
-// RepoStatus summarizes a repo's overall working tree and sync state.
-type RepoStatus int
-
-// RepoStatus values.
-const (
-	RepoStatusClean RepoStatus = iota
-	RepoStatusDirty
-	RepoStatusAhead
-	RepoStatusBehind
-	RepoStatusDiverged
-)
-
-func (r RepoStatus) String() string {
-	switch r {
-	case RepoStatusClean:
-		return "clean"
-	case RepoStatusDirty:
-		return "dirty"
-	case RepoStatusAhead:
-		return "ahead"
-	case RepoStatusBehind:
-		return "behind"
-	case RepoStatusDiverged:
-		return "diverged"
-	default:
-		return unknownEnumString
 	}
 }
 

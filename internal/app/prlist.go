@@ -7,8 +7,8 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 

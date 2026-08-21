@@ -6,8 +6,9 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -15,7 +16,7 @@ func TestRefreshFromRepoList(t *testing.T) {
 	t.Parallel()
 	m := New([]string{"/test"}, 1)
 	m.viewMode = ViewModeRepoList
-	m.summaries[testRepo1Path] = models.RepoSummary{Path: testRepo1Path}
+	m.summaries[testRepo1Path] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepo1Path}}
 	m.prCount[testRepo1Path] = 5
 
 	msg := tea.KeyPressMsg{Code: 'r', Text: "r"}
@@ -46,11 +47,8 @@ func TestRefreshFromRepoDetail(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.selectedRepo = testRepoPath
-	m.summaries[testRepoPath] = models.RepoSummary{
-		Path:     testRepoPath,
-		Upstream: "origin",
-	}
-	m.branches = []models.BranchInfo{
+	m.summaries[testRepoPath] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepoPath, Upstream: "origin"}}
+	m.branches = []vcs.BranchInfo{
 		{Name: mainBranchName},
 		{Name: featureBranchName},
 	}
@@ -73,9 +71,9 @@ func TestRefreshFromBranchDetail(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModeBranchDetail
 	m.selectedRepo = testRepoPath
-	m.selectedBranch = models.BranchInfo{Name: featureBranchName}
+	m.selectedBranch = vcs.BranchInfo{Name: featureBranchName}
 	m.branchDetail = models.BranchDetail{
-		Branch: models.BranchInfo{Name: featureBranchName},
+		Branch: vcs.BranchInfo{Name: featureBranchName},
 	}
 
 	msg := tea.KeyPressMsg{Code: 'r', Text: "r"}
@@ -143,7 +141,7 @@ func TestRefreshClearsCache(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoList
-	m.summaries[testRepo1Path] = models.RepoSummary{Path: testRepo1Path}
+	m.summaries[testRepo1Path] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepo1Path}}
 
 	m, _ = m.handleRefresh()
 
@@ -185,7 +183,7 @@ func TestRefreshPreservesViewMode(t *testing.T) {
 			m := New(nil, 1)
 			m.viewMode = tc.viewMode
 			m.selectedRepo = testRepoPath
-			m.selectedBranch = models.BranchInfo{Name: mainBranchName}
+			m.selectedBranch = vcs.BranchInfo{Name: mainBranchName}
 			m.selectedPR = forge.PullRequest{Number: 1}
 
 			m, _ = m.handleRefresh()
@@ -201,12 +199,12 @@ func TestRefreshClearsDownstreamFromRepoList(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoList
-	m.branches = []models.BranchInfo{{Name: mainBranchName}}
-	m.stashes = []models.StashDetail{{Index: 0}}
-	m.worktrees = []models.WorktreeInfo{{Path: "/test"}}
+	m.branches = []vcs.BranchInfo{{Name: mainBranchName}}
+	m.stashes = []vcs.StashDetail{{Index: 0}}
+	m.worktrees = []vcs.WorktreeInfo{{Path: "/test"}}
 	m.prs = []forge.PullRequest{{Number: 1}}
 	m.branchDetail = models.BranchDetail{
-		Branch: models.BranchInfo{Name: featureBranchName},
+		Branch: vcs.BranchInfo{Name: featureBranchName},
 	}
 	m.prDetail = forge.PRDetail{
 		PullRequest: forge.PullRequest{Number: 123},
@@ -239,11 +237,11 @@ func TestRefreshClearsDownstreamFromRepoDetail(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModeRepoDetail
 	m.selectedRepo = testRepoPath
-	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
-	m.branches = []models.BranchInfo{{Name: mainBranchName}}
+	m.summaries[testRepoPath] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepoPath}}
+	m.branches = []vcs.BranchInfo{{Name: mainBranchName}}
 	m.prs = []forge.PullRequest{{Number: 1}}
 	m.branchDetail = models.BranchDetail{
-		Branch: models.BranchInfo{Name: featureBranchName},
+		Branch: vcs.BranchInfo{Name: featureBranchName},
 	}
 	m.prDetail = forge.PRDetail{
 		PullRequest: forge.PullRequest{Number: 123},
@@ -270,10 +268,10 @@ func TestRefreshClearsBranchDetail(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModeBranchDetail
 	m.selectedRepo = testRepoPath
-	m.selectedBranch = models.BranchInfo{Name: featureBranchName}
+	m.selectedBranch = vcs.BranchInfo{Name: featureBranchName}
 	m.branchDetail = models.BranchDetail{
-		Branch: models.BranchInfo{Name: featureBranchName},
-		Commits: []models.CommitInfo{
+		Branch: vcs.BranchInfo{Name: featureBranchName},
+		Commits: []vcs.CommitInfo{
 			{Hash: "abc123"},
 		},
 	}

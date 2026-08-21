@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -49,8 +50,8 @@ func commandModel() Model {
 	m.loading = false
 	m.repoPaths = []string{"/test/clean", "/test/dirty"}
 	m.summaries = map[string]models.RepoSummary{
-		"/test/clean": {Path: "/test/clean", Branch: mainBranchName},
-		"/test/dirty": {Path: "/test/dirty", Branch: mainBranchName, Unstaged: 2},
+		"/test/clean": {RepoSummary: vcs.RepoSummary{Path: "/test/clean", Branch: mainBranchName}},
+		"/test/dirty": {RepoSummary: vcs.RepoSummary{Path: "/test/dirty", Branch: mainBranchName, Unstaged: 2}},
 	}
 	m.updateFilteredPaths()
 

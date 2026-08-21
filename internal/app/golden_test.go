@@ -8,6 +8,8 @@ import (
 
 	"github.com/charmbracelet/x/exp/golden"
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -36,21 +38,25 @@ func goldenModel() Model {
 	m.repoPaths = []string{"/Users/dev/alpha", "/Users/dev/bravo", "/Users/dev/charlie"}
 	m.summaries = map[string]models.RepoSummary{
 		"/Users/dev/alpha": {
-			Path:         "/Users/dev/alpha",
-			VCSType:      models.VCSTypeGit,
-			Branch:       mainBranchName,
-			Upstream:     "origin/main",
-			LastModified: time.Now().Add(-5 * time.Minute),
+			RepoSummary: vcs.RepoSummary{
+				Path:         "/Users/dev/alpha",
+				VCSType:      vcs.TypeGit,
+				Branch:       mainBranchName,
+				Upstream:     "origin/main",
+				LastModified: time.Now().Add(-5 * time.Minute),
+			},
 		},
 		"/Users/dev/bravo": {
-			Path:         "/Users/dev/bravo",
-			VCSType:      models.VCSTypeGit,
-			Branch:       "feature/login",
-			Upstream:     "origin/feature/login",
-			Ahead:        2,
-			Staged:       1,
-			Unstaged:     3,
-			LastModified: time.Now().Add(-2 * time.Hour),
+			RepoSummary: vcs.RepoSummary{
+				Path:         "/Users/dev/bravo",
+				VCSType:      vcs.TypeGit,
+				Branch:       "feature/login",
+				Upstream:     "origin/feature/login",
+				Ahead:        2,
+				Staged:       1,
+				Unstaged:     3,
+				LastModified: time.Now().Add(-2 * time.Hour),
+			},
 			PRInfo: &forge.PullRequest{
 				Number:  42,
 				Title:   "Add login flow",
@@ -61,11 +67,13 @@ func goldenModel() Model {
 			},
 		},
 		"/Users/dev/charlie": {
-			Path:         "/Users/dev/charlie",
-			VCSType:      models.VCSTypeJJ,
-			Branch:       "trunk",
-			Untracked:    1,
-			LastModified: time.Now().Add(-3 * 24 * time.Hour),
+			RepoSummary: vcs.RepoSummary{
+				Path:         "/Users/dev/charlie",
+				VCSType:      vcs.TypeJJ,
+				Branch:       "trunk",
+				Untracked:    1,
+				LastModified: time.Now().Add(-3 * 24 * time.Hour),
+			},
 		},
 	}
 	m.prCount = map[string]int{"/Users/dev/bravo": 1}
@@ -110,7 +118,7 @@ func TestGoldenPanelGridBreakpoints(t *testing.T) {
 				m.viewMode = ViewModeRepoDetail
 				m.selectedRepo = "/Users/dev/bravo"
 				m.focusedPanel = tab.tab
-				m.branches = []models.BranchInfo{
+				m.branches = []vcs.BranchInfo{
 					{Name: mainBranchName, Upstream: "origin/main", LastCommit: time.Now().Add(-2 * time.Hour)},
 					{
 						Name: "feature/login", Upstream: "origin/feature/login", Ahead: 2,
@@ -119,7 +127,13 @@ func TestGoldenPanelGridBreakpoints(t *testing.T) {
 				}
 				m.prs = []forge.PullRequest{
 					{Number: 42, Title: "Add login flow", State: "OPEN", HeadRef: "feature/login"},
-					{Number: 7, Title: "Bump the template to v0.10.0", State: "OPEN", IsDraft: true, HeadRef: "chore/template"},
+					{
+						Number:  7,
+						Title:   "Bump the template to v0.10.0",
+						State:   "OPEN",
+						IsDraft: true,
+						HeadRef: "chore/template",
+					},
 				}
 				golden.RequireEqual(t, []byte(m.renderScreen()))
 			})
@@ -148,8 +162,10 @@ func TestGoldenRepoListExpanded(t *testing.T) {
 			m.prMap = map[string]PRMapLoadedMsg{
 				"/Users/dev/bravo": {
 					Path: "/Users/dev/bravo",
-					PRs:  []forge.PullRequest{{Number: 42, Title: "Add login flow", State: "OPEN", HeadRef: "feature/login"}},
-					Branches: []models.BranchInfo{
+					PRs: []forge.PullRequest{
+						{Number: 42, Title: "Add login flow", State: "OPEN", HeadRef: "feature/login"},
+					},
+					Branches: []vcs.BranchInfo{
 						{Name: mainBranchName, Upstream: "origin/main"},
 						{Name: "feature/login", Upstream: "origin/feature/login", Ahead: 2, IsCurrent: true},
 					},
@@ -187,9 +203,15 @@ func TestGoldenRepoDetail(t *testing.T) {
 	m.viewMode = ViewModeRepoDetail
 	m.selectedRepo = "/Users/dev/bravo"
 	m.focusedPanel = panelBranches
-	m.branches = []models.BranchInfo{
+	m.branches = []vcs.BranchInfo{
 		{Name: mainBranchName, Upstream: "origin/main", LastCommit: time.Now().Add(-2 * time.Hour)},
-		{Name: "feature/login", Upstream: "origin/feature/login", Ahead: 2, LastCommit: time.Now().Add(-10 * time.Minute), IsCurrent: true},
+		{
+			Name:       "feature/login",
+			Upstream:   "origin/feature/login",
+			Ahead:      2,
+			LastCommit: time.Now().Add(-10 * time.Minute),
+			IsCurrent:  true,
+		},
 	}
 	golden.RequireEqual(t, []byte(m.renderScreen()))
 }
@@ -198,19 +220,31 @@ func TestGoldenBranchDetail(t *testing.T) {
 	m := goldenModel()
 	m.viewMode = ViewModeBranchDetail
 	m.selectedRepo = "/Users/dev/bravo"
-	m.branches = []models.BranchInfo{
+	m.branches = []vcs.BranchInfo{
 		{Name: mainBranchName, Upstream: "origin/main", LastCommit: time.Now().Add(-2 * time.Hour)},
 	}
 	m.branchDetail = models.BranchDetail{
-		Branch: models.BranchInfo{
+		Branch: vcs.BranchInfo{
 			Name:      "feature/login",
 			Upstream:  "origin/feature/login",
 			Ahead:     2,
 			IsCurrent: true,
 		},
-		Commits: []models.CommitInfo{
-			{Hash: "abc1234def", ShortHash: "abc1234", Subject: "Add login flow", Author: "dev", Date: time.Now().Add(-10 * time.Minute)},
-			{Hash: "9876543abc", ShortHash: "9876543", Subject: "Wire up session store", Author: "dev", Date: time.Now().Add(-1 * time.Hour)},
+		Commits: []vcs.CommitInfo{
+			{
+				Hash:      "abc1234def",
+				ShortHash: "abc1234",
+				Subject:   "Add login flow",
+				Author:    "dev",
+				Date:      time.Now().Add(-10 * time.Minute),
+			},
+			{
+				Hash:      "9876543abc",
+				ShortHash: "9876543",
+				Subject:   "Wire up session store",
+				Author:    "dev",
+				Date:      time.Now().Add(-1 * time.Hour),
+			},
 		},
 		DefaultBranch: mainBranchName,
 		DefaultAhead:  2,

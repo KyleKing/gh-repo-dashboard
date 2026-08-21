@@ -6,8 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
+	"github.com/kyleking/aragonite/vcs"
 )
 
 // TaskResult reports the outcome of a batch task run on a single repo.

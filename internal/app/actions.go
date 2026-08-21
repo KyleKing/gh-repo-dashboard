@@ -12,11 +12,11 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 // pendingAction is a write action awaiting confirmation, along with the view
@@ -153,7 +153,7 @@ func (m Model) handleActionResult(msg ActionResultMsg) (tea.Model, tea.Cmd) {
 }
 
 // actionBranch returns the branch the current view's actions apply to.
-func (m Model) actionBranch() (models.BranchInfo, bool) {
+func (m Model) actionBranch() (vcs.BranchInfo, bool) {
 	if m.viewMode == ViewModeBranchDetail {
 		if m.branchDetail.Branch.Name != "" {
 			return m.branchDetail.Branch, true
@@ -166,7 +166,7 @@ func (m Model) actionBranch() (models.BranchInfo, bool) {
 		return branch, true
 	}
 
-	return models.BranchInfo{}, false
+	return vcs.BranchInfo{}, false
 }
 
 // actionPR returns the pull request the current view's actions apply to: the

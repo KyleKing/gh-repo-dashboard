@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui"
@@ -39,7 +40,7 @@ func (m Model) panelSet(width int) []panelContent {
 		m.peersPanel(summary, width),
 	}
 
-	if summary.VCSType != models.VCSTypeJJ {
+	if summary.VCSType != vcs.TypeJJ {
 		built = append(built, m.stashesPanel(width))
 	}
 
@@ -152,7 +153,7 @@ func (m Model) statusAbsences(summary models.RepoSummary) string {
 	if len(m.RepoCheckouts()) == 0 {
 		absent = append(absent, "peers")
 	}
-	if summary.VCSType != models.VCSTypeJJ && len(m.stashes) == 0 {
+	if summary.VCSType != vcs.TypeJJ && len(m.stashes) == 0 {
 		absent = append(absent, "stashes")
 	}
 	if len(m.notesFiles) == 0 {
@@ -234,7 +235,7 @@ func (m Model) peersPanel(summary models.RepoSummary, width int) panelContent {
 
 		branch := checkout.Branch
 		branchStyle := styles.SubtitleStyle
-		if !models.IsDefaultBranchName(checkout.Branch) {
+		if !vcs.IsDefaultBranchName(checkout.Branch) {
 			branchStyle = styles.BranchStyle
 		}
 		if conflicts[branch] {
@@ -279,7 +280,7 @@ func (m Model) stashesPanel(width int) panelContent {
 
 		values := map[string]string{
 			colStashMessage: stash.Message,
-			colStashDate:    stash.RelativeDate(),
+			colStashDate:    ui.StashRelativeDate(stash),
 		}
 
 		rows = append(rows, detailRow(rowCursorFor(selected), layout, renderCells(layout, values, nil, &style)))
@@ -782,7 +783,7 @@ func (m Model) branchDetailLines(width int) []string {
 	lines := []string{
 		detailField("upstream", orDash(branch.Upstream)),
 		detailField("tracking", branchAheadBehindStatus(branch)),
-		detailField("last commit", branch.RelativeLastCommit()),
+		detailField("last commit", ui.BranchRelativeLastCommit(branch)),
 	}
 
 	if pr := prsByHeadRef(m.prs)[branch.Name]; pr != nil {
@@ -855,7 +856,7 @@ func (m Model) stashDetailLines(width int) []string {
 	lines := []string{
 		detailField("message", stash.Message),
 		detailField("branch", orDash(stash.Branch)),
-		detailField("created", stash.RelativeDate()),
+		detailField("created", ui.StashRelativeDate(stash)),
 	}
 
 	label, texts := "diffstat", m.stashDiffstat
@@ -919,9 +920,9 @@ func (m Model) noteDetailLines(width int) []string {
 
 // Selected-item accessors. Each answers only for its own panel, so a cursor
 // left over from another panel can never index the wrong list.
-func (m Model) selectedPanelBranch() (models.BranchInfo, bool) {
+func (m Model) selectedPanelBranch() (vcs.BranchInfo, bool) {
 	if m.focusedPanel != panelBranches || m.detailCursor >= len(m.branches) {
-		return models.BranchInfo{}, false
+		return vcs.BranchInfo{}, false
 	}
 
 	return m.branches[m.detailCursor], true
@@ -936,9 +937,9 @@ func (m Model) selectedPanelCheckout() (models.PeerCheckout, bool) {
 	return checkouts[m.detailCursor], true
 }
 
-func (m Model) selectedPanelStash() (models.StashDetail, bool) {
+func (m Model) selectedPanelStash() (vcs.StashDetail, bool) {
 	if m.focusedPanel != panelStashes || m.detailCursor >= len(m.stashes) {
-		return models.StashDetail{}, false
+		return vcs.StashDetail{}, false
 	}
 
 	return m.stashes[m.detailCursor], true

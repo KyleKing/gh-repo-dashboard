@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 // PeerBranchesLoadedMsg carries the local branch lists read for one repo's
@@ -16,7 +16,7 @@ import (
 // requested them, so two rows sharing a peer share one fetch.
 type PeerBranchesLoadedMsg struct {
 	Path     string
-	Branches map[string][]models.BranchInfo
+	Branches map[string][]vcs.BranchInfo
 }
 
 // loadPeerBranchesCmd reads the local branch list for each of peerPaths. The
@@ -26,7 +26,7 @@ func loadPeerBranchesCmd(path string, peerPaths []string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
 
-		branches := make(map[string][]models.BranchInfo, len(peerPaths))
+		branches := make(map[string][]vcs.BranchInfo, len(peerPaths))
 		for _, peerPath := range peerPaths {
 			//nolint:errcheck // best-effort: a peer we cannot read leaves it out of the relevant set
 			list, _ := vcs.GetOperations(peerPath).GetBranchList(ctx, peerPath)
@@ -86,7 +86,7 @@ func (m Model) relevantPeers(path string) []relevantPeer {
 // matchingPR returns the first of prs that one of branches tracks, or nil.
 // Owner is the repo's own owner, so a fork's head ref (which shares a
 // namespace with local branches) is never mistaken for being present here.
-func matchingPR(branches []models.BranchInfo, prs []forge.PullRequest, owner string) *forge.PullRequest {
+func matchingPR(branches []vcs.BranchInfo, prs []forge.PullRequest, owner string) *forge.PullRequest {
 	for i := range prs {
 		pr := &prs[i]
 		for _, branch := range branches {

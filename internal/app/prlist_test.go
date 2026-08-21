@@ -7,8 +7,9 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -19,7 +20,9 @@ var errExplodedPreview = errors.New("gh exploded")
 func prTabModel() Model {
 	m := focusedModel(160, 40)
 	m.viewMode = ViewModePRList
-	m.summaries["/dev/alpha"] = models.RepoSummary{Path: "/dev/alpha", RemoteRepo: "acme/alpha"}
+	m.summaries["/dev/alpha"] = models.RepoSummary{
+		RepoSummary: vcs.RepoSummary{Path: "/dev/alpha", RemoteRepo: "acme/alpha"},
+	}
 	m.prSearch = []forge.PullRequest{
 		{
 			Number: 11, Title: "Bump the deps", State: "OPEN", HeadRef: "deps",

@@ -7,9 +7,8 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
-
 	"github.com/kyleking/aragonite/forge"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/aragonite/vcs"
 )
 
 // wideGlyph occupies two terminal cells and wideStandIn occupies the same two
@@ -81,7 +80,7 @@ func TestBranchListAlignsUnderWideGlyphs(t *testing.T) {
 
 	assertSameGeometry(t, func(glyph string) string {
 		m := New(nil, 1)
-		m.branches = []models.BranchInfo{
+		m.branches = []vcs.BranchInfo{
 			{Name: "main", IsCurrent: true},
 			{Name: "feat/" + glyph + "-rocket"},
 			{Name: "plain-ascii"},
@@ -98,7 +97,7 @@ func TestStashListAlignsUnderWideGlyphs(t *testing.T) {
 
 	assertSameGeometry(t, func(glyph string) string {
 		m := New(nil, 1)
-		m.stashes = []models.StashDetail{
+		m.stashes = []vcs.StashDetail{
 			{Index: 0, Message: "On main: ship " + glyph + " the parser", Date: now},
 			{Index: 1, Message: "On main: plain ascii message", Date: now},
 		}
@@ -127,7 +126,7 @@ func TestWorktreeListAlignsUnderWideGlyphs(t *testing.T) {
 
 	assertSameGeometry(t, func(glyph string) string {
 		m := New(nil, 1)
-		m.worktrees = []models.WorktreeInfo{
+		m.worktrees = []vcs.WorktreeInfo{
 			{Path: "/repos/app", Branch: "main"},
 			{Path: "/repos/app-" + glyph, Branch: "feat/" + glyph},
 		}

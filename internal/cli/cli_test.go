@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 	"github.com/kyleking/gh-repo-dashboard/internal/cli"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
@@ -154,36 +156,46 @@ func TestRepoJSONShape(t *testing.T) {
 	}{
 		{
 			name: "minimal repo omits optional fields",
-			repo: cli.NewRepo(&models.RepoSummary{
-				Path:    "/repos/demo",
-				VCSType: models.VCSTypeGit,
-				Branch:  "main",
-			}, 0, nil, nil),
+			repo: cli.NewRepo(
+				&models.RepoSummary{
+					RepoSummary: vcs.RepoSummary{Path: "/repos/demo", VCSType: vcs.TypeGit, Branch: "main"},
+				},
+				0,
+				nil,
+				nil,
+			),
 			expected: `{"path":"/repos/demo","name":"demo","vcs":"git","branch":"main",` +
 				`"ahead":0,"behind":0,"staged":0,"unstaged":0,"untracked":0,"conflicted":0,` +
 				`"dirty":false,"status":"clean","stash_count":0,"worktree_count":0,"template_drift":false}`,
 		},
 		{
 			name: "full repo includes pr and counts",
-			repo: cli.NewRepo(&models.RepoSummary{
-				Path:         "/repos/wip",
-				VCSType:      models.VCSTypeJJ,
-				Branch:       "feature",
-				Upstream:     "origin/feature",
-				Ahead:        2,
-				Behind:       1,
-				Unstaged:     3,
-				StashCount:   1,
-				LastModified: lastModified,
-			}, 2, &forge.PullRequest{
-				Number:  42,
-				Title:   "Add feature",
-				State:   "OPEN",
-				URL:     "https://example.com/pr/42",
-				HeadRef: "feature",
-				BaseRef: "main",
-				Checks:  forge.ChecksStatus{Total: 2, Passing: 1, Pending: 1},
-			}, intPtr(3)),
+			repo: cli.NewRepo(
+				&models.RepoSummary{
+					RepoSummary: vcs.RepoSummary{
+						Path:         "/repos/wip",
+						VCSType:      vcs.TypeJJ,
+						Branch:       "feature",
+						Upstream:     "origin/feature",
+						Ahead:        2,
+						Behind:       1,
+						Unstaged:     3,
+						StashCount:   1,
+						LastModified: lastModified,
+					},
+				},
+				2,
+				&forge.PullRequest{
+					Number:  42,
+					Title:   "Add feature",
+					State:   "OPEN",
+					URL:     "https://example.com/pr/42",
+					HeadRef: "feature",
+					BaseRef: "main",
+					Checks:  forge.ChecksStatus{Total: 2, Passing: 1, Pending: 1},
+				},
+				intPtr(3),
+			),
 			expected: `{"path":"/repos/wip","name":"wip","vcs":"jj","branch":"feature",` +
 				`"upstream":"origin/feature","ahead":2,"behind":1,"staged":0,"unstaged":3,` +
 				`"untracked":0,"conflicted":0,"dirty":true,"status":"diverged",` +
@@ -351,7 +363,7 @@ func TestRepoCarriesTemplateDrift(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			summary := models.RepoSummary{Path: "/repos/app", TemplateInfo: tt.info}
+			summary := models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: "/repos/app"}, TemplateInfo: tt.info}
 			repo := cli.NewRepo(&summary, 0, nil, nil)
 
 			if repo.TemplateDrift != tt.wantDrift {

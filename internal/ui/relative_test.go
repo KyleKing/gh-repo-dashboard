@@ -1,10 +1,11 @@
-package models_test
+package ui_test
 
 import (
 	"testing"
 	"time"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 )
 
@@ -87,36 +88,78 @@ func TestRelativeTimeYears(t *testing.T) {
 func TestRelativeTimeZero(t *testing.T) {
 	t.Parallel()
 	result := ui.RelativeTime(time.Time{})
-	if result != models.EmDash {
+	if result != ui.EmDash {
 		t.Errorf("expected '—', got '%s'", result)
 	}
 }
 
 func TestBranchInfoRelativeLastCommit(t *testing.T) {
 	t.Parallel()
-	b := models.BranchInfo{}
-	if b.RelativeLastCommit() != models.EmDash {
-		t.Errorf("expected '—' for zero time, got '%s'", b.RelativeLastCommit())
+	b := vcs.BranchInfo{}
+	if ui.BranchRelativeLastCommit(b) != ui.EmDash {
+		t.Errorf("expected '—' for zero time, got '%s'", ui.BranchRelativeLastCommit(b))
 	}
 
 	b.LastCommit = time.Now()
-	if b.RelativeLastCommit() == models.EmDash {
+	if ui.BranchRelativeLastCommit(b) == ui.EmDash {
 		t.Error("expected non-empty relative time")
 	}
 }
 
 func TestCommitInfoRelativeDate(t *testing.T) {
 	t.Parallel()
-	c := models.CommitInfo{Date: time.Now()}
-	if c.RelativeDate() == models.EmDash {
+	c := vcs.CommitInfo{Date: time.Now()}
+	if ui.CommitRelativeDate(c) == ui.EmDash {
 		t.Error("expected non-empty relative date")
 	}
 }
 
 func TestStashDetailRelativeDate(t *testing.T) {
 	t.Parallel()
-	s := models.StashDetail{Date: time.Now()}
-	if s.RelativeDate() == models.EmDash {
+	s := vcs.StashDetail{Date: time.Now()}
+	if ui.StashRelativeDate(s) == ui.EmDash {
 		t.Error("expected non-empty relative date")
+	}
+}
+
+func TestRepoStatusSummary(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		summary  vcs.RepoSummary
+		expected string
+	}{
+		{name: "clean", summary: vcs.RepoSummary{}, expected: "✓"},
+		{name: "staged only", summary: vcs.RepoSummary{Staged: 2}, expected: "+2"},
+		{name: "unstaged only", summary: vcs.RepoSummary{Unstaged: 3}, expected: "~3"},
+		{name: "untracked only", summary: vcs.RepoSummary{Untracked: 1}, expected: "?1"},
+		{name: "ahead only", summary: vcs.RepoSummary{Ahead: 5}, expected: "↑5"},
+		{name: "behind only", summary: vcs.RepoSummary{Behind: 3}, expected: "↓3"},
+		{name: "mixed", summary: vcs.RepoSummary{Staged: 1, Unstaged: 2, Ahead: 3}, expected: "+1 ~2 ↑3"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := ui.RepoStatusSummary(tt.summary); got != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, got)
+			}
+		})
+	}
+}
+
+func TestRepoRelativeModified(t *testing.T) {
+	t.Parallel()
+
+	s := vcs.RepoSummary{}
+	if ui.RepoRelativeModified(s) != ui.EmDash {
+		t.Errorf("expected the em dash for zero time, got %q", ui.RepoRelativeModified(s))
+	}
+
+	s.LastModified = time.Now()
+	if ui.RepoRelativeModified(s) == ui.EmDash {
+		t.Error("expected non-empty relative time")
 	}
 }

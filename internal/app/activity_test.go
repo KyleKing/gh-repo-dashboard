@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/kyleking/aragonite/forge"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 )
 
@@ -79,9 +80,9 @@ func TestCheckoutPRRefusesABranchAPeerHolds(t *testing.T) {
 	m := peerFleet(140, 35)
 	m.viewMode = ViewModeRepoDetail
 	m.focusedPanel = panelBranches
-	m.branches = []models.BranchInfo{{Name: "feature/side"}}
+	m.branches = []vcs.BranchInfo{{Name: "feature/side"}}
 	m.prs = []forge.PullRequest{{Number: 3, Title: "Peer work", State: "OPEN", HeadRef: "feature/side"}}
-	m.worktrees = []models.WorktreeInfo{{Path: "/dev/app-a-wt", Branch: "feature/side"}}
+	m.worktrees = []vcs.WorktreeInfo{{Path: "/dev/app-a-wt", Branch: "feature/side"}}
 
 	_, cmd := m.startCheckoutPR()
 	if cmd == nil {
@@ -104,7 +105,7 @@ func TestCheckoutPRConfirmsBeforeSwitching(t *testing.T) {
 	m := peerFleet(140, 35)
 	m.viewMode = ViewModeRepoDetail
 	m.focusedPanel = panelBranches
-	m.branches = []models.BranchInfo{{Name: "feature/fresh"}}
+	m.branches = []vcs.BranchInfo{{Name: "feature/fresh"}}
 	m.prs = []forge.PullRequest{{Number: 4, Title: "New work", State: "OPEN", HeadRef: "feature/fresh"}}
 
 	next, _ := m.startCheckoutPR()

@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 )
@@ -18,7 +19,7 @@ func prDetailModel(detail *forge.PRDetail) Model {
 	m.height = 40
 	m.viewMode = ViewModePRDetail
 	m.selectedRepo = testRepoPath
-	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
+	m.summaries[testRepoPath] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepoPath}}
 	m.prDetail = *detail
 
 	return m
@@ -28,9 +29,9 @@ func TestDetailListLen(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.selectedRepo = testRepo1Path
-	m.branches = make([]models.BranchInfo, 5)
-	m.stashes = make([]models.StashDetail, 3)
-	m.worktrees = []models.WorktreeInfo{
+	m.branches = make([]vcs.BranchInfo, 5)
+	m.stashes = make([]vcs.StashDetail, 3)
+	m.worktrees = []vcs.WorktreeInfo{
 		{Path: testRepo1Path, Branch: mainBranchName},
 		{Path: "/repos/app-wt-a", Branch: "feature/a"},
 		{Path: "/repos/app-wt-b", Branch: "feature/b"},
@@ -89,7 +90,11 @@ func TestPRInfoReviewStatus(t *testing.T) {
 		{"approved", forge.PullRequest{ReviewDecision: "APPROVED"}, "approved"},
 		{"changes requested", forge.PullRequest{ReviewDecision: "CHANGES_REQUESTED"}, "changes requested"},
 		{"review required", forge.PullRequest{ReviewDecision: "REVIEW_REQUIRED"}, "review required"},
-		{"an approval with no decision still reads as approved", forge.PullRequest{ApprovedBy: []string{"u1"}}, "approved"},
+		{
+			"an approval with no decision still reads as approved",
+			forge.PullRequest{ApprovedBy: []string{"u1"}},
+			"approved",
+		},
 		{"no review", forge.PullRequest{}, emDash},
 	}
 
@@ -305,7 +310,7 @@ func TestOpenPRFromTheTab(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModePRList
 	m.selectedRepo = testRepoPath
-	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
+	m.summaries[testRepoPath] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepoPath}}
 	m.prSearch = []forge.PullRequest{{
 		Number: 456, Title: "Feature PR", State: "OPEN",
 		URL: "https://github.com/test/pr/456", HeadRef: featureBranchName,

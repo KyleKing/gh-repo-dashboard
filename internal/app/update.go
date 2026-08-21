@@ -13,14 +13,14 @@ import (
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 const (
@@ -2207,7 +2207,7 @@ func (m Model) startBatchTaskOn(taskName string, paths []string, taskCmd func([]
 // deletableBranches marks local, non-current branches whose tip matches a
 // merged pull request's head OID as safe to delete. Best-effort: a missing gh
 // yields an empty set rather than failing the detail load.
-func deletableBranches(ctx context.Context, path, remoteID string, branches []models.BranchInfo) map[string]bool {
+func deletableBranches(ctx context.Context, path, remoteID string, branches []vcs.BranchInfo) map[string]bool {
 	heads, err := github.GetMergedPRHeads(ctx, path, remoteID)
 	if err != nil || len(heads) == 0 {
 		return nil
@@ -2226,7 +2226,7 @@ func deletableBranches(ctx context.Context, path, remoteID string, branches []mo
 	return deletable
 }
 
-func findDefaultBranch(branches []models.BranchInfo) string {
+func findDefaultBranch(branches []vcs.BranchInfo) string {
 	for _, branch := range branches {
 		if vcs.IsDefaultBranchName(branch.Name) {
 			return branch.Name

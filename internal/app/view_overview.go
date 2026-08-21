@@ -4,6 +4,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -142,7 +144,7 @@ func overviewFiles(s models.RepoSummary) string {
 // overviewStashes counts stashes, naming jj's absence of them rather than
 // reporting zero as though the repo simply had none.
 func overviewStashes(s models.RepoSummary) string {
-	if s.VCSType == models.VCSTypeJJ {
+	if s.VCSType == vcs.TypeJJ {
 		return "n/a"
 	}
 
@@ -170,7 +172,7 @@ func overviewPeers(peers []models.PeerCheckout) string {
 	folders := make([]string, 0, len(peers))
 	for _, peer := range peers {
 		folder := peer.Folder()
-		if peer.Branch != "" && !models.IsDefaultBranchName(peer.Branch) {
+		if peer.Branch != "" && !vcs.IsDefaultBranchName(peer.Branch) {
 			folder += " (" + peer.Branch + ")"
 		}
 

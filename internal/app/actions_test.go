@@ -7,8 +7,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -19,8 +20,10 @@ func detailModel() Model {
 	m.viewMode = ViewModeRepoDetail
 	m.focusedPanel = panelBranches
 	m.selectedRepo = testRepo1Path
-	m.summaries[testRepo1Path] = models.RepoSummary{Path: testRepo1Path, Branch: mainBranchName}
-	m.branches = []models.BranchInfo{
+	m.summaries[testRepo1Path] = models.RepoSummary{
+		RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Branch: mainBranchName},
+	}
+	m.branches = []vcs.BranchInfo{
 		{Name: mainBranchName, Upstream: "origin/main", IsCurrent: true},
 		{Name: featureBranchName},
 	}
@@ -134,10 +137,10 @@ func TestSwitchBranchRefusesBranchHeldByPeer(t *testing.T) {
 	m := detailModel()
 	m.detailCursor = 1
 	m.summaries[testRepo1Path] = models.RepoSummary{
-		Path: testRepo1Path, Branch: mainBranchName, RemoteRepo: "acme/app",
+		RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Branch: mainBranchName, RemoteRepo: "acme/app"},
 	}
 	m.summaries["/repos/app-feature"] = models.RepoSummary{
-		Path: "/repos/app-feature", Branch: featureBranchName, RemoteRepo: "acme/app",
+		RepoSummary: vcs.RepoSummary{Path: "/repos/app-feature", Branch: featureBranchName, RemoteRepo: "acme/app"},
 	}
 
 	_, cmd := m.startSwitchBranch()
@@ -249,7 +252,7 @@ func TestPanelActionMenuRunsAVerbAndClosesOnAnythingElse(t *testing.T) {
 
 	m := focusedModel(160, 45)
 	m.focusedPanel = panelBranches
-	m.branches = []models.BranchInfo{{Name: "feature/thing", Upstream: "origin/feature/thing"}}
+	m.branches = []vcs.BranchInfo{{Name: "feature/thing", Upstream: "origin/feature/thing"}}
 
 	openedModel, _ := m.handleDetailKey(keyPress(rune(actionLeader[0])))
 	opened := mustModel(t, openedModel)
@@ -388,7 +391,7 @@ func TestDestructivePanelVerbsAskFirst(t *testing.T) {
 			t.Parallel()
 			m := focusedModel(160, 45)
 			m.focusedPanel = tt.panel
-			m.branches = []models.BranchInfo{{Name: "spike/unheld"}}
+			m.branches = []vcs.BranchInfo{{Name: "spike/unheld"}}
 			m.panelActions = true
 
 			ranModel, _ := m.handleDetailKey(keyPress(tt.verb))
@@ -408,7 +411,7 @@ func TestDeleteBranchRefusesACheckedOutBranch(t *testing.T) {
 
 	m := focusedModel(160, 45)
 	m.focusedPanel = panelBranches
-	m.branches = []models.BranchInfo{{Name: mainBranchName, IsCurrent: true}}
+	m.branches = []vcs.BranchInfo{{Name: mainBranchName, IsCurrent: true}}
 
 	next, cmd := m.startDeleteBranch()
 	if mustModel(t, next).viewMode == ViewModeConfirm {

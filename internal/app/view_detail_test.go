@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -18,18 +20,18 @@ func TestIsStaleBranch(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		branch models.BranchInfo
+		branch vcs.BranchInfo
 		want   bool
 	}{
-		{"old commit", models.BranchInfo{Name: "feature/x", LastCommit: old}, true},
-		{"recent commit", models.BranchInfo{Name: "feature/x", LastCommit: recent}, false},
-		{"no commit info", models.BranchInfo{Name: "feature/x"}, false},
+		{"old commit", vcs.BranchInfo{Name: "feature/x", LastCommit: old}, true},
+		{"recent commit", vcs.BranchInfo{Name: "feature/x", LastCommit: recent}, false},
+		{"no commit info", vcs.BranchInfo{Name: "feature/x"}, false},
 		{
 			"current branch exempt despite age",
-			models.BranchInfo{Name: "feature/x", LastCommit: old, IsCurrent: true},
+			vcs.BranchInfo{Name: "feature/x", LastCommit: old, IsCurrent: true},
 			false,
 		},
-		{"default branch exempt despite age", models.BranchInfo{Name: mainBranchName, LastCommit: old}, false},
+		{"default branch exempt despite age", vcs.BranchInfo{Name: mainBranchName, LastCommit: old}, false},
 	}
 
 	for _, tt := range tests {
@@ -111,12 +113,17 @@ func TestRenderBranchListShowsParallelCheckout(t *testing.T) {
 	m.width = 160
 	m.selectedRepo = testRepo1Path
 	m.summaries[testRepo1Path] = models.RepoSummary{
-		Path: testRepo1Path, Branch: mainBranchName, RemoteRepo: "acme/app",
+		RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Branch: mainBranchName, RemoteRepo: "acme/app"},
 	}
 	m.summaries["/repos/app-feature"] = models.RepoSummary{
-		Path: "/repos/app-feature", Branch: featureBranchName, RemoteRepo: "acme/app", Ahead: 2,
+		RepoSummary: vcs.RepoSummary{
+			Path:       "/repos/app-feature",
+			Branch:     featureBranchName,
+			RemoteRepo: "acme/app",
+			Ahead:      2,
+		},
 	}
-	m.branches = []models.BranchInfo{
+	m.branches = []vcs.BranchInfo{
 		{Name: mainBranchName, IsCurrent: true},
 		{Name: featureBranchName},
 	}

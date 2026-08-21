@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
@@ -46,7 +47,7 @@ func prsByHeadRef(prs []forge.PullRequest) map[string]*forge.PullRequest {
 
 // branchAheadBehindStatus renders a branch's ahead/behind indicator, or a
 // checkmark if it's fully in sync with its upstream.
-func branchAheadBehindStatus(branch models.BranchInfo) string {
+func branchAheadBehindStatus(branch vcs.BranchInfo) string {
 	status := ""
 	if branch.Ahead > 0 {
 		status += fmt.Sprintf("↑%d", branch.Ahead)
@@ -67,7 +68,7 @@ func branchAheadBehindStatus(branch models.BranchInfo) string {
 // branchRow is one rendered row of the branch list: the branch itself plus the
 // pull request, parallel checkout, and cleanup state discovered for it.
 type branchRow struct {
-	branch    models.BranchInfo
+	branch    vcs.BranchInfo
 	pr        *forge.PullRequest
 	checkout  string
 	deletable bool
@@ -175,7 +176,7 @@ func renderBranchRow(row branchRow, layout table.Layout) string {
 		colBranchPR:    formatBranchPRCell(row.pr),
 		colChecks:      formatChecksCell(row.pr),
 		colCheckedOut:  checkout,
-		colLastCommit:  row.branch.RelativeLastCommit(),
+		colLastCommit:  ui.BranchRelativeLastCommit(row.branch),
 	}
 	cellStyles := map[string]lipgloss.Style{
 		colBranchName: withSelection(nameStyle, row.selected),
@@ -204,8 +205,8 @@ func renderBranchRow(row branchRow, layout table.Layout) string {
 // regardless of its last commit.
 const staleBranchAge = 30 * 24 * time.Hour
 
-func isStaleBranch(b models.BranchInfo) bool {
-	if b.LastCommit.IsZero() || b.IsCurrent || models.IsDefaultBranchName(b.Name) {
+func isStaleBranch(b vcs.BranchInfo) bool {
+	if b.LastCommit.IsZero() || b.IsCurrent || vcs.IsDefaultBranchName(b.Name) {
 		return false
 	}
 

@@ -8,11 +8,10 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 // PRMapLoadedMsg carries one repo's open pull requests and local branches for
@@ -21,7 +20,7 @@ import (
 type PRMapLoadedMsg struct {
 	Path     string
 	PRs      []forge.PullRequest
-	Branches []models.BranchInfo
+	Branches []vcs.BranchInfo
 }
 
 // prMapEntry is one row of the fleet map: an open pull request and where its

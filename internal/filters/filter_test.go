@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -14,9 +16,9 @@ func TestFilterReposAll(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, Ahead: 1},
-		"/repo2":      {Path: "/repo2", Behind: 2},
-		"/repo3":      {Path: "/repo3"},
+		testRepo1Path: {RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Ahead: 1}},
+		"/repo2":      {RepoSummary: vcs.RepoSummary{Path: "/repo2", Behind: 2}},
+		"/repo3":      {RepoSummary: vcs.RepoSummary{Path: "/repo3"}},
 	}
 
 	result := filters.FilterRepos(paths, summaries, models.FilterModeAll)
@@ -29,9 +31,9 @@ func TestFilterReposAhead(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, Ahead: 1},
-		"/repo2":      {Path: "/repo2", Behind: 2},
-		"/repo3":      {Path: "/repo3"},
+		testRepo1Path: {RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Ahead: 1}},
+		"/repo2":      {RepoSummary: vcs.RepoSummary{Path: "/repo2", Behind: 2}},
+		"/repo3":      {RepoSummary: vcs.RepoSummary{Path: "/repo3"}},
 	}
 
 	result := filters.FilterRepos(paths, summaries, models.FilterModeAhead)
@@ -47,9 +49,9 @@ func TestFilterReposBehind(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, Ahead: 1},
-		"/repo2":      {Path: "/repo2", Behind: 2},
-		"/repo3":      {Path: "/repo3"},
+		testRepo1Path: {RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Ahead: 1}},
+		"/repo2":      {RepoSummary: vcs.RepoSummary{Path: "/repo2", Behind: 2}},
+		"/repo3":      {RepoSummary: vcs.RepoSummary{Path: "/repo3"}},
 	}
 
 	result := filters.FilterRepos(paths, summaries, models.FilterModeBehind)
@@ -65,9 +67,9 @@ func TestFilterReposDirty(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, Staged: 2},
-		"/repo2":      {Path: "/repo2", Unstaged: 1},
-		"/repo3":      {Path: "/repo3"},
+		testRepo1Path: {RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Staged: 2}},
+		"/repo2":      {RepoSummary: vcs.RepoSummary{Path: "/repo2", Unstaged: 1}},
+		"/repo3":      {RepoSummary: vcs.RepoSummary{Path: "/repo3"}},
 	}
 
 	result := filters.FilterRepos(paths, summaries, models.FilterModeDirty)
@@ -80,8 +82,8 @@ func TestFilterReposHasPR(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, PRInfo: &forge.PullRequest{Number: 123}},
-		"/repo2":      {Path: "/repo2"},
+		testRepo1Path: {RepoSummary: vcs.RepoSummary{Path: testRepo1Path}, PRInfo: &forge.PullRequest{Number: 123}},
+		"/repo2":      {RepoSummary: vcs.RepoSummary{Path: "/repo2"}},
 	}
 
 	result := filters.FilterRepos(paths, summaries, models.FilterModeHasPR)
@@ -97,8 +99,8 @@ func TestFilterReposHasStash(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, StashCount: 3},
-		"/repo2":      {Path: "/repo2"},
+		testRepo1Path: {RepoSummary: vcs.RepoSummary{Path: testRepo1Path, StashCount: 3}},
+		"/repo2":      {RepoSummary: vcs.RepoSummary{Path: "/repo2"}},
 	}
 
 	result := filters.FilterRepos(paths, summaries, models.FilterModeHasStash)
@@ -114,8 +116,11 @@ func TestFilterReposHasNotes(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, NotesFiles: []models.NoteFile{{Name: "doing.md"}}},
-		"/repo2":      {Path: "/repo2"},
+		testRepo1Path: {
+			RepoSummary: vcs.RepoSummary{Path: testRepo1Path},
+			NotesFiles:  []models.NoteFile{{Name: "doing.md"}},
+		},
+		"/repo2": {RepoSummary: vcs.RepoSummary{Path: "/repo2"}},
 	}
 
 	result := filters.FilterRepos(paths, summaries, models.FilterModeHasNotes)
@@ -131,8 +136,8 @@ func TestFilterReposGit(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, VCSType: models.VCSTypeGit},
-		"/repo2":      {Path: "/repo2", VCSType: models.VCSTypeJJ},
+		testRepo1Path: {RepoSummary: vcs.RepoSummary{Path: testRepo1Path, VCSType: vcs.TypeGit}},
+		"/repo2":      {RepoSummary: vcs.RepoSummary{Path: "/repo2", VCSType: vcs.TypeJJ}},
 	}
 
 	result := filters.FilterRepos(paths, summaries, models.FilterModeGit)
@@ -148,9 +153,9 @@ func TestFilterReposMultiNoFilters(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, Ahead: 1},
-		"/repo2":      {Path: "/repo2", Behind: 2},
-		"/repo3":      {Path: "/repo3"},
+		testRepo1Path: {RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Ahead: 1}},
+		"/repo2":      {RepoSummary: vcs.RepoSummary{Path: "/repo2", Behind: 2}},
+		"/repo3":      {RepoSummary: vcs.RepoSummary{Path: "/repo3"}},
 	}
 
 	activeFilters := []models.ActiveFilter{
@@ -167,9 +172,9 @@ func TestFilterReposMultiSingleFilter(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, Ahead: 1},
-		"/repo2":      {Path: "/repo2", Behind: 2},
-		"/repo3":      {Path: "/repo3"},
+		testRepo1Path: {RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Ahead: 1}},
+		"/repo2":      {RepoSummary: vcs.RepoSummary{Path: "/repo2", Behind: 2}},
+		"/repo3":      {RepoSummary: vcs.RepoSummary{Path: "/repo3"}},
 	}
 
 	activeFilters := []models.ActiveFilter{
@@ -190,10 +195,10 @@ func TestFilterReposMultipleFilters(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2", "/repo3", "/repo4"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, Ahead: 1, Staged: 2},
-		"/repo2":      {Path: "/repo2", Ahead: 1},
-		"/repo3":      {Path: "/repo3", Staged: 1},
-		"/repo4":      {Path: "/repo4"},
+		testRepo1Path: {RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Ahead: 1, Staged: 2}},
+		"/repo2":      {RepoSummary: vcs.RepoSummary{Path: "/repo2", Ahead: 1}},
+		"/repo3":      {RepoSummary: vcs.RepoSummary{Path: "/repo3", Staged: 1}},
+		"/repo4":      {RepoSummary: vcs.RepoSummary{Path: "/repo4"}},
 	}
 
 	activeFilters := []models.ActiveFilter{
@@ -212,9 +217,12 @@ func TestFilterReposMultiWithPRAndDirty(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, Staged: 2, PRInfo: &forge.PullRequest{Number: 123}},
-		"/repo2":      {Path: "/repo2", PRInfo: &forge.PullRequest{Number: 456}},
-		"/repo3":      {Path: "/repo3", Staged: 1},
+		testRepo1Path: {
+			RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Staged: 2},
+			PRInfo:      &forge.PullRequest{Number: 123},
+		},
+		"/repo2": {RepoSummary: vcs.RepoSummary{Path: "/repo2"}, PRInfo: &forge.PullRequest{Number: 456}},
+		"/repo3": {RepoSummary: vcs.RepoSummary{Path: "/repo3", Staged: 1}},
 	}
 
 	activeFilters := []models.ActiveFilter{
@@ -236,10 +244,10 @@ func TestFilterReposMultiWithInverted(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2", "/repo3", "/repo4"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, Staged: 2},
-		"/repo2":      {Path: "/repo2", Unstaged: 1},
-		"/repo3":      {Path: "/repo3"},
-		"/repo4":      {Path: "/repo4"},
+		testRepo1Path: {RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Staged: 2}},
+		"/repo2":      {RepoSummary: vcs.RepoSummary{Path: "/repo2", Unstaged: 1}},
+		"/repo3":      {RepoSummary: vcs.RepoSummary{Path: "/repo3"}},
+		"/repo4":      {RepoSummary: vcs.RepoSummary{Path: "/repo4"}},
 	}
 
 	activeFilters := []models.ActiveFilter{
@@ -257,10 +265,13 @@ func TestFilterReposMultiMixedInverted(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2", "/repo3", "/repo4"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, Ahead: 1, PRInfo: &forge.PullRequest{Number: 123}},
-		"/repo2":      {Path: "/repo2", Ahead: 1},
-		"/repo3":      {Path: "/repo3", PRInfo: &forge.PullRequest{Number: 456}},
-		"/repo4":      {Path: "/repo4"},
+		testRepo1Path: {
+			RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Ahead: 1},
+			PRInfo:      &forge.PullRequest{Number: 123},
+		},
+		"/repo2": {RepoSummary: vcs.RepoSummary{Path: "/repo2", Ahead: 1}},
+		"/repo3": {RepoSummary: vcs.RepoSummary{Path: "/repo3"}, PRInfo: &forge.PullRequest{Number: 456}},
+		"/repo4": {RepoSummary: vcs.RepoSummary{Path: "/repo4"}},
 	}
 
 	activeFilters := []models.ActiveFilter{

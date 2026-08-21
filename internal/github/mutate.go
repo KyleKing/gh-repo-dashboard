@@ -6,8 +6,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
-	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 // CreatePR opens a pull request for the repo's current branch, filling title

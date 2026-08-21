@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -45,12 +46,20 @@ func compactModel(width, height int) Model {
 	m.width, m.height = width, height
 	m.loading = false
 	m.summaries = map[string]models.RepoSummary{
-		"/dev/alpha": {Path: "/dev/alpha", Branch: "main", StashCount: 2, LastModified: now},
+		"/dev/alpha": {
+			RepoSummary: vcs.RepoSummary{Path: "/dev/alpha", Branch: "main", StashCount: 2, LastModified: now},
+		},
 		"/dev/bravo": {
-			Path: "/dev/bravo", Branch: "feature/login", Staged: 1, Untracked: 1, LastModified: now,
+			RepoSummary: vcs.RepoSummary{
+				Path:         "/dev/bravo",
+				Branch:       "feature/login",
+				Staged:       1,
+				Untracked:    1,
+				LastModified: now,
+			},
 			NotesFiles: []models.NoteFile{{Name: ".doing", FirstLine: "wip"}},
 		},
-		"/dev/charlie": {Path: "/dev/charlie", Branch: "trunk", LastModified: now},
+		"/dev/charlie": {RepoSummary: vcs.RepoSummary{Path: "/dev/charlie", Branch: "trunk", LastModified: now}},
 	}
 	m.repoPaths = []string{"/dev/alpha", "/dev/bravo", "/dev/charlie"}
 	m.updateFilteredPaths()
@@ -111,8 +120,8 @@ func TestCompactGridStacksEveryPanel(t *testing.T) {
 
 	m := compactModel(80, 24)
 	m.selectedRepo = "/dev/alpha"
-	m.branches = []models.BranchInfo{{Name: mainBranchName, IsCurrent: true}}
-	m.stashes = []models.StashDetail{{Index: 0, Message: "On main: spike"}}
+	m.branches = []vcs.BranchInfo{{Name: mainBranchName, IsCurrent: true}}
+	m.stashes = []vcs.StashDetail{{Index: 0, Message: "On main: spike"}}
 
 	grid := plainText(m.renderPanelGrid())
 	// The Status title is built rather than spelled out: the bracketed form is

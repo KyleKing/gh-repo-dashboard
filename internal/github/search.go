@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
-	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 // SearchLimit caps how many pull requests one saved view reads. A view is a

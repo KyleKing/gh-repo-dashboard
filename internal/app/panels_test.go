@@ -9,8 +9,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -26,15 +27,22 @@ func focusedModel(width, height int) Model {
 	m.selectedRepo = "/dev/alpha"
 	m.summaries = map[string]models.RepoSummary{
 		"/dev/alpha": {
-			Path: "/dev/alpha", VCSType: models.VCSTypeGit, Branch: mainBranchName,
-			Upstream: "origin/main", Ahead: 1, StashCount: 2, LastModified: now,
+			RepoSummary: vcs.RepoSummary{
+				Path:         "/dev/alpha",
+				VCSType:      vcs.TypeGit,
+				Branch:       mainBranchName,
+				Upstream:     "origin/main",
+				Ahead:        1,
+				StashCount:   2,
+				LastModified: now,
+			},
 			NotesFiles: []models.NoteFile{{Name: ".doing", FirstLine: "wip"}},
 		},
 	}
 	m.repoPaths = []string{"/dev/alpha"}
-	m.branches = []models.BranchInfo{{Name: mainBranchName, Upstream: "origin/main", Ahead: 1, IsCurrent: true}}
-	m.stashes = []models.StashDetail{{Index: 0, Message: "On main: spike", Date: now}}
-	m.worktrees = []models.WorktreeInfo{
+	m.branches = []vcs.BranchInfo{{Name: mainBranchName, Upstream: "origin/main", Ahead: 1, IsCurrent: true}}
+	m.stashes = []vcs.StashDetail{{Index: 0, Message: "On main: spike", Date: now}}
+	m.worktrees = []vcs.WorktreeInfo{
 		{Path: "/dev/alpha", Branch: mainBranchName},
 		{Path: "/dev/alpha-thing", Branch: "feature/thing"},
 	}
@@ -88,7 +96,7 @@ func TestJJRepoHasNoStashesPanel(t *testing.T) {
 
 	m := focusedModel(160, 45)
 	summary := m.summaries["/dev/alpha"]
-	summary.VCSType = models.VCSTypeJJ
+	summary.VCSType = vcs.TypeJJ
 	m.summaries["/dev/alpha"] = summary
 	m.stashes = nil
 
@@ -154,7 +162,7 @@ func TestDetailPaneDescribesTheSelectedItem(t *testing.T) {
 	m := focusedModel(200, 50)
 	m.branchDetail = models.BranchDetail{
 		Branch:  m.branches[0],
-		Commits: []models.CommitInfo{{ShortHash: "d2c794a", Subject: "expand and center tables"}},
+		Commits: []vcs.CommitInfo{{ShortHash: "d2c794a", Subject: "expand and center tables"}},
 	}
 
 	if got := plainText(m.renderPanelDetail(60, 20)); !strings.Contains(got, "expand and center tables") {
@@ -239,7 +247,7 @@ func TestJumpDiffFile_MovesBetweenFileBoundaries(t *testing.T) {
 
 	m := focusedModel(200, 20)
 	m.focusedPanel = panelStashes
-	m.stashes = []models.StashDetail{{Index: 0, Message: "wip"}}
+	m.stashes = []vcs.StashDetail{{Index: 0, Message: "wip"}}
 	m.stashFullDiff = true
 	m.stashDiff = map[int]string{0: diff}
 	m.detailFocused = true
@@ -329,7 +337,7 @@ func TestPanelRowsFitTheirBoxAndKeepTheBranchHead(t *testing.T) {
 			t.Parallel()
 
 			m := focusedModel(size[0], size[1])
-			m.branches = append(m.branches, models.BranchInfo{Name: longBranch})
+			m.branches = append(m.branches, vcs.BranchInfo{Name: longBranch})
 			m.prs = []forge.PullRequest{{Number: 11, Title: strings.Repeat("bump the dependencies ", 6)}}
 
 			width := panelSideWidth(m.gridWidth(), false) - panelBorderWidth
@@ -372,9 +380,9 @@ func TestStatusPreviewShowsNewestEditAndDefaultBranchMismatch(t *testing.T) {
 	m := focusedModel(140, 35)
 	m.newestFile = "notes.md"
 	m.newestFileTime = time.Now().Add(-time.Hour)
-	m.branches = append(m.branches, models.BranchInfo{Name: "main"})
+	m.branches = append(m.branches, vcs.BranchInfo{Name: "main"})
 	m.summaries["/dev/alpha"] = models.RepoSummary{
-		Path: "/dev/alpha", VCSType: models.VCSTypeGit, Branch: "feature/x",
+		RepoSummary: vcs.RepoSummary{Path: "/dev/alpha", VCSType: vcs.TypeGit, Branch: "feature/x"},
 	}
 
 	preview := plainText(strings.Join(m.repoDetailLines(contentWidth(m.width)), "\n"))

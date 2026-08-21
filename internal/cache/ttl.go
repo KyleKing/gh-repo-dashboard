@@ -1,12 +1,10 @@
 package cache
 
 import (
-	"strconv"
 	"time"
 
 	acache "github.com/kyleking/aragonite/cache"
 	"github.com/kyleking/aragonite/forge"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 type (
@@ -74,8 +72,6 @@ var (
 	PRSearchCache        = newRegisteredTTLCache[[]forge.PullRequest](defaultTTL)
 	PRDetailCache        = newRegisteredTTLCache[*forge.PRDetail](defaultTTL)
 	PRPreviewCache       = newRegisteredTTLCache[*forge.PRPreview](defaultTTL)
-	BranchCache          = newRegisteredTTLCache[[]models.BranchInfo](defaultTTL)
-	CommitCache          = newRegisteredTTLCache[[]models.CommitInfo](defaultTTL)
 	WorkflowCache        = newRegisteredTTLCache[*forge.WorkflowSummary](workflowTTL)
 	MergedPRHeadsCache   = newRegisteredTTLCache[map[string]string](defaultTTL)
 	// CopierLatestTagCache is keyed by a template's _src_path rather than by
@@ -83,19 +79,3 @@ var (
 	// shares one lookup instead of each repo hitting the network on its own.
 	CopierLatestTagCache = newRegisteredTTLCache[string](copierTagTTL)
 )
-
-// BranchCacheKey and CommitCacheKey key on the checkout rather than on the
-// object store it borrows. A worktree and its parent read the same refs, but
-// both values are relative to whichever HEAD asked: the branch list carries the
-// current-branch marker and the log starts at HEAD. Sharing one entry between
-// them would either serve one checkout the other's answer or, as the stamp
-// makes it, miss every time the cursor alternates.
-func BranchCacheKey(repoPath string) string {
-	return repoPath + "\x00branches"
-}
-
-// CommitCacheKey builds the commit log cache key for a checkout, keyed by depth
-// because a deeper log is a different value.
-func CommitCacheKey(repoPath string, count int) string {
-	return repoPath + "\x00commits:" + strconv.Itoa(count)
-}

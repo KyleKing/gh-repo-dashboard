@@ -3,6 +3,8 @@ package models_test
 import (
 	"testing"
 
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -11,12 +13,23 @@ const mainBranch = "main"
 func TestFindPeerCheckouts(t *testing.T) {
 	t.Parallel()
 
-	primary := models.RepoSummary{Path: "/src/app", Branch: mainBranch, RemoteRepo: "acme/app"}
-	sibling := models.RepoSummary{
-		Path: "/src/app-feature", Branch: "feature", RemoteRepo: "acme/app", Ahead: 2, Behind: 1, Unstaged: 3,
+	primary := models.RepoSummary{
+		RepoSummary: vcs.RepoSummary{Path: "/src/app", Branch: mainBranch, RemoteRepo: "acme/app"},
 	}
-	other := models.RepoSummary{Path: "/src/tool", Branch: mainBranch, RemoteRepo: "acme/tool"}
-	localOnly := models.RepoSummary{Path: "/src/scratch", Branch: mainBranch}
+	sibling := models.RepoSummary{
+		RepoSummary: vcs.RepoSummary{
+			Path:       "/src/app-feature",
+			Branch:     "feature",
+			RemoteRepo: "acme/app",
+			Ahead:      2,
+			Behind:     1,
+			Unstaged:   3,
+		},
+	}
+	other := models.RepoSummary{
+		RepoSummary: vcs.RepoSummary{Path: "/src/tool", Branch: mainBranch, RemoteRepo: "acme/tool"},
+	}
+	localOnly := models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: "/src/scratch", Branch: mainBranch}}
 
 	tests := []struct {
 		name    string
@@ -39,8 +52,11 @@ func TestFindPeerCheckouts(t *testing.T) {
 		{
 			name:    "repos without a remote never peer",
 			current: localOnly,
-			all:     []models.RepoSummary{localOnly, {Path: "/src/scratch2", Branch: mainBranch}},
-			want:    nil,
+			all: []models.RepoSummary{
+				localOnly,
+				{RepoSummary: vcs.RepoSummary{Path: "/src/scratch2", Branch: mainBranch}},
+			},
+			want: nil,
 		},
 	}
 
@@ -63,9 +79,16 @@ func TestFindPeerCheckouts(t *testing.T) {
 func TestFindPeerCheckoutsCarriesTracking(t *testing.T) {
 	t.Parallel()
 
-	current := models.RepoSummary{Path: "/src/app", RemoteRepo: "acme/app"}
+	current := models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: "/src/app", RemoteRepo: "acme/app"}}
 	sibling := models.RepoSummary{
-		Path: "/src/app-feature", Branch: "feature", RemoteRepo: "acme/app", Ahead: 2, Behind: 1, Unstaged: 3,
+		RepoSummary: vcs.RepoSummary{
+			Path:       "/src/app-feature",
+			Branch:     "feature",
+			RemoteRepo: "acme/app",
+			Ahead:      2,
+			Behind:     1,
+			Unstaged:   3,
+		},
 	}
 
 	peers := models.FindPeerCheckouts(&current, []models.RepoSummary{current, sibling})
@@ -93,7 +116,7 @@ func TestTrackingSummaryInSync(t *testing.T) {
 func TestWorktreeCheckouts(t *testing.T) {
 	t.Parallel()
 
-	worktrees := []models.WorktreeInfo{
+	worktrees := []vcs.WorktreeInfo{
 		{Path: "/src/app", Branch: mainBranch},
 		{Path: "/src/app-wt", Branch: "feature"},
 		{Path: "/src/app-bare", IsBare: true},

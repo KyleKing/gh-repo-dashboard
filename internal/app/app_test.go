@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -302,9 +304,9 @@ func TestModelDirtyCount(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.summaries = map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, Staged: 1},
-		"/repo2":      {Path: "/repo2", Ahead: 2},
-		"/repo3":      {Path: "/repo3"},
+		testRepo1Path: {RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Staged: 1}},
+		"/repo2":      {RepoSummary: vcs.RepoSummary{Path: "/repo2", Ahead: 2}},
+		"/repo3":      {RepoSummary: vcs.RepoSummary{Path: "/repo3"}},
 	}
 	m.filteredPaths = []string{testRepo1Path, "/repo2", "/repo3"}
 
@@ -333,9 +335,9 @@ func TestModelPRCount(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.summaries = map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, PRInfo: &forge.PullRequest{Number: 1}},
-		"/repo2":      {Path: "/repo2", PRInfo: &forge.PullRequest{Number: 2}},
-		"/repo3":      {Path: "/repo3"},
+		testRepo1Path: {RepoSummary: vcs.RepoSummary{Path: testRepo1Path}, PRInfo: &forge.PullRequest{Number: 1}},
+		"/repo2":      {RepoSummary: vcs.RepoSummary{Path: "/repo2"}, PRInfo: &forge.PullRequest{Number: 2}},
+		"/repo3":      {RepoSummary: vcs.RepoSummary{Path: "/repo3"}},
 	}
 	m.filteredPaths = []string{testRepo1Path, "/repo2", "/repo3"}
 
@@ -349,8 +351,8 @@ func TestModelSelectedSummary(t *testing.T) {
 	m := New(nil, 1)
 	m.filteredPaths = []string{testRepo1Path, "/repo2"}
 	m.summaries = map[string]models.RepoSummary{
-		testRepo1Path: {Branch: mainBranchName},
-		"/repo2":      {Branch: "develop"},
+		testRepo1Path: {RepoSummary: vcs.RepoSummary{Branch: mainBranchName}},
+		"/repo2":      {RepoSummary: vcs.RepoSummary{Branch: "develop"}},
 	}
 	m.cursor = 1
 
@@ -422,7 +424,7 @@ func TestBranchDetailDefaultComparison(t *testing.T) {
 		{
 			name: "shows ahead and behind vs default",
 			detail: models.BranchDetail{
-				Branch:        models.BranchInfo{Name: featureBranchName},
+				Branch:        vcs.BranchInfo{Name: featureBranchName},
 				DefaultBranch: mainBranchName,
 				DefaultAhead:  2,
 				DefaultBehind: 1,
@@ -432,20 +434,20 @@ func TestBranchDetailDefaultComparison(t *testing.T) {
 		{
 			name: "up to date vs default",
 			detail: models.BranchDetail{
-				Branch:        models.BranchInfo{Name: featureBranchName},
+				Branch:        vcs.BranchInfo{Name: featureBranchName},
 				DefaultBranch: mainBranchName,
 			},
 			contains: []string{"vs main:", "up to date"},
 		},
 		{
 			name:     "hidden without comparison data",
-			detail:   models.BranchDetail{Branch: models.BranchInfo{Name: featureBranchName}},
+			detail:   models.BranchDetail{Branch: vcs.BranchInfo{Name: featureBranchName}},
 			excludes: []string{"vs main:"},
 		},
 		{
 			name: "hidden on the default branch itself",
 			detail: models.BranchDetail{
-				Branch:        models.BranchInfo{Name: mainBranchName},
+				Branch:        vcs.BranchInfo{Name: mainBranchName},
 				DefaultBranch: mainBranchName,
 			},
 			excludes: []string{"vs main:"},

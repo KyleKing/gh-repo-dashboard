@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/app"
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
@@ -19,7 +20,6 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/config"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 var (

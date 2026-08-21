@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -14,22 +16,27 @@ func relevantPeersFleet() Model {
 	m.loading = false
 	m.summaries = map[string]models.RepoSummary{
 		"/dev/one/app": {
-			Path: "/dev/one/app", Branch: "main", RemoteRepo: "acme/app", Upstream: "origin/main",
+			RepoSummary: vcs.RepoSummary{
+				Path:       "/dev/one/app",
+				Branch:     "main",
+				RemoteRepo: "acme/app",
+				Upstream:   "origin/main",
+			},
 		},
 		"/dev/one/app-unrelated": {
-			Path: "/dev/one/app-unrelated", Branch: "chore", RemoteRepo: "acme/app",
+			RepoSummary: vcs.RepoSummary{Path: "/dev/one/app-unrelated", Branch: "chore", RemoteRepo: "acme/app"},
 		},
 		"/dev/one/app-current": {
-			Path: "/dev/one/app-current", Branch: "feature-a", RemoteRepo: "acme/app",
+			RepoSummary: vcs.RepoSummary{Path: "/dev/one/app-current", Branch: "feature-a", RemoteRepo: "acme/app"},
 		},
 		"/dev/one/app-other-branch": {
-			Path: "/dev/one/app-other-branch", Branch: "main", RemoteRepo: "acme/app",
+			RepoSummary: vcs.RepoSummary{Path: "/dev/one/app-other-branch", Branch: "main", RemoteRepo: "acme/app"},
 		},
 		"/dev/two/app-fork": {
-			Path: "/dev/two/app-fork", Branch: "feature-b", RemoteRepo: "acme/app",
+			RepoSummary: vcs.RepoSummary{Path: "/dev/two/app-fork", Branch: "feature-b", RemoteRepo: "acme/app"},
 		},
 		"/dev/two/app-elsewhere": {
-			Path: "/dev/two/app-elsewhere", Branch: "main", RemoteRepo: "acme/app",
+			RepoSummary: vcs.RepoSummary{Path: "/dev/two/app-elsewhere", Branch: "main", RemoteRepo: "acme/app"},
 		},
 	}
 	m.repoPaths = []string{
@@ -47,7 +54,7 @@ func relevantPeersFleet() Model {
 			},
 		},
 	}
-	m.peerBranches = map[string][]models.BranchInfo{
+	m.peerBranches = map[string][]vcs.BranchInfo{
 		// only unrelated local branches: not relevant
 		"/dev/one/app-unrelated": {{Name: "chore", Upstream: "origin/chore"}},
 		// the PR's branch exists locally but is not the current checkout: still relevant

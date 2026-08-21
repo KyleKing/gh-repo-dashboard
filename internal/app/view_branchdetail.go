@@ -5,8 +5,9 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
@@ -94,7 +95,7 @@ func (m Model) writeBranchInfoSection(b *strings.Builder, s branchDetailStyles) 
 
 	if len(m.branchDetail.Commits) > 0 {
 		lastCommit := m.branchDetail.Commits[0]
-		s.writeInfoLine(b, "Last commit:", lastCommit.RelativeDate())
+		s.writeInfoLine(b, "Last commit:", ui.CommitRelativeDate(lastCommit))
 		s.writeInfoLine(b, "Author:", lastCommit.Author)
 	}
 
@@ -106,7 +107,7 @@ func (m Model) writeBranchInfoSection(b *strings.Builder, s branchDetailStyles) 
 	b.WriteString(fileStyle.Render(s.label.Render("File changes:") + " " + fileChanges))
 	b.WriteString("\n")
 
-	if summary := m.summaries[m.selectedRepo]; summary.VCSType == models.VCSTypeJJ {
+	if summary := m.summaries[m.selectedRepo]; summary.VCSType == vcs.TypeJJ {
 		if m.branchDetail.ChangeID != "" {
 			s.writeInfoLine(b, "Change ID:", styles.SubtitleStyle.Render(m.branchDetail.ChangeID))
 		}
@@ -250,7 +251,7 @@ func (m Model) writeBranchCommitsSection(b *strings.Builder, s branchDetailStyle
 			colCommitHash:    commit.ShortHash,
 			colCommitSubject: commit.Subject,
 			colCommitAuthor:  commit.Author,
-			colCommitDate:    commit.RelativeDate(),
+			colCommitDate:    ui.CommitRelativeDate(commit),
 		}
 
 		cells := renderCells(layout, values, subtleStyles, &plainStyle)

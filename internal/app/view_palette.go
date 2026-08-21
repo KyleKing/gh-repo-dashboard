@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
@@ -71,7 +71,7 @@ func (m Model) findRepos(q findQuery, fleet bool) []findResult {
 			kind:   findRepo,
 			repo:   path,
 			label:  summary.Name(),
-			detail: summary.Branch + compactSignalSep + summary.StatusSummary(),
+			detail: summary.Branch + compactSignalSep + ui.RepoStatusSummary(summary.RepoSummary),
 		})
 	}
 
@@ -151,7 +151,7 @@ func (m Model) findBranches(q findQuery, fleet bool) []findResult {
 // cachedBranches returns the branches known for a repo without running git:
 // the full list for the repo whose detail is loaded, and the checked-out
 // branch alone for the rest.
-func (m Model) cachedBranches(path string) []models.BranchInfo {
+func (m Model) cachedBranches(path string) []vcs.BranchInfo {
 	if path == m.selectedRepo && len(m.branches) > 0 {
 		return m.branches
 	}
@@ -164,7 +164,7 @@ func (m Model) cachedBranches(path string) []models.BranchInfo {
 		return nil
 	}
 
-	return []models.BranchInfo{{
+	return []vcs.BranchInfo{{
 		Name: summary.Branch, Upstream: summary.Upstream,
 		Ahead: summary.Ahead, Behind: summary.Behind, IsCurrent: true,
 	}}
@@ -183,7 +183,7 @@ func (m Model) findStashes(q findQuery) []findResult {
 			kind:   findStash,
 			repo:   m.selectedRepo,
 			label:  "stash@{" + strconv.Itoa(stash.Index) + "} " + stash.Message,
-			detail: stash.RelativeDate(),
+			detail: ui.StashRelativeDate(stash),
 			index:  stash.Index,
 		})
 	}

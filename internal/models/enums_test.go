@@ -3,17 +3,19 @@ package models_test
 import (
 	"testing"
 
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 func TestVCSTypeString(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		vcs      models.VCSType
+		vcs      vcs.Type
 		expected string
 	}{
-		{models.VCSTypeGit, "git"},
-		{models.VCSTypeJJ, "jj"},
+		{vcs.TypeGit, "git"},
+		{vcs.TypeJJ, "jj"},
 	}
 
 	for _, tt := range tests {
@@ -118,14 +120,14 @@ func TestSortModeNext(t *testing.T) {
 func TestRepoStatusString(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		status   models.RepoStatus
+		status   vcs.RepoStatus
 		expected string
 	}{
-		{models.RepoStatusClean, "clean"},
-		{models.RepoStatusDirty, "dirty"},
-		{models.RepoStatusAhead, "ahead"},
-		{models.RepoStatusBehind, "behind"},
-		{models.RepoStatusDiverged, "diverged"},
+		{vcs.RepoStatusClean, "clean"},
+		{vcs.RepoStatusDirty, "dirty"},
+		{vcs.RepoStatusAhead, "ahead"},
+		{vcs.RepoStatusBehind, "behind"},
+		{vcs.RepoStatusDiverged, "diverged"},
 	}
 
 	for _, tt := range tests {

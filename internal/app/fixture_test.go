@@ -12,8 +12,9 @@ import (
 	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -161,12 +162,13 @@ func standardDataset() Model {
 	m.loading = false
 	m.repoPaths = []string{"/repos/behind", "/repos/clean", "/repos/dirty", "/repos/dirty-pr"}
 	m.summaries = map[string]models.RepoSummary{
-		"/repos/behind": {Path: "/repos/behind", Branch: mainBranchName, Behind: 2},
-		"/repos/clean":  {Path: "/repos/clean", Branch: mainBranchName},
-		"/repos/dirty":  {Path: "/repos/dirty", Branch: mainBranchName, Unstaged: 2},
+		"/repos/behind": {RepoSummary: vcs.RepoSummary{Path: "/repos/behind", Branch: mainBranchName, Behind: 2}},
+		"/repos/clean":  {RepoSummary: vcs.RepoSummary{Path: "/repos/clean", Branch: mainBranchName}},
+		"/repos/dirty":  {RepoSummary: vcs.RepoSummary{Path: "/repos/dirty", Branch: mainBranchName, Unstaged: 2}},
 		"/repos/dirty-pr": {
-			Path: "/repos/dirty-pr", Branch: "feat", Unstaged: 1,
-			PRInfo: &forge.PullRequest{Number: 7}, NotesFiles: []models.NoteFile{{Name: "doing.md"}},
+			RepoSummary: vcs.RepoSummary{Path: "/repos/dirty-pr", Branch: "feat", Unstaged: 1},
+			PRInfo:      &forge.PullRequest{Number: 7},
+			NotesFiles:  []models.NoteFile{{Name: "doing.md"}},
 		},
 	}
 	m.updateFilteredPaths()
@@ -178,17 +180,33 @@ func standardDataset() Model {
 // stashes, no notes, no PR.
 func quietRepo() models.RepoSummary {
 	return models.RepoSummary{
-		Path: "/repos/quiet", VCSType: models.VCSTypeGit, Branch: mainBranchName,
-		Upstream: "origin/main", RemoteProtocol: "ssh", RemoteRepo: "acme/quiet",
+		RepoSummary: vcs.RepoSummary{
+			Path:           "/repos/quiet",
+			VCSType:        vcs.TypeGit,
+			Branch:         mainBranchName,
+			Upstream:       "origin/main",
+			RemoteProtocol: "ssh",
+			RemoteRepo:     "acme/quiet",
+		},
 	}
 }
 
 // busyRepo has something to report on every overview row.
 func busyRepo() models.RepoSummary {
 	return models.RepoSummary{
-		Path: "/repos/busy", VCSType: models.VCSTypeGit, Branch: "feat/login",
-		Upstream: "origin/feat/login", RemoteProtocol: "ssh", RemoteRepo: "acme/busy",
-		Ahead: 2, Behind: 1, Staged: 1, Unstaged: 3, StashCount: 4,
+		RepoSummary: vcs.RepoSummary{
+			Path:           "/repos/busy",
+			VCSType:        vcs.TypeGit,
+			Branch:         "feat/login",
+			Upstream:       "origin/feat/login",
+			RemoteProtocol: "ssh",
+			RemoteRepo:     "acme/busy",
+			Ahead:          2,
+			Behind:         1,
+			Staged:         1,
+			Unstaged:       3,
+			StashCount:     4,
+		},
 		NotesFiles:   []models.NoteFile{{Name: "doing.md", FirstLine: "wip"}},
 		TemplateInfo: &models.CopierTemplateInfo{Commit: "v0.9.1", IsTag: true, Behind: true, LatestTag: "v0.10.0"},
 		PRInfo:       &forge.PullRequest{Number: 42, Title: "Add login flow", State: "OPEN", HeadRef: "feat/login"},
@@ -206,13 +224,13 @@ func focusedDataset(summary models.RepoSummary) Model {
 	m.selectedRepo = summary.Path
 	m.repoPaths = []string{summary.Path}
 	m.summaries = map[string]models.RepoSummary{summary.Path: summary}
-	m.branches = []models.BranchInfo{{Name: summary.Branch, Upstream: summary.Upstream, IsCurrent: true}}
-	m.worktrees = []models.WorktreeInfo{{Path: summary.Path, Branch: summary.Branch}}
+	m.branches = []vcs.BranchInfo{{Name: summary.Branch, Upstream: summary.Upstream, IsCurrent: true}}
+	m.worktrees = []vcs.WorktreeInfo{{Path: summary.Path, Branch: summary.Branch}}
 	if summary.PRInfo != nil {
 		m.prs = []forge.PullRequest{*summary.PRInfo}
 	}
 	for i := range summary.StashCount {
-		m.stashes = append(m.stashes, models.StashDetail{Index: i, Message: "On main: spike"})
+		m.stashes = append(m.stashes, vcs.StashDetail{Index: i, Message: "On main: spike"})
 	}
 	for _, note := range summary.NotesFiles {
 		m.notesFiles = append(m.notesFiles, models.NoteFileContent{Name: note.Name, Content: note.FirstLine})
@@ -226,7 +244,7 @@ func focusedDataset(summary models.RepoSummary) Model {
 // checkout the summary alone cannot express.
 func busyDataset() Model {
 	m := focusedDataset(busyRepo())
-	m.worktrees = append(m.worktrees, models.WorktreeInfo{Path: "/repos/busy-review", Branch: "feat/review"})
+	m.worktrees = append(m.worktrees, vcs.WorktreeInfo{Path: "/repos/busy-review", Branch: "feat/review"})
 
 	return m
 }

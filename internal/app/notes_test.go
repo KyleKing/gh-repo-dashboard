@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -40,7 +41,7 @@ func TestExpandRegion_KeepsTheFrameHeightFixed(t *testing.T) {
 				"/dev/bravo": {
 					Path:     "/dev/bravo",
 					PRs:      []forge.PullRequest{{Number: 42, Title: "Add login flow"}},
-					Branches: []models.BranchInfo{{Name: featureBranchName, Ahead: 2}},
+					Branches: []vcs.BranchInfo{{Name: featureBranchName, Ahead: 2}},
 				},
 			}
 
@@ -96,7 +97,7 @@ func TestExpandRegion_SitsBelowTheTable(t *testing.T) {
 		"/dev/bravo": {
 			Path:     "/dev/bravo",
 			PRs:      []forge.PullRequest{{Number: 42, Title: "Add login flow"}},
-			Branches: []models.BranchInfo{{Name: mainBranchName}, {Name: featureBranchName, Ahead: 2}},
+			Branches: []vcs.BranchInfo{{Name: mainBranchName}, {Name: featureBranchName, Ahead: 2}},
 		},
 	}
 

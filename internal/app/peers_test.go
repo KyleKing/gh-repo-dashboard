@@ -7,8 +7,9 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
@@ -23,21 +24,39 @@ func peerFleet(width, height int) Model {
 	m.loading = false
 	m.summaries = map[string]models.RepoSummary{
 		"/dev/app-a": {
-			Path: "/dev/app-a", VCSType: models.VCSTypeGit, Branch: "main",
-			RemoteRepo: "acme/app", Upstream: "origin/main", LastModified: now,
+			RepoSummary: vcs.RepoSummary{
+				Path:         "/dev/app-a",
+				VCSType:      vcs.TypeGit,
+				Branch:       "main",
+				RemoteRepo:   "acme/app",
+				Upstream:     "origin/main",
+				LastModified: now,
+			},
 		},
 		"/dev/app-b": {
-			Path: "/dev/app-b", VCSType: models.VCSTypeGit, Branch: "main",
-			RemoteRepo: "acme/app", Upstream: "origin/main", Unstaged: 1, LastModified: now,
+			RepoSummary: vcs.RepoSummary{
+				Path:         "/dev/app-b",
+				VCSType:      vcs.TypeGit,
+				Branch:       "main",
+				RemoteRepo:   "acme/app",
+				Upstream:     "origin/main",
+				Unstaged:     1,
+				LastModified: now,
+			},
 		},
 		"/dev/solo": {
-			Path: "/dev/solo", VCSType: models.VCSTypeGit, Branch: "main",
-			RemoteRepo: "acme/solo", LastModified: now,
+			RepoSummary: vcs.RepoSummary{
+				Path:         "/dev/solo",
+				VCSType:      vcs.TypeGit,
+				Branch:       "main",
+				RemoteRepo:   "acme/solo",
+				LastModified: now,
+			},
 		},
 	}
 	m.repoPaths = []string{"/dev/app-a", "/dev/app-b", "/dev/solo"}
 	m.selectedRepo = "/dev/app-a"
-	m.worktrees = []models.WorktreeInfo{
+	m.worktrees = []vcs.WorktreeInfo{
 		{Path: "/dev/app-a", Branch: "main"},
 		{Path: "/dev/app-a-wt", Branch: "feature/side"},
 	}
@@ -52,7 +71,7 @@ func peerFleet(width, height int) Model {
 			PRs:  []forge.PullRequest{{Number: 1, HeadRef: "feature-x"}},
 		},
 	}
-	m.peerBranches = map[string][]models.BranchInfo{
+	m.peerBranches = map[string][]vcs.BranchInfo{
 		"/dev/app-b": {{Name: "renamed-branch", Upstream: "origin/feature-x"}},
 	}
 
@@ -140,9 +159,11 @@ func TestCompactRecordCarriesTheConflictMark(t *testing.T) {
 func TestCheckoutKindDoesNotDependOnWhoIsLooking(t *testing.T) {
 	t.Parallel()
 
-	worktree := models.RepoSummary{Path: "/dev/app-wt", RemoteRepo: "acme/app", ParentPath: "/dev/app"}
-	clone := models.RepoSummary{Path: "/dev/app-b", RemoteRepo: "acme/app"}
-	unrelated := models.RepoSummary{Path: "/dev/app-c", RemoteRepo: "acme/app"}
+	worktree := models.RepoSummary{
+		RepoSummary: vcs.RepoSummary{Path: "/dev/app-wt", RemoteRepo: "acme/app", ParentPath: "/dev/app"},
+	}
+	clone := models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: "/dev/app-b", RemoteRepo: "acme/app"}}
+	unrelated := models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: "/dev/app-c", RemoteRepo: "acme/app"}}
 
 	peers := models.FindPeerCheckouts(&unrelated, []models.RepoSummary{worktree, clone})
 	kinds := map[string]string{}

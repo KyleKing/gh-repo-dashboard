@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -101,9 +102,17 @@ func TestOverviewSyncNamesWhatIsMissing(t *testing.T) {
 		want    string
 	}{
 		{"never pushed", models.RepoSummary{}, "no upstream"},
-		{"empty repo", models.RepoSummary{NoCommits: true}, "no commits"},
-		{"in sync", models.RepoSummary{Upstream: "origin/main"}, "in sync vs origin/main"},
-		{"ahead", models.RepoSummary{Upstream: "origin/main", Ahead: 2}, "↑2 vs origin/main"},
+		{"empty repo", models.RepoSummary{RepoSummary: vcs.RepoSummary{NoCommits: true}}, "no commits"},
+		{
+			"in sync",
+			models.RepoSummary{RepoSummary: vcs.RepoSummary{Upstream: "origin/main"}},
+			"in sync vs origin/main",
+		},
+		{
+			"ahead",
+			models.RepoSummary{RepoSummary: vcs.RepoSummary{Upstream: "origin/main", Ahead: 2}},
+			"↑2 vs origin/main",
+		},
 	}
 
 	for _, tt := range tests {
@@ -119,12 +128,12 @@ func TestOverviewSyncNamesWhatIsMissing(t *testing.T) {
 func TestOverviewFilesWordsJJWithoutAStagingArea(t *testing.T) {
 	t.Parallel()
 
-	git := models.RepoSummary{VCSType: models.VCSTypeGit, Unstaged: 2}
+	git := models.RepoSummary{RepoSummary: vcs.RepoSummary{VCSType: vcs.TypeGit, Unstaged: 2}}
 	if got := overviewFiles(git); !strings.Contains(got, "2 unstaged") {
 		t.Errorf("git files = %q, want it to say unstaged", got)
 	}
 
-	jj := models.RepoSummary{VCSType: models.VCSTypeJJ, Unstaged: 2}
+	jj := models.RepoSummary{RepoSummary: vcs.RepoSummary{VCSType: vcs.TypeJJ, Unstaged: 2}}
 	if got := overviewFiles(jj); strings.Contains(got, "unstaged") || !strings.Contains(got, "2 changed") {
 		t.Errorf("jj files = %q, want it to avoid a staging distinction jj does not have", got)
 	}
@@ -139,9 +148,9 @@ func TestDirtyLabelSeparatesUnpushedFromUncommitted(t *testing.T) {
 		want    string
 	}{
 		{"neither", models.RepoSummary{}, ""},
-		{"ahead only", models.RepoSummary{Ahead: 1}, "unpushed"},
-		{"files only", models.RepoSummary{Unstaged: 1}, "uncommitted"},
-		{"both", models.RepoSummary{Ahead: 1, Staged: 1}, "uncommitted, unpushed"},
+		{"ahead only", models.RepoSummary{RepoSummary: vcs.RepoSummary{Ahead: 1}}, "unpushed"},
+		{"files only", models.RepoSummary{RepoSummary: vcs.RepoSummary{Unstaged: 1}}, "uncommitted"},
+		{"both", models.RepoSummary{RepoSummary: vcs.RepoSummary{Ahead: 1, Staged: 1}}, "uncommitted, unpushed"},
 	}
 
 	for _, tt := range tests {

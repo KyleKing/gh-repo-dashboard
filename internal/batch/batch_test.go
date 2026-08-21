@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 var errNetwork = errors.New("network error")
@@ -195,12 +195,12 @@ func stubMergedPRHeads(t *testing.T, heads map[string]string) {
 	t.Cleanup(restore)
 }
 
-func stubOperations(t *testing.T, branches []models.BranchInfo) {
+func stubOperations(t *testing.T, branches []vcs.BranchInfo) {
 	t.Helper()
 
 	restore := batch.SetGetOperationsForTest(func(string) vcs.Operations {
 		return &vcs.MockOperations{
-			GetBranchListFn: func(context.Context, string) ([]models.BranchInfo, error) {
+			GetBranchListFn: func(context.Context, string) ([]vcs.BranchInfo, error) {
 				return branches, nil
 			},
 		}
@@ -252,7 +252,7 @@ func TestCleanupMerged(t *testing.T) {
 //nolint:paralleltest // stubs shared batch package-level seam state
 func TestCleanupMergedDetectsSquashMerged(t *testing.T) {
 	stubMergedPRHeads(t, map[string]string{"feature-a": "abc123"})
-	stubOperations(t, []models.BranchInfo{
+	stubOperations(t, []vcs.BranchInfo{
 		{Name: "feature-a", Head: "abc123"},
 		{Name: "feature-b", Head: "zzz999"},
 	})
@@ -270,7 +270,7 @@ func TestCleanupMergedDetectsSquashMerged(t *testing.T) {
 //nolint:paralleltest // stubs shared batch package-level seam state
 func TestPreviewCleanupReportsWouldDelete(t *testing.T) {
 	stubMergedPRHeads(t, map[string]string{"feature-a": "abc123"})
-	stubOperations(t, []models.BranchInfo{
+	stubOperations(t, []vcs.BranchInfo{
 		{Name: "feature-a", Head: "abc123"},
 		{Name: "feature-b", Head: "zzz999"},
 	})

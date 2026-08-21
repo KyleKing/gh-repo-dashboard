@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -16,7 +17,7 @@ func placeholderModel(loading bool) Model {
 	m.height = 30
 	m.selectedRepo = "/dev/alpha"
 	m.summaries = map[string]models.RepoSummary{
-		"/dev/alpha": {Path: "/dev/alpha", Branch: mainBranchName, VCSType: models.VCSTypeGit},
+		"/dev/alpha": {RepoSummary: vcs.RepoSummary{Path: "/dev/alpha", Branch: mainBranchName, VCSType: vcs.TypeGit}},
 	}
 	m.detailLoading = loading
 

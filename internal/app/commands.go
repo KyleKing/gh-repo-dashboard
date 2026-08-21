@@ -8,14 +8,14 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/copier"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 // Batch task display names shared by :commands, operator keys, and batch cmds.
@@ -85,7 +85,7 @@ func checkGHAuthCmd() tea.Cmd {
 
 func loadRepoSummaryCmd(path string) tea.Cmd {
 	return func() tea.Msg {
-		summary, err := vcs.ReadSummary(context.Background(), vcs.GetOperations(path), path)
+		summary, err := models.ReadSummary(context.Background(), vcs.GetOperations(path), path)
 
 		return RepoSummaryLoadedMsg{
 			Path:    path,
@@ -194,7 +194,7 @@ func loadBranchDetailCmd(repoPath, branchName string) tea.Cmd {
 		// BranchDetailLoadedMsg has no error field: a failed section just
 		// renders empty rather than blocking the rest of the detail view.
 		branches, _ := ops.GetBranchList(ctx, repoPath) //nolint:errcheck // best-effort, see comment above
-		var selectedBranch models.BranchInfo
+		var selectedBranch vcs.BranchInfo
 		for _, b := range branches {
 			if b.Name == branchName {
 				selectedBranch = b
@@ -209,14 +209,12 @@ func loadBranchDetailCmd(repoPath, branchName string) tea.Cmd {
 		summary, _ := ops.GetRepoSummary(ctx, repoPath)
 
 		detail := models.BranchDetail{
-			Branch:       selectedBranch,
-			Commits:      commits,
-			Staged:       summary.Staged,
-			Unstaged:     summary.Unstaged,
-			Untracked:    summary.Untracked,
-			Conflicted:   summary.Conflicted,
-			PRInfo:       summary.PRInfo,
-			WorkflowInfo: summary.WorkflowInfo,
+			Branch:     selectedBranch,
+			Commits:    commits,
+			Staged:     summary.Staged,
+			Unstaged:   summary.Unstaged,
+			Untracked:  summary.Untracked,
+			Conflicted: summary.Conflicted,
 		}
 
 		if defaultBranch := findDefaultBranch(branches); defaultBranch != "" && defaultBranch != branchName {

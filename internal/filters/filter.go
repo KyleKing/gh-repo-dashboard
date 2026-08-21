@@ -1,7 +1,11 @@
 // Package filters implements repo list filtering, fuzzy search, and sorting.
 package filters
 
-import "github.com/kyleking/gh-repo-dashboard/internal/models"
+import (
+	"github.com/kyleking/aragonite/vcs"
+
+	"github.com/kyleking/gh-repo-dashboard/internal/models"
+)
 
 // FilterRepos returns the subset of paths whose summary passes the single filter mode.
 func FilterRepos(paths []string, summaries map[string]models.RepoSummary, mode models.FilterMode) []string {
@@ -83,7 +87,7 @@ func passesFilter(s *models.RepoSummary, mode models.FilterMode) bool {
 	case models.FilterModeHasNotes:
 		return s.HasNotes()
 	case models.FilterModeGit:
-		return s.VCSType == models.VCSTypeGit
+		return s.VCSType == vcs.TypeGit
 	default:
 		return true
 	}

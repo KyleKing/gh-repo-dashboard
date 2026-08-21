@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
 )
 
 const (
@@ -255,4 +256,65 @@ func reviewStatus(decision string, approvedBy []string) string {
 
 		return emDash
 	}
+}
+
+// RepoStatusSummary renders a compact symbol-based summary of the repo's
+// working tree state.
+func RepoStatusSummary(r vcs.RepoSummary) string {
+	parts := []string{}
+
+	if r.Staged > 0 {
+		parts = append(parts, fmt.Sprintf("+%d", r.Staged))
+	}
+	if r.Unstaged > 0 {
+		parts = append(parts, fmt.Sprintf("~%d", r.Unstaged))
+	}
+	if r.Untracked > 0 {
+		parts = append(parts, fmt.Sprintf("?%d", r.Untracked))
+	}
+	if r.Conflicted > 0 {
+		parts = append(parts, fmt.Sprintf("!%d", r.Conflicted))
+	}
+	if r.Ahead > 0 {
+		parts = append(parts, fmt.Sprintf("↑%d", r.Ahead))
+	}
+	if r.Behind > 0 {
+		parts = append(parts, fmt.Sprintf("↓%d", r.Behind))
+	}
+
+	if len(parts) == 0 {
+		return "✓"
+	}
+
+	return strings.Join(parts, " ")
+}
+
+// RepoRelativeModified returns a human-readable relative time for the repo's
+// last modification.
+func RepoRelativeModified(r vcs.RepoSummary) string {
+	if r.LastModified.IsZero() {
+		return emDash
+	}
+
+	return RelativeTime(r.LastModified)
+}
+
+// BranchRelativeLastCommit returns a human-readable relative time for the
+// branch's last commit.
+func BranchRelativeLastCommit(b vcs.BranchInfo) string {
+	if b.LastCommit.IsZero() {
+		return emDash
+	}
+
+	return RelativeTime(b.LastCommit)
+}
+
+// CommitRelativeDate returns a human-readable relative time for the commit's date.
+func CommitRelativeDate(c vcs.CommitInfo) string {
+	return RelativeTime(c.Date)
+}
+
+// StashRelativeDate returns a human-readable relative time for the stash's date.
+func StashRelativeDate(s vcs.StashDetail) string {
+	return RelativeTime(s.Date)
 }

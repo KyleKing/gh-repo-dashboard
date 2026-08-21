@@ -4,6 +4,8 @@ package app
 import (
 	"testing"
 
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -17,9 +19,15 @@ func TestSearchNotesScopeMatchesLoadedContentOnly(t *testing.T) {
 	m.loading = false
 	m.repoPaths = []string{"/test/alpha", "/test/beta", "/test/gamma"}
 	m.summaries = map[string]models.RepoSummary{
-		"/test/alpha": {Path: "/test/alpha", Branch: mainBranchName, NotesFiles: []models.NoteFile{{Name: "doing.md"}}},
-		"/test/beta":  {Path: "/test/beta", Branch: mainBranchName, NotesFiles: []models.NoteFile{{Name: "doing.md"}}},
-		"/test/gamma": {Path: "/test/gamma", Branch: mainBranchName},
+		"/test/alpha": {
+			RepoSummary: vcs.RepoSummary{Path: "/test/alpha", Branch: mainBranchName},
+			NotesFiles:  []models.NoteFile{{Name: "doing.md"}},
+		},
+		"/test/beta": {
+			RepoSummary: vcs.RepoSummary{Path: "/test/beta", Branch: mainBranchName},
+			NotesFiles:  []models.NoteFile{{Name: "doing.md"}},
+		},
+		"/test/gamma": {RepoSummary: vcs.RepoSummary{Path: "/test/gamma", Branch: mainBranchName}},
 	}
 	m.notesPreview = map[string][]models.NoteFileContent{
 		"/test/alpha": {{Name: "doing.md", Content: "!! FIRST: fix the schema migration"}},

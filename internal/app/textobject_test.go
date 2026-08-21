@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -16,12 +17,13 @@ func operatorModel() Model {
 	m.loading = false
 	m.repoPaths = []string{"/test/behind", "/test/clean", "/test/dirty", "/test/dirty-pr"}
 	m.summaries = map[string]models.RepoSummary{
-		"/test/behind": {Path: "/test/behind", Branch: mainBranchName, Behind: 2},
-		"/test/clean":  {Path: "/test/clean", Branch: mainBranchName},
-		"/test/dirty":  {Path: "/test/dirty", Branch: mainBranchName, Unstaged: 2},
+		"/test/behind": {RepoSummary: vcs.RepoSummary{Path: "/test/behind", Branch: mainBranchName, Behind: 2}},
+		"/test/clean":  {RepoSummary: vcs.RepoSummary{Path: "/test/clean", Branch: mainBranchName}},
+		"/test/dirty":  {RepoSummary: vcs.RepoSummary{Path: "/test/dirty", Branch: mainBranchName, Unstaged: 2}},
 		"/test/dirty-pr": {
-			Path: "/test/dirty-pr", Branch: "feat", Unstaged: 1,
-			PRInfo: &forge.PullRequest{Number: 7}, NotesFiles: []models.NoteFile{{Name: "doing.md"}},
+			RepoSummary: vcs.RepoSummary{Path: "/test/dirty-pr", Branch: "feat", Unstaged: 1},
+			PRInfo:      &forge.PullRequest{Number: 7},
+			NotesFiles:  []models.NoteFile{{Name: "doing.md"}},
 		},
 	}
 	m.updateFilteredPaths()
@@ -183,7 +185,9 @@ func TestOperatorUnknownObjectCancels(t *testing.T) {
 func TestOperatorEmptyScope(t *testing.T) {
 	t.Parallel()
 	m := operatorModel()
-	m.summaries["/test/behind"] = models.RepoSummary{Path: "/test/behind", Branch: mainBranchName}
+	m.summaries["/test/behind"] = models.RepoSummary{
+		RepoSummary: vcs.RepoSummary{Path: "/test/behind", Branch: mainBranchName},
+	}
 	m.updateFilteredPaths()
 
 	m2, cmd := pressKeys(t, m, "!fbr")

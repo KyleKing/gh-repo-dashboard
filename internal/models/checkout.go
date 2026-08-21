@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/kyleking/aragonite/vcs"
 )
 
 // PeerCheckout is another working directory holding the same remote repository:
@@ -94,7 +96,7 @@ func OwnCheckout(s *RepoSummary) PeerCheckout {
 
 // WorktreeCheckouts converts a repo's worktree list into peer checkouts,
 // dropping the repo's own working directory and any bare entry.
-func WorktreeCheckouts(repoPath string, worktrees []WorktreeInfo) []PeerCheckout {
+func WorktreeCheckouts(repoPath string, worktrees []vcs.WorktreeInfo) []PeerCheckout {
 	var peers []PeerCheckout
 	for _, wt := range worktrees {
 		if wt.IsBare || wt.Path == "" || wt.Path == repoPath {
@@ -187,7 +189,7 @@ func ConflictingBranches(own *PeerCheckout, peers []PeerCheckout) map[string]boo
 
 	conflicts := make(map[string]bool)
 	for branch, count := range counts {
-		if count > 1 && (unsynced[branch] || !IsDefaultBranchName(branch)) {
+		if count > 1 && (unsynced[branch] || !vcs.IsDefaultBranchName(branch)) {
 			conflicts[branch] = true
 		}
 	}

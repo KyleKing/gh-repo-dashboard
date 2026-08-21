@@ -287,7 +287,7 @@ ignore-sigs = [
 [[linters.exclusions.rules]]
 # Table-driven tests grow long cases and repeat literals without adding real complexity.
 path = "_test\\.go"
-linters = ["cyclop", "goconst"]
+linters = ["cyclop", "dupl", "goconst"]
 
 [[linters.exclusions.rules]]
 # These structs decode `gh`/GitHub API JSON, which is camelCase on the wire;

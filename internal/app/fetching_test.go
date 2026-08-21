@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -24,12 +25,19 @@ func loadingFleetModel(t *testing.T) Model {
 	m = mustModel(t, updated)
 
 	for _, path := range paths {
-		updated, _ = m.Update(RepoSummaryLoadedMsg{Path: path, Summary: models.RepoSummary{
-			Path:     path,
-			Branch:   mainBranchName,
-			Upstream: "origin/main",
-			RemoteID: "dev/" + path,
-		}})
+		updated, _ = m.Update(
+			RepoSummaryLoadedMsg{
+				Path: path,
+				Summary: models.RepoSummary{
+					RepoSummary: vcs.RepoSummary{
+						Path:     path,
+						Branch:   mainBranchName,
+						Upstream: "origin/main",
+						RemoteID: "dev/" + path,
+					},
+				},
+			},
+		)
 		m = mustModel(t, updated)
 	}
 

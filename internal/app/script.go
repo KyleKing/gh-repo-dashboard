@@ -9,10 +9,11 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
-	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
+	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 // errScriptFailed reports that the script ran to the end with at least one line
@@ -68,7 +69,7 @@ func newScriptModel(ctx context.Context, scanPaths []string, maxDepth int) Model
 
 	for _, path := range m.repoPaths {
 		//nolint:errcheck // the summary carries the error for the row to render
-		summary, _ := vcs.ReadSummary(ctx, vcs.GetOperations(path), path)
+		summary, _ := models.ReadSummary(ctx, vcs.GetOperations(path), path)
 		m.summaries[path] = summary
 	}
 	m.updateFilteredPaths()

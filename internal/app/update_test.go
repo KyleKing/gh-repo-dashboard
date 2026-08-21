@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -107,7 +108,7 @@ func TestRepoSummaryLoadedSuccess(t *testing.T) {
 
 	msg := RepoSummaryLoadedMsg{
 		Path:    testRepo1Path,
-		Summary: models.RepoSummary{Path: testRepo1Path, Branch: mainBranchName},
+		Summary: models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Branch: mainBranchName}},
 	}
 	updatedModel, _ := m.Update(msg)
 	m = mustModel(t, updatedModel)
@@ -131,7 +132,7 @@ func TestRepoSummaryLoadedError(t *testing.T) {
 
 	msg := RepoSummaryLoadedMsg{
 		Path:    testRepo1Path,
-		Summary: models.RepoSummary{Path: testRepo1Path, Error: loadErr},
+		Summary: models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepo1Path}, Error: loadErr},
 		Error:   loadErr,
 	}
 	updatedModel, _ := m.Update(msg)
@@ -155,11 +156,11 @@ func TestRepoSummaryLoadingCompletion(t *testing.T) {
 	m.repoPaths = []string{testRepo1Path, "/repo2"}
 	m.loadingCount = 2
 	m.loadedCount = 1
-	m.summaries[testRepo1Path] = models.RepoSummary{Path: testRepo1Path}
+	m.summaries[testRepo1Path] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepo1Path}}
 
 	msg := RepoSummaryLoadedMsg{
 		Path:    "/repo2",
-		Summary: models.RepoSummary{Path: "/repo2"},
+		Summary: models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: "/repo2"}},
 	}
 	updatedModel, _ := m.Update(msg)
 	m = mustModel(t, updatedModel)
@@ -175,7 +176,7 @@ func TestRepoSummaryLoadingCompletion(t *testing.T) {
 func TestPRLoadedMsg(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
-	m.summaries[testRepo1Path] = models.RepoSummary{Path: testRepo1Path}
+	m.summaries[testRepo1Path] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepo1Path}}
 
 	prInfo := &forge.PullRequest{Number: 7}
 	updatedModel, cmd := m.Update(PRLoadedMsg{Path: testRepo1Path, PRInfo: prInfo})
@@ -198,7 +199,7 @@ func TestPRLoadedMsg(t *testing.T) {
 func TestWorkflowLoadedMsg(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
-	m.summaries[testRepo1Path] = models.RepoSummary{Path: testRepo1Path}
+	m.summaries[testRepo1Path] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepo1Path}}
 
 	workflow := &forge.WorkflowSummary{}
 	updatedModel, cmd := m.Update(WorkflowLoadedMsg{Path: testRepo1Path, Workflow: workflow})
@@ -225,9 +226,9 @@ func TestDetailLoadedMsg(t *testing.T) {
 
 	msg := DetailLoadedMsg{
 		Path:      testRepo1Path,
-		Branches:  []models.BranchInfo{{Name: mainBranchName}},
-		Stashes:   []models.StashDetail{{Index: 0}},
-		Worktrees: []models.WorktreeInfo{{Path: "/wt"}},
+		Branches:  []vcs.BranchInfo{{Name: mainBranchName}},
+		Stashes:   []vcs.StashDetail{{Index: 0}},
+		Worktrees: []vcs.WorktreeInfo{{Path: "/wt"}},
 	}
 	updatedModel, cmd := m.Update(msg)
 	m = mustModel(t, updatedModel)
@@ -247,7 +248,7 @@ func TestDetailLoadedMsgDeletableBranches(t *testing.T) {
 
 	msg := DetailLoadedMsg{
 		Path:              testRepo1Path,
-		Branches:          []models.BranchInfo{{Name: "feature-a"}, {Name: mainBranchName}},
+		Branches:          []vcs.BranchInfo{{Name: "feature-a"}, {Name: mainBranchName}},
 		DeletableBranches: map[string]bool{"feature-a": true},
 	}
 	updatedModel, _ := m.Update(msg)
@@ -268,7 +269,7 @@ func TestDetailLoadedMsgPathMismatch(t *testing.T) {
 
 	msg := DetailLoadedMsg{
 		Path:     "/other",
-		Branches: []models.BranchInfo{{Name: mainBranchName}},
+		Branches: []vcs.BranchInfo{{Name: mainBranchName}},
 	}
 	updatedModel, cmd := m.Update(msg)
 	m = mustModel(t, updatedModel)
@@ -286,7 +287,7 @@ func TestBranchDetailLoadedMsg(t *testing.T) {
 	m := New(nil, 1)
 	m.selectedRepo = testRepo1Path
 
-	detail := models.BranchDetail{Branch: models.BranchInfo{Name: featureBranchName}}
+	detail := models.BranchDetail{Branch: vcs.BranchInfo{Name: featureBranchName}}
 	updatedModel, _ := m.Update(BranchDetailLoadedMsg{Path: testRepo1Path, Detail: detail})
 	m = mustModel(t, updatedModel)
 
@@ -294,7 +295,7 @@ func TestBranchDetailLoadedMsg(t *testing.T) {
 		t.Errorf("expected branch detail stored, got %q", m.branchDetail.Branch.Name)
 	}
 
-	other := models.BranchDetail{Branch: models.BranchInfo{Name: "stale"}}
+	other := models.BranchDetail{Branch: vcs.BranchInfo{Name: "stale"}}
 	updatedModel, _ = m.Update(BranchDetailLoadedMsg{Path: "/other", Detail: other})
 	m = mustModel(t, updatedModel)
 
@@ -308,7 +309,9 @@ func TestPRListLoadedMsg(t *testing.T) {
 	m := New(nil, 1)
 	m.selectedRepo = testRepo1Path
 
-	updatedModel, _ := m.Update(PRListLoadedMsg{Path: testRepo1Path, PRs: []forge.PullRequest{{Number: 1}, {Number: 2}}})
+	updatedModel, _ := m.Update(
+		PRListLoadedMsg{Path: testRepo1Path, PRs: []forge.PullRequest{{Number: 1}, {Number: 2}}},
+	)
 	m = mustModel(t, updatedModel)
 
 	if len(m.prs) != 2 {
@@ -468,9 +471,9 @@ func TestUpdateFilteredPathsClampsCursor(t *testing.T) {
 	m := New(nil, 1)
 	m.repoPaths = []string{"/alpha", "/beta", "/gamma"}
 	m.summaries = map[string]models.RepoSummary{
-		"/alpha": {Path: "/alpha"},
-		"/beta":  {Path: "/beta"},
-		"/gamma": {Path: "/gamma"},
+		"/alpha": {RepoSummary: vcs.RepoSummary{Path: "/alpha"}},
+		"/beta":  {RepoSummary: vcs.RepoSummary{Path: "/beta"}},
+		"/gamma": {RepoSummary: vcs.RepoSummary{Path: "/gamma"}},
 	}
 	m.updateFilteredPaths()
 	m.cursor = 2
@@ -490,7 +493,7 @@ func TestUpdateFilteredPathsEmptyResetsCursor(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.repoPaths = []string{"/alpha"}
-	m.summaries = map[string]models.RepoSummary{"/alpha": {Path: "/alpha"}}
+	m.summaries = map[string]models.RepoSummary{"/alpha": {RepoSummary: vcs.RepoSummary{Path: "/alpha"}}}
 	m.updateFilteredPaths()
 	m.cursor = 0
 

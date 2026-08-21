@@ -9,8 +9,9 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
@@ -104,7 +105,7 @@ type Model struct {
 	// peer's own path rather than by the repo that asked for it, so two rows
 	// sharing a peer share one fetch. Populated only once a row's expand
 	// region has requested it.
-	peerBranches map[string][]models.BranchInfo
+	peerBranches map[string][]vcs.BranchInfo
 
 	// ciRequested marks the repos a CI fetch has already been issued for, so
 	// scrolling back over a row does not re-request it.
@@ -175,15 +176,15 @@ type Model struct {
 	// selection until a verb runs or any other key backs out.
 	panelActions bool
 
-	branches          []models.BranchInfo
+	branches          []vcs.BranchInfo
 	deletableBranches map[string]bool
-	stashes           []models.StashDetail
-	worktrees         []models.WorktreeInfo
+	stashes           []vcs.StashDetail
+	worktrees         []vcs.WorktreeInfo
 	notesFiles        []models.NoteFileContent
 	newestFile        string
 	newestFileTime    time.Time
 
-	selectedBranch models.BranchInfo
+	selectedBranch vcs.BranchInfo
 	branchDetail   models.BranchDetail
 
 	prs         []forge.PullRequest
@@ -277,7 +278,7 @@ func New(scanPaths []string, maxDepth int) Model {
 		prCount:            make(map[string]int),
 		branchCount:        make(map[string]int),
 		prMap:              make(map[string]PRMapLoadedMsg),
-		peerBranches:       make(map[string][]models.BranchInfo),
+		peerBranches:       make(map[string][]vcs.BranchInfo),
 		prPreview:          make(map[string]forge.PRPreview),
 		prPreviewError:     make(map[string]string),
 		prPreviewRequested: make(map[string]bool),

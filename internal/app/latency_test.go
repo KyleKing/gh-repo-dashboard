@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -50,12 +51,14 @@ func syntheticFleetModel(t *testing.T) Model {
 		path := fmt.Sprintf("/dev/repo-%04d", i)
 		m.repoPaths[i] = path
 		m.summaries[path] = models.RepoSummary{
-			Path:         path,
-			VCSType:      models.VCSTypeGit,
-			Branch:       mainBranchName,
-			Upstream:     "origin/main",
-			Ahead:        i % 3,
-			LastModified: time.Now().Add(-time.Duration(i) * time.Minute),
+			RepoSummary: vcs.RepoSummary{
+				Path:         path,
+				VCSType:      vcs.TypeGit,
+				Branch:       mainBranchName,
+				Upstream:     "origin/main",
+				Ahead:        i % 3,
+				LastModified: time.Now().Add(-time.Duration(i) * time.Minute),
+			},
 		}
 		m.prCount[path] = i % 5
 		m.branchCount[path] = i%7 + 1
@@ -95,9 +98,9 @@ func TestScrollLatency_SingleRepoViewStaysUnderBudget(t *testing.T) {
 	m.selectedRepo = m.repoPaths[0]
 	m.focusedPanel = panelBranches
 
-	m.branches = make([]models.BranchInfo, syntheticBranchSize)
+	m.branches = make([]vcs.BranchInfo, syntheticBranchSize)
 	for i := range m.branches {
-		m.branches[i] = models.BranchInfo{Name: fmt.Sprintf("feature/branch-%04d", i)}
+		m.branches[i] = vcs.BranchInfo{Name: fmt.Sprintf("feature/branch-%04d", i)}
 	}
 
 	if elapsed := scrollStep(t, m); elapsed > scrollLatencyBudget {

@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -49,8 +51,10 @@ func paletteFleet() Model {
 	m.width, m.height = 160, 40
 	m.loading = false
 	m.summaries = map[string]models.RepoSummary{
-		"/dev/alpha": {Path: "/dev/alpha", Branch: mainBranchName, RemoteRepo: "acme/alpha"},
-		"/dev/beta":  {Path: "/dev/beta", Branch: "fix/login", RemoteRepo: "acme/beta"},
+		"/dev/alpha": {
+			RepoSummary: vcs.RepoSummary{Path: "/dev/alpha", Branch: mainBranchName, RemoteRepo: "acme/alpha"},
+		},
+		"/dev/beta": {RepoSummary: vcs.RepoSummary{Path: "/dev/beta", Branch: "fix/login", RemoteRepo: "acme/beta"}},
 	}
 	m.repoPaths = []string{"/dev/alpha", "/dev/beta"}
 	m.prMap = map[string]PRMapLoadedMsg{

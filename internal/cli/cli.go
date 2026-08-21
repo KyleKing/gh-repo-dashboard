@@ -12,12 +12,13 @@ import (
 	"time"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/copier"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 const maxConcurrentRepos = 8
@@ -157,7 +158,7 @@ func loadRepo(
 		}
 	}
 
-	summary, err := vcs.ReadSummary(ctx, ops, path)
+	summary, err := models.ReadSummary(ctx, ops, path)
 	if err != nil {
 		if pred != nil && !pred(summary) {
 			return nil

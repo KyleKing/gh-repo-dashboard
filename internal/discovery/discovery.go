@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
+	"github.com/kyleking/aragonite/vcs"
 )
 
 // DiscoverRepos walks basePaths up to maxDepth and returns every repo found, deduplicated.

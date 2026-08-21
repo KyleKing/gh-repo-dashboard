@@ -7,8 +7,9 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/region"
@@ -557,7 +558,7 @@ func (m Model) expandLines(width, height int) []string {
 // expandBranches counts the repo's local branches and names the ones holding
 // commits their remote does not have, which are the branches with work on them.
 // The default branch is left out: it is where the work lands, not work itself.
-func expandBranches(branches []models.BranchInfo) string {
+func expandBranches(branches []vcs.BranchInfo) string {
 	if len(branches) == 0 {
 		return emDash
 	}
@@ -1044,7 +1045,7 @@ func (m Model) repoCell(col string, s models.RepoSummary, width int, base lipglo
 			return base.Render(padCell(pendingGlyph, width))
 		}
 
-		return base.Render(padCell(s.RelativeModified(), width))
+		return base.Render(padCell(ui.RepoRelativeModified(s.RepoSummary), width))
 	default:
 		return base.Render(padCell("", width))
 	}
@@ -1058,7 +1059,7 @@ func (m Model) statusCell(s models.RepoSummary, width int, base lipgloss.Style, 
 	notesText, notesStyle := notesMarker(s, base, selected)
 	style := withSelection(statusCellStyle(s, base), selected)
 
-	summary := s.StatusSummary()
+	summary := ui.RepoStatusSummary(s.RepoSummary)
 	if m.summaryPending(s.Path) {
 		summary = pendingGlyph
 		style = base
@@ -1100,7 +1101,7 @@ func statusCellStyle(s models.RepoSummary, base lipgloss.Style) lipgloss.Style {
 	switch {
 	case s.IsDirty():
 		return styles.DirtyStyle
-	case s.Status() == models.RepoStatusClean:
+	case s.Status() == vcs.RepoStatusClean:
 		return styles.CleanStyle
 	default:
 		return base

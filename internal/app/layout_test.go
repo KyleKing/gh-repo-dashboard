@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
-
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -18,9 +19,13 @@ func peerModel() Model {
 	m.width = 120
 	m.height = 30
 	m.summaries = map[string]models.RepoSummary{
-		"/dev/alpha": {Path: "/dev/alpha", Branch: mainBranchName, RemoteRepo: "dev/shared"},
-		"/dev/bravo": {Path: "/dev/bravo", Branch: mainBranchName, RemoteRepo: "dev/shared"},
-		"/dev/solo":  {Path: "/dev/solo", Branch: mainBranchName, RemoteRepo: "dev/solo"},
+		"/dev/alpha": {
+			RepoSummary: vcs.RepoSummary{Path: "/dev/alpha", Branch: mainBranchName, RemoteRepo: "dev/shared"},
+		},
+		"/dev/bravo": {
+			RepoSummary: vcs.RepoSummary{Path: "/dev/bravo", Branch: mainBranchName, RemoteRepo: "dev/shared"},
+		},
+		"/dev/solo": {RepoSummary: vcs.RepoSummary{Path: "/dev/solo", Branch: mainBranchName, RemoteRepo: "dev/solo"}},
 	}
 	m.repoPaths = []string{"/dev/alpha", "/dev/bravo", "/dev/solo"}
 	m.updateFilteredPaths()
@@ -33,7 +38,7 @@ func peerModel() Model {
 			PRs:  []forge.PullRequest{{Number: 1, HeadRef: "feature-x"}},
 		},
 	}
-	m.peerBranches = map[string][]models.BranchInfo{
+	m.peerBranches = map[string][]vcs.BranchInfo{
 		"/dev/bravo": {{Name: "feature-x", Upstream: "origin/feature-x"}},
 	}
 
@@ -229,9 +234,13 @@ func TestList_HidesAWorktreeWhoseParentIsAlsoDiscovered(t *testing.T) {
 	m := New([]string{"/dev"}, 1)
 	m.width, m.height = 160, 40
 	m.summaries = map[string]models.RepoSummary{
-		"/dev/alpha":    {Path: "/dev/alpha", Branch: mainBranchName},
-		"/dev/alpha-wt": {Path: "/dev/alpha-wt", Branch: "feature", ParentPath: "/dev/alpha"},
-		"/dev/orphan":   {Path: "/dev/orphan", Branch: "feature", ParentPath: "/elsewhere/parent"},
+		"/dev/alpha": {RepoSummary: vcs.RepoSummary{Path: "/dev/alpha", Branch: mainBranchName}},
+		"/dev/alpha-wt": {
+			RepoSummary: vcs.RepoSummary{Path: "/dev/alpha-wt", Branch: "feature", ParentPath: "/dev/alpha"},
+		},
+		"/dev/orphan": {
+			RepoSummary: vcs.RepoSummary{Path: "/dev/orphan", Branch: "feature", ParentPath: "/elsewhere/parent"},
+		},
 	}
 	m.repoPaths = []string{"/dev/alpha", "/dev/alpha-wt", "/dev/orphan"}
 	m.updateFilteredPaths()

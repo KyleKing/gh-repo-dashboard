@@ -5,18 +5,20 @@ import (
 	"testing"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 func TestParsePredicate(t *testing.T) {
 	t.Parallel()
-	dirty := models.RepoSummary{Unstaged: 2}
-	dirtyWithPR := models.RepoSummary{Unstaged: 2, PRInfo: &forge.PullRequest{Number: 1}}
-	behind := models.RepoSummary{Behind: 3}
-	ahead := models.RepoSummary{Ahead: 1}
+	dirty := models.RepoSummary{RepoSummary: vcs.RepoSummary{Unstaged: 2}}
+	dirtyWithPR := models.RepoSummary{RepoSummary: vcs.RepoSummary{Unstaged: 2}, PRInfo: &forge.PullRequest{Number: 1}}
+	behind := models.RepoSummary{RepoSummary: vcs.RepoSummary{Behind: 3}}
+	ahead := models.RepoSummary{RepoSummary: vcs.RepoSummary{Ahead: 1}}
 	clean := models.RepoSummary{}
-	jjRepo := models.RepoSummary{VCSType: models.VCSTypeJJ}
+	jjRepo := models.RepoSummary{RepoSummary: vcs.RepoSummary{VCSType: vcs.TypeJJ}}
 	withNotes := models.RepoSummary{NotesFiles: []models.NoteFile{{Name: "doing.md"}}}
 
 	tests := []struct {

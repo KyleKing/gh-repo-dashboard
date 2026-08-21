@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -46,7 +48,7 @@ func TestCICellStates(t *testing.T) {
 			if tt.requested && !tt.settled {
 				m.startFetch("/dev/app", fetchCI)
 			}
-			summary := models.RepoSummary{Path: "/dev/app", WorkflowInfo: tt.workflow}
+			summary := models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: "/dev/app"}, WorkflowInfo: tt.workflow}
 			m.summaries["/dev/app"] = summary
 
 			if got := m.ciCell(summary); got != tt.want {
@@ -60,7 +62,9 @@ func TestFailedCIFetchSettlesTheCell(t *testing.T) {
 	t.Parallel()
 
 	m := New([]string{"/dev"}, 1)
-	m.summaries = map[string]models.RepoSummary{"/dev/app": {Path: "/dev/app", Branch: mainBranchName}}
+	m.summaries = map[string]models.RepoSummary{
+		"/dev/app": {RepoSummary: vcs.RepoSummary{Path: "/dev/app", Branch: mainBranchName}},
+	}
 	m.ciRequested = map[string]bool{"/dev/app": true}
 	m.startFetch("/dev/app", fetchCI)
 
@@ -83,7 +87,7 @@ func TestCIFetchesOnlyVisibleRepos(t *testing.T) {
 
 	for _, name := range []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p"} {
 		path := "/dev/" + name
-		m.summaries[path] = models.RepoSummary{Path: path, Branch: "main"}
+		m.summaries[path] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: path, Branch: "main"}}
 		m.repoPaths = append(m.repoPaths, path)
 	}
 	m.updateFilteredPaths()
@@ -111,7 +115,8 @@ func TestOverviewNamesTheBranchItsCIRanOn(t *testing.T) {
 	m.ciRequested = map[string]bool{"/dev/app": true}
 	m.ciBranch = map[string]string{"/dev/app": "trunk"}
 	summary := models.RepoSummary{
-		Path: "/dev/app", WorkflowInfo: &forge.WorkflowSummary{Total: 1, Passing: 1},
+		RepoSummary:  vcs.RepoSummary{Path: "/dev/app"},
+		WorkflowInfo: &forge.WorkflowSummary{Total: 1, Passing: 1},
 	}
 
 	if got := m.overviewCI(summary); got != "✓ on trunk" {

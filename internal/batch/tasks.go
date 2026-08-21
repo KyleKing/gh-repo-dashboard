@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/kyleking/aragonite/vcs"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
-	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 // FetchAll is a batch.TaskFunc that fetches all remotes for a repo.
