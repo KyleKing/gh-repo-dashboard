@@ -8,6 +8,7 @@ import (
 
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
@@ -165,7 +166,7 @@ func (m Model) writeBranchPRSection(b *strings.Builder, s branchDetailStyles) {
 	}
 
 	if wf := m.branchDetail.WorkflowInfo; wf != nil {
-		wfStatus := wf.StatusDisplay()
+		wfStatus := ui.WorkflowSummaryStatusDisplay(*wf)
 		wfStyle := styles.SubtitleStyle
 		switch wfStatus {
 		case forge.StatusPassing:
@@ -179,7 +180,7 @@ func (m Model) writeBranchPRSection(b *strings.Builder, s branchDetailStyles) {
 }
 
 func writeBranchPRInfo(b *strings.Builder, s branchDetailStyles, pr *forge.PullRequest) {
-	prStatus := pr.StatusDisplay()
+	prStatus := ui.PRStatusDisplay(*pr)
 	prStyle := styles.PROpenStyle
 	switch prStatus {
 	case forge.PRStatusMerged:
@@ -191,7 +192,7 @@ func writeBranchPRInfo(b *strings.Builder, s branchDetailStyles, pr *forge.PullR
 	s.writeInfoLine(b, "PR:", prStyle.Render(fmt.Sprintf("#%d %s", pr.Number, prStatus)))
 	s.writeInfoLine(b, "Title:", truncate(pr.Title, descriptionTruncLen))
 
-	reviewStatus := pr.ReviewStatus()
+	reviewStatus := ui.PRReviewStatus(*pr)
 	reviewStyle := styles.SubtitleStyle
 	switch reviewStatus {
 	case forge.ReviewApproved:
@@ -207,7 +208,7 @@ func writeBranchPRInfo(b *strings.Builder, s branchDetailStyles, pr *forge.PullR
 	}
 
 	if pr.Checks.Total > 0 {
-		checkStatus := pr.Checks.Summary()
+		checkStatus := ui.ChecksSummary(pr.Checks)
 		checkStyle := styles.SubtitleStyle
 		switch checkStatus {
 		case forge.StatusPassing:

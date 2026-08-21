@@ -10,6 +10,7 @@ import (
 
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
@@ -757,7 +758,7 @@ func formatPRCell(s models.RepoSummary) string {
 
 	prNum := fmt.Sprintf("#%d", s.PRInfo.Number)
 
-	switch s.PRInfo.ReviewStatus() {
+	switch ui.PRReviewStatus(*s.PRInfo) {
 	case forge.ReviewApproved:
 		prNum += " ✓"
 	case forge.ReviewChangesRequested:
@@ -766,11 +767,11 @@ func formatPRCell(s models.RepoSummary) string {
 
 	switch {
 	case s.PRInfo.Checks.Total > 0:
-		if s.PRInfo.Checks.Summary() == forge.StatusFailing {
+		if ui.ChecksSummary(s.PRInfo.Checks) == forge.StatusFailing {
 			prNum += " ⚠"
 		}
 	case s.WorkflowInfo != nil:
-		if s.WorkflowInfo.StatusDisplay() == forge.StatusFailing {
+		if ui.WorkflowSummaryStatusDisplay(*s.WorkflowInfo) == forge.StatusFailing {
 			prNum += " ⚠"
 		}
 	}

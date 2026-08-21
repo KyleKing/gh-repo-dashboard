@@ -10,6 +10,7 @@ import (
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
@@ -94,7 +95,7 @@ func (m Model) findPRs(q findQuery, fleet bool) []findResult {
 				kind:   findPR,
 				repo:   path,
 				label:  "#" + strconv.Itoa(pr.Number) + " " + pr.Title,
-				detail: filepath.Base(path) + compactSignalSep + pr.StatusDisplay(),
+				detail: filepath.Base(path) + compactSignalSep + ui.PRStatusDisplay(*pr),
 				branch: pr.HeadRef,
 				number: pr.Number,
 			})

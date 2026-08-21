@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/markdown"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
@@ -44,10 +45,10 @@ func (m Model) writePRDetailInfo(writeLine func(label, value string)) {
 	case m.prDetail.State == forge.PRStatusClosed:
 		stateStyle = styles.ErrorStyle
 	}
-	writeLine("State:", stateStyle.Render(m.prDetail.StatusDisplay()))
+	writeLine("State:", stateStyle.Render(ui.PRStatusDisplay(m.prDetail.PullRequest)))
 
 	reviewStyle := styles.SubtitleStyle
-	reviewStatus := m.prDetail.ReviewStatus()
+	reviewStatus := ui.PRReviewStatus(m.prDetail.PullRequest)
 	switch reviewStatus {
 	case forge.ReviewApproved:
 		reviewStyle = styles.CleanStyle
@@ -68,11 +69,11 @@ func (m Model) writePRDetailInfo(writeLine func(label, value string)) {
 	}
 
 	if !m.prDetail.CreatedAt.IsZero() {
-		writeLine("Created:", m.prDetail.RelativeCreated())
+		writeLine("Created:", ui.PRDetailRelativeCreated(m.prDetail))
 	}
 
 	if !m.prDetail.UpdatedAt.IsZero() {
-		writeLine("Updated:", m.prDetail.RelativeUpdated())
+		writeLine("Updated:", ui.PRDetailRelativeUpdated(m.prDetail))
 	}
 }
 
@@ -135,11 +136,11 @@ func writePRDetailChecks(
 
 	rowPadding := lipgloss.NewStyle().PaddingLeft(infoPaddingLeft)
 	for _, check := range checks {
-		status := check.StatusDisplay()
+		status := ui.CheckStatusDisplay(check)
 		values := map[string]string{
 			colCheckName:     checkDisplayName(check),
 			colCheckState:    status,
-			colCheckDuration: check.Duration(),
+			colCheckDuration: ui.CheckDuration(check),
 		}
 		cellStyles := map[string]lipgloss.Style{
 			colCheckState:    checkStatusStyle(status),
@@ -182,7 +183,7 @@ func writePRDetailLatestComment(
 	b.WriteString("\n")
 	b.WriteString(valueStyle.Render(
 		styles.BranchStyle.Render(comment.Author) + " " +
-			styles.SubtitleStyle.Render(comment.RelativeCreated())))
+			styles.SubtitleStyle.Render(ui.CommentRelativeCreated(*comment))))
 	b.WriteString("\n")
 	writeMarkdown(b, comment.Body, width, prCommentMaxLines)
 }

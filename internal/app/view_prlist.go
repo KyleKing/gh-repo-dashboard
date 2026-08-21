@@ -10,6 +10,7 @@ import (
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/markdown"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
@@ -213,7 +214,7 @@ func (m Model) renderPRPreviewLines(pr forge.PullRequest, width int) []string {
 	}
 
 	reviewStyle := styles.SubtitleStyle
-	switch preview.ReviewStatus() {
+	switch ui.PreviewReviewStatus(preview) {
 	case forge.ReviewApproved:
 		reviewStyle = styles.CleanStyle
 	case forge.ReviewChangesRequested:
@@ -228,7 +229,7 @@ func (m Model) renderPRPreviewLines(pr forge.PullRequest, width int) []string {
 	lines := make([]string, 0, summaryLines+prPreviewMaxDescLines)
 	lines = append(lines,
 		styles.SubtitleStyle.Render("Reviewers: ")+reviewers,
-		styles.SubtitleStyle.Render("Review: ")+reviewStyle.Render(preview.ReviewStatus())+
+		styles.SubtitleStyle.Render("Review: ")+reviewStyle.Render(ui.PreviewReviewStatus(preview))+
 			"   "+styles.SubtitleStyle.Render("Checks: ")+formatChecksCell(&pr)+
 			"   "+diffStat(preview.Additions, preview.Deletions),
 		"",
@@ -255,7 +256,7 @@ func renderPRSearchRow(pr *forge.PullRequest, layout table.Layout, selected bool
 
 	values := map[string]string{
 		colBatchName:  orDash(pr.Repo),
-		colPRActivity: pr.ActivitySummary(),
+		colPRActivity: ui.PRActivitySummary(pr),
 		colPRNumber:   "#" + strconv.Itoa(pr.Number),
 		colPRTitle:    pr.Title,
 		colPRAuthor:   orDash(pr.Author),

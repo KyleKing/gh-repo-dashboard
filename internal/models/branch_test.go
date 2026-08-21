@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 )
 
 func TestRelativeTimeJustNow(t *testing.T) {
 	t.Parallel()
-	result := forge.RelativeTime(time.Now())
+	result := ui.RelativeTime(time.Now())
 	if result != "just now" {
 		t.Errorf("expected 'just now', got '%s'", result)
 	}
@@ -18,12 +18,12 @@ func TestRelativeTimeJustNow(t *testing.T) {
 
 func TestRelativeTimeMinutes(t *testing.T) {
 	t.Parallel()
-	result := forge.RelativeTime(time.Now().Add(-5 * time.Minute))
+	result := ui.RelativeTime(time.Now().Add(-5 * time.Minute))
 	if result != "5 mins ago" {
 		t.Errorf("expected '5 mins ago', got '%s'", result)
 	}
 
-	result = forge.RelativeTime(time.Now().Add(-1 * time.Minute))
+	result = ui.RelativeTime(time.Now().Add(-1 * time.Minute))
 	if result != "1 min ago" {
 		t.Errorf("expected '1 min ago', got '%s'", result)
 	}
@@ -31,12 +31,12 @@ func TestRelativeTimeMinutes(t *testing.T) {
 
 func TestRelativeTimeHours(t *testing.T) {
 	t.Parallel()
-	result := forge.RelativeTime(time.Now().Add(-3 * time.Hour))
+	result := ui.RelativeTime(time.Now().Add(-3 * time.Hour))
 	if result != "3 hours ago" {
 		t.Errorf("expected '3 hours ago', got '%s'", result)
 	}
 
-	result = forge.RelativeTime(time.Now().Add(-1 * time.Hour))
+	result = ui.RelativeTime(time.Now().Add(-1 * time.Hour))
 	if result != "1 hour ago" {
 		t.Errorf("expected '1 hour ago', got '%s'", result)
 	}
@@ -44,12 +44,12 @@ func TestRelativeTimeHours(t *testing.T) {
 
 func TestRelativeTimeDays(t *testing.T) {
 	t.Parallel()
-	result := forge.RelativeTime(time.Now().Add(-2 * 24 * time.Hour))
+	result := ui.RelativeTime(time.Now().Add(-2 * 24 * time.Hour))
 	if result != "2 days ago" {
 		t.Errorf("expected '2 days ago', got '%s'", result)
 	}
 
-	result = forge.RelativeTime(time.Now().Add(-1 * 24 * time.Hour))
+	result = ui.RelativeTime(time.Now().Add(-1 * 24 * time.Hour))
 	if result != "1 day ago" {
 		t.Errorf("expected '1 day ago', got '%s'", result)
 	}
@@ -57,12 +57,12 @@ func TestRelativeTimeDays(t *testing.T) {
 
 func TestRelativeTimeWeeks(t *testing.T) {
 	t.Parallel()
-	result := forge.RelativeTime(time.Now().Add(-14 * 24 * time.Hour))
+	result := ui.RelativeTime(time.Now().Add(-14 * 24 * time.Hour))
 	if result != "2 weeks ago" {
 		t.Errorf("expected '2 weeks ago', got '%s'", result)
 	}
 
-	result = forge.RelativeTime(time.Now().Add(-7 * 24 * time.Hour))
+	result = ui.RelativeTime(time.Now().Add(-7 * 24 * time.Hour))
 	if result != "1 week ago" {
 		t.Errorf("expected '1 week ago', got '%s'", result)
 	}
@@ -70,7 +70,7 @@ func TestRelativeTimeWeeks(t *testing.T) {
 
 func TestRelativeTimeMonths(t *testing.T) {
 	t.Parallel()
-	result := forge.RelativeTime(time.Now().Add(-60 * 24 * time.Hour))
+	result := ui.RelativeTime(time.Now().Add(-60 * 24 * time.Hour))
 	if result != "2 months ago" {
 		t.Errorf("expected '2 months ago', got '%s'", result)
 	}
@@ -78,7 +78,7 @@ func TestRelativeTimeMonths(t *testing.T) {
 
 func TestRelativeTimeYears(t *testing.T) {
 	t.Parallel()
-	result := forge.RelativeTime(time.Now().Add(-730 * 24 * time.Hour))
+	result := ui.RelativeTime(time.Now().Add(-730 * 24 * time.Hour))
 	if result != "2 years ago" {
 		t.Errorf("expected '2 years ago', got '%s'", result)
 	}
@@ -86,7 +86,7 @@ func TestRelativeTimeYears(t *testing.T) {
 
 func TestRelativeTimeZero(t *testing.T) {
 	t.Parallel()
-	result := forge.RelativeTime(time.Time{})
+	result := ui.RelativeTime(time.Time{})
 	if result != models.EmDash {
 		t.Errorf("expected '—', got '%s'", result)
 	}

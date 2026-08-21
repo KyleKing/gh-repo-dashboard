@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 )
 
 const emDash = "—"
@@ -62,7 +63,7 @@ func (b BranchInfo) RelativeLastCommit() string {
 		return emDash
 	}
 
-	return forge.RelativeTime(b.LastCommit)
+	return ui.RelativeTime(b.LastCommit)
 }
 
 // BranchDetail holds the full detail view state for a single branch.
@@ -134,7 +135,7 @@ type CommitInfo struct {
 
 // RelativeDate returns a human-readable relative time for the commit's date.
 func (c CommitInfo) RelativeDate() string {
-	return forge.RelativeTime(c.Date)
+	return ui.RelativeTime(c.Date)
 }
 
 // StashDetail summarizes a single stash entry.
@@ -147,5 +148,5 @@ type StashDetail struct {
 
 // RelativeDate returns a human-readable relative time for the stash's date.
 func (s StashDetail) RelativeDate() string {
-	return forge.RelativeTime(s.Date)
+	return ui.RelativeTime(s.Date)
 }

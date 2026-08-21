@@ -6,6 +6,7 @@ import (
 
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 )
 
 func TestDefaultBranchCIConclusion(t *testing.T) {
@@ -55,7 +56,7 @@ func TestDefaultBranchCIConclusion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := tt.ci.Conclusion(); got != tt.want {
+			if got := ui.CIConclusion(&tt.ci); got != tt.want {
 				t.Errorf("Conclusion = %q, want %q", got, tt.want)
 			}
 		})

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 )
 
 // RepoSummary is the top-level per-repo state shown in the repo list.
@@ -153,7 +154,7 @@ func (r RepoSummary) RelativeModified() string {
 		return emDash
 	}
 
-	return forge.RelativeTime(r.LastModified)
+	return ui.RelativeTime(r.LastModified)
 }
 
 // WorktreeInfo summarizes a single git worktree.
