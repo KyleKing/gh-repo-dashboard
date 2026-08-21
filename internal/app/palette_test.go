@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -53,10 +54,10 @@ func paletteFleet() Model {
 	}
 	m.repoPaths = []string{"/dev/alpha", "/dev/beta"}
 	m.prMap = map[string]PRMapLoadedMsg{
-		"/dev/alpha": {Path: "/dev/alpha", PRs: []models.PRInfo{
+		"/dev/alpha": {Path: "/dev/alpha", PRs: []forge.PullRequest{
 			{Number: 12, Title: "Composable extras", State: "OPEN"},
 		}},
-		"/dev/beta": {Path: "/dev/beta", PRs: []models.PRInfo{
+		"/dev/beta": {Path: "/dev/beta", PRs: []forge.PullRequest{
 			{Number: 12, Title: "Bump mise-action", State: "OPEN"},
 		}},
 	}

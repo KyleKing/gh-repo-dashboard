@@ -8,6 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
@@ -589,7 +590,7 @@ func expandBranches(branches []models.BranchInfo) string {
 }
 
 // expandPRs counts the repo's open pull requests and names them newest first.
-func expandPRs(prs []models.PRInfo) string {
+func expandPRs(prs []forge.PullRequest) string {
 	if len(prs) == 0 {
 		return emDash
 	}
@@ -757,19 +758,19 @@ func formatPRCell(s models.RepoSummary) string {
 	prNum := fmt.Sprintf("#%d", s.PRInfo.Number)
 
 	switch s.PRInfo.ReviewStatus() {
-	case models.ReviewApproved:
+	case forge.ReviewApproved:
 		prNum += " ✓"
-	case models.ReviewChangesRequested:
+	case forge.ReviewChangesRequested:
 		prNum += " ✗"
 	}
 
 	switch {
 	case s.PRInfo.Checks.Total > 0:
-		if s.PRInfo.Checks.Summary() == models.StatusFailing {
+		if s.PRInfo.Checks.Summary() == forge.StatusFailing {
 			prNum += " ⚠"
 		}
 	case s.WorkflowInfo != nil:
-		if s.WorkflowInfo.StatusDisplay() == models.StatusFailing {
+		if s.WorkflowInfo.StatusDisplay() == forge.StatusFailing {
 			prNum += " ⚠"
 		}
 	}

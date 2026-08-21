@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -332,8 +333,8 @@ func TestModelPRCount(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.summaries = map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, PRInfo: &models.PRInfo{Number: 1}},
-		"/repo2":      {Path: "/repo2", PRInfo: &models.PRInfo{Number: 2}},
+		testRepo1Path: {Path: testRepo1Path, PRInfo: &forge.PullRequest{Number: 1}},
+		"/repo2":      {Path: "/repo2", PRInfo: &forge.PullRequest{Number: 2}},
 		"/repo3":      {Path: "/repo3"},
 	}
 	m.filteredPaths = []string{testRepo1Path, "/repo2", "/repo3"}

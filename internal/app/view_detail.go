@@ -7,6 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
@@ -33,8 +34,8 @@ func (m Model) renderRepoDetail() string {
 }
 
 // prsByHeadRef indexes open pull requests by their head branch name.
-func prsByHeadRef(prs []models.PRInfo) map[string]*models.PRInfo {
-	byRef := make(map[string]*models.PRInfo, len(prs))
+func prsByHeadRef(prs []forge.PullRequest) map[string]*forge.PullRequest {
+	byRef := make(map[string]*forge.PullRequest, len(prs))
 	for i := range prs {
 		byRef[prs[i].HeadRef] = &prs[i]
 	}
@@ -66,7 +67,7 @@ func branchAheadBehindStatus(branch models.BranchInfo) string {
 // pull request, parallel checkout, and cleanup state discovered for it.
 type branchRow struct {
 	branch    models.BranchInfo
-	pr        *models.PRInfo
+	pr        *forge.PullRequest
 	checkout  string
 	deletable bool
 	selected  bool
@@ -74,7 +75,7 @@ type branchRow struct {
 
 // formatBranchPRCell renders "#N" plus a draft/review marker, or emDash when
 // the branch has no open pull request.
-func formatBranchPRCell(pr *models.PRInfo) string {
+func formatBranchPRCell(pr *forge.PullRequest) string {
 	if pr == nil {
 		return emDash
 	}
@@ -83,9 +84,9 @@ func formatBranchPRCell(pr *models.PRInfo) string {
 	switch {
 	case pr.IsDraft:
 		cell += " draft"
-	case pr.ReviewStatus() == models.ReviewApproved:
+	case pr.ReviewStatus() == forge.ReviewApproved:
 		cell += " ✓"
-	case pr.ReviewStatus() == models.ReviewChangesRequested:
+	case pr.ReviewStatus() == forge.ReviewChangesRequested:
 		cell += " ✗"
 	}
 
@@ -94,7 +95,7 @@ func formatBranchPRCell(pr *models.PRInfo) string {
 
 // formatChecksCell renders a pull request's CI rollup as "passing 3/3", or
 // emDash when there is no pull request or it has no checks.
-func formatChecksCell(pr *models.PRInfo) string {
+func formatChecksCell(pr *forge.PullRequest) string {
 	if pr == nil || pr.Checks.Total == 0 {
 		return emDash
 	}
@@ -103,15 +104,15 @@ func formatChecksCell(pr *models.PRInfo) string {
 }
 
 // checksCellStyle colors a checks cell by its rollup outcome.
-func checksCellStyle(pr *models.PRInfo, base lipgloss.Style) lipgloss.Style {
+func checksCellStyle(pr *forge.PullRequest, base lipgloss.Style) lipgloss.Style {
 	if pr == nil || pr.Checks.Total == 0 {
 		return base
 	}
 
 	switch pr.Checks.Summary() {
-	case models.StatusPassing:
+	case forge.StatusPassing:
 		return styles.CleanStyle
-	case models.StatusFailing:
+	case forge.StatusFailing:
 		return styles.ErrorStyle
 	default:
 		return styles.WarningStyle
@@ -230,16 +231,16 @@ func relativeOrDash(t time.Time) string {
 		return emDash
 	}
 
-	return models.RelativeTime(t)
+	return forge.RelativeTime(t)
 }
 
-func prStateStyle(pr *models.PRInfo) lipgloss.Style {
+func prStateStyle(pr *forge.PullRequest) lipgloss.Style {
 	switch {
 	case pr.IsDraft:
 		return styles.PRDraftStyle
-	case pr.StatusDisplay() == models.PRStatusMerged:
+	case pr.StatusDisplay() == forge.PRStatusMerged:
 		return styles.PRMergedStyle
-	case pr.StatusDisplay() == models.PRStatusClosed:
+	case pr.StatusDisplay() == forge.PRStatusClosed:
 		return styles.ErrorStyle
 	default:
 		return styles.PROpenStyle
@@ -248,7 +249,7 @@ func prStateStyle(pr *models.PRInfo) lipgloss.Style {
 
 // prStateCell renders the pull request's state with its review decision
 // folded in as a glyph, since ACTIVITY took the review column's width.
-func prStateCell(pr *models.PRInfo) string {
+func prStateCell(pr *forge.PullRequest) string {
 	if glyph := pr.ReviewGlyph(); glyph != "" {
 		return pr.StatusDisplay() + " " + glyph
 	}

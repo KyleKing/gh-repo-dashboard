@@ -8,15 +8,15 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
 // GetWorkflowRunsForCommit returns the CI workflow run summary for a commit, using the cache when fresh.
 func GetWorkflowRunsForCommit(
 	ctx context.Context, repoPath, remoteID, commitSHA string,
-) (*models.WorkflowSummary, error) {
+) (*forge.WorkflowSummary, error) {
 	if commitSHA == "" {
 		//nolint:nilnil // no commit means nothing to look up, not a failure
 		return nil, nil
@@ -51,8 +51,8 @@ func GetWorkflowRunsForCommit(
 		return nil, fmt.Errorf("parsing gh run list output: %w", err)
 	}
 
-	summary := &models.WorkflowSummary{
-		Runs:  make([]models.WorkflowRun, 0, len(runs)),
+	summary := &forge.WorkflowSummary{
+		Runs:  make([]forge.WorkflowRun, 0, len(runs)),
 		Total: len(runs),
 	}
 
@@ -62,7 +62,7 @@ func GetWorkflowRunsForCommit(
 		createdAt, _ := time.Parse(time.RFC3339, r.CreatedAt) //nolint:errcheck // best-effort, see comment above
 		updatedAt, _ := time.Parse(time.RFC3339, r.UpdatedAt) //nolint:errcheck // best-effort, see comment above
 
-		run := models.WorkflowRun{
+		run := forge.WorkflowRun{
 			ID:         r.DatabaseID,
 			Name:       r.Name,
 			Status:     r.Status,
@@ -109,7 +109,7 @@ func DefaultBranchCICacheKey(repoPath, remoteID, sha string) string {
 // CachedDefaultBranchCI returns the cached default-branch CI for the repo, if
 // any, without invoking gh. Resolving the default branch head still reads local
 // refs, which is free of network cost.
-func CachedDefaultBranchCI(ctx context.Context, repoPath, remoteID string) (*models.DefaultBranchCI, bool) {
+func CachedDefaultBranchCI(ctx context.Context, repoPath, remoteID string) (*forge.DefaultBranchCI, bool) {
 	def, err := vcs.DefaultBranchHead(ctx, repoPath)
 	if err != nil {
 		return nil, false
@@ -125,7 +125,7 @@ func CachedDefaultBranchCI(ctx context.Context, repoPath, remoteID string) (*mod
 //
 // The branch and commit come from local refs, so a healthy repo costs one gh
 // call; each failing workflow costs one more to name what broke.
-func GetDefaultBranchCI(ctx context.Context, repoPath, remoteID string) (*models.DefaultBranchCI, error) {
+func GetDefaultBranchCI(ctx context.Context, repoPath, remoteID string) (*forge.DefaultBranchCI, error) {
 	def, err := vcs.DefaultBranchHead(ctx, repoPath)
 	if err != nil {
 		return nil, fmt.Errorf("resolving the default branch: %w", err)
@@ -150,13 +150,13 @@ func GetDefaultBranchCI(ctx context.Context, repoPath, remoteID string) (*models
 		runs[i].FailingJobs, _ = failingJobs(ctx, repoPath, runs[i].ID)
 	}
 
-	ci := &models.DefaultBranchCI{Branch: def.Name, SHA: def.SHA, Workflows: runs}
+	ci := &forge.DefaultBranchCI{Branch: def.Name, SHA: def.SHA, Workflows: runs}
 	cache.Persist(cache.DefaultBranchCICache, remoteID, cacheKey, cache.NoStamp, ci)
 
 	return ci, nil
 }
 
-func latestRunPerWorkflow(ctx context.Context, repoPath, sha string) ([]models.CIWorkflowRun, error) {
+func latestRunPerWorkflow(ctx context.Context, repoPath, sha string) ([]forge.CIWorkflowRun, error) {
 	out, err := runGH(ctx, repoPath, vcs.GetGitHubEnv(repoPath), "run", "list",
 		"--commit", sha,
 		"--json", "databaseId,workflowName,status,conclusion,url,startedAt,updatedAt",
@@ -178,9 +178,9 @@ func latestRunPerWorkflow(ctx context.Context, repoPath, sha string) ([]models.C
 		return nil, fmt.Errorf("parsing gh run list output: %w", err)
 	}
 
-	latest := make(map[string]models.CIWorkflowRun, len(raw))
+	latest := make(map[string]forge.CIWorkflowRun, len(raw))
 	for _, r := range raw {
-		run := models.CIWorkflowRun{
+		run := forge.CIWorkflowRun{
 			ID:         r.DatabaseID,
 			Workflow:   r.WorkflowName,
 			Status:     r.Status,
@@ -197,7 +197,7 @@ func latestRunPerWorkflow(ctx context.Context, repoPath, sha string) ([]models.C
 		latest[run.Workflow] = run
 	}
 
-	runs := make([]models.CIWorkflowRun, 0, len(latest))
+	runs := make([]forge.CIWorkflowRun, 0, len(latest))
 	for name := range latest {
 		runs = append(runs, latest[name])
 	}

@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -19,7 +20,7 @@ func prTabModel() Model {
 	m := focusedModel(160, 40)
 	m.viewMode = ViewModePRList
 	m.summaries["/dev/alpha"] = models.RepoSummary{Path: "/dev/alpha", RemoteRepo: "acme/alpha"}
-	m.prSearch = []models.PRInfo{
+	m.prSearch = []forge.PullRequest{
 		{
 			Number: 11, Title: "Bump the deps", State: "OPEN", HeadRef: "deps",
 			Repo: "acme/alpha", URL: "https://github.com/acme/alpha/pull/11",
@@ -35,7 +36,7 @@ func prTabModel() Model {
 func TestPRFilterNarrowsVisiblePRsAndCursor(t *testing.T) {
 	t.Parallel()
 	m := prTabModel()
-	m.prSearch = []models.PRInfo{
+	m.prSearch = []forge.PullRequest{
 		{Number: 11, Title: "Ready one", State: "OPEN", Repo: "acme/alpha"},
 		{Number: 12, Title: "Draft one", State: "OPEN", Repo: "acme/alpha", IsDraft: true},
 	}
@@ -154,7 +155,7 @@ func TestASearchAnswerForAnotherViewIsDropped(t *testing.T) {
 
 	stale := mustModel(t, mustUpdate(t, &m, PRSearchLoadedMsg{
 		Query: "is:open author:@me sort:updated-desc",
-		PRs:   []models.PRInfo{{Number: 99}},
+		PRs:   []forge.PullRequest{{Number: 99}},
 	}))
 	if len(stale.prSearch) != 0 {
 		t.Error("an answer to a view that is no longer showing must be dropped")
@@ -162,7 +163,7 @@ func TestASearchAnswerForAnotherViewIsDropped(t *testing.T) {
 
 	fresh := mustModel(t, mustUpdate(t, &m, PRSearchLoadedMsg{
 		Query: m.currentPRView().Search,
-		PRs:   []models.PRInfo{{Number: 99}},
+		PRs:   []forge.PullRequest{{Number: 99}},
 	}))
 	if len(fresh.prSearch) != 1 || fresh.prSearchLoading {
 		t.Errorf("the current view's answer should land, got rows=%d loading=%v",
@@ -188,7 +189,7 @@ func TestPRQueryOverrideSurvivesRefetchButNotViewSwitch(t *testing.T) {
 
 	landed := mustModel(t, mustUpdate(t, &m2, PRSearchLoadedMsg{
 		Query: "is:open label:bug",
-		PRs:   []models.PRInfo{{Number: 42}},
+		PRs:   []forge.PullRequest{{Number: 42}},
 	}))
 	if len(landed.prSearch) != 1 || landed.prSearchLoading {
 		t.Errorf("overridden query's result should land, got rows=%d loading=%v",
@@ -213,7 +214,7 @@ func TestPRSearchLandingSetsNoStatusMessage(t *testing.T) {
 
 	landed := mustModel(t, mustUpdate(t, &m, PRSearchLoadedMsg{
 		Query: m.currentPRView().Search,
-		PRs:   []models.PRInfo{{Number: 99}},
+		PRs:   []forge.PullRequest{{Number: 99}},
 	}))
 	if landed.statusMessage != "" {
 		t.Errorf("a landed search should not set a status message, got %q", landed.statusMessage)
@@ -229,14 +230,14 @@ func TestReviewerBadgeFlagsAnUnassignedOpenPR(t *testing.T) {
 
 	tests := []struct {
 		name string
-		pr   models.PRInfo
+		pr   forge.PullRequest
 		want string
 	}{
-		{"needs a reviewer", models.PRInfo{State: "OPEN"}, "needs reviewer"},
-		{"one requested", models.PRInfo{State: "OPEN", Reviewers: []string{"erin"}}, "1 reviewer"},
-		{"two requested", models.PRInfo{State: "OPEN", Reviewers: []string{"erin", "dave"}}, "2 reviewers"},
-		{"draft carries neither", models.PRInfo{State: "OPEN", IsDraft: true}, ""},
-		{"merged carries neither", models.PRInfo{State: "MERGED"}, ""},
+		{"needs a reviewer", forge.PullRequest{State: "OPEN"}, "needs reviewer"},
+		{"one requested", forge.PullRequest{State: "OPEN", Reviewers: []string{"erin"}}, "1 reviewer"},
+		{"two requested", forge.PullRequest{State: "OPEN", Reviewers: []string{"erin", "dave"}}, "2 reviewers"},
+		{"draft carries neither", forge.PullRequest{State: "OPEN", IsDraft: true}, ""},
+		{"merged carries neither", forge.PullRequest{State: "MERGED"}, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -277,7 +278,7 @@ func TestPRPreviewLoadsAndRendersTheCursorRow(t *testing.T) {
 
 	landed := mustModel(t, mustUpdate(t, &o, PRPreviewLoadedMsg{
 		Key:     key,
-		Preview: models.PRPreview{Reviewers: []string{"erin"}},
+		Preview: forge.PRPreview{Reviewers: []string{"erin"}},
 	}))
 
 	rendered := plainText(landed.renderPRList())
@@ -318,7 +319,7 @@ func TestPRPreviewDebouncesAMovingCursor(t *testing.T) {
 	t.Parallel()
 
 	m := prTabModel()
-	m.prSearch = append(m.prSearch, models.PRInfo{
+	m.prSearch = append(m.prSearch, forge.PullRequest{
 		Number: 12, State: "OPEN", Repo: "acme/alpha", URL: "https://github.com/acme/alpha/pull/12",
 	})
 	m.prPreviewOpen = true

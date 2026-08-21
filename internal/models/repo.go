@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/kyleking/aragonite/forge"
 )
 
 // RepoSummary is the top-level per-repo state shown in the repo list.
@@ -21,8 +23,8 @@ type RepoSummary struct {
 	Conflicted   int
 	StashCount   int
 	LastModified time.Time
-	PRInfo       *PRInfo
-	WorkflowInfo *WorkflowSummary
+	PRInfo       *forge.PullRequest
+	WorkflowInfo *forge.WorkflowSummary
 	TemplateInfo *CopierTemplateInfo
 	Loading      bool
 	Error        error
@@ -151,7 +153,7 @@ func (r RepoSummary) RelativeModified() string {
 		return emDash
 	}
 
-	return RelativeTime(r.LastModified)
+	return forge.RelativeTime(r.LastModified)
 }
 
 // WorktreeInfo summarizes a single git worktree.

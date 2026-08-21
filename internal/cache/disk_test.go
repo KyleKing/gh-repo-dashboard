@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 const (
@@ -13,9 +13,9 @@ const (
 	listKey  = "prs"
 )
 
-func samplePRs() []models.PRInfo {
-	return []models.PRInfo{
-		{Number: 7, Title: "Cache pull requests on disk", State: "OPEN", HeadRef: "cache", Checks: models.ChecksStatus{
+func samplePRs() []forge.PullRequest {
+	return []forge.PullRequest{
+		{Number: 7, Title: "Cache pull requests on disk", State: "OPEN", HeadRef: "cache", Checks: forge.ChecksStatus{
 			Total: 2, Passing: 2,
 		}},
 		{Number: 4, Title: "Stamp the checkout", State: "OPEN", HeadRef: "stamp"},

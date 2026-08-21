@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 const mutateRepoPath = "/repo"
@@ -19,7 +19,7 @@ func TestCreatePR(t *testing.T) {
 	cache.PRListCache.Set(
 		github.PRListCacheKey(mutateRepoPath, testRemoteID, "origin/main"),
 		cache.NoStamp,
-		[]models.PRInfo{{Number: 1}},
+		[]forge.PullRequest{{Number: 1}},
 	)
 
 	url, err := github.CreatePR(ctx, mutateRepoPath, "feature", "main")

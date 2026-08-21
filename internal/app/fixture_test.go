@@ -13,6 +13,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -165,7 +166,7 @@ func standardDataset() Model {
 		"/repos/dirty":  {Path: "/repos/dirty", Branch: mainBranchName, Unstaged: 2},
 		"/repos/dirty-pr": {
 			Path: "/repos/dirty-pr", Branch: "feat", Unstaged: 1,
-			PRInfo: &models.PRInfo{Number: 7}, NotesFiles: []models.NoteFile{{Name: "doing.md"}},
+			PRInfo: &forge.PullRequest{Number: 7}, NotesFiles: []models.NoteFile{{Name: "doing.md"}},
 		},
 	}
 	m.updateFilteredPaths()
@@ -190,7 +191,7 @@ func busyRepo() models.RepoSummary {
 		Ahead: 2, Behind: 1, Staged: 1, Unstaged: 3, StashCount: 4,
 		NotesFiles:   []models.NoteFile{{Name: "doing.md", FirstLine: "wip"}},
 		TemplateInfo: &models.CopierTemplateInfo{Commit: "v0.9.1", IsTag: true, Behind: true, LatestTag: "v0.10.0"},
-		PRInfo:       &models.PRInfo{Number: 42, Title: "Add login flow", State: "OPEN", HeadRef: "feat/login"},
+		PRInfo:       &forge.PullRequest{Number: 42, Title: "Add login flow", State: "OPEN", HeadRef: "feat/login"},
 	}
 }
 
@@ -208,7 +209,7 @@ func focusedDataset(summary models.RepoSummary) Model {
 	m.branches = []models.BranchInfo{{Name: summary.Branch, Upstream: summary.Upstream, IsCurrent: true}}
 	m.worktrees = []models.WorktreeInfo{{Path: summary.Path, Branch: summary.Branch}}
 	if summary.PRInfo != nil {
-		m.prs = []models.PRInfo{*summary.PRInfo}
+		m.prs = []forge.PullRequest{*summary.PRInfo}
 	}
 	for i := range summary.StashCount {
 		m.stashes = append(m.stashes, models.StashDetail{Index: i, Message: "On main: spike"})

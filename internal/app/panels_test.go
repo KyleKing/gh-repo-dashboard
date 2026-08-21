@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -37,7 +38,7 @@ func focusedModel(width, height int) Model {
 		{Path: "/dev/alpha", Branch: mainBranchName},
 		{Path: "/dev/alpha-thing", Branch: "feature/thing"},
 	}
-	m.prs = []models.PRInfo{{Number: 9, Title: "Add a thing", State: "OPEN", HeadRef: "feature/thing"}}
+	m.prs = []forge.PullRequest{{Number: 9, Title: "Add a thing", State: "OPEN", HeadRef: "feature/thing"}}
 	m.notesFiles = []models.NoteFileContent{{Name: ".doing", Content: "# 2026-08-05\n\nfinish the grid"}}
 	m.focusedPanel = panelBranches
 	m.updateFilteredPaths()
@@ -329,7 +330,7 @@ func TestPanelRowsFitTheirBoxAndKeepTheBranchHead(t *testing.T) {
 
 			m := focusedModel(size[0], size[1])
 			m.branches = append(m.branches, models.BranchInfo{Name: longBranch})
-			m.prs = []models.PRInfo{{Number: 11, Title: strings.Repeat("bump the dependencies ", 6)}}
+			m.prs = []forge.PullRequest{{Number: 11, Title: strings.Repeat("bump the dependencies ", 6)}}
 
 			width := panelSideWidth(m.gridWidth(), false) - panelBorderWidth
 

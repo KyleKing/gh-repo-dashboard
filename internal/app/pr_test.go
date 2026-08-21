@@ -7,10 +7,11 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
-func prDetailModel(detail *models.PRDetail) Model {
+func prDetailModel(detail *forge.PRDetail) Model {
 	m := New(nil, 1)
 	m.width = 120
 	m.height = 40
@@ -33,7 +34,7 @@ func TestDetailListLen(t *testing.T) {
 		{Path: "/repos/app-wt-a", Branch: "feature/a"},
 		{Path: "/repos/app-wt-b", Branch: "feature/b"},
 	}
-	m.prs = make([]models.PRInfo, 3)
+	m.prs = make([]forge.PullRequest, 3)
 
 	tests := []struct {
 		panel panelID
@@ -58,13 +59,13 @@ func TestPRInfoStatusDisplay(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name string
-		pr   models.PRInfo
+		pr   forge.PullRequest
 		want string
 	}{
-		{"draft outranks open", models.PRInfo{IsDraft: true, State: "OPEN"}, "DRAFT"},
-		{"open", models.PRInfo{State: "OPEN"}, "OPEN"},
-		{"merged", models.PRInfo{State: "MERGED"}, "MERGED"},
-		{"closed", models.PRInfo{State: "CLOSED"}, "CLOSED"},
+		{"draft outranks open", forge.PullRequest{IsDraft: true, State: "OPEN"}, "DRAFT"},
+		{"open", forge.PullRequest{State: "OPEN"}, "OPEN"},
+		{"merged", forge.PullRequest{State: "MERGED"}, "MERGED"},
+		{"closed", forge.PullRequest{State: "CLOSED"}, "CLOSED"},
 	}
 
 	for _, tt := range tests {
@@ -81,14 +82,14 @@ func TestPRInfoReviewStatus(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name string
-		pr   models.PRInfo
+		pr   forge.PullRequest
 		want string
 	}{
-		{"approved", models.PRInfo{ReviewDecision: "APPROVED"}, "approved"},
-		{"changes requested", models.PRInfo{ReviewDecision: "CHANGES_REQUESTED"}, "changes requested"},
-		{"review required", models.PRInfo{ReviewDecision: "REVIEW_REQUIRED"}, "review required"},
-		{"an approval with no decision still reads as approved", models.PRInfo{ApprovedBy: []string{"u1"}}, "approved"},
-		{"no review", models.PRInfo{}, emDash},
+		{"approved", forge.PullRequest{ReviewDecision: "APPROVED"}, "approved"},
+		{"changes requested", forge.PullRequest{ReviewDecision: "CHANGES_REQUESTED"}, "changes requested"},
+		{"review required", forge.PullRequest{ReviewDecision: "REVIEW_REQUIRED"}, "review required"},
+		{"an approval with no decision still reads as approved", forge.PullRequest{ApprovedBy: []string{"u1"}}, "approved"},
+		{"no review", forge.PullRequest{}, emDash},
 	}
 
 	for _, tt := range tests {
@@ -106,17 +107,17 @@ func TestPRInfoReviewStatus(t *testing.T) {
 // survive so the view does not blank out on a failed fetch.
 func TestPRDetailLoadedMsg(t *testing.T) {
 	t.Parallel()
-	basic := models.PRInfo{
+	basic := forge.PullRequest{
 		Number: 456, Title: "Feature PR", State: "OPEN",
 		HeadRef: featureBranchName, BaseRef: mainBranchName,
 	}
-	loaded := models.PRDetail{
-		PRInfo:    basic,
-		Author:    "alice",
-		Assignees: []string{"bob"},
-		Reviewers: []string{"charlie"},
-		Additions: 100,
-		Deletions: 50,
+	loaded := forge.PRDetail{
+		PullRequest: basic,
+		Author:      "alice",
+		Assignees:   []string{"bob"},
+		Reviewers:   []string{"charlie"},
+		Additions:   100,
+		Deletions:   50,
 	}
 
 	tests := []struct {
@@ -151,7 +152,7 @@ func TestPRDetailLoadedMsg(t *testing.T) {
 			m := New(nil, 1)
 			m.selectedRepo = testRepoPath
 			m.selectedPR = basic
-			m.prDetail = models.PRDetail{PRInfo: basic}
+			m.prDetail = forge.PRDetail{PullRequest: basic}
 
 			m = afterUpdate(t, m, tt.msg)
 
@@ -170,8 +171,8 @@ func TestPRDetailLoadedMsg(t *testing.T) {
 
 func TestPRDetailViewRender(t *testing.T) {
 	t.Parallel()
-	full := models.PRDetail{
-		PRInfo: models.PRInfo{
+	full := forge.PRDetail{
+		PullRequest: forge.PullRequest{
 			Number: 456, Title: "Add amazing feature", HeadRef: "feature/amazing",
 			BaseRef: mainBranchName, State: "OPEN", ReviewDecision: "APPROVED",
 		},
@@ -186,7 +187,7 @@ func TestPRDetailViewRender(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		detail models.PRDetail
+		detail forge.PRDetail
 		want   []string
 		absent []string
 	}{
@@ -202,12 +203,12 @@ func TestPRDetailViewRender(t *testing.T) {
 		},
 		{
 			name:   "an unloaded detail says it is loading",
-			detail: models.PRDetail{},
+			detail: forge.PRDetail{},
 			want:   []string{"Loading PR details"},
 		},
 		{
 			name: "list-only data renders at once and flags the rest as loading",
-			detail: models.PRDetail{PRInfo: models.PRInfo{
+			detail: forge.PRDetail{PullRequest: forge.PullRequest{
 				Number: 100, Title: "Test PR", State: "OPEN",
 				HeadRef: featureBranchName, BaseRef: mainBranchName,
 			}},
@@ -236,7 +237,7 @@ func TestPRDetailViewRender(t *testing.T) {
 
 func TestPRDetailViewShowsStatusMessage(t *testing.T) {
 	t.Parallel()
-	m := prDetailModel(&models.PRDetail{PRInfo: models.PRInfo{
+	m := prDetailModel(&forge.PRDetail{PullRequest: forge.PullRequest{
 		Number: 123, Title: "Test PR", HeadRef: featureBranchName, BaseRef: mainBranchName,
 	}})
 	m.statusMessage = "Copied to clipboard: #123"
@@ -304,12 +305,12 @@ func TestOpenPRFromTheTab(t *testing.T) {
 	m.viewMode = ViewModePRList
 	m.selectedRepo = testRepoPath
 	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
-	m.prSearch = []models.PRInfo{{
+	m.prSearch = []forge.PullRequest{{
 		Number: 456, Title: "Feature PR", State: "OPEN",
 		URL: "https://github.com/test/pr/456", HeadRef: featureBranchName,
 		BaseRef: mainBranchName, ReviewDecision: "APPROVED",
 	}}
-	m.prDetail = models.PRDetail{PRInfo: models.PRInfo{Number: 999}}
+	m.prDetail = forge.PRDetail{PullRequest: forge.PullRequest{Number: 999}}
 
 	m = afterUpdate(t, m, tea.KeyPressMsg{Code: tea.KeyEnter})
 
@@ -320,7 +321,7 @@ func TestOpenPRFromTheTab(t *testing.T) {
 		t.Errorf("stale detail survived: selected #%d, detail #%d", m.selectedPR.Number, m.prDetail.Number)
 	}
 	if m.prDetail.Title != "Feature PR" || m.prDetail.State != "OPEN" || m.prDetail.HeadRef != featureBranchName {
-		t.Errorf("the list's own fields should seat immediately, got %+v", m.prDetail.PRInfo)
+		t.Errorf("the list's own fields should seat immediately, got %+v", m.prDetail.PullRequest)
 	}
 	if m.prDetail.Author != "" || len(m.prDetail.Assignees) > 0 {
 		t.Error("fields only the detail fetch supplies should stay empty until it lands")

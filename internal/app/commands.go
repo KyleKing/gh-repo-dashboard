@@ -9,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/copier"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
@@ -159,7 +160,7 @@ func loadDetailCmd(path string) tea.Cmd {
 		worktrees, _ := ops.GetWorktreeList(ctx, path) //nolint:errcheck // best-effort, see comment above
 
 		summary, _ := ops.GetRepoSummary(ctx, path) //nolint:errcheck // best-effort, see comment above
-		var prs []models.PRInfo
+		var prs []forge.PullRequest
 		if summary.Upstream != "" {
 			//nolint:errcheck // best-effort, see comment above
 			prs, _ = github.GetPRsForRepo(ctx, path, summary.RemoteID, summary.Upstream)

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 //nolint:paralleltest // asserts against shared global cache.ClearAll() state
@@ -65,7 +65,7 @@ func TestGetPRsForRepoDerivesLatestActivity(t *testing.T) {
 		8: {author: "commenter", at: time.Date(2026, time.March, 1, 0, 0, 0, 0, time.UTC)},
 	}
 
-	byNumber := map[int]models.PRInfo{}
+	byNumber := map[int]forge.PullRequest{}
 	for _, pr := range prs {
 		byNumber[pr.Number] = pr
 	}

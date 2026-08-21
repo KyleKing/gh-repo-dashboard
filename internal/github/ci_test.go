@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 func TestDefaultBranchCIConclusion(t *testing.T) {
@@ -13,29 +13,29 @@ func TestDefaultBranchCIConclusion(t *testing.T) {
 
 	tests := []struct {
 		name string
-		ci   models.DefaultBranchCI
+		ci   forge.DefaultBranchCI
 		want string
 	}{
-		{name: "no runs", ci: models.DefaultBranchCI{}, want: "—"},
+		{name: "no runs", ci: forge.DefaultBranchCI{}, want: "—"},
 		{
 			name: "every workflow green",
-			ci: models.DefaultBranchCI{Workflows: []models.CIWorkflowRun{
+			ci: forge.DefaultBranchCI{Workflows: []forge.CIWorkflowRun{
 				{Status: "completed", Conclusion: "success"},
 				{Status: "completed", Conclusion: "success"},
 			}},
-			want: models.StatusPassing,
+			want: forge.StatusPassing,
 		},
 		{
 			name: "one red outweighs the rest",
-			ci: models.DefaultBranchCI{Workflows: []models.CIWorkflowRun{
+			ci: forge.DefaultBranchCI{Workflows: []forge.CIWorkflowRun{
 				{Status: "completed", Conclusion: "success"},
 				{Status: "completed", Conclusion: "failure"},
 			}},
-			want: models.StatusFailing,
+			want: forge.StatusFailing,
 		},
 		{
 			name: "still running",
-			ci: models.DefaultBranchCI{Workflows: []models.CIWorkflowRun{
+			ci: forge.DefaultBranchCI{Workflows: []forge.CIWorkflowRun{
 				{Status: "completed", Conclusion: "success"},
 				{Status: "in_progress"},
 			}},
@@ -43,11 +43,11 @@ func TestDefaultBranchCIConclusion(t *testing.T) {
 		},
 		{
 			name: "a red run wins even while another is running",
-			ci: models.DefaultBranchCI{Workflows: []models.CIWorkflowRun{
+			ci: forge.DefaultBranchCI{Workflows: []forge.CIWorkflowRun{
 				{Status: "in_progress"},
 				{Status: "completed", Conclusion: "failure"},
 			}},
-			want: models.StatusFailing,
+			want: forge.StatusFailing,
 		},
 	}
 

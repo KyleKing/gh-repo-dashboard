@@ -9,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
@@ -19,7 +20,7 @@ import (
 // leaves a gap in the map rather than blocking it.
 type PRMapLoadedMsg struct {
 	Path     string
-	PRs      []models.PRInfo
+	PRs      []forge.PullRequest
 	Branches []models.BranchInfo
 }
 
@@ -27,7 +28,7 @@ type PRMapLoadedMsg struct {
 // head ref lives locally, or a local branch with commits and no pull request.
 type prMapEntry struct {
 	Repo     string
-	PR       *models.PRInfo
+	PR       *forge.PullRequest
 	Branch   string
 	Location string
 	// HasLocal marks a row whose head ref is checked out somewhere in the
@@ -46,7 +47,7 @@ func loadPRMapCmd(path, remoteID, upstream string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
 
-		var prs []models.PRInfo
+		var prs []forge.PullRequest
 		if upstream != "" {
 			//nolint:errcheck // best-effort: a repo we cannot reach leaves a gap in the map
 			prs, _ = github.GetPRsForRepo(ctx, path, remoteID, upstream)

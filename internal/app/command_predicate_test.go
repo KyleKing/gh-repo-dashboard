@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -16,7 +17,7 @@ func predicateModel() Model {
 	m.summaries = map[string]models.RepoSummary{
 		"/test/clean":    {Path: "/test/clean", Branch: mainBranchName},
 		"/test/dirty":    {Path: "/test/dirty", Branch: mainBranchName, Unstaged: 2},
-		"/test/dirty-pr": {Path: "/test/dirty-pr", Branch: "feat", Unstaged: 1, PRInfo: &models.PRInfo{Number: 7}},
+		"/test/dirty-pr": {Path: "/test/dirty-pr", Branch: "feat", Unstaged: 1, PRInfo: &forge.PullRequest{Number: 7}},
 	}
 	m.updateFilteredPaths()
 
@@ -157,9 +158,9 @@ func TestCountForFilterReflectsActiveFilters(t *testing.T) {
 	m.repoPaths = []string{"/test/dirty-pr", "/test/clean-pr", "/test/dirty"}
 	m.summaries = map[string]models.RepoSummary{
 		"/test/dirty-pr": {
-			Path: "/test/dirty-pr", Branch: mainBranchName, Unstaged: 1, PRInfo: &models.PRInfo{Number: 1},
+			Path: "/test/dirty-pr", Branch: mainBranchName, Unstaged: 1, PRInfo: &forge.PullRequest{Number: 1},
 		},
-		"/test/clean-pr": {Path: "/test/clean-pr", Branch: mainBranchName, PRInfo: &models.PRInfo{Number: 2}},
+		"/test/clean-pr": {Path: "/test/clean-pr", Branch: mainBranchName, PRInfo: &forge.PullRequest{Number: 2}},
 		"/test/dirty":    {Path: "/test/dirty", Branch: mainBranchName, Unstaged: 1},
 	}
 	m.updateFilteredPaths()

@@ -7,7 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/markdown"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
@@ -39,9 +39,9 @@ func (m Model) writePRDetailInfo(writeLine func(label, value string)) {
 	switch {
 	case m.prDetail.IsDraft:
 		stateStyle = styles.PRDraftStyle
-	case m.prDetail.State == models.PRStatusMerged:
+	case m.prDetail.State == forge.PRStatusMerged:
 		stateStyle = styles.PRMergedStyle
-	case m.prDetail.State == models.PRStatusClosed:
+	case m.prDetail.State == forge.PRStatusClosed:
 		stateStyle = styles.ErrorStyle
 	}
 	writeLine("State:", stateStyle.Render(m.prDetail.StatusDisplay()))
@@ -49,9 +49,9 @@ func (m Model) writePRDetailInfo(writeLine func(label, value string)) {
 	reviewStyle := styles.SubtitleStyle
 	reviewStatus := m.prDetail.ReviewStatus()
 	switch reviewStatus {
-	case models.ReviewApproved:
+	case forge.ReviewApproved:
 		reviewStyle = styles.CleanStyle
-	case models.ReviewChangesRequested:
+	case forge.ReviewChangesRequested:
 		reviewStyle = styles.ErrorStyle
 	}
 	writeLine("Review:", reviewStyle.Render(reviewStatus))
@@ -123,7 +123,7 @@ func checkStatusStyle(status string) lipgloss.Style {
 // its status and how long it ran. Nothing is written when the pull request has
 // no checks.
 func writePRDetailChecks(
-	b *strings.Builder, sectionStyle lipgloss.Style, checks []models.CheckDetail, layout table.Layout,
+	b *strings.Builder, sectionStyle lipgloss.Style, checks []forge.CheckDetail, layout table.Layout,
 ) {
 	if len(checks) == 0 {
 		return
@@ -152,7 +152,7 @@ func writePRDetailChecks(
 	}
 }
 
-func checkDisplayName(check models.CheckDetail) string {
+func checkDisplayName(check forge.CheckDetail) string {
 	name := check.Name
 	if name == "" {
 		name = check.Workflow
@@ -171,7 +171,7 @@ func checkDisplayName(check models.CheckDetail) string {
 // writePRDetailLatestComment writes the most recent comment on the pull
 // request, or nothing when there are none.
 func writePRDetailLatestComment(
-	b *strings.Builder, sectionStyle, valueStyle lipgloss.Style, comment *models.PRComment, width int,
+	b *strings.Builder, sectionStyle, valueStyle lipgloss.Style, comment *forge.PRComment, width int,
 ) {
 	if comment == nil {
 		return

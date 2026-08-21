@@ -6,15 +6,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 func TestActivitySummaryReportsAgeAndAuthor(t *testing.T) {
 	t.Parallel()
 
-	pr := models.PRInfo{
+	pr := forge.PullRequest{
 		Number:   7,
-		Activity: &models.PRActivity{Author: "reviewer", At: time.Now().Add(-2 * time.Hour)},
+		Activity: &forge.PRActivity{Author: "reviewer", At: time.Now().Add(-2 * time.Hour)},
 	}
 
 	got := pr.ActivitySummary()
@@ -22,7 +23,7 @@ func TestActivitySummaryReportsAgeAndAuthor(t *testing.T) {
 		t.Errorf("activity summary = %q, want an age and an author", got)
 	}
 
-	quiet := models.PRInfo{Number: 8}
+	quiet := forge.PullRequest{Number: 8}
 	if got := quiet.ActivitySummary(); got != emDash {
 		t.Errorf("a PR with no comments or reviews summarizes as %q, want %q", got, emDash)
 	}
@@ -45,7 +46,7 @@ func TestReviewDecisionFoldsIntoTheStateCell(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			pr := models.PRInfo{Number: 1, State: "OPEN", ReviewDecision: tt.decision}
+			pr := forge.PullRequest{Number: 1, State: "OPEN", ReviewDecision: tt.decision}
 			if got := prStateCell(&pr); got != tt.want {
 				t.Errorf("state cell = %q, want %q", got, tt.want)
 			}
@@ -60,9 +61,9 @@ func TestPRListShowsActivityInsteadOfReview(t *testing.T) {
 
 	m := focusedModel(200, 40)
 	m.viewMode = ViewModePRList
-	m.prSearch = []models.PRInfo{{
-		Number: 9, Title: "Add a thing", State: "OPEN", ReviewDecision: models.ReviewApproved,
-		Activity: &models.PRActivity{Author: "cjs", At: time.Now().Add(-3 * time.Hour)},
+	m.prSearch = []forge.PullRequest{{
+		Number: 9, Title: "Add a thing", State: "OPEN", ReviewDecision: forge.ReviewApproved,
+		Activity: &forge.PRActivity{Author: "cjs", At: time.Now().Add(-3 * time.Hour)},
 	}}
 
 	rendered := plainText(m.renderPRList())
@@ -78,7 +79,7 @@ func TestCheckoutPRRefusesABranchAPeerHolds(t *testing.T) {
 	m.viewMode = ViewModeRepoDetail
 	m.focusedPanel = panelBranches
 	m.branches = []models.BranchInfo{{Name: "feature/side"}}
-	m.prs = []models.PRInfo{{Number: 3, Title: "Peer work", State: "OPEN", HeadRef: "feature/side"}}
+	m.prs = []forge.PullRequest{{Number: 3, Title: "Peer work", State: "OPEN", HeadRef: "feature/side"}}
 	m.worktrees = []models.WorktreeInfo{{Path: "/dev/app-a-wt", Branch: "feature/side"}}
 
 	_, cmd := m.startCheckoutPR()
@@ -103,7 +104,7 @@ func TestCheckoutPRConfirmsBeforeSwitching(t *testing.T) {
 	m.viewMode = ViewModeRepoDetail
 	m.focusedPanel = panelBranches
 	m.branches = []models.BranchInfo{{Name: "feature/fresh"}}
-	m.prs = []models.PRInfo{{Number: 4, Title: "New work", State: "OPEN", HeadRef: "feature/fresh"}}
+	m.prs = []forge.PullRequest{{Number: 4, Title: "New work", State: "OPEN", HeadRef: "feature/fresh"}}
 
 	next, _ := m.startCheckoutPR()
 	gated, ok := next.(Model)

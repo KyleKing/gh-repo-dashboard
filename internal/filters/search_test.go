@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -92,8 +93,8 @@ func TestSearchReposPRScope(t *testing.T) {
 	t.Parallel()
 	paths := []string{"/repo-a", "/repo-b", "/repo-c"}
 	summaries := map[string]models.RepoSummary{
-		"/repo-a": {PRInfo: &models.PRInfo{Number: 123, Title: "Bump the deps"}},
-		"/repo-b": {PRInfo: &models.PRInfo{Number: 456, Title: "Fix the thing"}},
+		"/repo-a": {PRInfo: &forge.PullRequest{Number: 123, Title: "Bump the deps"}},
+		"/repo-b": {PRInfo: &forge.PullRequest{Number: 456, Title: "Fix the thing"}},
 		"/repo-c": {},
 	}
 

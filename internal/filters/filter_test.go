@@ -3,6 +3,7 @@ package filters_test
 import (
 	"testing"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -79,7 +80,7 @@ func TestFilterReposHasPR(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, PRInfo: &models.PRInfo{Number: 123}},
+		testRepo1Path: {Path: testRepo1Path, PRInfo: &forge.PullRequest{Number: 123}},
 		"/repo2":      {Path: "/repo2"},
 	}
 
@@ -211,8 +212,8 @@ func TestFilterReposMultiWithPRAndDirty(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2", "/repo3"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, Staged: 2, PRInfo: &models.PRInfo{Number: 123}},
-		"/repo2":      {Path: "/repo2", PRInfo: &models.PRInfo{Number: 456}},
+		testRepo1Path: {Path: testRepo1Path, Staged: 2, PRInfo: &forge.PullRequest{Number: 123}},
+		"/repo2":      {Path: "/repo2", PRInfo: &forge.PullRequest{Number: 456}},
 		"/repo3":      {Path: "/repo3", Staged: 1},
 	}
 
@@ -256,9 +257,9 @@ func TestFilterReposMultiMixedInverted(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2", "/repo3", "/repo4"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {Path: testRepo1Path, Ahead: 1, PRInfo: &models.PRInfo{Number: 123}},
+		testRepo1Path: {Path: testRepo1Path, Ahead: 1, PRInfo: &forge.PullRequest{Number: 123}},
 		"/repo2":      {Path: "/repo2", Ahead: 1},
-		"/repo3":      {Path: "/repo3", PRInfo: &models.PRInfo{Number: 456}},
+		"/repo3":      {Path: "/repo3", PRInfo: &forge.PullRequest{Number: 456}},
 		"/repo4":      {Path: "/repo4"},
 	}
 

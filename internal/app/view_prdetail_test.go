@@ -8,6 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
@@ -20,18 +21,18 @@ func TestRenderPRDetailShowsChecksAndLatestComment(t *testing.T) {
 	m.width, m.height = 120, 40
 	m.selectedRepo = testRepo1Path
 	m.summaries[testRepo1Path] = models.RepoSummary{Path: testRepo1Path}
-	m.prDetail = models.PRDetail{
-		PRInfo: models.PRInfo{Number: 42, Title: "Add login", State: "OPEN", HeadRef: featureBranchName},
-		Author: "alice",
-		Body:   "Adds the login flow",
-		CheckDetails: []models.CheckDetail{
+	m.prDetail = forge.PRDetail{
+		PullRequest: forge.PullRequest{Number: 42, Title: "Add login", State: "OPEN", HeadRef: featureBranchName},
+		Author:      "alice",
+		Body:        "Adds the login flow",
+		CheckDetails: []forge.CheckDetail{
 			{
 				Name: "ci", Workflow: "CI", Status: "COMPLETED", Conclusion: "SUCCESS",
 				StartedAt: started, CompletedAt: started.Add(90 * time.Second),
 			},
 			{Name: "lint", Status: "IN_PROGRESS"},
 		},
-		LatestComment: &models.PRComment{Author: "dave", Body: "looks good now", CreatedAt: started},
+		LatestComment: &forge.PRComment{Author: "dave", Body: "looks good now", CreatedAt: started},
 	}
 
 	rendered := m.renderPRDetail()
@@ -85,9 +86,9 @@ func TestRenderPRDetailWithoutChecksOrComments(t *testing.T) {
 	m.width, m.height = 120, 40
 	m.selectedRepo = testRepo1Path
 	m.summaries[testRepo1Path] = models.RepoSummary{Path: testRepo1Path}
-	m.prDetail = models.PRDetail{
-		PRInfo: models.PRInfo{Number: 42, Title: "Add login", State: "OPEN"},
-		Author: "alice",
+	m.prDetail = forge.PRDetail{
+		PullRequest: forge.PullRequest{Number: 42, Title: "Add login", State: "OPEN"},
+		Author:      "alice",
 	}
 
 	rendered := m.renderPRDetail()

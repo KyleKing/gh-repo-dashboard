@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/copier"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
@@ -31,32 +32,32 @@ type Output struct {
 // Repo is the stable JSON shape of one repo summary, mirroring the columns of
 // the TUI's repo list view.
 type Repo struct {
-	Path          string            `json:"path"`
-	Name          string            `json:"name"`
-	VCS           string            `json:"vcs"`
-	Branch        string            `json:"branch"`
-	Upstream      string            `json:"upstream,omitempty"`
-	Ahead         int               `json:"ahead"`
-	Behind        int               `json:"behind"`
-	Staged        int               `json:"staged"`
-	Unstaged      int               `json:"unstaged"`
-	Untracked     int               `json:"untracked"`
-	Conflicted    int               `json:"conflicted"`
-	Dirty         bool              `json:"dirty"`
-	Status        string            `json:"status"`
-	StashCount    int               `json:"stash_count"`
-	WorktreeCount int               `json:"worktree_count"`
-	NotesFiles    []models.NoteFile `json:"notes_files,omitempty"`
-	LastModified  *time.Time        `json:"last_modified,omitempty"`
-	PR            *models.PRInfo    `json:"pr,omitempty"`
-	PRCount       *int              `json:"pr_count,omitempty"`
+	Path          string             `json:"path"`
+	Name          string             `json:"name"`
+	VCS           string             `json:"vcs"`
+	Branch        string             `json:"branch"`
+	Upstream      string             `json:"upstream,omitempty"`
+	Ahead         int                `json:"ahead"`
+	Behind        int                `json:"behind"`
+	Staged        int                `json:"staged"`
+	Unstaged      int                `json:"unstaged"`
+	Untracked     int                `json:"untracked"`
+	Conflicted    int                `json:"conflicted"`
+	Dirty         bool               `json:"dirty"`
+	Status        string             `json:"status"`
+	StashCount    int                `json:"stash_count"`
+	WorktreeCount int                `json:"worktree_count"`
+	NotesFiles    []models.NoteFile  `json:"notes_files,omitempty"`
+	LastModified  *time.Time         `json:"last_modified,omitempty"`
+	PR            *forge.PullRequest `json:"pr,omitempty"`
+	PRCount       *int               `json:"pr_count,omitempty"`
 
-	TemplateSrc      string                  `json:"template_src,omitempty"`
-	TemplateVersion  string                  `json:"template_version,omitempty"`
-	TemplateLatest   string                  `json:"template_latest,omitempty"`
-	TemplateDrift    bool                    `json:"template_drift"`
-	CI               *models.DefaultBranchCI `json:"ci,omitempty"`
-	DependabotAlerts map[string]int          `json:"dependabot_alerts,omitempty"`
+	TemplateSrc      string                 `json:"template_src,omitempty"`
+	TemplateVersion  string                 `json:"template_version,omitempty"`
+	TemplateLatest   string                 `json:"template_latest,omitempty"`
+	TemplateDrift    bool                   `json:"template_drift"`
+	CI               *forge.DefaultBranchCI `json:"ci,omitempty"`
+	DependabotAlerts map[string]int         `json:"dependabot_alerts,omitempty"`
 
 	Error string `json:"error,omitempty"`
 }
@@ -64,9 +65,9 @@ type Repo struct {
 // githubClient holds the gh-backed fetchers used only when fresh retrieval is
 // requested, injectable so tests can assert on cache-only gating.
 type githubClient struct {
-	prForBranch func(ctx context.Context, repoPath, remoteID, branch, upstream string) (*models.PRInfo, error)
-	prsForRepo  func(ctx context.Context, repoPath, remoteID, upstream string) ([]models.PRInfo, error)
-	defaultCI   func(ctx context.Context, repoPath, remoteID string) (*models.DefaultBranchCI, error)
+	prForBranch func(ctx context.Context, repoPath, remoteID, branch, upstream string) (*forge.PullRequest, error)
+	prsForRepo  func(ctx context.Context, repoPath, remoteID, upstream string) ([]forge.PullRequest, error)
+	defaultCI   func(ctx context.Context, repoPath, remoteID string) (*forge.DefaultBranchCI, error)
 	alerts      func(ctx context.Context, repoPath, remoteRepo string) map[string]int
 }
 
@@ -195,7 +196,7 @@ func loadRepo(
 // when fresh is set. A miss (or fetch failure) yields nil.
 func lookupCI(
 	ctx context.Context, client githubClient, repoPath, remoteID string, fresh bool,
-) *models.DefaultBranchCI {
+) *forge.DefaultBranchCI {
 	if cached, ok := github.CachedDefaultBranchCI(ctx, repoPath, remoteID); ok {
 		return cached
 	}
@@ -211,7 +212,7 @@ func lookupCI(
 	return ci
 }
 
-func newRepo(summary *models.RepoSummary, worktreeCount int, pr *models.PRInfo, prCount *int) Repo {
+func newRepo(summary *models.RepoSummary, worktreeCount int, pr *forge.PullRequest, prCount *int) Repo {
 	repo := Repo{
 		Path:          summary.Path,
 		Name:          summary.Name(),
@@ -252,7 +253,7 @@ func newRepo(summary *models.RepoSummary, worktreeCount int, pr *models.PRInfo, 
 // only when fresh is set. A miss (or fetch failure) yields nil.
 func lookupPR(
 	ctx context.Context, client githubClient, repoPath, remoteID, branch, upstream string, fresh bool,
-) *models.PRInfo {
+) *forge.PullRequest {
 	if upstream == "" {
 		return nil
 	}

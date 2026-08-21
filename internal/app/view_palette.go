@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
@@ -106,7 +107,7 @@ func (m Model) findPRs(q findQuery, fleet bool) []findResult {
 // cachedPRs collects a repo's known pull requests without fetching: the list
 // the PR cache holds, the fleet map's copy while ":prs" is open, and the
 // summary's own current-branch PR.
-func (m Model) cachedPRs(path string) []models.PRInfo {
+func (m Model) cachedPRs(path string) []forge.PullRequest {
 	if path == m.selectedRepo && len(m.prs) > 0 {
 		return m.prs
 	}
@@ -119,7 +120,7 @@ func (m Model) cachedPRs(path string) []models.PRInfo {
 		return prs
 	}
 	if summary.PRInfo != nil {
-		return []models.PRInfo{*summary.PRInfo}
+		return []forge.PullRequest{*summary.PRInfo}
 	}
 
 	return nil

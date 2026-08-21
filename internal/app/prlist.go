@@ -8,6 +8,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -105,12 +106,12 @@ func (m Model) handlePRSearchLoaded(msg PRSearchLoadedMsg) (tea.Model, tea.Cmd) 
 // the local ":filter" predicate, if one is set. Every read of the PRs tab's
 // rows goes through this rather than m.prSearch directly, so the cursor and
 // Enter always resolve against what's actually on screen.
-func (m Model) visiblePRs() []models.PRInfo {
+func (m Model) visiblePRs() []forge.PullRequest {
 	if m.prPredicate == nil {
 		return m.prSearch
 	}
 
-	visible := make([]models.PRInfo, 0, len(m.prSearch))
+	visible := make([]forge.PullRequest, 0, len(m.prSearch))
 
 	for i := range m.prSearch {
 		if m.prPredicate(m.prSearch[i]) {
@@ -122,10 +123,10 @@ func (m Model) visiblePRs() []models.PRInfo {
 }
 
 // selectedSearchPR is the pull request under the PRs tab cursor.
-func (m Model) selectedSearchPR() (models.PRInfo, bool) {
+func (m Model) selectedSearchPR() (forge.PullRequest, bool) {
 	visible := m.visiblePRs()
 	if m.prSearchCursor < 0 || m.prSearchCursor >= len(visible) {
-		return models.PRInfo{}, false
+		return forge.PullRequest{}, false
 	}
 
 	return visible[m.prSearchCursor], true
@@ -135,7 +136,7 @@ func (m Model) selectedSearchPR() (models.PRInfo, bool) {
 // for this repo carries no repository name and is this repo by definition; a
 // fleet row names one, and matching it against the scanned remotes is what
 // makes a local checkout possible at all.
-func (m Model) searchPRRepoPath(pr models.PRInfo) (string, bool) {
+func (m Model) searchPRRepoPath(pr forge.PullRequest) (string, bool) {
 	if pr.Repo == "" {
 		return m.prSearchRepo(), m.prSearchRepo() != ""
 	}
@@ -201,21 +202,21 @@ func (m Model) handlePRPreviewTick(msg PRPreviewTickMsg) (tea.Model, tea.Cmd) {
 // previewablePR is the row under the cursor when it still needs reading: the
 // region is open, the row has a URL to read by, and neither a cached answer
 // nor an in-flight request already covers it.
-func (m Model) previewablePR() (models.PRInfo, bool) {
+func (m Model) previewablePR() (forge.PullRequest, bool) {
 	if !m.prPreviewOpen {
-		return models.PRInfo{}, false
+		return forge.PullRequest{}, false
 	}
 
 	pr, ok := m.selectedSearchPR()
 	if !ok || pr.URL == "" {
-		return models.PRInfo{}, false
+		return forge.PullRequest{}, false
 	}
 
 	if _, cached := m.prPreview[pr.URL]; cached {
-		return models.PRInfo{}, false
+		return forge.PullRequest{}, false
 	}
 	if m.prPreviewRequested[pr.URL] {
-		return models.PRInfo{}, false
+		return forge.PullRequest{}, false
 	}
 
 	return pr, true
@@ -258,7 +259,7 @@ func (m Model) openSearchPRDetail() (tea.Model, tea.Cmd) {
 
 	m.selectedRepo = repo
 	m.selectedPR = pr
-	m.prDetail = models.PRDetail{PRInfo: pr}
+	m.prDetail = forge.PRDetail{PullRequest: pr}
 	m.prDetailScroll = 0
 	m.prListReturn = ViewModePRList
 	m.viewMode = ViewModePRDetail

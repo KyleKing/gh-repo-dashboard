@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
@@ -57,7 +57,7 @@ func MergedPRHeadsCacheKey(repoPath, remoteID string) string {
 
 // CachedPRForBranch returns the cached pull request for branch, if any, without
 // invoking gh, reading the remote's cache file when memory misses.
-func CachedPRForBranch(repoPath, remoteID, branch, upstream string) (*models.PRInfo, bool) {
+func CachedPRForBranch(repoPath, remoteID, branch, upstream string) (*forge.PullRequest, bool) {
 	key := PRCacheKey(repoPath, remoteID, upstream, branch)
 
 	return cache.Persisted(cache.PRCache, remoteID, key, vcs.Stamp(repoPath))
@@ -65,14 +65,14 @@ func CachedPRForBranch(repoPath, remoteID, branch, upstream string) (*models.PRI
 
 // CachedPRs returns the cached open pull request list for the repo without
 // invoking gh, reading the remote's cache file when memory misses.
-func CachedPRs(repoPath, remoteID, upstream string) ([]models.PRInfo, bool) {
+func CachedPRs(repoPath, remoteID, upstream string) ([]forge.PullRequest, bool) {
 	key := PRListCacheKey(repoPath, remoteID, upstream)
 
 	return cache.Persisted(cache.PRListCache, remoteID, key, vcs.Stamp(repoPath))
 }
 
 // GetPRForBranch returns the pull request associated with branch, if any, using the cache when fresh.
-func GetPRForBranch(ctx context.Context, repoPath, remoteID, branch, upstream string) (*models.PRInfo, error) {
+func GetPRForBranch(ctx context.Context, repoPath, remoteID, branch, upstream string) (*forge.PullRequest, error) {
 	cacheKey := PRCacheKey(repoPath, remoteID, upstream, branch)
 	if cached, ok := CachedPRForBranch(repoPath, remoteID, branch, upstream); ok {
 		return cached, nil
@@ -93,7 +93,7 @@ func GetPRForBranch(ctx context.Context, repoPath, remoteID, branch, upstream st
 
 	checks := parseChecks(resp.StatusCheckRollup)
 
-	pr := &models.PRInfo{
+	pr := &forge.PullRequest{
 		Number:    resp.Number,
 		Title:     resp.Title,
 		State:     resp.State,
@@ -116,8 +116,8 @@ const (
 	checkStateError   = "error"
 )
 
-func parseChecks(checks []statusCheck) models.ChecksStatus {
-	var status models.ChecksStatus
+func parseChecks(checks []statusCheck) forge.ChecksStatus {
+	var status forge.ChecksStatus
 	status.Total = len(checks)
 
 	for _, c := range checks {
@@ -166,7 +166,7 @@ type detailedCheck struct {
 
 // latestComment returns the most recently created comment, or nil when the
 // pull request has none.
-func latestComment(comments []prComment) *models.PRComment {
+func latestComment(comments []prComment) *forge.PRComment {
 	if len(comments) == 0 {
 		return nil
 	}
@@ -180,11 +180,11 @@ func latestComment(comments []prComment) *models.PRComment {
 		}
 	}
 
-	return &models.PRComment{Author: latest.Author.Login, Body: latest.Body, CreatedAt: latestAt}
+	return &forge.PRComment{Author: latest.Author.Login, Body: latest.Body, CreatedAt: latestAt}
 }
 
-func parseCheckDetails(checks []detailedCheck) []models.CheckDetail {
-	details := make([]models.CheckDetail, 0, len(checks))
+func parseCheckDetails(checks []detailedCheck) []forge.CheckDetail {
+	details := make([]forge.CheckDetail, 0, len(checks))
 	for _, c := range checks {
 		// Non-workflow checks (commit statuses) report `state` instead of
 		// `status`/`conclusion`, and carry no timings.
@@ -193,7 +193,7 @@ func parseCheckDetails(checks []detailedCheck) []models.CheckDetail {
 			status, conclusion = "COMPLETED", c.State
 		}
 
-		details = append(details, models.CheckDetail{
+		details = append(details, forge.CheckDetail{
 			Name:        c.Name,
 			Workflow:    c.WorkflowName,
 			Status:      status,
@@ -218,7 +218,7 @@ func parseTime(value string) time.Time {
 }
 
 // GetPRDetail returns the full detail for a single pull request, using the cache when fresh.
-func GetPRDetail(ctx context.Context, repoPath, remoteID string, prNumber int) (*models.PRDetail, error) {
+func GetPRDetail(ctx context.Context, repoPath, remoteID string, prNumber int) (*forge.PRDetail, error) {
 	cacheKey := PRDetailCacheKey(repoPath, remoteID, prNumber)
 	if cached, ok := cache.PRDetailCache.Get(cacheKey, vcs.Stamp(repoPath)); ok {
 		return cached, nil
@@ -281,8 +281,8 @@ func GetPRDetail(ctx context.Context, repoPath, remoteID string, prNumber int) (
 		reviewers = append(reviewers, r.Login)
 	}
 
-	detail := &models.PRDetail{
-		PRInfo: models.PRInfo{
+	detail := &forge.PRDetail{
+		PullRequest: forge.PullRequest{
 			Number:         resp.Number,
 			Title:          resp.Title,
 			State:          resp.State,
@@ -332,9 +332,9 @@ const (
 // repo whose pull requests all belong to a bot from spending it on the operator
 // (who has none there), and keeps the operator's older work from falling off
 // the recent list on a busy repo. Either page failing still returns the other.
-func GetPRsForRepo(ctx context.Context, repoPath, remoteID, upstream string) ([]models.PRInfo, error) {
+func GetPRsForRepo(ctx context.Context, repoPath, remoteID, upstream string) ([]forge.PullRequest, error) {
 	if upstream == "" {
-		return []models.PRInfo{}, nil
+		return []forge.PullRequest{}, nil
 	}
 
 	cacheKey := PRListCacheKey(repoPath, remoteID, upstream)
@@ -351,7 +351,7 @@ func GetPRsForRepo(ctx context.Context, repoPath, remoteID, upstream string) ([]
 		// Nothing is cached on failure: an empty list would otherwise read as
 		// "this repo has no pull requests" for the whole cache window, and the
 		// panel would be hidden on the strength of a timeout.
-		return []models.PRInfo{}, othersErr
+		return []forge.PullRequest{}, othersErr
 	}
 
 	result := mergePRPages(others, mine)
@@ -362,10 +362,10 @@ func GetPRsForRepo(ctx context.Context, repoPath, remoteID, upstream string) ([]
 
 // mergePRPages joins the pages newest-first, dropping the pull requests a
 // repo's pages both name.
-func mergePRPages(pages ...[]models.PRInfo) []models.PRInfo {
+func mergePRPages(pages ...[]forge.PullRequest) []forge.PullRequest {
 	seen := make(map[int]bool)
 
-	merged := make([]models.PRInfo, 0)
+	merged := make([]forge.PullRequest, 0)
 	for _, page := range pages {
 		for i := range page {
 			if seen[page[i].Number] {
@@ -376,12 +376,12 @@ func mergePRPages(pages ...[]models.PRInfo) []models.PRInfo {
 		}
 	}
 
-	slices.SortFunc(merged, func(a, b models.PRInfo) int { return b.Number - a.Number })
+	slices.SortFunc(merged, func(a, b forge.PullRequest) int { return b.Number - a.Number })
 
 	return merged
 }
 
-func prListPage(ctx context.Context, repoPath string, env []string, filter ...string) ([]models.PRInfo, error) {
+func prListPage(ctx context.Context, repoPath string, env []string, filter ...string) ([]forge.PullRequest, error) {
 	args := append([]string{"pr", "list", "--json", prListFields, "--limit", prListLimit}, filter...)
 
 	out, err := runGH(ctx, repoPath, env, args...)
@@ -417,7 +417,7 @@ func prListPage(ctx context.Context, repoPath string, env []string, filter ...st
 		return nil, fmt.Errorf("parsing gh pr list output: %w", err)
 	}
 
-	result := make([]models.PRInfo, 0, len(prList))
+	result := make([]forge.PullRequest, 0, len(prList))
 	for i := range prList {
 		pr := &prList[i]
 
@@ -426,7 +426,7 @@ func prListPage(ctx context.Context, repoPath string, env []string, filter ...st
 			reviewers = append(reviewers, r.Login)
 		}
 
-		result = append(result, models.PRInfo{
+		result = append(result, forge.PullRequest{
 			Number:         pr.Number,
 			Title:          pr.Title,
 			State:          pr.State,
@@ -456,18 +456,18 @@ type prReview struct {
 
 // latestActivity returns the most recent comment or review across both lists,
 // or nil when the pull request has neither.
-func latestActivity(comments []prComment, reviews []prReview) *models.PRActivity {
-	var latest models.PRActivity
+func latestActivity(comments []prComment, reviews []prReview) *forge.PRActivity {
+	var latest forge.PRActivity
 
 	for _, c := range comments {
 		if at := parseTime(c.CreatedAt); at.After(latest.At) {
-			latest = models.PRActivity{Author: c.Author.Login, At: at}
+			latest = forge.PRActivity{Author: c.Author.Login, At: at}
 		}
 	}
 
 	for _, r := range reviews {
 		if at := parseTime(r.SubmittedAt); at.After(latest.At) {
-			latest = models.PRActivity{Author: r.Author.Login, At: at}
+			latest = forge.PRActivity{Author: r.Author.Login, At: at}
 		}
 	}
 

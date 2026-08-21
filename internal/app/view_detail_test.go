@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -45,14 +46,14 @@ func TestFormatBranchPRCell(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
-		pr       *models.PRInfo
+		pr       *forge.PullRequest
 		expected string
 	}{
 		{"no pull request", nil, emDash},
-		{"draft", &models.PRInfo{Number: 7, IsDraft: true}, "#7 draft"},
-		{"approved", &models.PRInfo{Number: 7, ReviewDecision: "APPROVED"}, "#7 ✓"},
-		{"changes requested", &models.PRInfo{Number: 7, ReviewDecision: "CHANGES_REQUESTED"}, "#7 ✗"},
-		{"awaiting review", &models.PRInfo{Number: 7}, "#7"},
+		{"draft", &forge.PullRequest{Number: 7, IsDraft: true}, "#7 draft"},
+		{"approved", &forge.PullRequest{Number: 7, ReviewDecision: "APPROVED"}, "#7 ✓"},
+		{"changes requested", &forge.PullRequest{Number: 7, ReviewDecision: "CHANGES_REQUESTED"}, "#7 ✗"},
+		{"awaiting review", &forge.PullRequest{Number: 7}, "#7"},
 	}
 
 	for _, tt := range tests {
@@ -69,14 +70,14 @@ func TestFormatChecksCell(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
-		pr       *models.PRInfo
+		pr       *forge.PullRequest
 		expected string
 	}{
 		{"no pull request", nil, emDash},
-		{"no checks", &models.PRInfo{Number: 1}, emDash},
-		{"passing", &models.PRInfo{Checks: models.ChecksStatus{Total: 3, Passing: 3}}, "passing 3/3"},
-		{"failing", &models.PRInfo{Checks: models.ChecksStatus{Total: 3, Passing: 2, Failing: 1}}, "failing 2/3"},
-		{"pending", &models.PRInfo{Checks: models.ChecksStatus{Total: 2, Passing: 1, Pending: 1}}, "pending 1/2"},
+		{"no checks", &forge.PullRequest{Number: 1}, emDash},
+		{"passing", &forge.PullRequest{Checks: forge.ChecksStatus{Total: 3, Passing: 3}}, "passing 3/3"},
+		{"failing", &forge.PullRequest{Checks: forge.ChecksStatus{Total: 3, Passing: 2, Failing: 1}}, "failing 2/3"},
+		{"pending", &forge.PullRequest{Checks: forge.ChecksStatus{Total: 2, Passing: 1, Pending: 1}}, "pending 1/2"},
 	}
 
 	for _, tt := range tests {
@@ -92,7 +93,7 @@ func TestFormatChecksCell(t *testing.T) {
 func TestPRsByHeadRef(t *testing.T) {
 	t.Parallel()
 
-	prs := []models.PRInfo{{Number: 1, HeadRef: "feature"}, {Number: 2, HeadRef: "fix"}}
+	prs := []forge.PullRequest{{Number: 1, HeadRef: "feature"}, {Number: 2, HeadRef: "fix"}}
 	byRef := prsByHeadRef(prs)
 
 	if pr, ok := byRef["fix"]; !ok || pr.Number != 2 {
@@ -119,8 +120,8 @@ func TestRenderBranchListShowsParallelCheckout(t *testing.T) {
 		{Name: mainBranchName, IsCurrent: true},
 		{Name: featureBranchName},
 	}
-	m.prs = []models.PRInfo{
-		{Number: 42, HeadRef: featureBranchName, Checks: models.ChecksStatus{Total: 2, Passing: 2}},
+	m.prs = []forge.PullRequest{
+		{Number: 42, HeadRef: featureBranchName, Checks: forge.ChecksStatus{Total: 2, Passing: 2}},
 	}
 
 	rendered := renderPanel(m, panelBranches)

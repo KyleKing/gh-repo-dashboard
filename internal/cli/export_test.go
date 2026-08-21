@@ -3,7 +3,7 @@ package cli
 import (
 	"context"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/aragonite/forge"
 )
 
 // GitHubClient exposes the unexported githubClient type to black-box tests.
@@ -11,15 +11,15 @@ type GitHubClient = githubClient
 
 // NewGitHubClient builds a githubClient from injected fetchers for black-box tests.
 func NewGitHubClient(
-	prForBranch func(ctx context.Context, repoPath, remoteID, branch, upstream string) (*models.PRInfo, error),
-	prsForRepo func(ctx context.Context, repoPath, remoteID, upstream string) ([]models.PRInfo, error),
+	prForBranch func(ctx context.Context, repoPath, remoteID, branch, upstream string) (*forge.PullRequest, error),
+	prsForRepo func(ctx context.Context, repoPath, remoteID, upstream string) ([]forge.PullRequest, error),
 ) githubClient {
 	return githubClient{prForBranch: prForBranch, prsForRepo: prsForRepo}
 }
 
 // NewGitHubClientWithCI builds a githubClient that also answers CI lookups.
 func NewGitHubClientWithCI(
-	defaultCI func(ctx context.Context, repoPath, remoteID string) (*models.DefaultBranchCI, error),
+	defaultCI func(ctx context.Context, repoPath, remoteID string) (*forge.DefaultBranchCI, error),
 ) githubClient {
 	return githubClient{defaultCI: defaultCI}
 }

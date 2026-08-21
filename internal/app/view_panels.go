@@ -7,6 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
@@ -737,7 +738,7 @@ func (m Model) repoDetailLines(width int) []string {
 	}
 
 	if m.newestFile != "" {
-		lines = append(lines, detailField("newest edit", m.newestFile+" "+models.RelativeTime(m.newestFileTime)))
+		lines = append(lines, detailField("newest edit", m.newestFile+" "+forge.RelativeTime(m.newestFileTime)))
 	}
 
 	if defaultBranch := findDefaultBranch(m.branches); defaultBranch != "" && defaultBranch != summary.Branch {

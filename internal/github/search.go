@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
@@ -32,7 +32,7 @@ func PRSearchCacheKey(scope, query string) string {
 
 // SearchPRsInRepo runs a saved view's query against one repository, returning
 // the same shape the repo's own list does, checks included.
-func SearchPRsInRepo(ctx context.Context, repoPath, remoteID, query string) ([]models.PRInfo, error) {
+func SearchPRsInRepo(ctx context.Context, repoPath, remoteID, query string) ([]forge.PullRequest, error) {
 	key := PRSearchCacheKey(cache.RemoteScope(repoPath, remoteID), query)
 	if cached, ok := cache.PRSearchCache.Get(key, vcs.Stamp(repoPath)); ok {
 		return cached, nil
@@ -54,7 +54,7 @@ func SearchPRsInRepo(ctx context.Context, repoPath, remoteID, query string) ([]m
 // search reaches, which is what makes a view like review-requested:@me worth
 // having. Rows carry their repository and lack the per-check detail a
 // repo-scoped read has, since the search index does not report it.
-func SearchPRsEverywhere(ctx context.Context, repoPath, query string) ([]models.PRInfo, error) {
+func SearchPRsEverywhere(ctx context.Context, repoPath, query string) ([]forge.PullRequest, error) {
 	key := PRSearchCacheKey("fleet", query)
 	if cached, ok := cache.PRSearchCache.Get(key, cache.NoStamp); ok {
 		return cached, nil
@@ -78,7 +78,7 @@ func SearchPRsEverywhere(ctx context.Context, repoPath, query string) ([]models.
 	return found, nil
 }
 
-func parseSearchResults(out []byte) ([]models.PRInfo, error) {
+func parseSearchResults(out []byte) ([]forge.PullRequest, error) {
 	//nolint:tagliatelle // gh speaks camelCase, and these tags name its fields
 	var results []struct {
 		Number     int    `json:"number"`
@@ -99,10 +99,10 @@ func parseSearchResults(out []byte) ([]models.PRInfo, error) {
 		return nil, fmt.Errorf("parsing gh search prs output: %w", err)
 	}
 
-	prs := make([]models.PRInfo, 0, len(results))
+	prs := make([]forge.PullRequest, 0, len(results))
 	for i := range results {
 		r := &results[i]
-		prs = append(prs, models.PRInfo{
+		prs = append(prs, forge.PullRequest{
 			Number:    r.Number,
 			Title:     r.Title,
 			URL:       r.URL,

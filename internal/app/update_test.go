@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -176,7 +177,7 @@ func TestPRLoadedMsg(t *testing.T) {
 	m := New(nil, 1)
 	m.summaries[testRepo1Path] = models.RepoSummary{Path: testRepo1Path}
 
-	prInfo := &models.PRInfo{Number: 7}
+	prInfo := &forge.PullRequest{Number: 7}
 	updatedModel, cmd := m.Update(PRLoadedMsg{Path: testRepo1Path, PRInfo: prInfo})
 	m = mustModel(t, updatedModel)
 
@@ -199,7 +200,7 @@ func TestWorkflowLoadedMsg(t *testing.T) {
 	m := New(nil, 1)
 	m.summaries[testRepo1Path] = models.RepoSummary{Path: testRepo1Path}
 
-	workflow := &models.WorkflowSummary{}
+	workflow := &forge.WorkflowSummary{}
 	updatedModel, cmd := m.Update(WorkflowLoadedMsg{Path: testRepo1Path, Workflow: workflow})
 	m = mustModel(t, updatedModel)
 
@@ -307,14 +308,14 @@ func TestPRListLoadedMsg(t *testing.T) {
 	m := New(nil, 1)
 	m.selectedRepo = testRepo1Path
 
-	updatedModel, _ := m.Update(PRListLoadedMsg{Path: testRepo1Path, PRs: []models.PRInfo{{Number: 1}, {Number: 2}}})
+	updatedModel, _ := m.Update(PRListLoadedMsg{Path: testRepo1Path, PRs: []forge.PullRequest{{Number: 1}, {Number: 2}}})
 	m = mustModel(t, updatedModel)
 
 	if len(m.prs) != 2 {
 		t.Errorf("expected 2 PRs, got %d", len(m.prs))
 	}
 
-	updatedModel, _ = m.Update(PRListLoadedMsg{Path: "/other", PRs: []models.PRInfo{{Number: 9}}})
+	updatedModel, _ = m.Update(PRListLoadedMsg{Path: "/other", PRs: []forge.PullRequest{{Number: 9}}})
 	m = mustModel(t, updatedModel)
 
 	if len(m.prs) != 2 {
@@ -326,9 +327,9 @@ func TestPRDetailLoadedMsgSuccess(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.selectedRepo = testRepo1Path
-	m.selectedPR = models.PRInfo{Number: 42}
+	m.selectedPR = forge.PullRequest{Number: 42}
 
-	detail := models.PRDetail{PRInfo: models.PRInfo{Number: 42, Title: "Add feature"}}
+	detail := forge.PRDetail{PullRequest: forge.PullRequest{Number: 42, Title: "Add feature"}}
 	updatedModel, _ := m.Update(PRDetailLoadedMsg{Path: testRepo1Path, PRNumber: 42, Detail: detail})
 	m = mustModel(t, updatedModel)
 
@@ -341,8 +342,8 @@ func TestPRDetailLoadedMsgError(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.selectedRepo = testRepo1Path
-	m.selectedPR = models.PRInfo{Number: 42}
-	m.prDetail = models.PRDetail{PRInfo: models.PRInfo{Number: 42, Title: "Existing"}}
+	m.selectedPR = forge.PullRequest{Number: 42}
+	m.prDetail = forge.PRDetail{PullRequest: forge.PullRequest{Number: 42, Title: "Existing"}}
 
 	updatedModel, cmd := m.Update(PRDetailLoadedMsg{Path: testRepo1Path, PRNumber: 42, Error: errGHFailed})
 	m = mustModel(t, updatedModel)
@@ -374,9 +375,9 @@ func TestPRDetailLoadedMsgMismatch(t *testing.T) {
 			t.Parallel()
 			m := New(nil, 1)
 			m.selectedRepo = testRepo1Path
-			m.selectedPR = models.PRInfo{Number: 42}
+			m.selectedPR = forge.PullRequest{Number: 42}
 
-			detail := models.PRDetail{PRInfo: models.PRInfo{Number: tt.prNumber, Title: "stale"}}
+			detail := forge.PRDetail{PullRequest: forge.PullRequest{Number: tt.prNumber, Title: "stale"}}
 			updatedModel, cmd := m.Update(PRDetailLoadedMsg{Path: tt.path, PRNumber: tt.prNumber, Detail: detail})
 			m2 := mustModel(t, updatedModel)
 

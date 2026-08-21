@@ -4,6 +4,7 @@ package app
 import (
 	"testing"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -40,7 +41,7 @@ func relevantPeersFleet() Model {
 	m.prMap = map[string]PRMapLoadedMsg{
 		"/dev/one/app": {
 			Path: "/dev/one/app",
-			PRs: []models.PRInfo{
+			PRs: []forge.PullRequest{
 				{Number: 1, HeadRef: "feature-a"},
 				{Number: 2, HeadRef: "feature-b", HeadRepoOwner: "someone-else"},
 			},

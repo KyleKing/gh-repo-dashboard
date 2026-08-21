@@ -8,6 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -111,7 +112,7 @@ func TestPRListAlignsUnderWideGlyphs(t *testing.T) {
 
 	assertSameGeometry(t, func(glyph string) string {
 		m := New(nil, 1)
-		m.prs = []models.PRInfo{
+		m.prs = []forge.PullRequest{
 			{Number: 1, Title: glyph + " emoji title", State: "OPEN", HeadRef: "feature-1"},
 			{Number: 22, Title: "plain title", State: "OPEN", HeadRef: "feature-2"},
 			{Number: 333, Title: "draft " + glyph, State: "OPEN", IsDraft: true, HeadRef: "feature-3"},

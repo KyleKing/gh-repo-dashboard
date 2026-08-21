@@ -7,6 +7,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -91,9 +92,9 @@ func TestRefreshFromPRDetail(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
 	m.selectedRepo = testRepoPath
-	m.selectedPR = models.PRInfo{Number: 123}
-	m.prDetail = models.PRDetail{
-		PRInfo: models.PRInfo{Number: 123},
+	m.selectedPR = forge.PullRequest{Number: 123}
+	m.prDetail = forge.PRDetail{
+		PullRequest: forge.PullRequest{Number: 123},
 	}
 
 	msg := tea.KeyPressMsg{Code: 'r', Text: "r"}
@@ -185,7 +186,7 @@ func TestRefreshPreservesViewMode(t *testing.T) {
 			m.viewMode = tc.viewMode
 			m.selectedRepo = testRepoPath
 			m.selectedBranch = models.BranchInfo{Name: mainBranchName}
-			m.selectedPR = models.PRInfo{Number: 1}
+			m.selectedPR = forge.PullRequest{Number: 1}
 
 			m, _ = m.handleRefresh()
 
@@ -203,12 +204,12 @@ func TestRefreshClearsDownstreamFromRepoList(t *testing.T) {
 	m.branches = []models.BranchInfo{{Name: mainBranchName}}
 	m.stashes = []models.StashDetail{{Index: 0}}
 	m.worktrees = []models.WorktreeInfo{{Path: "/test"}}
-	m.prs = []models.PRInfo{{Number: 1}}
+	m.prs = []forge.PullRequest{{Number: 1}}
 	m.branchDetail = models.BranchDetail{
 		Branch: models.BranchInfo{Name: featureBranchName},
 	}
-	m.prDetail = models.PRDetail{
-		PRInfo: models.PRInfo{Number: 123},
+	m.prDetail = forge.PRDetail{
+		PullRequest: forge.PullRequest{Number: 123},
 	}
 
 	m, _ = m.handleRefresh()
@@ -240,12 +241,12 @@ func TestRefreshClearsDownstreamFromRepoDetail(t *testing.T) {
 	m.selectedRepo = testRepoPath
 	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
 	m.branches = []models.BranchInfo{{Name: mainBranchName}}
-	m.prs = []models.PRInfo{{Number: 1}}
+	m.prs = []forge.PullRequest{{Number: 1}}
 	m.branchDetail = models.BranchDetail{
 		Branch: models.BranchInfo{Name: featureBranchName},
 	}
-	m.prDetail = models.PRDetail{
-		PRInfo: models.PRInfo{Number: 123},
+	m.prDetail = forge.PRDetail{
+		PullRequest: forge.PullRequest{Number: 123},
 	}
 
 	m, _ = m.handleRefresh()
@@ -292,9 +293,9 @@ func TestRefreshClearsPRDetail(t *testing.T) {
 	m := New(nil, 1)
 	m.viewMode = ViewModePRDetail
 	m.selectedRepo = testRepoPath
-	m.selectedPR = models.PRInfo{Number: 123}
-	m.prDetail = models.PRDetail{
-		PRInfo: models.PRInfo{
+	m.selectedPR = forge.PullRequest{Number: 123}
+	m.prDetail = forge.PRDetail{
+		PullRequest: forge.PullRequest{
 			Number: 123,
 			Title:  "Test PR",
 		},

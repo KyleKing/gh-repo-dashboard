@@ -3,6 +3,7 @@ package app
 import (
 	"time"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -27,7 +28,7 @@ type RepoSummaryLoadedMsg struct {
 // PRLoadedMsg reports a loaded pull request summary or its load error.
 type PRLoadedMsg struct {
 	Path   string
-	PRInfo *models.PRInfo
+	PRInfo *forge.PullRequest
 	Error  error
 }
 
@@ -36,7 +37,7 @@ type PRLoadedMsg struct {
 type WorkflowLoadedMsg struct {
 	Path     string
 	Branch   string
-	Workflow *models.WorkflowSummary
+	Workflow *forge.WorkflowSummary
 	Error    error
 }
 
@@ -67,7 +68,7 @@ type DetailLoadedMsg struct {
 	Branches   []models.BranchInfo
 	Stashes    []models.StashDetail
 	Worktrees  []models.WorktreeInfo
-	PRs        []models.PRInfo
+	PRs        []forge.PullRequest
 	NotesFiles []models.NoteFileContent
 	// DeletableBranches names local, non-current branches whose tip matches a
 	// merged pull request's head OID (safe-to-delete detection). It's
@@ -146,7 +147,7 @@ type BatchCompleteMsg struct {
 // PRListLoadedMsg reports the loaded list of pull requests for a repo.
 type PRListLoadedMsg struct {
 	Path  string
-	PRs   []models.PRInfo
+	PRs   []forge.PullRequest
 	Error error
 }
 
@@ -186,7 +187,7 @@ type UncommittedDiffstatLoadedMsg struct {
 type PRDetailLoadedMsg struct {
 	Path     string
 	PRNumber int
-	Detail   models.PRDetail
+	Detail   forge.PRDetail
 	Error    error
 }
 
@@ -195,7 +196,7 @@ type PRDetailLoadedMsg struct {
 // the cursor is on now.
 type PRPreviewLoadedMsg struct {
 	Key     string
-	Preview models.PRPreview
+	Preview forge.PRPreview
 	Error   error
 }
 
@@ -213,7 +214,7 @@ type PRPreviewTickMsg struct {
 type PRSearchLoadedMsg struct {
 	Query string
 	Fleet bool
-	PRs   []models.PRInfo
+	PRs   []forge.PullRequest
 	Error error
 }
 

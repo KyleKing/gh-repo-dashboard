@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
@@ -74,7 +75,7 @@ type Model struct {
 	selectedPaths map[string]bool
 
 	prPredicateText string
-	prPredicate     filters.Predicate[models.PRInfo]
+	prPredicate     filters.Predicate[forge.PullRequest]
 
 	pendingOperator string
 	pendingObject   string
@@ -133,7 +134,7 @@ type Model struct {
 	// prQueryOverride is a session-scoped ":pr-query" replacement for the
 	// current view's own Search string; empty means use the view's Search.
 	prQueryOverride string
-	prSearch        []models.PRInfo
+	prSearch        []forge.PullRequest
 	prSearchCursor  int
 	prSearchLoading bool
 	prViewMenu      bool
@@ -146,7 +147,7 @@ type Model struct {
 	// prPreview caches each row's preview once read, keyed by the pull
 	// request's URL, so paging the cursor back over a row already open never
 	// re-fetches it.
-	prPreview map[string]models.PRPreview
+	prPreview map[string]forge.PRPreview
 	// prPreviewError records the rows whose preview read failed, so the region
 	// says so instead of showing a loading state that will never resolve.
 	prPreviewError map[string]string
@@ -177,7 +178,7 @@ type Model struct {
 	selectedBranch models.BranchInfo
 	branchDetail   models.BranchDetail
 
-	prs         []models.PRInfo
+	prs         []forge.PullRequest
 	prCount     map[string]int
 	branchCount map[string]int
 	// stashDiffstat caches each stash's diffstat by index, filled lazily as
@@ -192,8 +193,8 @@ type Model struct {
 	uncommittedDiffstat map[string]string
 	uncommittedDiff     map[string]string
 	uncommittedFullDiff bool
-	selectedPR          models.PRInfo
-	prDetail            models.PRDetail
+	selectedPR          forge.PullRequest
+	prDetail            forge.PRDetail
 	// prDetailScroll is how far the PR detail page has scrolled past its own
 	// top, since its content can run longer than the terminal.
 	prDetailScroll int
@@ -269,7 +270,7 @@ func New(scanPaths []string, maxDepth int) Model {
 		branchCount:        make(map[string]int),
 		prMap:              make(map[string]PRMapLoadedMsg),
 		peerBranches:       make(map[string][]models.BranchInfo),
-		prPreview:          make(map[string]models.PRPreview),
+		prPreview:          make(map[string]forge.PRPreview),
 		prPreviewError:     make(map[string]string),
 		prPreviewRequested: make(map[string]bool),
 		activeFilters:      activeFilters,
@@ -505,7 +506,7 @@ func (m *Model) SetPredicate(text string, pred filters.Predicate[models.RepoSumm
 }
 
 // SetPRPredicate sets the active PR-tab filter predicate and its source text.
-func (m *Model) SetPRPredicate(text string, pred filters.Predicate[models.PRInfo]) {
+func (m *Model) SetPRPredicate(text string, pred filters.Predicate[forge.PullRequest]) {
 	m.prPredicate = pred
 	m.prPredicateText = text
 }

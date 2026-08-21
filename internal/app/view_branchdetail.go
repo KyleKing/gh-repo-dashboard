@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
@@ -167,9 +168,9 @@ func (m Model) writeBranchPRSection(b *strings.Builder, s branchDetailStyles) {
 		wfStatus := wf.StatusDisplay()
 		wfStyle := styles.SubtitleStyle
 		switch wfStatus {
-		case models.StatusPassing:
+		case forge.StatusPassing:
 			wfStyle = styles.CleanStyle
-		case models.StatusFailing:
+		case forge.StatusFailing:
 			wfStyle = styles.ErrorStyle
 		}
 		wfDetail := fmt.Sprintf("%s (%d/%d passing)", wfStatus, wf.Passing, wf.Total)
@@ -177,13 +178,13 @@ func (m Model) writeBranchPRSection(b *strings.Builder, s branchDetailStyles) {
 	}
 }
 
-func writeBranchPRInfo(b *strings.Builder, s branchDetailStyles, pr *models.PRInfo) {
+func writeBranchPRInfo(b *strings.Builder, s branchDetailStyles, pr *forge.PullRequest) {
 	prStatus := pr.StatusDisplay()
 	prStyle := styles.PROpenStyle
 	switch prStatus {
-	case models.PRStatusMerged:
+	case forge.PRStatusMerged:
 		prStyle = styles.CleanStyle
-	case models.PRStatusClosed:
+	case forge.PRStatusClosed:
 		prStyle = styles.SubtitleStyle
 	}
 
@@ -193,9 +194,9 @@ func writeBranchPRInfo(b *strings.Builder, s branchDetailStyles, pr *models.PRIn
 	reviewStatus := pr.ReviewStatus()
 	reviewStyle := styles.SubtitleStyle
 	switch reviewStatus {
-	case models.ReviewApproved:
+	case forge.ReviewApproved:
 		reviewStyle = styles.CleanStyle
-	case models.ReviewChangesRequested:
+	case forge.ReviewChangesRequested:
 		reviewStyle = styles.ErrorStyle
 	}
 	s.writeInfoLine(b, "Review:", reviewStyle.Render(reviewStatus))
@@ -209,9 +210,9 @@ func writeBranchPRInfo(b *strings.Builder, s branchDetailStyles, pr *models.PRIn
 		checkStatus := pr.Checks.Summary()
 		checkStyle := styles.SubtitleStyle
 		switch checkStatus {
-		case models.StatusPassing:
+		case forge.StatusPassing:
 			checkStyle = styles.CleanStyle
-		case models.StatusFailing:
+		case forge.StatusFailing:
 			checkStyle = styles.ErrorStyle
 		}
 		checkDetail := fmt.Sprintf("%s (%d/%d passing)", checkStatus, pr.Checks.Passing, pr.Checks.Total)

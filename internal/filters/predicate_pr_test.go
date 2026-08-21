@@ -3,23 +3,23 @@ package filters_test
 import (
 	"testing"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 func TestParsePredicatePR(t *testing.T) {
 	t.Parallel()
-	draftFailing := models.PRInfo{IsDraft: true, Checks: models.ChecksStatus{Total: 3, Failing: 1}}
-	readyPassing := models.PRInfo{ReviewDecision: "APPROVED", Checks: models.ChecksStatus{Total: 3}}
-	changesRequested := models.PRInfo{ReviewDecision: "CHANGES_REQUESTED"}
-	unassigned := models.PRInfo{State: "OPEN"}
-	assigned := models.PRInfo{State: "OPEN", Reviewers: []string{"erin"}}
-	draftUnassigned := models.PRInfo{State: "OPEN", IsDraft: true}
+	draftFailing := forge.PullRequest{IsDraft: true, Checks: forge.ChecksStatus{Total: 3, Failing: 1}}
+	readyPassing := forge.PullRequest{ReviewDecision: "APPROVED", Checks: forge.ChecksStatus{Total: 3}}
+	changesRequested := forge.PullRequest{ReviewDecision: "CHANGES_REQUESTED"}
+	unassigned := forge.PullRequest{State: "OPEN"}
+	assigned := forge.PullRequest{State: "OPEN", Reviewers: []string{"erin"}}
+	draftUnassigned := forge.PullRequest{State: "OPEN", IsDraft: true}
 
 	tests := []struct {
 		name     string
 		expr     string
-		pr       models.PRInfo
+		pr       forge.PullRequest
 		expected bool
 	}{
 		{"draft match", "draft", draftFailing, true},

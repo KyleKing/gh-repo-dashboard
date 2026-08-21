@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -13,7 +14,7 @@ func TestCICellStates(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		workflow  *models.WorkflowSummary
+		workflow  *forge.WorkflowSummary
 		requested bool
 		settled   bool
 		want      string
@@ -21,18 +22,18 @@ func TestCICellStates(t *testing.T) {
 		{name: "not yet requested", want: emDash},
 		{name: "request in flight", requested: true, want: pendingGlyph},
 		{name: "failed fetch stops spinning", requested: true, settled: true, want: emDash},
-		{name: "no runs for the commit", workflow: &models.WorkflowSummary{}, requested: true, want: emDash},
+		{name: "no runs for the commit", workflow: &forge.WorkflowSummary{}, requested: true, want: emDash},
 		{
 			name:     "all passing",
-			workflow: &models.WorkflowSummary{Total: 3, Passing: 3}, requested: true, want: "✓",
+			workflow: &forge.WorkflowSummary{Total: 3, Passing: 3}, requested: true, want: "✓",
 		},
 		{
 			name:     "one failure names the count",
-			workflow: &models.WorkflowSummary{Total: 2, Passing: 1, Failing: 1}, requested: true, want: "✗ 1/2",
+			workflow: &forge.WorkflowSummary{Total: 2, Passing: 1, Failing: 1}, requested: true, want: "✗ 1/2",
 		},
 		{
 			name:     "still running",
-			workflow: &models.WorkflowSummary{Total: 2, Passing: 1, InProgress: 1}, requested: true, want: "…1",
+			workflow: &forge.WorkflowSummary{Total: 2, Passing: 1, InProgress: 1}, requested: true, want: "…1",
 		},
 	}
 
@@ -110,7 +111,7 @@ func TestOverviewNamesTheBranchItsCIRanOn(t *testing.T) {
 	m.ciRequested = map[string]bool{"/dev/app": true}
 	m.ciBranch = map[string]string{"/dev/app": "trunk"}
 	summary := models.RepoSummary{
-		Path: "/dev/app", WorkflowInfo: &models.WorkflowSummary{Total: 1, Passing: 1},
+		Path: "/dev/app", WorkflowInfo: &forge.WorkflowSummary{Total: 1, Passing: 1},
 	}
 
 	if got := m.overviewCI(summary); got != "✓ on trunk" {
@@ -123,7 +124,7 @@ func TestStatusPreviewShowsCIStatus(t *testing.T) {
 
 	m := focusedModel(140, 35)
 	summary := m.summaries["/dev/alpha"]
-	summary.WorkflowInfo = &models.WorkflowSummary{Total: 2, Passing: 1, Failing: 1}
+	summary.WorkflowInfo = &forge.WorkflowSummary{Total: 2, Passing: 1, Failing: 1}
 	m.summaries["/dev/alpha"] = summary
 
 	preview := plainText(strings.Join(m.repoDetailLines(contentWidth(m.width)), "\n"))

@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -51,7 +52,7 @@ func TestPrefetchOnDetailLoad(t *testing.T) {
 	m := New(nil, 1)
 	m.selectedRepo = testRepoPath
 
-	prs := []models.PRInfo{
+	prs := []forge.PullRequest{
 		{Number: 100, Title: "PR 100"},
 		{Number: 200, Title: "PR 200"},
 		{Number: 300, Title: "PR 300"},
@@ -82,15 +83,15 @@ func TestNavigateBetweenPRsInDetailView(t *testing.T) {
 	m.viewMode = ViewModePRDetail
 	m.selectedRepo = testRepoPath
 	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
-	m.prs = []models.PRInfo{
+	m.prs = []forge.PullRequest{
 		{Number: 1, Title: "First PR", State: "OPEN"},
 		{Number: 2, Title: "Second PR", State: "OPEN"},
 		{Number: 3, Title: "Third PR", State: "OPEN"},
 	}
 	m.selectedPR = m.prs[0]
-	m.prDetail = models.PRDetail{
-		PRInfo: m.prs[0],
-		Author: "user1",
+	m.prDetail = forge.PRDetail{
+		PullRequest: m.prs[0],
+		Author:      "user1",
 	}
 
 	// Press ] to go to the next PR
@@ -128,11 +129,11 @@ func TestNavigatePRDetailAtBoundaries(t *testing.T) {
 	m.viewMode = ViewModePRDetail
 	m.selectedRepo = testRepoPath
 	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
-	m.prs = []models.PRInfo{
+	m.prs = []forge.PullRequest{
 		{Number: 1, Title: "Only PR", State: "OPEN"},
 	}
 	m.selectedPR = m.prs[0]
-	m.prDetail = models.PRDetail{PRInfo: m.prs[0]}
+	m.prDetail = forge.PRDetail{PullRequest: m.prs[0]}
 
 	// Try to go to the next PR (should do nothing, there is only one)
 	updatedModel, cmd := m.Update(keyPress(']'))
@@ -168,11 +169,11 @@ func TestScrollPRDetailClampsAtBothEnds(t *testing.T) {
 	m.viewMode = ViewModePRDetail
 	m.selectedRepo = testRepoPath
 	m.summaries[testRepoPath] = models.RepoSummary{Path: testRepoPath}
-	m.selectedPR = models.PRInfo{Number: 1, Title: "Only PR", State: "OPEN"}
-	m.prDetail = models.PRDetail{
-		PRInfo: m.selectedPR,
-		Author: "user1",
-		Body:   strings.Repeat("a long description line\n", 50),
+	m.selectedPR = forge.PullRequest{Number: 1, Title: "Only PR", State: "OPEN"}
+	m.prDetail = forge.PRDetail{
+		PullRequest: m.selectedPR,
+		Author:      "user1",
+		Body:        strings.Repeat("a long description line\n", 50),
 	}
 
 	updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyUp})

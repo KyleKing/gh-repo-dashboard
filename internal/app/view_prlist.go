@@ -7,6 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/markdown"
@@ -192,7 +193,7 @@ func (m Model) renderPRPreviewBlock(width, height int) string {
 
 // renderPRPreviewLines renders the row's reviewers, review state, diffstat,
 // and description, or why none of them is on screen yet.
-func (m Model) renderPRPreviewLines(pr models.PRInfo, width int) []string {
+func (m Model) renderPRPreviewLines(pr forge.PullRequest, width int) []string {
 	if pr.URL == "" {
 		return []string{styles.SubtitleStyle.Render("no pull request URL to preview from")}
 	}
@@ -213,9 +214,9 @@ func (m Model) renderPRPreviewLines(pr models.PRInfo, width int) []string {
 
 	reviewStyle := styles.SubtitleStyle
 	switch preview.ReviewStatus() {
-	case models.ReviewApproved:
+	case forge.ReviewApproved:
 		reviewStyle = styles.CleanStyle
-	case models.ReviewChangesRequested:
+	case forge.ReviewChangesRequested:
 		reviewStyle = styles.ErrorStyle
 	}
 
@@ -249,7 +250,7 @@ func (m Model) prListEmptyLabel() string {
 	return "Nothing matches this view"
 }
 
-func renderPRSearchRow(pr *models.PRInfo, layout table.Layout, selected bool, width int) string {
+func renderPRSearchRow(pr *forge.PullRequest, layout table.Layout, selected bool, width int) string {
 	style := rowStyleFor(selected)
 
 	values := map[string]string{
@@ -281,11 +282,11 @@ func renderPRSearchRow(pr *models.PRInfo, layout table.Layout, selected bool, wi
 // currently requested to review it, or names how many reviewers are
 // requested otherwise. A merged, closed, or draft row carries neither, since
 // reviewer assignment stops mattering once there's no review left to give.
-func reviewerBadge(pr *models.PRInfo) string {
+func reviewerBadge(pr *forge.PullRequest) string {
 	if pr.NeedsReviewer() {
 		return styles.Badge("needs reviewer", styles.WarningStyle)
 	}
-	if pr.State != models.PRStatusOpen || pr.IsDraft || len(pr.Reviewers) == 0 {
+	if pr.State != forge.PRStatusOpen || pr.IsDraft || len(pr.Reviewers) == 0 {
 		return ""
 	}
 

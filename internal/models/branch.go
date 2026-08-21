@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/kyleking/aragonite/forge"
 )
 
-// emDash is the placeholder rendered for empty/unknown values.
 const emDash = "—"
+
+// emDash is the placeholder rendered for empty/unknown values.
 
 // DefaultBranchNames are the conventional primary branch names, assumed
 // wherever a repo's real default branch has not been resolved from its remote.
@@ -59,7 +62,7 @@ func (b BranchInfo) RelativeLastCommit() string {
 		return emDash
 	}
 
-	return RelativeTime(b.LastCommit)
+	return forge.RelativeTime(b.LastCommit)
 }
 
 // BranchDetail holds the full detail view state for a single branch.
@@ -75,8 +78,8 @@ type BranchDetail struct {
 	Unstaged      int
 	Untracked     int
 	Conflicted    int
-	PRInfo        *PRInfo
-	WorkflowInfo  *WorkflowSummary
+	PRInfo        *forge.PullRequest
+	WorkflowInfo  *forge.WorkflowSummary
 	ChangeID      string
 	Description   string
 }
@@ -131,7 +134,7 @@ type CommitInfo struct {
 
 // RelativeDate returns a human-readable relative time for the commit's date.
 func (c CommitInfo) RelativeDate() string {
-	return RelativeTime(c.Date)
+	return forge.RelativeTime(c.Date)
 }
 
 // StashDetail summarizes a single stash entry.
@@ -144,69 +147,5 @@ type StashDetail struct {
 
 // RelativeDate returns a human-readable relative time for the stash's date.
 func (s StashDetail) RelativeDate() string {
-	return RelativeTime(s.Date)
-}
-
-const (
-	hoursPerDay  = 24
-	daysPerWeek  = 7
-	daysPerMonth = 30
-	daysPerYear  = 365
-)
-
-// RelativeTime renders t as a human-readable duration relative to now (e.g. "3 days ago").
-func RelativeTime(t time.Time) string {
-	if t.IsZero() {
-		return emDash
-	}
-
-	now := time.Now()
-	diff := now.Sub(t)
-
-	switch {
-	case diff < time.Minute:
-		return "just now"
-	case diff < time.Hour:
-		mins := int(diff.Minutes())
-		if mins == 1 {
-			return "1 min ago"
-		}
-
-		return fmt.Sprintf("%d mins ago", mins)
-	case diff < hoursPerDay*time.Hour:
-		hours := int(diff.Hours())
-		if hours == 1 {
-			return "1 hour ago"
-		}
-
-		return fmt.Sprintf("%d hours ago", hours)
-	case diff < daysPerWeek*hoursPerDay*time.Hour:
-		days := int(diff.Hours() / hoursPerDay)
-		if days == 1 {
-			return "1 day ago"
-		}
-
-		return fmt.Sprintf("%d days ago", days)
-	case diff < daysPerMonth*hoursPerDay*time.Hour:
-		weeks := int(diff.Hours() / hoursPerDay / daysPerWeek)
-		if weeks == 1 {
-			return "1 week ago"
-		}
-
-		return fmt.Sprintf("%d weeks ago", weeks)
-	case diff < daysPerYear*hoursPerDay*time.Hour:
-		months := int(diff.Hours() / hoursPerDay / daysPerMonth)
-		if months == 1 {
-			return "1 month ago"
-		}
-
-		return fmt.Sprintf("%d months ago", months)
-	default:
-		years := int(diff.Hours() / hoursPerDay / daysPerYear)
-		if years == 1 {
-			return "1 year ago"
-		}
-
-		return fmt.Sprintf("%d years ago", years)
-	}
+	return forge.RelativeTime(s.Date)
 }

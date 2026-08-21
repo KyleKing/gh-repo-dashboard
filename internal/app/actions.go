@@ -13,6 +13,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
@@ -170,14 +171,14 @@ func (m Model) actionBranch() (models.BranchInfo, bool) {
 
 // actionPR returns the pull request the current view's actions apply to: the
 // selected PR row, the branch's own PR, or the repo's PR.
-func (m Model) actionPR() (models.PRInfo, bool) {
+func (m Model) actionPR() (forge.PullRequest, bool) {
 	if m.viewMode == ViewModePRDetail && m.prDetail.Number > 0 {
-		return m.prDetail.PRInfo, true
+		return m.prDetail.PullRequest, true
 	}
 
 	branch, ok := m.actionBranch()
 	if !ok {
-		return models.PRInfo{}, false
+		return forge.PullRequest{}, false
 	}
 	if pr, found := prsByHeadRef(m.prs)[branch.Name]; found {
 		return *pr, true
@@ -186,7 +187,7 @@ func (m Model) actionPR() (models.PRInfo, bool) {
 		return *m.branchDetail.PRInfo, true
 	}
 
-	return models.PRInfo{}, false
+	return forge.PullRequest{}, false
 }
 
 // startSwitchBranch checks out the branch under the cursor. Switching to the

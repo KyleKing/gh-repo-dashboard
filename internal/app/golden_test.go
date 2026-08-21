@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/x/exp/golden"
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -50,7 +51,7 @@ func goldenModel() Model {
 			Staged:       1,
 			Unstaged:     3,
 			LastModified: time.Now().Add(-2 * time.Hour),
-			PRInfo: &models.PRInfo{
+			PRInfo: &forge.PullRequest{
 				Number:  42,
 				Title:   "Add login flow",
 				State:   "OPEN",
@@ -116,7 +117,7 @@ func TestGoldenPanelGridBreakpoints(t *testing.T) {
 						LastCommit: time.Now().Add(-10 * time.Minute), IsCurrent: true,
 					},
 				}
-				m.prs = []models.PRInfo{
+				m.prs = []forge.PullRequest{
 					{Number: 42, Title: "Add login flow", State: "OPEN", HeadRef: "feature/login"},
 					{Number: 7, Title: "Bump the template to v0.10.0", State: "OPEN", IsDraft: true, HeadRef: "chore/template"},
 				}
@@ -147,7 +148,7 @@ func TestGoldenRepoListExpanded(t *testing.T) {
 			m.prMap = map[string]PRMapLoadedMsg{
 				"/Users/dev/bravo": {
 					Path: "/Users/dev/bravo",
-					PRs:  []models.PRInfo{{Number: 42, Title: "Add login flow", State: "OPEN", HeadRef: "feature/login"}},
+					PRs:  []forge.PullRequest{{Number: 42, Title: "Add login flow", State: "OPEN", HeadRef: "feature/login"}},
 					Branches: []models.BranchInfo{
 						{Name: mainBranchName, Upstream: "origin/main"},
 						{Name: "feature/login", Upstream: "origin/feature/login", Ahead: 2, IsCurrent: true},
@@ -216,7 +217,7 @@ func TestGoldenBranchDetail(t *testing.T) {
 		DefaultBehind: 1,
 		Staged:        1,
 		Unstaged:      2,
-		PRInfo: &models.PRInfo{
+		PRInfo: &forge.PullRequest{
 			Number:  42,
 			Title:   "Add login flow",
 			State:   "OPEN",

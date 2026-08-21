@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -20,7 +21,7 @@ func operatorModel() Model {
 		"/test/dirty":  {Path: "/test/dirty", Branch: mainBranchName, Unstaged: 2},
 		"/test/dirty-pr": {
 			Path: "/test/dirty-pr", Branch: "feat", Unstaged: 1,
-			PRInfo: &models.PRInfo{Number: 7}, NotesFiles: []models.NoteFile{{Name: "doing.md"}},
+			PRInfo: &forge.PullRequest{Number: 7}, NotesFiles: []models.NoteFile{{Name: "doing.md"}},
 		},
 	}
 	m.updateFilteredPaths()

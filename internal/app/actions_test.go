@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -23,7 +24,7 @@ func detailModel() Model {
 		{Name: mainBranchName, Upstream: "origin/main", IsCurrent: true},
 		{Name: featureBranchName},
 	}
-	m.prs = []models.PRInfo{{Number: 42, Title: "Add login", HeadRef: featureBranchName}}
+	m.prs = []forge.PullRequest{{Number: 42, Title: "Add login", HeadRef: featureBranchName}}
 
 	return m
 }
@@ -289,7 +290,7 @@ func TestPanelActionMenuKeepsItsVerbsUnderALongTitle(t *testing.T) {
 	m := focusedModel(width, 30)
 	m.viewMode = ViewModePRList
 	m.prSearchCursor = 0
-	m.prSearch = []models.PRInfo{{
+	m.prSearch = []forge.PullRequest{{
 		Number: 10,
 		Title:  strings.TrimSpace(strings.Repeat("bump the go-dependencies group across 1 directory ", 4)),
 	}}

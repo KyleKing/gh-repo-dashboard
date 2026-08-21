@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
@@ -61,7 +61,7 @@ func TestGetPRForBranch(t *testing.T) {
 		{
 			name:   "success",
 			output: successJSON,
-			expected: &models.PRInfo{
+			expected: &forge.PullRequest{
 				Number:    42,
 				Title:     "Add feature",
 				State:     "OPEN",
@@ -70,7 +70,7 @@ func TestGetPRForBranch(t *testing.T) {
 				Mergeable: "CLEAN",
 				HeadRef:   "feature-branch",
 				BaseRef:   "main",
-				Checks:    models.ChecksStatus{Total: 3, Passing: 1, Pending: 1, Failing: 1},
+				Checks:    forge.ChecksStatus{Total: 3, Passing: 1, Pending: 1, Failing: 1},
 			},
 		},
 		{
@@ -96,7 +96,7 @@ type getPRForBranchCase struct {
 	name      string
 	output    []byte
 	runErr    error
-	expected  *models.PRInfo
+	expected  *forge.PullRequest
 	expectErr bool
 }
 
@@ -211,8 +211,8 @@ func TestGetPRDetail(t *testing.T) {
 		]
 	}`)
 
-	expectedDetail := &models.PRDetail{
-		PRInfo: models.PRInfo{
+	expectedDetail := &forge.PRDetail{
+		PullRequest: forge.PullRequest{
 			Number:         7,
 			Title:          "Fix bug",
 			State:          "OPEN",
@@ -232,12 +232,12 @@ func TestGetPRDetail(t *testing.T) {
 		Additions: 10,
 		Deletions: 3,
 		Comments:  2,
-		LatestComment: &models.PRComment{
+		LatestComment: &forge.PRComment{
 			Author:    "dave",
 			Body:      "looks good now",
 			CreatedAt: time.Date(2026, 1, 3, 5, 0, 0, 0, time.UTC),
 		},
-		CheckDetails: []models.CheckDetail{
+		CheckDetails: []forge.CheckDetail{
 			{
 				Name:        "ci",
 				Workflow:    "CI",
@@ -267,7 +267,7 @@ type getPRDetailCase struct {
 	name      string
 	output    []byte
 	runErr    error
-	expected  *models.PRDetail
+	expected  *forge.PRDetail
 	expectErr bool
 }
 
@@ -334,20 +334,20 @@ func TestGetPRsForRepo(t *testing.T) {
 		upstream  string
 		output    []byte
 		runErr    error
-		expected  []models.PRInfo
+		expected  []forge.PullRequest
 		expectErr bool
 		expectGH  bool
 	}{
 		{
 			name:     "empty upstream short-circuits",
 			upstream: "",
-			expected: []models.PRInfo{},
+			expected: []forge.PullRequest{},
 		},
 		{
 			name:     "success",
 			upstream: "owner/repo",
 			output:   successJSON,
-			expected: []models.PRInfo{
+			expected: []forge.PullRequest{
 				{
 					Number: 2, Title: "Second", State: "OPEN", URL: "https://github.com/owner/repo/pull/2",
 					IsDraft: true, HeadRef: "two", BaseRef: "main",
@@ -363,7 +363,7 @@ func TestGetPRsForRepo(t *testing.T) {
 			name:      "gh error returns empty list",
 			upstream:  "owner/repo",
 			runErr:    errGHFailed,
-			expected:  []models.PRInfo{},
+			expected:  []forge.PullRequest{},
 			expectErr: true,
 			expectGH:  true,
 		},
@@ -371,7 +371,7 @@ func TestGetPRsForRepo(t *testing.T) {
 			name:      "malformed JSON returns empty list",
 			upstream:  "owner/repo",
 			output:    []byte(`{"not": "an array"}`),
-			expected:  []models.PRInfo{},
+			expected:  []forge.PullRequest{},
 			expectErr: true,
 			expectGH:  true,
 		},
@@ -482,7 +482,7 @@ func TestPRCachesAreScopedByRemote(t *testing.T) {
 			}
 
 			keyA := github.PRCacheKey("/repo-a", idA, "origin/main", "main")
-			cache.PRCache.Set(keyA, cache.NoStamp, &models.PRInfo{Number: 1})
+			cache.PRCache.Set(keyA, cache.NoStamp, &forge.PullRequest{Number: 1})
 			if _, hit := github.CachedPRForBranch("/repo-b", idB, "main", "origin/main"); hit != tt.wantShared {
 				t.Errorf("per-branch cache hit from checkout B = %v, want %v", hit, tt.wantShared)
 			}
@@ -651,8 +651,8 @@ func TestGetWorkflowRunsForCommit(t *testing.T) {
 		}
 	]`)
 
-	expectedSummary := &models.WorkflowSummary{
-		Runs: []models.WorkflowRun{
+	expectedSummary := &forge.WorkflowSummary{
+		Runs: []forge.WorkflowRun{
 			{
 				ID: 100, Name: "CI", Status: "completed", Conclusion: "success",
 				URL:       "https://github.com/owner/repo/actions/runs/100",
@@ -703,7 +703,7 @@ type getWorkflowRunsCase struct {
 	commitSHA string
 	output    []byte
 	runErr    error
-	expected  *models.WorkflowSummary
+	expected  *forge.WorkflowSummary
 	expectErr bool
 	expectGH  bool
 }

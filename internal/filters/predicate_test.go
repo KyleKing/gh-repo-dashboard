@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -11,7 +12,7 @@ import (
 func TestParsePredicate(t *testing.T) {
 	t.Parallel()
 	dirty := models.RepoSummary{Unstaged: 2}
-	dirtyWithPR := models.RepoSummary{Unstaged: 2, PRInfo: &models.PRInfo{Number: 1}}
+	dirtyWithPR := models.RepoSummary{Unstaged: 2, PRInfo: &forge.PullRequest{Number: 1}}
 	behind := models.RepoSummary{Behind: 3}
 	ahead := models.RepoSummary{Ahead: 1}
 	clean := models.RepoSummary{}

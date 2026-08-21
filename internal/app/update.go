@@ -14,6 +14,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
@@ -873,7 +874,7 @@ func (m Model) handleEnterKey() (tea.Model, tea.Cmd) {
 	m.uncommittedDiff = nil
 	m.uncommittedFullDiff = true
 	m.branchDetail = models.BranchDetail{}
-	m.prDetail = models.PRDetail{}
+	m.prDetail = forge.PRDetail{}
 	m.prDetailScroll = 0
 	m.detailLoading = true
 
@@ -1488,7 +1489,7 @@ func (m Model) openRepo(path string) (tea.Model, tea.Cmd) {
 	m.uncommittedDiff = nil
 	m.uncommittedFullDiff = true
 	m.branchDetail = models.BranchDetail{}
-	m.prDetail = models.PRDetail{}
+	m.prDetail = forge.PRDetail{}
 	m.prDetailScroll = 0
 	m.detailLoading = true
 
@@ -1573,7 +1574,7 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		m.worktrees = nil
 		m.prs = nil
 		m.branchDetail = models.BranchDetail{}
-		m.prDetail = models.PRDetail{}
+		m.prDetail = forge.PRDetail{}
 		m.prDetailScroll = 0
 		cmds = append(cmds, discoverReposCmd(m.scanPaths, m.maxDepth))
 
@@ -1585,7 +1586,7 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		m.prs = nil
 		m.notesFiles = nil
 		m.branchDetail = models.BranchDetail{}
-		m.prDetail = models.PRDetail{}
+		m.prDetail = forge.PRDetail{}
 		m.prDetailScroll = 0
 		m.detailLoading = true
 
@@ -1607,7 +1608,7 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 
 	case ViewModePRDetail:
 		// Clear PR detail when refreshing
-		m.prDetail = models.PRDetail{}
+		m.prDetail = forge.PRDetail{}
 
 		if m.selectedRepo != "" && m.selectedPR.Number > 0 {
 			cmds = append(cmds,
@@ -1629,7 +1630,7 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 // from the currently selected one in m.prs, loading its detail and
 // prefetching the next one in the same direction.
 func (m Model) moveToAdjacentPR(delta int) (tea.Model, tea.Cmd) {
-	currentIdx := slices.IndexFunc(m.prs, func(pr models.PRInfo) bool {
+	currentIdx := slices.IndexFunc(m.prs, func(pr forge.PullRequest) bool {
 		return pr.Number == m.selectedPR.Number
 	})
 
@@ -1639,7 +1640,7 @@ func (m Model) moveToAdjacentPR(delta int) (tea.Model, tea.Cmd) {
 	}
 
 	m.selectedPR = m.prs[newIdx]
-	m.prDetail = models.PRDetail{PRInfo: m.selectedPR}
+	m.prDetail = forge.PRDetail{PullRequest: m.selectedPR}
 	m.prDetailScroll = 0
 
 	cmds := []tea.Cmd{loadPRDetailCmd(m.selectedRepo, m.summaries[m.selectedRepo].RemoteID, m.selectedPR.Number)}

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	acache "github.com/kyleking/aragonite/cache"
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -67,15 +68,15 @@ const (
 // identity for anything read from the object store, and the repo path itself
 // only for values that are genuinely per-directory.
 var (
-	DefaultBranchCICache = newRegisteredTTLCache[*models.DefaultBranchCI](workflowTTL)
-	PRCache              = newRegisteredTTLCache[*models.PRInfo](defaultTTL)
-	PRListCache          = newRegisteredTTLCache[[]models.PRInfo](defaultTTL)
-	PRSearchCache        = newRegisteredTTLCache[[]models.PRInfo](defaultTTL)
-	PRDetailCache        = newRegisteredTTLCache[*models.PRDetail](defaultTTL)
-	PRPreviewCache       = newRegisteredTTLCache[*models.PRPreview](defaultTTL)
+	DefaultBranchCICache = newRegisteredTTLCache[*forge.DefaultBranchCI](workflowTTL)
+	PRCache              = newRegisteredTTLCache[*forge.PullRequest](defaultTTL)
+	PRListCache          = newRegisteredTTLCache[[]forge.PullRequest](defaultTTL)
+	PRSearchCache        = newRegisteredTTLCache[[]forge.PullRequest](defaultTTL)
+	PRDetailCache        = newRegisteredTTLCache[*forge.PRDetail](defaultTTL)
+	PRPreviewCache       = newRegisteredTTLCache[*forge.PRPreview](defaultTTL)
 	BranchCache          = newRegisteredTTLCache[[]models.BranchInfo](defaultTTL)
 	CommitCache          = newRegisteredTTLCache[[]models.CommitInfo](defaultTTL)
-	WorkflowCache        = newRegisteredTTLCache[*models.WorkflowSummary](workflowTTL)
+	WorkflowCache        = newRegisteredTTLCache[*forge.WorkflowSummary](workflowTTL)
 	MergedPRHeadsCache   = newRegisteredTTLCache[map[string]string](defaultTTL)
 	// CopierLatestTagCache is keyed by a template's _src_path rather than by
 	// repo path, so every repo generated from the same upstream template

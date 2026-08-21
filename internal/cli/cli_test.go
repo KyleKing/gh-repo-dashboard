@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 	"github.com/kyleking/gh-repo-dashboard/internal/cli"
 	"github.com/kyleking/gh-repo-dashboard/internal/github"
@@ -27,13 +28,13 @@ const (
 	peerCheckoutPath = "/peer"
 )
 
-func stubClient(pr *models.PRInfo, prs []models.PRInfo, err error, calls *int) cli.GitHubClient {
+func stubClient(pr *forge.PullRequest, prs []forge.PullRequest, err error, calls *int) cli.GitHubClient {
 	return cli.NewGitHubClient(
-		func(_ context.Context, _, _, _, _ string) (*models.PRInfo, error) {
+		func(_ context.Context, _, _, _, _ string) (*forge.PullRequest, error) {
 			*calls++
 			return pr, err
 		},
-		func(_ context.Context, _, _, _ string) ([]models.PRInfo, error) {
+		func(_ context.Context, _, _, _ string) ([]forge.PullRequest, error) {
 			*calls++
 			return prs, err
 		},
@@ -42,16 +43,16 @@ func stubClient(pr *models.PRInfo, prs []models.PRInfo, err error, calls *int) c
 
 //nolint:paralleltest // asserts against shared global cache.ClearAll() state
 func TestLookupPR(t *testing.T) {
-	cachedPR := &models.PRInfo{Number: 7, Title: "cached"}
-	freshPR := &models.PRInfo{Number: 9, Title: "fresh"}
+	cachedPR := &forge.PullRequest{Number: 7, Title: "cached"}
+	freshPR := &forge.PullRequest{Number: 9, Title: "fresh"}
 
 	tests := []struct {
 		name      string
 		upstream  string
-		cached    *models.PRInfo
+		cached    *forge.PullRequest
 		fresh     bool
 		fetchErr  error
-		expected  *models.PRInfo
+		expected  *forge.PullRequest
 		wantCalls int
 	}{
 		{name: "no upstream skips lookup", upstream: "", fresh: true, expected: nil, wantCalls: 0},
@@ -89,13 +90,13 @@ func TestLookupPR(t *testing.T) {
 
 //nolint:paralleltest // asserts against shared global cache.ClearAll() state
 func TestLookupPRCount(t *testing.T) {
-	cachedPRs := []models.PRInfo{{Number: 1}, {Number: 2}}
-	freshPRs := []models.PRInfo{{Number: 3}}
+	cachedPRs := []forge.PullRequest{{Number: 1}, {Number: 2}}
+	freshPRs := []forge.PullRequest{{Number: 3}}
 
 	tests := []struct {
 		name      string
 		upstream  string
-		cached    []models.PRInfo
+		cached    []forge.PullRequest
 		fresh     bool
 		fetchErr  error
 		expected  *int
@@ -174,14 +175,14 @@ func TestRepoJSONShape(t *testing.T) {
 				Unstaged:     3,
 				StashCount:   1,
 				LastModified: lastModified,
-			}, 2, &models.PRInfo{
+			}, 2, &forge.PullRequest{
 				Number:  42,
 				Title:   "Add feature",
 				State:   "OPEN",
 				URL:     "https://example.com/pr/42",
 				HeadRef: "feature",
 				BaseRef: "main",
-				Checks:  models.ChecksStatus{Total: 2, Passing: 1, Pending: 1},
+				Checks:  forge.ChecksStatus{Total: 2, Passing: 1, Pending: 1},
 			}, intPtr(3)),
 			expected: `{"path":"/repos/wip","name":"wip","vcs":"jj","branch":"feature",` +
 				`"upstream":"origin/feature","ahead":2,"behind":1,"staged":0,"unstaged":3,` +
@@ -301,9 +302,9 @@ func TestLookupCIIsGatedByFresh(t *testing.T) {
 
 	calls := 0
 	client := cli.NewGitHubClientWithCI(
-		func(_ context.Context, _, _ string) (*models.DefaultBranchCI, error) {
+		func(_ context.Context, _, _ string) (*forge.DefaultBranchCI, error) {
 			calls++
-			return &models.DefaultBranchCI{Branch: "main"}, nil
+			return &forge.DefaultBranchCI{Branch: "main"}, nil
 		})
 
 	if got := cli.LookupCI(context.Background(), client, "/repos/app", "", false); got != nil {

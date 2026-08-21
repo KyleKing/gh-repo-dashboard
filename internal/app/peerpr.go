@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
@@ -42,7 +43,7 @@ func loadPeerBranchesCmd(path string, peerPaths []string) tea.Cmd {
 // sitting uncommitted still counts.
 type relevantPeer struct {
 	models.PeerCheckout
-	PR models.PRInfo
+	PR forge.PullRequest
 	// OtherScanRoot marks a peer discovered under a different configured scan
 	// root than path, so a caller can label it rather than let it read as
 	// though it were found alongside the repo currently open.
@@ -85,7 +86,7 @@ func (m Model) relevantPeers(path string) []relevantPeer {
 // matchingPR returns the first of prs that one of branches tracks, or nil.
 // Owner is the repo's own owner, so a fork's head ref (which shares a
 // namespace with local branches) is never mistaken for being present here.
-func matchingPR(branches []models.BranchInfo, prs []models.PRInfo, owner string) *models.PRInfo {
+func matchingPR(branches []models.BranchInfo, prs []forge.PullRequest, owner string) *forge.PullRequest {
 	for i := range prs {
 		pr := &prs[i]
 		for _, branch := range branches {

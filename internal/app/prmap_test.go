@@ -9,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -31,7 +32,7 @@ func mapFleet() Model {
 	m.prMap = map[string]PRMapLoadedMsg{
 		"/dev/app": {
 			Path: "/dev/app",
-			PRs: []models.PRInfo{
+			PRs: []forge.PullRequest{
 				{Number: 7, Title: "Add the login flow", State: "OPEN", HeadRef: "feature/login"},
 				{Number: 9, Title: "Bump a dependency", State: "OPEN", HeadRef: "dependabot/bump"},
 				{Number: 8, Title: "Wire the peer branch", State: "OPEN", HeadRef: "feature/peer"},
@@ -95,7 +96,7 @@ func TestPRMapForkPRDoesNotClaimALocalBranch(t *testing.T) {
 	m := mapFleet()
 	m.prMap["/dev/lib"] = PRMapLoadedMsg{
 		Path: "/dev/lib",
-		PRs: []models.PRInfo{
+		PRs: []forge.PullRequest{
 			{Number: 63, Title: "Fix the parser", State: "OPEN", HeadRef: "patch-1", HeadRepoOwner: "camoz"},
 		},
 		Branches: []models.BranchInfo{{Name: "patch-1", Ahead: 4}},

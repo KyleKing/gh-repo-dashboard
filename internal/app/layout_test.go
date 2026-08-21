@@ -7,6 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -29,7 +30,7 @@ func peerModel() Model {
 	m.prMap = map[string]PRMapLoadedMsg{
 		"/dev/alpha": {
 			Path: "/dev/alpha",
-			PRs:  []models.PRInfo{{Number: 1, HeadRef: "feature-x"}},
+			PRs:  []forge.PullRequest{{Number: 1, HeadRef: "feature-x"}},
 		},
 	}
 	m.peerBranches = map[string][]models.BranchInfo{

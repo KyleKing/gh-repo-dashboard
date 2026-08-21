@@ -9,6 +9,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
@@ -33,7 +34,7 @@ func detailTableModel(termWidth int) Model {
 		{Path: "/repos/app", Branch: "main"},
 		{Path: "/repos/app-feature", Branch: "feature/a-rather-long-branch-name", IsLocked: true},
 	}
-	m.prs = []models.PRInfo{
+	m.prs = []forge.PullRequest{
 		{Number: 1, Title: "Add the login flow", State: "OPEN", HeadRef: "feature/login"},
 		{
 			Number: 4321, State: "OPEN", HeadRef: "feature/b",

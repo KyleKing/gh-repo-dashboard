@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/cache"
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/vcs"
 )
 
@@ -33,7 +33,7 @@ func PRPreviewCacheKey(prURL string) string {
 // pull request by URL, so a row from a repository that was never scanned
 // locally previews the same as one that was; repoPath and its environment
 // only supply gh's credentials and can be any repo in the fleet.
-func GetPRPreview(ctx context.Context, repoPath, prURL string) (*models.PRPreview, error) {
+func GetPRPreview(ctx context.Context, repoPath, prURL string) (*forge.PRPreview, error) {
 	key := PRPreviewCacheKey(prURL)
 	if cached, ok := cache.PRPreviewCache.Get(key, cache.NoStamp); ok {
 		return cached, nil
@@ -67,7 +67,7 @@ func GetPRPreview(ctx context.Context, repoPath, prURL string) (*models.PRPrevie
 		reviewers = append(reviewers, r.Login)
 	}
 
-	preview := &models.PRPreview{
+	preview := &forge.PRPreview{
 		Body:           resp.Body,
 		Reviewers:      reviewers,
 		ReviewDecision: resp.ReviewDecision,

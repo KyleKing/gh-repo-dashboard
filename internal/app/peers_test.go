@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
@@ -48,7 +49,7 @@ func peerFleet(width, height int) Model {
 	m.prMap = map[string]PRMapLoadedMsg{
 		"/dev/app-a": {
 			Path: "/dev/app-a",
-			PRs:  []models.PRInfo{{Number: 1, HeadRef: "feature-x"}},
+			PRs:  []forge.PullRequest{{Number: 1, HeadRef: "feature-x"}},
 		},
 	}
 	m.peerBranches = map[string][]models.BranchInfo{
