@@ -8,11 +8,15 @@ run = "go build -v -o gh-repo-dashboard ./cmd/gh-repo-dashboard"
 
 [tasks.ci]
 description = "Run all checks (used in GitHub Actions)"
-run = [
-  "mise run test:coverage-min",
-  "go test -tags=golden -run TestGolden ./internal/app/",
-  "go build -v -o gh-repo-dashboard ./cmd/gh-repo-dashboard"
-]
+run = ["mise run test:coverage-min", "go test -tags=golden -run TestGolden ./internal/app/", "go build -v -o gh-repo-dashboard ./cmd/gh-repo-dashboard"]
+
+[tasks."verify-released"]
+description = "Build and test ignoring any go.work, the way CI sees the module"
+# A go.work makes a sibling checkout win over the version go.mod pins, so local
+# green says nothing about whether the released dependency actually works. CI has
+# no workspace, so this is the only local check that matches it.
+env = { GOWORK = "off" }
+run = ["go build ./...", "go test ./..."]
 
 [tasks.clean]
 description = "Clean build artifacts"
