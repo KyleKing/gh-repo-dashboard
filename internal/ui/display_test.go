@@ -271,3 +271,57 @@ func TestCheckDetailDuration(t *testing.T) {
 		t.Errorf("expected an em dash while running, got %q", got)
 	}
 }
+
+func TestDefaultBranchCIConclusion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		ci   forge.DefaultBranchCI
+		want string
+	}{
+		{name: "no runs", ci: forge.DefaultBranchCI{}, want: "—"},
+		{
+			name: "every workflow green",
+			ci: forge.DefaultBranchCI{Workflows: []forge.CIWorkflowRun{
+				{Status: "completed", Conclusion: "success"},
+				{Status: "completed", Conclusion: "success"},
+			}},
+			want: forge.StatusPassing,
+		},
+		{
+			name: "one red outweighs the rest",
+			ci: forge.DefaultBranchCI{Workflows: []forge.CIWorkflowRun{
+				{Status: "completed", Conclusion: "success"},
+				{Status: "completed", Conclusion: "failure"},
+			}},
+			want: forge.StatusFailing,
+		},
+		{
+			name: "still running",
+			ci: forge.DefaultBranchCI{Workflows: []forge.CIWorkflowRun{
+				{Status: "completed", Conclusion: "success"},
+				{Status: "in_progress"},
+			}},
+			want: "pending",
+		},
+		{
+			name: "a red run wins even while another is running",
+			ci: forge.DefaultBranchCI{Workflows: []forge.CIWorkflowRun{
+				{Status: "in_progress"},
+				{Status: "completed", Conclusion: "failure"},
+			}},
+			want: forge.StatusFailing,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := ui.CIConclusion(&tt.ci); got != tt.want {
+				t.Errorf("Conclusion = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

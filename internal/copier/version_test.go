@@ -5,7 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/cache"
+	"github.com/kyleking/aragonite/cache"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/copier"
 )
 

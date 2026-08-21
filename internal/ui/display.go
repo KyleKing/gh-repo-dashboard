@@ -78,7 +78,7 @@ func RelativeTime(t time.Time) string {
 	}
 }
 
-// ActivitySummary renders the latest activity as an age and an author, or
+// PRActivitySummary renders the latest activity as an age and an author, or
 // emDash when the pull request has neither comments nor reviews.
 func PRActivitySummary(p *forge.PullRequest) string {
 	if p.Activity == nil || p.Activity.At.IsZero() {
@@ -88,7 +88,7 @@ func PRActivitySummary(p *forge.PullRequest) string {
 	return RelativeTime(p.Activity.At) + " " + p.Activity.Author
 }
 
-// ReviewGlyph marks an approval or a change request, or is empty otherwise.
+// PRReviewGlyph marks an approval or a change request, or is empty otherwise.
 func PRReviewGlyph(p *forge.PullRequest) string {
 	switch p.ReviewDecision {
 	case "APPROVED":
@@ -100,7 +100,7 @@ func PRReviewGlyph(p *forge.PullRequest) string {
 	}
 }
 
-// StatusDisplay returns the pull request's display status label.
+// PRStatusDisplay returns the pull request's display status label.
 func PRStatusDisplay(p forge.PullRequest) string {
 	if p.IsDraft {
 		return "DRAFT"
@@ -117,12 +117,12 @@ func PRStatusDisplay(p forge.PullRequest) string {
 	}
 }
 
-// ReviewStatus returns a human-readable summary of the pull request's review decision.
+// PRReviewStatus returns a human-readable summary of the pull request's review decision.
 func PRReviewStatus(p forge.PullRequest) string {
 	return reviewStatus(p.ReviewDecision, p.ApprovedBy)
 }
 
-// Summary returns a one-word overall status for the checks.
+// ChecksSummary returns a one-word overall status for the checks.
 func ChecksSummary(c forge.ChecksStatus) string {
 	if c.Total == 0 {
 		return emDash
@@ -140,7 +140,7 @@ func ChecksSummary(c forge.ChecksStatus) string {
 	return "mixed"
 }
 
-// StatusDisplay returns the check's lowercased conclusion once it has
+// CheckStatusDisplay returns the check's lowercased conclusion once it has
 // completed, or its in-flight status ("queued", "in progress") before then.
 func CheckStatusDisplay(c forge.CheckDetail) string {
 	status := strings.ToLower(c.Status)
@@ -154,7 +154,7 @@ func CheckStatusDisplay(c forge.CheckDetail) string {
 	return strings.ReplaceAll(status, "_", " ")
 }
 
-// Duration renders how long the check ran, or emDash while it's still running.
+// CheckDuration renders how long the check ran, or emDash while it's still running.
 func CheckDuration(c forge.CheckDetail) string {
 	if c.StartedAt.IsZero() || c.CompletedAt.IsZero() {
 		return emDash
@@ -168,22 +168,22 @@ func CheckDuration(c forge.CheckDetail) string {
 	return elapsed.String()
 }
 
-// RelativeCreated returns a human-readable relative time for the comment.
+// CommentRelativeCreated returns a human-readable relative time for the comment.
 func CommentRelativeCreated(c forge.PRComment) string {
 	return RelativeTime(c.CreatedAt)
 }
 
-// RelativeCreated returns a human-readable relative time for the pull request's creation.
+// PRDetailRelativeCreated returns a human-readable relative time for the pull request's creation.
 func PRDetailRelativeCreated(p forge.PRDetail) string {
 	return RelativeTime(p.CreatedAt)
 }
 
-// RelativeUpdated returns a human-readable relative time for the pull request's last update.
+// PRDetailRelativeUpdated returns a human-readable relative time for the pull request's last update.
 func PRDetailRelativeUpdated(p forge.PRDetail) string {
 	return RelativeTime(p.UpdatedAt)
 }
 
-// StatusDisplay returns the workflow run's display status label.
+// WorkflowRunStatusDisplay returns the workflow run's display status label.
 func WorkflowRunStatusDisplay(w forge.WorkflowRun) string {
 	if w.Status == forge.StatusCompleted {
 		return w.Conclusion
@@ -192,7 +192,7 @@ func WorkflowRunStatusDisplay(w forge.WorkflowRun) string {
 	return w.Status
 }
 
-// Conclusion rolls the workflows up into one word: failing if any failed,
+// CIConclusion rolls the workflows up into one word: failing if any failed,
 // pending while any is still going, passing when all succeeded, and emDash
 // when the commit has no runs at all.
 func CIConclusion(c *forge.DefaultBranchCI) string {
@@ -217,7 +217,7 @@ func CIConclusion(c *forge.DefaultBranchCI) string {
 	return forge.StatusPassing
 }
 
-// StatusDisplay returns a one-word overall status for the workflow runs.
+// WorkflowSummaryStatusDisplay returns a one-word overall status for the workflow runs.
 func WorkflowSummaryStatusDisplay(w forge.WorkflowSummary) string {
 	if w.Total == 0 {
 		return emDash
@@ -235,7 +235,7 @@ func WorkflowSummaryStatusDisplay(w forge.WorkflowSummary) string {
 	return "mixed"
 }
 
-// ReviewStatus reports the preview's review state in the same vocabulary the
+// PreviewReviewStatus reports the preview's review state in the same vocabulary the
 // full detail uses.
 func PreviewReviewStatus(p forge.PRPreview) string {
 	return reviewStatus(p.ReviewDecision, nil)

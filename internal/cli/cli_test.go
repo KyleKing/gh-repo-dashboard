@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kyleking/aragonite/cache"
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/forge/github"
 	"github.com/kyleking/aragonite/vcs"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/cache"
 	"github.com/kyleking/gh-repo-dashboard/internal/cli"
-	"github.com/kyleking/gh-repo-dashboard/internal/github"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -73,7 +73,7 @@ func TestLookupPR(t *testing.T) {
 			cache.ClearAll()
 			if tt.cached != nil {
 				key := github.PRCacheKey(peerCheckoutPath, testRemoteID, tt.upstream, "main")
-				cache.PRCache.Set(key, cache.NoStamp, tt.cached)
+				github.PRCache.Set(key, cache.NoStamp, tt.cached)
 			}
 
 			calls := 0
@@ -122,7 +122,7 @@ func TestLookupPRCount(t *testing.T) {
 			cache.ClearAll()
 			if tt.cached != nil {
 				key := github.PRListCacheKey(peerCheckoutPath, testRemoteID, tt.upstream)
-				cache.PRListCache.Set(key, cache.NoStamp, tt.cached)
+				github.PRListCache.Set(key, cache.NoStamp, tt.cached)
 			}
 
 			calls := 0

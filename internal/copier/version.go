@@ -6,8 +6,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-
-	"github.com/kyleking/gh-repo-dashboard/internal/cache"
+	"github.com/kyleking/aragonite/cache"
 )
 
 // isSemverTag reports whether commit parses as a semver version (with or
@@ -62,7 +61,7 @@ func isBehind(commit, latestTag string) bool {
 // template. The bool result is false when the lookup failed or the remote
 // has no semver-parseable tags.
 func latestSemverTag(ctx context.Context, srcPath string) (string, bool) {
-	if cached, hit := cache.CopierLatestTagCache.Get(srcPath, cache.NoStamp); hit {
+	if cached, hit := LatestTagCache.Get(srcPath, cache.NoStamp); hit {
 		return cached, true
 	}
 
@@ -73,7 +72,7 @@ func latestSemverTag(ctx context.Context, srcPath string) (string, bool) {
 
 	tag, ok := newestSemverTagFromLsRemote(string(out))
 	if ok {
-		cache.CopierLatestTagCache.Set(srcPath, cache.NoStamp, tag)
+		LatestTagCache.Set(srcPath, cache.NoStamp, tag)
 	}
 
 	return tag, ok
