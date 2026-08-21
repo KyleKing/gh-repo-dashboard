@@ -71,6 +71,30 @@ Low priority; pick up when convenient.
   through its exported surface
 - Command-mode completion (a completion list under the `:` prompt); M13 ships
   discoverability hints only
+- Shell into a repo's directory from the dashboard, keyed off the row under
+  the cursor. The interaction model is still open: suspend the TUI, spawn a
+  one-shot subshell in the repo path, and restore the dashboard on exit
+  (simplest, matches how `git log`/`less` already hand off the terminal), or
+  hand off to a persistent per-repo session (a tmux pane or window) that
+  outlives the dashboard and that repeated shells jump back into. Decide once
+  the one-shot path ships and the persistent case actually comes up
+- Absorb mani: gh-repo-dashboard already owns the repo list, so let it also
+  define and run the batch operations mani exists for (fetch, tag, and
+  whatever else mani's config currently drives across these repos), removing
+  the need to keep the two tools' repo lists in sync. Fits the vim-paradigm
+  operator model in the Vision section above: `fetch` becomes an operator
+  over the repos a predicate selects, the same shape as the planned `Fdr`.
+  Scope it against what mani's config for this repo set actually uses today
+  before generalizing past that
+- A vcs-doctor view surfacing local git/jj config that has drifted from
+  global defaults, so a repo behaving oddly is diagnosable from the
+  dashboard instead of by hand-checking config files. Candidates:
+  `.git/info/exclude` entries not in the global excludes file, `rerere`
+  disabled locally when global has it on (already surfaced in today's
+  summary), and any other per-repo override worth flagging (hooks,
+  divergent remote settings). Needs a decision on scope: read-only
+  diagnostic panel first, with a "fix" operator only if the diagnostics
+  prove useful enough to act on
 
 ## Parked ideas
 
