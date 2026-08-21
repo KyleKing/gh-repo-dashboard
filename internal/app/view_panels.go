@@ -264,7 +264,7 @@ func (m Model) peersPanel(summary models.RepoSummary, width int) panelContent {
 	}
 
 	return panelContent{
-		id: panelPeers, title: "Peers", count: len(checkouts),
+		id: panelPeers, title: tabNamePeers, count: len(checkouts),
 		relevance: relevance, rows: rows, selectable: true,
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/markdown"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/region"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
@@ -171,71 +172,85 @@ func (m Model) prPreviewHeight(body int) int {
 
 // prPreviewMaxDescLines caps how much of a description the region renders,
 // on top of whatever the region's own height already clips to.
-const prPreviewMaxDescLines = 6
+const prPreviewMaxDescLines = 8
 
-// renderPRPreviewBlock renders the cursor row's preview closed by a divider
-// captioning it, mirroring the Repos tab's own notesDivider so a region reads
-// the same way in both places.
+// prPreviewHeadColumns pairs the head's four facts two to a line where the
+// terminal is wide enough. Three of the four hold a word or two, and the
+// fourth (the reviewer list) is the one the pairing gives the rest of the
+// line to.
+const prPreviewHeadColumns = 2
+
+// renderPRPreviewBlock renders the cursor row as an expanded region, the same
+// shape the Repos tab opens under its own table.
 func (m Model) renderPRPreviewBlock(width, height int) string {
 	pr, ok := m.selectedSearchPR()
 	if !ok {
 		return ""
 	}
 
+	return strings.Join(m.prPreviewRegion(pr, width).Render(regionStyles(), width, height), "\n")
+}
+
+// prPreviewRegion describes what the region holds for one row. A row still
+// being read, or one there is nothing to read from, keeps the region's rules
+// and says why the head is empty, so the block never changes shape as an
+// answer lands.
+func (m Model) prPreviewRegion(pr forge.PullRequest, width int) region.Region {
 	repoLabel := pr.Repo
 	if repoLabel == "" {
 		repoLabel = filepath.Base(m.prSearchRepo())
 	}
 
-	lines := padBottom(m.renderPRPreviewLines(pr, width), height-1)
-
-	return strings.Join(append(lines, notesDivider(repoLabel, "#"+strconv.Itoa(pr.Number), width)), "\n")
-}
-
-// renderPRPreviewLines renders the row's reviewers, review state, diffstat,
-// and description, or why none of them is on screen yet.
-func (m Model) renderPRPreviewLines(pr forge.PullRequest, width int) []string {
-	if pr.URL == "" {
-		return []string{styles.SubtitleStyle.Render("no pull request URL to preview from")}
-	}
-
-	if failure, failed := m.prPreviewError[pr.URL]; failed {
-		return []string{styles.ErrorStyle.Render("preview failed: " + failure)}
+	block := region.Region{
+		Title:       repoLabel + compactSignalSep + "#" + strconv.Itoa(pr.Number),
+		HeadColumns: prPreviewHeadColumns,
+		Section:     "description",
+		Caption:     pr.Title,
 	}
 
 	preview, loaded := m.prPreview[pr.URL]
-	if !loaded {
-		return []string{styles.SubtitleStyle.Render(readingLabel)}
+
+	switch {
+	case pr.URL == "":
+		block.Body = []string{styles.SubtitleStyle.Render("no pull request URL to preview from")}
+	case m.prPreviewError[pr.URL] != "":
+		block.Body = []string{styles.ErrorStyle.Render("preview failed: " + m.prPreviewError[pr.URL])}
+	case !loaded:
+		block.Body = []string{styles.SubtitleStyle.Render(readingLabel)}
+	default:
+		block.Head = prPreviewFacts(&pr, preview)
+		block.Body = markdown.Render(orDash(strings.TrimSpace(preview.Body)), width, prPreviewMaxDescLines)
 	}
 
+	return block
+}
+
+// prPreviewFacts are the four the region heads a row with. The preview asks
+// for no check rollup, since that is the expensive half of a detail read, so
+// the checks fact comes from the row's own aggregate instead, already
+// populated when the search ran.
+func prPreviewFacts(pr *forge.PullRequest, preview forge.PRPreview) []region.Fact {
 	reviewers := "none requested"
 	if len(preview.Reviewers) > 0 {
 		reviewers = strings.Join(preview.Reviewers, ", ")
 	}
 
+	status := ui.PreviewReviewStatus(preview)
+
 	reviewStyle := styles.SubtitleStyle
-	switch ui.PreviewReviewStatus(preview) {
+	switch status {
 	case forge.ReviewApproved:
 		reviewStyle = styles.CleanStyle
 	case forge.ReviewChangesRequested:
 		reviewStyle = styles.ErrorStyle
 	}
 
-	// The preview asks for no check rollup, since that is the expensive half
-	// of a detail read, so the checks summary comes from the row's own
-	// aggregate instead, already populated when the search ran.
-	const summaryLines = 3
-
-	lines := make([]string, 0, summaryLines+prPreviewMaxDescLines)
-	lines = append(lines,
-		styles.SubtitleStyle.Render("Reviewers: ")+reviewers,
-		styles.SubtitleStyle.Render("Review: ")+reviewStyle.Render(ui.PreviewReviewStatus(preview))+
-			"   "+styles.SubtitleStyle.Render("Checks: ")+formatChecksCell(&pr)+
-			"   "+diffStat(preview.Additions, preview.Deletions),
-		"",
-	)
-
-	return append(lines, markdown.Render(orDash(strings.TrimSpace(preview.Body)), width, prPreviewMaxDescLines)...)
+	return []region.Fact{
+		{Label: "Reviewers", Value: reviewers},
+		{Label: "Review", Value: reviewStyle.Render(status)},
+		{Label: "Checks", Value: formatChecksCell(pr)},
+		{Label: "Changes", Value: diffStat(preview.Additions, preview.Deletions)},
+	}
 }
 
 func (m Model) prListEmptyLabel() string {

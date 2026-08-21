@@ -11,6 +11,7 @@ import (
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/region"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
 )
@@ -341,14 +342,14 @@ func (m Model) renderSortDock() string {
 // depends only on that height, so neither the selected repo nor what is still
 // loading can move the footer.
 func (m Model) renderListBody() string {
-	region := m.expandHeight(m.listBodyHeight())
+	expanded := m.expandHeight(m.listBodyHeight())
 	list := fitBlock(m.renderTable(), m.tableHeight())
 
-	if region == 0 {
+	if expanded == 0 {
 		return list
 	}
 
-	return list + "\n" + fitBlock(strings.Join(m.expandLines(listWidth(m.width), region), "\n"), region)
+	return list + "\n" + fitBlock(strings.Join(m.expandLines(listWidth(m.width), expanded), "\n"), expanded)
 }
 
 // padBottom grows lines to exactly height by adding blanks below them, so a
@@ -521,10 +522,6 @@ type repoWindow struct {
 // belongs to the notes, which is the only section whose length the repo decides.
 const expandHeadRows = 5
 
-// expandLabelCol is the width the head's labels are padded to, so their values
-// line up in a column of their own.
-const expandLabelCol = 10
-
 // expandLines renders the region below the table for the repo under the cursor:
 // a rule naming the repo, a row each for peers, branches, and pull requests,
 // then the repo's notes over whatever height is left, closed by the divider
@@ -539,28 +536,22 @@ func (m Model) expandLines(width, height int) []string {
 	summary := m.rowSummary(path)
 	data, loaded := m.prMap[path]
 	peersPending := m.loading || !loaded || m.fetchPending(path, fetchPeerBranches)
-
-	lines := []string{
-		notesFileRule(qualifiedRepoName(path)+compactSignalSep+
-			section(m.summaryPending(path), overviewIdentity(summary)), width),
-		expandRow("Peers", section(peersPending, overviewRelevantPeers(m.relevantPeers(path))), width),
-		expandRow(tabNameBranches, section(!loaded, expandBranches(data.Branches)), width),
-		expandRow(tabNamePRs, section(!loaded, expandPRs(data.PRs)), width),
-		notesFileRule("notes", width),
-	}
-
 	notes := m.expandNotes(path, summary, width)
 
-	room := height - len(lines) - 1
-	lines = append(lines, padBottom(elideMiddle(notes.lines, room), room)...)
+	block := region.Region{
+		Title: qualifiedRepoName(path) + compactSignalSep +
+			section(m.summaryPending(path), overviewIdentity(summary)),
+		Head: []region.Fact{
+			{Label: tabNamePeers, Value: section(peersPending, overviewRelevantPeers(m.relevantPeers(path)))},
+			{Label: tabNameBranches, Value: section(!loaded, expandBranches(data.Branches))},
+			{Label: tabNamePRs, Value: section(!loaded, expandPRs(data.PRs))},
+		},
+		Section: "notes",
+		Body:    notes.lines,
+		Caption: qualifiedRepoName(path) + compactSignalSep + notes.caption,
+	}
 
-	return append(lines, notesDivider(qualifiedRepoName(path), notes.caption, width))
-}
-
-// expandRow renders one label/value line of the region's head.
-func expandRow(label, value string, width int) string {
-	return styles.SubtitleStyle.Render(table.Pad(label, expandLabelCol, table.AlignLeft)) +
-		" " + table.Truncate(value, width-expandLabelCol-1)
+	return block.Render(regionStyles(), width, height)
 }
 
 // expandBranches counts the repo's local branches and names the ones holding
@@ -645,17 +636,6 @@ func (m Model) expandNotes(path string, summary models.RepoSummary, width int) n
 // which is what tells two checkouts of the same project apart.
 func qualifiedRepoName(path string) string {
 	return filepath.Join(filepath.Base(filepath.Dir(path)), filepath.Base(path))
-}
-
-// notesDivider closes the region, captioning what sits above it on the right
-// where the text has ended.
-func notesDivider(repo, detail string, width int) string {
-	label := repo + compactSignalSep + detail
-	rule := strings.Repeat("─", max(width-lipgloss.Width(label)-notesRuleSpaces-notesRuleLead, 0))
-
-	return styles.SubtitleStyle.Render(rule+" ") +
-		styles.NotesPreviewNameStyle.Render(label) +
-		styles.SubtitleStyle.Render(" "+strings.Repeat("─", notesRuleLead))
 }
 
 // notesFileRule heads one note's text when the repo has more than one.
@@ -1323,4 +1303,10 @@ func hintsWidth(hints []footerHint) int {
 	}
 
 	return total
+}
+
+// regionStyles are the faces the expandable regions draw with, kept in one
+// place so the Repos and PRs tabs cannot drift apart.
+func regionStyles() region.Styles {
+	return region.Styles{Rule: styles.SubtitleStyle, Label: styles.NotesPreviewNameStyle}
 }

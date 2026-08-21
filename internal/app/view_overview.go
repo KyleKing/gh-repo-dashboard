@@ -21,6 +21,7 @@ const (
 	rowNameSync     = "Sync"
 	rowNameFiles    = "Files"
 	tabNameBranches = "Branches"
+	tabNamePeers    = "Peers"
 	tabNameStashes  = "Stashes"
 	tabNamePRs      = "PRs"
 	tabNameNotes    = "Notes"
@@ -63,7 +64,7 @@ func (m Model) overviewRows(s models.RepoSummary, compact bool) []overviewRow {
 	}
 
 	return append(rows,
-		overviewRow{label: "Peers", value: section(m.loading, overviewPeers(m.PeerCheckouts(s.Path)))},
+		overviewRow{label: tabNamePeers, value: section(m.loading, overviewPeers(m.PeerCheckouts(s.Path)))},
 		overviewRow{label: tabNameStashes, value: section(unread, overviewStashes(s))},
 		overviewRow{label: tabNameNotes, value: section(unread, overviewNotes(s.NotesFiles))},
 		overviewRow{
