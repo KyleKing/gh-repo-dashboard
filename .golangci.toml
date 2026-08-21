@@ -10,7 +10,7 @@ enable = ["gci", "gofmt", "gofumpt", "goimports"]
 sections = [
   "standard",
   "default",
-  "prefix(github.com/kyleking/gh-repo-dashboard)"
+  "prefix(github.com/kyleking/gh-repo-dashboard)",
 ]
 
 [formatters.settings.gofumpt]
@@ -25,7 +25,7 @@ disable = [
   "forbidigo",  # requires custom regex configuration
   "gochecknoglobals",  # BubbleTea/lipgloss styles use package-level vars
   "goheader",  # copyright headers add noise for personal projects
-  "wsl"  # whitespace linting too nitpicky
+  "wsl",  # whitespace linting too nitpicky
 ]
 enable = [
   "asciicheck",
@@ -117,7 +117,7 @@ enable = [
   "wastedassign",
   "whitespace",
   "wrapcheck",
-  "zerologlint"
+  "zerologlint",
 ]
 
 [linters.settings.cyclop]
@@ -151,11 +151,11 @@ enabled-tags = [
   "style",
   "performance",
   "experimental",
-  "opinionated"
+  "opinionated",
 ]
 disabled-checks = [
   "hugeParam",  # BubbleTea root Models are large by design; value receivers keep Update/View copy semantics
-  "whyNoLint"
+  "whyNoLint",
 ]
 
 [linters.settings.gocyclo]
@@ -180,7 +180,7 @@ allow = [
   "empty",
   "stdlib",
   "charm.land/bubbletea/v2.Model",
-  "github.com/charmbracelet/bubbletea.Model"
+  "github.com/charmbracelet/bubbletea.Model",
 ]
 
 [linters.settings.lll]
@@ -255,7 +255,7 @@ rules = [
   { name = "useless-break" },
   { name = "var-declaration" },
   { name = "var-naming" },
-  { name = "waitgroup-by-value" }
+  { name = "waitgroup-by-value" },
 ]
 
 [linters.settings.staticcheck]
@@ -281,7 +281,7 @@ ignore-sigs = [
   ".Wrapf(",
   ".WithMessage(",
   ".WithMessagef(",
-  ".WithStack("
+  ".WithStack(",
 ]
 
 [[linters.exclusions.rules]]
