@@ -1,3 +1,24 @@
+## v1.10.0 (2026-08-27)
+
+### Feat
+
+- **app**: mark rows with x, open the verb menu with a
+- **app**: bracket a footer key inside the word it triggers, open PRs with o
+
+### Fix
+
+- give TOML arrays the trailing comma tombi needs
+- **app**: make the PRs tab preview light, debounced, and fleet-wide
+
+### Refactor
+
+- **forge**: read the gh CLI through aragonite
+- **vcs**: read git and jj through aragonite
+- **ui**: render both expandable regions from one component
+- **ui**: move pull request rendering out of the data package
+- rename models.PRInfo to forge.PullRequest
+- **cache**: source the TTL and disk cache from aragonite
+
 ## v1.9.0 (2026-08-15)
 
 ### Feat
