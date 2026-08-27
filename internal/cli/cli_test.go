@@ -215,11 +215,29 @@ func TestRepoJSONShape(t *testing.T) {
 			if err != nil {
 				t.Fatalf("marshaling repo: %v", err)
 			}
-			if string(got) != tt.expected {
-				t.Errorf("expected:\n%s\ngot:\n%s", tt.expected, got)
+			gotKeys, wantKeys := canonicalJSON(t, got), canonicalJSON(t, []byte(tt.expected))
+			if gotKeys != wantKeys {
+				t.Errorf("expected:\n%s\ngot:\n%s", wantKeys, gotKeys)
 			}
 		})
 	}
+}
+
+// Key order follows struct field order, which aragonite is free to change for
+// alignment, so compare the keys and values rather than the bytes.
+func canonicalJSON(t *testing.T, raw []byte) string {
+	t.Helper()
+
+	var decoded map[string]any
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("decoding %s: %v", raw, err)
+	}
+	canonical, err := json.Marshal(decoded)
+	if err != nil {
+		t.Fatalf("re-encoding %s: %v", raw, err)
+	}
+
+	return string(canonical)
 }
 
 func TestWriteOutput(t *testing.T) {
