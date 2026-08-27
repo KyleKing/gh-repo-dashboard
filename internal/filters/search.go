@@ -34,8 +34,6 @@ const (
 // can scope a search the same way the command palette already lets a query
 // start with a kind letter: "r:" name, "b:" branch, "p:" PR number/title,
 // "t:" copier template, "c:" commit recency.
-//
-//nolint:gocritic // named returns are banned project-wide, so these two stay unnamed
 func parseSearchScope(searchText string) (searchScope, string) {
 	switch {
 	case strings.HasPrefix(searchText, "r:"):

@@ -47,7 +47,6 @@ type mockVCS struct {
 	sawSquashMerged bool
 }
 
-//nolint:gocritic // matches vcs.Mutator.FetchAll's (ok bool, msg string, err error)
 func (m *mockVCS) FetchAll(_ context.Context, _ string) (bool, string, error) {
 	if m.fetchResult != nil {
 		return m.fetchResult()
@@ -56,7 +55,6 @@ func (m *mockVCS) FetchAll(_ context.Context, _ string) (bool, string, error) {
 	return true, testSuccessMsg, nil
 }
 
-//nolint:gocritic // matches vcs.Mutator.PruneRemote's (ok bool, msg string, err error)
 func (m *mockVCS) PruneRemote(_ context.Context, _ string) (bool, string, error) {
 	if m.pruneResult != nil {
 		return m.pruneResult()
@@ -65,7 +63,6 @@ func (m *mockVCS) PruneRemote(_ context.Context, _ string) (bool, string, error)
 	return true, testSuccessMsg, nil
 }
 
-//nolint:gocritic // matches vcs.Mutator.CleanupMergedBranches's (ok bool, msg string, err error)
 func (m *mockVCS) CleanupMergedBranches(_ context.Context, _ string, squashMerged []string) (bool, string, error) {
 	m.gotSquashMerged = squashMerged
 	m.sawSquashMerged = true
@@ -76,27 +73,22 @@ func (m *mockVCS) CleanupMergedBranches(_ context.Context, _ string, squashMerge
 	return true, testSuccessMsg, nil
 }
 
-//nolint:gocritic // matches vcs.Mutator.PushBranch's (ok bool, msg string, err error)
 func (*mockVCS) PushBranch(_ context.Context, _, _ string, _ bool) (bool, string, error) {
 	return true, testSuccessMsg, nil
 }
 
-//nolint:gocritic // matches vcs.Mutator.SwitchBranch's (ok bool, msg string, err error)
 func (*mockVCS) SwitchBranch(_ context.Context, _, _ string) (bool, string, error) {
 	return true, testSuccessMsg, nil
 }
 
-//nolint:gocritic // matches vcs.Mutator.DeleteBranch's (ok bool, msg string, err error)
 func (*mockVCS) DeleteBranch(_ context.Context, _, _ string, _ bool) (bool, string, error) {
 	return true, testSuccessMsg, nil
 }
 
-//nolint:gocritic // matches vcs.Mutator.ApplyStash's (ok bool, msg string, err error)
 func (*mockVCS) ApplyStash(_ context.Context, _ string, _ int) (bool, string, error) {
 	return true, testSuccessMsg, nil
 }
 
-//nolint:gocritic // matches vcs.Mutator.DropStash's (ok bool, msg string, err error)
 func (*mockVCS) DropStash(_ context.Context, _ string, _ int) (bool, string, error) {
 	return true, testSuccessMsg, nil
 }

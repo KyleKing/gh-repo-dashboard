@@ -14,8 +14,6 @@ var errLsRemoteFailed = errors.New("ls-remote failed")
 
 // stubLsRemote returns a context that makes runLsRemote answer with (out,
 // err) instead of shelling out, plus a call counter.
-//
-//nolint:gocritic // context.Context and *int are unambiguous by type
 func stubLsRemote(out []byte, err error) (context.Context, *int) {
 	calls := 0
 	stub := func(_ context.Context, _ string) ([]byte, error) {

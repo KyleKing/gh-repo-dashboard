@@ -120,6 +120,27 @@ enable = [
   "zerologlint",
 ]
 
+[[linters.exclusions.rules]]
+# Table-driven tests grow long cases and repeat literals without adding real complexity.
+path = "_test\\.go"
+linters = ["cyclop", "dupl", "goconst"]
+
+[[linters.exclusions.rules]]
+# These structs decode `gh`/GitHub API JSON, which is camelCase on the wire;
+# the tags must match the API's field names, not our naming convention.
+path = "internal/github/(pr|workflow)\\.go"
+linters = ["tagliatelle"]
+
+[[linters.exclusions.rules]]
+# Model/KeyMap and the domain value types (RepoSummary, BranchInfo, PRInfo, etc.) are
+# passed/received by value throughout: Bubble Tea's Elm-style Update needs Model by value,
+# and the domain types are frequently read out of map[string]T values, which aren't
+# addressable in Go, so switching their methods to pointer receivers would break those
+# call sites. Not worth the ripple for structs under ~1.6KB.
+path = "internal/app/(actions|app|keymap|command|script|state|textobject|view(_\\w+)?|update|fixture)(_test)?\\.go|internal/models/(branch|pr|repo)\\.go|internal/ui/styles/styles\\.go"
+linters = ["gocritic"]
+text = "hugeParam"
+
 [linters.settings.cyclop]
 max-complexity = 15
 
@@ -155,6 +176,7 @@ enabled-tags = [
 ]
 disabled-checks = [
   "hugeParam",  # BubbleTea root Models are large by design; value receivers keep Update/View copy semantics
+  "unnamedResult",  # contradicts nonamedreturns, which is enabled and wins
   "whyNoLint",
 ]
 
@@ -283,27 +305,6 @@ ignore-sigs = [
   ".WithMessagef(",
   ".WithStack(",
 ]
-
-[[linters.exclusions.rules]]
-# Table-driven tests grow long cases and repeat literals without adding real complexity.
-path = "_test\\.go"
-linters = ["cyclop", "dupl", "goconst"]
-
-[[linters.exclusions.rules]]
-# These structs decode `gh`/GitHub API JSON, which is camelCase on the wire;
-# the tags must match the API's field names, not our naming convention.
-path = "internal/github/(pr|workflow)\\.go"
-linters = ["tagliatelle"]
-
-[[linters.exclusions.rules]]
-# Model/KeyMap and the domain value types (RepoSummary, BranchInfo, PRInfo, etc.) are
-# passed/received by value throughout: Bubble Tea's Elm-style Update needs Model by value,
-# and the domain types are frequently read out of map[string]T values, which aren't
-# addressable in Go, so switching their methods to pointer receivers would break those
-# call sites. Not worth the ripple for structs under ~1.6KB.
-path = "internal/app/(actions|app|keymap|command|script|state|textobject|view(_\\w+)?|update|fixture)(_test)?\\.go|internal/models/(branch|pr|repo)\\.go|internal/ui/styles/styles\\.go"
-linters = ["gocritic"]
-text = "hugeParam"
 
 [run]
 timeout = "5m"

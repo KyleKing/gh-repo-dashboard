@@ -10,8 +10,6 @@ import (
 )
 
 // FetchAll is a batch.TaskFunc that fetches all remotes for a repo.
-//
-//nolint:gocritic // matches vcs.Mutator.FetchAll's (ok bool, msg string, err error)
 func FetchAll(ctx context.Context, ops vcs.Mutator, repoPath string) (bool, string, error) {
 	ok, msg, err := ops.FetchAll(ctx, repoPath)
 	if err != nil {
@@ -24,8 +22,6 @@ func FetchAll(ctx context.Context, ops vcs.Mutator, repoPath string) (bool, stri
 // RefreshPRs is a batch.TaskFunc that drops a repo's cached pull request data
 // and re-reads it, so the fleet's PR columns reflect the remote without a
 // whole-app refresh. One gh call per repo, as the API budget requires.
-//
-//nolint:gocritic // matches the (ok bool, msg string, err error) TaskFunc shape
 func RefreshPRs(ctx context.Context, _ vcs.Mutator, repoPath string) (bool, string, error) {
 	summary, err := vcs.GetOperations(repoPath).GetRepoSummary(ctx, repoPath)
 	if err != nil {
@@ -46,8 +42,6 @@ func RefreshPRs(ctx context.Context, _ vcs.Mutator, repoPath string) (bool, stri
 }
 
 // PruneRemote is a batch.TaskFunc that prunes stale remote-tracking refs for a repo.
-//
-//nolint:gocritic // matches vcs.Mutator.PruneRemote's (ok bool, msg string, err error)
 func PruneRemote(ctx context.Context, ops vcs.Mutator, repoPath string) (bool, string, error) {
 	ok, msg, err := ops.PruneRemote(ctx, repoPath)
 	if err != nil {
@@ -69,8 +63,6 @@ var (
 // branches for a repo, detecting the squash-merged set via reads on the full
 // vcs.Operations for repoPath rather than the narrower Mutator passed in,
 // since TaskFunc only needs write access for the call itself.
-//
-//nolint:gocritic // matches vcs.Mutator.CleanupMergedBranches's (ok bool, msg string, err error)
 func CleanupMerged(ctx context.Context, ops vcs.Mutator, repoPath string) (bool, string, error) {
 	squashMerged := squashMergedBranches(ctx, repoPath)
 
@@ -122,7 +114,7 @@ type mergePreviewer interface {
 // anything, backing `:cleanup --dry-run`. The success result is always true
 // since a preview has nothing to fail at beyond the best-effort reads inside it.
 //
-//nolint:gocritic,unparam // matches batch.TaskFunc's (ok bool, msg string, err error)
+//nolint:unparam // matches batch.TaskFunc's (ok bool, msg string, err error)
 func PreviewCleanup(ctx context.Context, _ vcs.Mutator, repoPath string) (bool, string, error) {
 	ops := getOperations(repoPath)
 
