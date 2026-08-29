@@ -12,7 +12,7 @@ import (
 
 	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
+	"github.com/kyleking/aragonite/tui/table"
 )
 
 // paletteMaxResults caps the result list. Past this the list stops being

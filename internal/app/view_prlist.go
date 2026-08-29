@@ -14,7 +14,7 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/markdown"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/region"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
+	"github.com/kyleking/aragonite/tui/table"
 )
 
 // prListChromeHeight is what the tab bar, heading, blank lines, and footer

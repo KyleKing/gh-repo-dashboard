@@ -8,7 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
+	"github.com/kyleking/aragonite/tui/table"
 )
 
 // emDash is the placeholder rendered for empty/unknown values.

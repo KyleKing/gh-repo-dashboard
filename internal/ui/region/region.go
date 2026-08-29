@@ -15,7 +15,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
+	"github.com/kyleking/aragonite/tui/table"
 )
 
 // Styles are the faces a region draws with, passed in so the package never

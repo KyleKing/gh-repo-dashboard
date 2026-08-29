@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui/table"
+	"github.com/kyleking/aragonite/tui/table"
 )
 
 // panelID identifies one data set in the focused repo view. Every panel with
