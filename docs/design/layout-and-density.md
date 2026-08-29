@@ -2,7 +2,7 @@
 
 Why the column engine and the density rules are shaped the way they are. What
 they render is in [interface.md](../interface.md); how they are implemented is
-in `internal/ui/table` and `internal/app/layout.go`.
+in aragonite's `tui/table` and `internal/app/layout.go`.
 
 ## Problem
 

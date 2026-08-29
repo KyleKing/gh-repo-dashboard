@@ -6,7 +6,7 @@ conventions live in [AGENTS.md](AGENTS.md); the design docs the shipped work was
 built from live in `docs/design/`, alongside
 [selection-and-verbs.md](docs/design/selection-and-verbs.md).
 
-The column engine lives in `internal/ui/table` and every table is sized by it.
+The column engine lives in aragonite's `tui/table` and every table is sized by it.
 The repo list is one full-width table with an expanded region `v` opens beneath
 it (`internal/app/view_repolist.go`). The focused repo view is a panel grid
 (`panels.go`, `view_panels.go`) and the universal find is `palette.go` and
@@ -48,34 +48,6 @@ A layered pyramid:
 
 M1 through M20 landed through 2026-08-05 and are not tracked here; `CHANGELOG.md`
 and `git log` are the record. The lists below are the whole backlog.
-
-## Migrating `internal/ui` to aragonite
-
-`cache` and `forge` already moved. The rest of the shared rendering follows in
-dependency order, one package per change, each landing in this repo first and
-moving only once it has no import back into `internal/`.
-
-| Phase | Package | Becomes | Blocked on |
-| --- | --- | --- | --- |
-| 1 | `internal/ui/table` | `tui/table` | nothing; depends only on lipgloss and uniseg |
-| 2 | `internal/ui/region` | `tui/region` | phase 1, since it renders through `table` |
-| 3 | `internal/ui/styles` | `tui/theme` | splitting the palette from the app's named styles |
-| 4 | `internal/ui/markdown` | `tui/markdown` | phase 3, plus taking its styles as an argument |
-| 5 | `internal/ui` (display.go) | `forge` | nothing; it renders `forge` types and imports no lipgloss |
-
-Phase 3 is the one with a real decision in it. `styles.go` is a Catppuccin
-Macchiato palette and roughly thirty-five named styles. The palette is generic and
-the names are this app's vocabulary (`PROpenStyle`, `NotesBadgeStyle`), so only the
-palette and the handful of structural styles move, and the app keeps the rest.
-
-Phase 5 is a rename more than a move: `display.go` emits plain strings for `forge`
-types and pulls in no rendering library at all, so it is `forge` presentation
-sitting in a `ui` package rather than anything terminal-specific.
-
-Two conventions carry over from `docs/extraction.md`: split on consumer coupling
-rather than on file boundaries, and promote whatever the tests need into real API
-instead of leaving it in `export_test.go`. Test cleanup lands with each phase, in
-aragonite, rather than as a sweep afterward.
 
 ## Deferred features
 

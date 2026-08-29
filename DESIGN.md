@@ -49,16 +49,16 @@ flowchart TB
     models --> cli & script
 
     app --> filters
-    filters --> view["view_*.go, sized by ui/table"]
+    filters --> view["view_*.go, sized by aragonite tui/table"]
 ```
 
 Everything network-derived goes through `cache`, keyed by upstream so parallel
 checkouts of one remote share a read (see
 [cache-identity-and-invalidation.md](docs/design/cache-identity-and-invalidation.md)).
 `vcs` is the only package that shells out to git or jj, `models` holds the
-shapes all three front ends render, `ui/table` sizes every table, and
-`ui/markdown` flattens the markdown and raw HTML a pull request body carries
-into terminal lines, folding `<details>` blocks to their summary so a bot's
+shapes all three front ends render, aragonite's `tui/table` sizes every table,
+and its `tui/markdown` flattens the markdown and raw HTML a pull request body
+carries into terminal lines, folding `<details>` blocks to their summary so a bot's
 changelog costs a pane one line instead of hundreds.
 
 ## VCS Abstraction
