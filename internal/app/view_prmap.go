@@ -6,8 +6,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/aragonite/tui/table"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
@@ -100,7 +100,7 @@ func (m Model) renderPRMapTable(entries []prMapEntry) string {
 			values[colMapPR] = "#" + strconv.Itoa(entry.PR.Number)
 			values[colMapTitle] = entry.PR.Title
 			values[colMapState] = prStateCell(entry.PR)
-			values[colMapActivity] = ui.PRActivitySummary(entry.PR)
+			values[colMapActivity] = display.PRActivitySummary(entry.PR)
 			cellStyles[colMapState] = withSelection(prStateStyle(entry.PR), selected)
 			cellStyles[colMapActivity] = withSelection(styles.SubtitleStyle, selected)
 		}

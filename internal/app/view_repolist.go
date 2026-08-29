@@ -10,10 +10,10 @@ import (
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
 
+	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/aragonite/tui/region"
 	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
@@ -739,7 +739,7 @@ func formatPRCell(s models.RepoSummary) string {
 
 	prNum := fmt.Sprintf("#%d", s.PRInfo.Number)
 
-	switch ui.PRReviewStatus(*s.PRInfo) {
+	switch display.PRReviewStatus(*s.PRInfo) {
 	case forge.ReviewApproved:
 		prNum += " ✓"
 	case forge.ReviewChangesRequested:
@@ -748,11 +748,11 @@ func formatPRCell(s models.RepoSummary) string {
 
 	switch {
 	case s.PRInfo.Checks.Total > 0:
-		if ui.ChecksSummary(s.PRInfo.Checks) == forge.StatusFailing {
+		if display.ChecksSummary(s.PRInfo.Checks) == forge.StatusFailing {
 			prNum += " ⚠"
 		}
 	case s.WorkflowInfo != nil:
-		if ui.WorkflowSummaryStatusDisplay(*s.WorkflowInfo) == forge.StatusFailing {
+		if display.WorkflowSummaryStatusDisplay(*s.WorkflowInfo) == forge.StatusFailing {
 			prNum += " ⚠"
 		}
 	}
@@ -1045,7 +1045,7 @@ func (m Model) repoCell(col string, s models.RepoSummary, width int, base lipglo
 			return base.Render(padCell(pendingGlyph, width))
 		}
 
-		return base.Render(padCell(ui.RepoRelativeModified(s.RepoSummary), width))
+		return base.Render(padCell(display.RepoRelativeModified(s.RepoSummary), width))
 	default:
 		return base.Render(padCell("", width))
 	}
@@ -1059,7 +1059,7 @@ func (m Model) statusCell(s models.RepoSummary, width int, base lipgloss.Style, 
 	notesText, notesStyle := notesMarker(s, base, selected)
 	style := withSelection(statusCellStyle(s, base), selected)
 
-	summary := ui.RepoStatusSummary(s.RepoSummary)
+	summary := display.RepoStatusSummary(s.RepoSummary)
 	if m.summaryPending(s.Path) {
 		summary = pendingGlyph
 		style = base

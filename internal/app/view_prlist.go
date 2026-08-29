@@ -9,11 +9,11 @@ import (
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/forge/github"
 
+	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/aragonite/tui/markdown"
 	"github.com/kyleking/aragonite/tui/region"
 	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
@@ -235,7 +235,7 @@ func prPreviewFacts(pr *forge.PullRequest, preview forge.PRPreview) []region.Fac
 		reviewers = strings.Join(preview.Reviewers, ", ")
 	}
 
-	status := ui.PreviewReviewStatus(preview)
+	status := display.PreviewReviewStatus(preview)
 
 	reviewStyle := styles.SubtitleStyle
 	switch status {
@@ -271,7 +271,7 @@ func renderPRSearchRow(pr *forge.PullRequest, layout table.Layout, selected bool
 
 	values := map[string]string{
 		colBatchName:  orDash(pr.Repo),
-		colPRActivity: ui.PRActivitySummary(pr),
+		colPRActivity: display.PRActivitySummary(pr),
 		colPRNumber:   "#" + strconv.Itoa(pr.Number),
 		colPRTitle:    pr.Title,
 		colPRAuthor:   orDash(pr.Author),

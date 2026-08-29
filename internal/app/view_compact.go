@@ -6,9 +6,9 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
@@ -44,7 +44,7 @@ func (m Model) renderCompactRow(s models.RepoSummary, selected bool, layout tabl
 	values := map[string]string{
 		colCompactName:   s.Name(),
 		colCompactBranch: s.Branch,
-		colCompactState:  ui.RepoStatusSummary(s.RepoSummary),
+		colCompactState:  display.RepoStatusSummary(s.RepoSummary),
 	}
 	cellStyles := map[string]lipgloss.Style{
 		colCompactBranch: withSelection(styles.BranchStyle, selected),
@@ -104,7 +104,7 @@ func (m Model) compactSignals(s models.RepoSummary) []string {
 		return signals
 	}
 
-	return append(signals, ui.RepoRelativeModified(s.RepoSummary))
+	return append(signals, display.RepoRelativeModified(s.RepoSummary))
 }
 
 func plural(count int, one, many string) string {

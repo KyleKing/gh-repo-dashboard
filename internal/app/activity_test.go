@@ -9,7 +9,7 @@ import (
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/ui"
+	"github.com/kyleking/aragonite/display"
 )
 
 func TestActivitySummaryReportsAgeAndAuthor(t *testing.T) {
@@ -20,13 +20,13 @@ func TestActivitySummaryReportsAgeAndAuthor(t *testing.T) {
 		Activity: &forge.PRActivity{Author: "reviewer", At: time.Now().Add(-2 * time.Hour)},
 	}
 
-	got := ui.PRActivitySummary(&pr)
+	got := display.PRActivitySummary(&pr)
 	if !strings.Contains(got, "reviewer") || !strings.Contains(got, "hour") {
 		t.Errorf("activity summary = %q, want an age and an author", got)
 	}
 
 	quiet := forge.PullRequest{Number: 8}
-	if got := ui.PRActivitySummary(&quiet); got != emDash {
+	if got := display.PRActivitySummary(&quiet); got != emDash {
 		t.Errorf("a PR with no comments or reviews summarizes as %q, want %q", got, emDash)
 	}
 }

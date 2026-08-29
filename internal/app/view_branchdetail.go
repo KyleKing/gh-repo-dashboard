@@ -8,8 +8,8 @@ import (
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
 
+	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
@@ -95,7 +95,7 @@ func (m Model) writeBranchInfoSection(b *strings.Builder, s branchDetailStyles) 
 
 	if len(m.branchDetail.Commits) > 0 {
 		lastCommit := m.branchDetail.Commits[0]
-		s.writeInfoLine(b, "Last commit:", ui.CommitRelativeDate(lastCommit))
+		s.writeInfoLine(b, "Last commit:", display.CommitRelativeDate(lastCommit))
 		s.writeInfoLine(b, "Author:", lastCommit.Author)
 	}
 
@@ -167,7 +167,7 @@ func (m Model) writeBranchPRSection(b *strings.Builder, s branchDetailStyles) {
 	}
 
 	if wf := m.branchDetail.WorkflowInfo; wf != nil {
-		wfStatus := ui.WorkflowSummaryStatusDisplay(*wf)
+		wfStatus := display.WorkflowSummaryStatusDisplay(*wf)
 		wfStyle := styles.SubtitleStyle
 		switch wfStatus {
 		case forge.StatusPassing:
@@ -181,7 +181,7 @@ func (m Model) writeBranchPRSection(b *strings.Builder, s branchDetailStyles) {
 }
 
 func writeBranchPRInfo(b *strings.Builder, s branchDetailStyles, pr *forge.PullRequest) {
-	prStatus := ui.PRStatusDisplay(*pr)
+	prStatus := display.PRStatusDisplay(*pr)
 	prStyle := styles.PROpenStyle
 	switch prStatus {
 	case forge.PRStatusMerged:
@@ -193,7 +193,7 @@ func writeBranchPRInfo(b *strings.Builder, s branchDetailStyles, pr *forge.PullR
 	s.writeInfoLine(b, "PR:", prStyle.Render(fmt.Sprintf("#%d %s", pr.Number, prStatus)))
 	s.writeInfoLine(b, "Title:", truncate(pr.Title, descriptionTruncLen))
 
-	reviewStatus := ui.PRReviewStatus(*pr)
+	reviewStatus := display.PRReviewStatus(*pr)
 	reviewStyle := styles.SubtitleStyle
 	switch reviewStatus {
 	case forge.ReviewApproved:
@@ -209,7 +209,7 @@ func writeBranchPRInfo(b *strings.Builder, s branchDetailStyles, pr *forge.PullR
 	}
 
 	if pr.Checks.Total > 0 {
-		checkStatus := ui.ChecksSummary(pr.Checks)
+		checkStatus := display.ChecksSummary(pr.Checks)
 		checkStyle := styles.SubtitleStyle
 		switch checkStatus {
 		case forge.StatusPassing:
@@ -251,7 +251,7 @@ func (m Model) writeBranchCommitsSection(b *strings.Builder, s branchDetailStyle
 			colCommitHash:    commit.ShortHash,
 			colCommitSubject: commit.Subject,
 			colCommitAuthor:  commit.Author,
-			colCommitDate:    ui.CommitRelativeDate(commit),
+			colCommitDate:    display.CommitRelativeDate(commit),
 		}
 
 		cells := renderCells(layout, values, subtleStyles, &plainStyle)

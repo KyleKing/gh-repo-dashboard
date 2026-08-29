@@ -9,9 +9,9 @@ import (
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
 
+	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
@@ -86,9 +86,9 @@ func formatBranchPRCell(pr *forge.PullRequest) string {
 	switch {
 	case pr.IsDraft:
 		cell += " draft"
-	case ui.PRReviewStatus(*pr) == forge.ReviewApproved:
+	case display.PRReviewStatus(*pr) == forge.ReviewApproved:
 		cell += " ✓"
-	case ui.PRReviewStatus(*pr) == forge.ReviewChangesRequested:
+	case display.PRReviewStatus(*pr) == forge.ReviewChangesRequested:
 		cell += " ✗"
 	}
 
@@ -102,7 +102,7 @@ func formatChecksCell(pr *forge.PullRequest) string {
 		return emDash
 	}
 
-	return fmt.Sprintf("%s %d/%d", ui.ChecksSummary(pr.Checks), pr.Checks.Passing, pr.Checks.Total)
+	return fmt.Sprintf("%s %d/%d", display.ChecksSummary(pr.Checks), pr.Checks.Passing, pr.Checks.Total)
 }
 
 // checksCellStyle colors a checks cell by its rollup outcome.
@@ -111,7 +111,7 @@ func checksCellStyle(pr *forge.PullRequest, base lipgloss.Style) lipgloss.Style 
 		return base
 	}
 
-	switch ui.ChecksSummary(pr.Checks) {
+	switch display.ChecksSummary(pr.Checks) {
 	case forge.StatusPassing:
 		return styles.CleanStyle
 	case forge.StatusFailing:
@@ -176,7 +176,7 @@ func renderBranchRow(row branchRow, layout table.Layout) string {
 		colBranchPR:    formatBranchPRCell(row.pr),
 		colChecks:      formatChecksCell(row.pr),
 		colCheckedOut:  checkout,
-		colLastCommit:  ui.BranchRelativeLastCommit(row.branch),
+		colLastCommit:  display.BranchRelativeLastCommit(row.branch),
 	}
 	cellStyles := map[string]lipgloss.Style{
 		colBranchName: withSelection(nameStyle, row.selected),
@@ -233,16 +233,16 @@ func relativeOrDash(t time.Time) string {
 		return emDash
 	}
 
-	return ui.RelativeTime(t)
+	return display.RelativeTime(t)
 }
 
 func prStateStyle(pr *forge.PullRequest) lipgloss.Style {
 	switch {
 	case pr.IsDraft:
 		return styles.PRDraftStyle
-	case ui.PRStatusDisplay(*pr) == forge.PRStatusMerged:
+	case display.PRStatusDisplay(*pr) == forge.PRStatusMerged:
 		return styles.PRMergedStyle
-	case ui.PRStatusDisplay(*pr) == forge.PRStatusClosed:
+	case display.PRStatusDisplay(*pr) == forge.PRStatusClosed:
 		return styles.ErrorStyle
 	default:
 		return styles.PROpenStyle
@@ -252,9 +252,9 @@ func prStateStyle(pr *forge.PullRequest) lipgloss.Style {
 // prStateCell renders the pull request's state with its review decision
 // folded in as a glyph, since ACTIVITY took the review column's width.
 func prStateCell(pr *forge.PullRequest) string {
-	if glyph := ui.PRReviewGlyph(pr); glyph != "" {
-		return ui.PRStatusDisplay(*pr) + " " + glyph
+	if glyph := display.PRReviewGlyph(pr); glyph != "" {
+		return display.PRStatusDisplay(*pr) + " " + glyph
 	}
 
-	return ui.PRStatusDisplay(*pr)
+	return display.PRStatusDisplay(*pr)
 }

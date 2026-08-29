@@ -9,8 +9,8 @@ import (
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
 
+	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 )
 
 func prDetailModel(detail *forge.PRDetail) Model {
@@ -73,7 +73,7 @@ func TestPRInfoStatusDisplay(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if got := ui.PRStatusDisplay(tt.pr); got != tt.want {
+			if got := display.PRStatusDisplay(tt.pr); got != tt.want {
 				t.Errorf("expected %q, got %q", tt.want, got)
 			}
 		})
@@ -101,7 +101,7 @@ func TestPRInfoReviewStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if got := ui.PRReviewStatus(tt.pr); got != tt.want {
+			if got := display.PRReviewStatus(tt.pr); got != tt.want {
 				t.Errorf("expected %q, got %q", tt.want, got)
 			}
 		})

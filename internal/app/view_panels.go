@@ -8,9 +8,9 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/vcs"
 
+	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
@@ -280,7 +280,7 @@ func (m Model) stashesPanel(width int) panelContent {
 
 		values := map[string]string{
 			colStashMessage: stash.Message,
-			colStashDate:    ui.StashRelativeDate(stash),
+			colStashDate:    display.StashRelativeDate(stash),
 		}
 
 		rows = append(rows, detailRow(rowCursorFor(selected), layout, renderCells(layout, values, nil, &style)))
@@ -739,7 +739,7 @@ func (m Model) repoDetailLines(width int) []string {
 	}
 
 	if m.newestFile != "" {
-		lines = append(lines, detailField("newest edit", m.newestFile+" "+ui.RelativeTime(m.newestFileTime)))
+		lines = append(lines, detailField("newest edit", m.newestFile+" "+display.RelativeTime(m.newestFileTime)))
 	}
 
 	if defaultBranch := findDefaultBranch(m.branches); defaultBranch != "" && defaultBranch != summary.Branch {
@@ -783,7 +783,7 @@ func (m Model) branchDetailLines(width int) []string {
 	lines := []string{
 		detailField("upstream", orDash(branch.Upstream)),
 		detailField("tracking", branchAheadBehindStatus(branch)),
-		detailField("last commit", ui.BranchRelativeLastCommit(branch)),
+		detailField("last commit", display.BranchRelativeLastCommit(branch)),
 	}
 
 	if pr := prsByHeadRef(m.prs)[branch.Name]; pr != nil {
@@ -856,7 +856,7 @@ func (m Model) stashDetailLines(width int) []string {
 	lines := []string{
 		detailField("message", stash.Message),
 		detailField("branch", orDash(stash.Branch)),
-		detailField("created", ui.StashRelativeDate(stash)),
+		detailField("created", display.StashRelativeDate(stash)),
 	}
 
 	label, texts := "diffstat", m.stashDiffstat

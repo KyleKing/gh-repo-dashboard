@@ -10,8 +10,8 @@ import (
 	"github.com/kyleking/aragonite/forge/github"
 	"github.com/kyleking/aragonite/vcs"
 
+	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/aragonite/tui/table"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
@@ -71,7 +71,7 @@ func (m Model) findRepos(q findQuery, fleet bool) []findResult {
 			kind:   findRepo,
 			repo:   path,
 			label:  summary.Name(),
-			detail: summary.Branch + compactSignalSep + ui.RepoStatusSummary(summary.RepoSummary),
+			detail: summary.Branch + compactSignalSep + display.RepoStatusSummary(summary.RepoSummary),
 		})
 	}
 
@@ -95,7 +95,7 @@ func (m Model) findPRs(q findQuery, fleet bool) []findResult {
 				kind:   findPR,
 				repo:   path,
 				label:  "#" + strconv.Itoa(pr.Number) + " " + pr.Title,
-				detail: filepath.Base(path) + compactSignalSep + ui.PRStatusDisplay(*pr),
+				detail: filepath.Base(path) + compactSignalSep + display.PRStatusDisplay(*pr),
 				branch: pr.HeadRef,
 				number: pr.Number,
 			})
@@ -183,7 +183,7 @@ func (m Model) findStashes(q findQuery) []findResult {
 			kind:   findStash,
 			repo:   m.selectedRepo,
 			label:  "stash@{" + strconv.Itoa(stash.Index) + "} " + stash.Message,
-			detail: ui.StashRelativeDate(stash),
+			detail: display.StashRelativeDate(stash),
 			index:  stash.Index,
 		})
 	}
