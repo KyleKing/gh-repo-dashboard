@@ -1,3 +1,13 @@
+## v1.10.1 (2026-08-29)
+
+### Refactor
+
+- **ui**: source the model renderers from aragonite
+- **ui**: source the markdown renderer from aragonite
+- **styles**: build the named styles from aragonite's detected palette
+- **ui**: source the region renderer from aragonite
+- **ui**: source the table engine from aragonite
+
 ## v1.10.0 (2026-08-27)
 
 ### Feat
