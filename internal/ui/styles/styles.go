@@ -1,41 +1,50 @@
-// Package styles defines the Catppuccin-derived color palette and lipgloss
-// styles shared across the TUI's views.
+// Package styles names the lipgloss styles the TUI's views share, built from
+// the Catppuccin flavor aragonite detects for the terminal.
 package styles
 
-import "charm.land/lipgloss/v2"
+import (
+	"charm.land/lipgloss/v2"
+
+	"github.com/kyleking/aragonite/tui/theme"
+)
 
 // horizontalPadding is the left/right padding applied to modals and tabs.
 const horizontalPadding = 2
 
-// Catppuccin Macchiato palette colors.
-var (
-	Base     = lipgloss.Color("#24273a")
-	Mantle   = lipgloss.Color("#1e2030")
-	Crust    = lipgloss.Color("#181926")
-	Surface0 = lipgloss.Color("#363a4f")
-	Surface1 = lipgloss.Color("#494d64")
-	Surface2 = lipgloss.Color("#5b6078")
-	Overlay0 = lipgloss.Color("#6e738d")
-	Overlay1 = lipgloss.Color("#8087a2")
-	Overlay2 = lipgloss.Color("#939ab7")
-	Subtext0 = lipgloss.Color("#a5adcb")
-	Subtext1 = lipgloss.Color("#b8c0e0")
-	Text     = lipgloss.Color("#cad3f5")
+// Palette is the flavor detected at startup. Every style below closes over
+// these values at init, so reassigning it later changes nothing.
+var Palette = theme.Detect()
 
-	Rosewater = lipgloss.Color("#f4dbd6")
-	Flamingo  = lipgloss.Color("#f0c6c6")
-	Pink      = lipgloss.Color("#f5bde6")
-	Mauve     = lipgloss.Color("#c6a0f6")
-	Red       = lipgloss.Color("#ed8796")
-	Maroon    = lipgloss.Color("#ee99a0")
-	Peach     = lipgloss.Color("#f5a97f")
-	Yellow    = lipgloss.Color("#eed49f")
-	Green     = lipgloss.Color("#a6da95")
-	Teal      = lipgloss.Color("#8bd5ca")
-	Sky       = lipgloss.Color("#91d7e3")
-	Sapphire  = lipgloss.Color("#7dc4e4")
-	Blue      = lipgloss.Color("#8aadf4")
-	Lavender  = lipgloss.Color("#b7bdf8")
+// Palette colors, re-exported so views can name a color without reaching
+// through Palette on every use.
+var (
+	Base     = Palette.Base
+	Mantle   = Palette.Mantle
+	Crust    = Palette.Crust
+	Surface0 = Palette.Surface0
+	Surface1 = Palette.Surface1
+	Surface2 = Palette.Surface2
+	Overlay0 = Palette.Overlay0
+	Overlay1 = Palette.Overlay1
+	Overlay2 = Palette.Overlay2
+	Subtext0 = Palette.Subtext0
+	Subtext1 = Palette.Subtext1
+	Text     = Palette.Text
+
+	Rosewater = Palette.Rosewater
+	Flamingo  = Palette.Flamingo
+	Pink      = Palette.Pink
+	Mauve     = Palette.Mauve
+	Red       = Palette.Red
+	Maroon    = Palette.Maroon
+	Peach     = Palette.Peach
+	Yellow    = Palette.Yellow
+	Green     = Palette.Green
+	Teal      = Palette.Teal
+	Sky       = Palette.Sky
+	Sapphire  = Palette.Sapphire
+	Blue      = Palette.Blue
+	Lavender  = Palette.Lavender
 )
 
 // Shared lipgloss styles used across views.
