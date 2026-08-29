@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-
 	"github.com/kyleking/aragonite/tui/table"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 

@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-
 	"github.com/kyleking/aragonite/tui/table"
 )
 

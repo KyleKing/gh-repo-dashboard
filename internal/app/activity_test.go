@@ -6,10 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
-
-	"github.com/kyleking/aragonite/display"
 )
 
 func TestActivitySummaryReportsAgeAndAuthor(t *testing.T) {

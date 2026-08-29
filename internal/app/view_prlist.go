@@ -6,13 +6,13 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/forge/github"
-
-	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/aragonite/tui/markdown"
 	"github.com/kyleking/aragonite/tui/region"
 	"github.com/kyleking/aragonite/tui/table"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
@@ -219,7 +219,8 @@ func (m Model) prPreviewRegion(pr forge.PullRequest, width int) region.Region {
 		block.Body = []string{styles.SubtitleStyle.Render(readingLabel)}
 	default:
 		block.Head = prPreviewFacts(&pr, preview)
-		block.Body = markdown.Render(orDash(strings.TrimSpace(preview.Body)), width, prPreviewMaxDescLines, styles.Markdown)
+		body := orDash(strings.TrimSpace(preview.Body))
+		block.Body = markdown.Render(body, width, prPreviewMaxDescLines, styles.Markdown)
 	}
 
 	return block

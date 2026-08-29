@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/kyleking/aragonite/tui/table"
+
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 

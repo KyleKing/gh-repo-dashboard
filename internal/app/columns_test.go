@@ -9,9 +9,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/forge"
-	"github.com/kyleking/aragonite/vcs"
-
 	"github.com/kyleking/aragonite/tui/table"
+	"github.com/kyleking/aragonite/vcs"
 )
 
 // detailTableModel returns a model at termWidth with one populated row in each

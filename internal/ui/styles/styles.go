@@ -4,7 +4,6 @@ package styles
 
 import (
 	"charm.land/lipgloss/v2"
-
 	"github.com/kyleking/aragonite/tui/markdown"
 	"github.com/kyleking/aragonite/tui/theme"
 )
