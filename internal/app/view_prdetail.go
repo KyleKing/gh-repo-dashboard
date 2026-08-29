@@ -8,10 +8,10 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/forge"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/ui"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui/markdown"
-	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
+	"github.com/kyleking/aragonite/tui/markdown"
 	"github.com/kyleking/aragonite/tui/table"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
 // writePRDetailInfo writes the "Pull Request" section's info lines (title,
@@ -95,7 +95,7 @@ func writePRDetailDescription(b *strings.Builder, sectionStyle lipgloss.Style, b
 // heading.
 func writeMarkdown(b *strings.Builder, body string, width, maxLines int) {
 	padding := lipgloss.NewStyle().PaddingLeft(infoPaddingLeft)
-	for _, line := range markdown.Render(body, max(width-infoPaddingLeft, 1), maxLines) {
+	for _, line := range markdown.Render(body, max(width-infoPaddingLeft, 1), maxLines, styles.Markdown) {
 		b.WriteString(padding.Render(line))
 		b.WriteString("\n")
 	}

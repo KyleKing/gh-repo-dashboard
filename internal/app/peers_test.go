@@ -10,8 +10,8 @@ import (
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/aragonite/tui/table"
+	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
 // peerFleet returns two clones of one remote sharing a branch, plus a worktree

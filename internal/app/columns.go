@@ -5,8 +5,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/aragonite/tui/table"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
 // Column keys for the detail tabs, PR views, and batch results. Keys double

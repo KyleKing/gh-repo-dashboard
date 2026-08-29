@@ -6,10 +6,10 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
-	"github.com/kyleking/aragonite/tui/table"
 )
 
 const compactRowHeight = 2

@@ -7,8 +7,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 	"github.com/kyleking/aragonite/tui/table"
+	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
 // emDash is the placeholder rendered for empty/unknown values.

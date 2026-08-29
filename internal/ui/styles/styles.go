@@ -5,6 +5,7 @@ package styles
 import (
 	"charm.land/lipgloss/v2"
 
+	"github.com/kyleking/aragonite/tui/markdown"
 	"github.com/kyleking/aragonite/tui/theme"
 )
 
@@ -237,4 +238,12 @@ func PRStatusBadge(state string, isDraft bool) string {
 	default:
 		return Badge(state, SubtitleStyle)
 	}
+}
+
+// Markdown maps this app's named styles onto the roles the markdown renderer
+// asks for.
+var Markdown = markdown.Styles{
+	Body:    TableRowStyle,
+	Heading: HeaderStyle,
+	Muted:   SubtitleStyle,
 }

@@ -10,11 +10,11 @@ import (
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
 
+	"github.com/kyleking/aragonite/tui/region"
+	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui"
-	"github.com/kyleking/aragonite/tui/region"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
-	"github.com/kyleking/aragonite/tui/table"
 )
 
 // Vertical budget of the repo list. The body is sized once and rendered to

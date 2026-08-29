@@ -10,9 +10,9 @@ import (
 	"github.com/kyleking/aragonite/forge/github"
 	"github.com/kyleking/aragonite/vcs"
 
+	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
-	"github.com/kyleking/aragonite/tui/table"
 )
 
 // paletteMaxResults caps the result list. Past this the list stops being
