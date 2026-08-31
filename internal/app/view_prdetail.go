@@ -183,7 +183,8 @@ func writePRDetailLatestComment(
 	b.WriteString("\n")
 	b.WriteString(valueStyle.Render(
 		styles.BranchStyle.Render(comment.Author) + " " +
-			styles.SubtitleStyle.Render(display.CommentRelativeCreated(*comment))))
+			styles.SubtitleStyle.Render(display.CommentRelativeCreated(*comment)),
+	))
 	b.WriteString("\n")
 	writeMarkdown(b, comment.Body, width, prCommentMaxLines)
 }

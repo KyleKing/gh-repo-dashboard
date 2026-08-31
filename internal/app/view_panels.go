@@ -313,7 +313,8 @@ func (m Model) notesPanel(width int) panelContent {
 		}
 
 		rows = append(rows, rowCursorFor(selected)+style.Render(
-			table.TruncateMiddle(padCell(label, width-cursorWidth), width-cursorWidth)))
+			table.TruncateMiddle(padCell(label, width-cursorWidth), width-cursorWidth),
+		))
 	}
 
 	relevance := relevanceIdle
@@ -797,7 +798,8 @@ func (m Model) branchDetailLines(width int) []string {
 	lines = append(lines, "", styles.HeaderStyle.Render("recent commits"))
 	for _, commit := range m.branchDetail.Commits {
 		lines = append(lines, styles.TableRowStyle.Render(
-			truncate("  "+commit.ShortHash+" "+commit.Subject, width)))
+			truncate("  "+commit.ShortHash+" "+commit.Subject, width),
+		))
 	}
 
 	return lines

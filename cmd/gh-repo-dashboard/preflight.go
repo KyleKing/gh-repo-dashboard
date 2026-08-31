@@ -8,7 +8,8 @@ import (
 )
 
 var errNoVCS = errors.New(
-	"neither git nor jj was found on PATH; install git (https://git-scm.com) or jj (https://jj-vcs.github.io)")
+	"neither git nor jj was found on PATH; install git (https://git-scm.com) or jj (https://jj-vcs.github.io)",
+)
 
 func notice(warn io.Writer, msg string) {
 	fmt.Fprintln(warn, "Note: "+msg) //nolint:errcheck // best-effort stderr notice

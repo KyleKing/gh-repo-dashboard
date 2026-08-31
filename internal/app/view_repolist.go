@@ -30,7 +30,8 @@ const (
 // search box opens rather than living only behind "?" help.
 func searchScopeLegend() string {
 	return styles.SubtitleStyle.Render(
-		"[r]epo:  [b]ranch:  [p]r:  [t]emplate:  [n]otes:  [c]ommit:")
+		"[r]epo:  [b]ranch:  [p]r:  [t]emplate:  [n]otes:  [c]ommit:",
+	)
 }
 
 func (m Model) renderRepoList() string {
@@ -689,7 +690,8 @@ func elideMiddle(lines []string, height int) []string {
 	out := make([]string, 0, height)
 	out = append(out, lines[:head]...)
 	out = append(out, styles.SubtitleStyle.Render(
-		"  ⋯ "+strconv.Itoa(len(lines)-head-tail)+" more lines ⋯"))
+		"  ⋯ "+strconv.Itoa(len(lines)-head-tail)+" more lines ⋯",
+	))
 
 	return append(out, lines[len(lines)-tail:]...)
 }

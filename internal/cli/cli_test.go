@@ -335,7 +335,8 @@ func TestLookupCIIsGatedByFresh(t *testing.T) {
 		func(_ context.Context, _, _ string) (*forge.DefaultBranchCI, error) {
 			calls++
 			return &forge.DefaultBranchCI{Branch: "main"}, nil
-		})
+		},
+	)
 
 	if got := cli.LookupCI(context.Background(), client, "/repos/app", "", false); got != nil {
 		t.Errorf("CI = %+v without --fresh, want nil; the read always costs a network call", got)

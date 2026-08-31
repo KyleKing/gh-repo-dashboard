@@ -57,7 +57,8 @@ func (m Model) renderCompactRow(s models.RepoSummary, selected bool, layout tabl
 	signals := m.compactSignals(s)
 	signalWidth := listWidth(m.width) - len(compactIndent)
 	signalLine := styles.SubtitleStyle.Render(
-		compactIndent + table.Truncate(strings.Join(signals, compactSignalSep), signalWidth))
+		compactIndent + table.Truncate(strings.Join(signals, compactSignalSep), signalWidth),
+	)
 
 	return identity + "\n" + signalLine
 }
