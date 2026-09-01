@@ -38,6 +38,8 @@ type Repo struct {
 	VCS           string             `json:"vcs"`
 	Branch        string             `json:"branch"`
 	Upstream      string             `json:"upstream,omitempty"`
+	Remote        string             `json:"remote,omitempty"`
+	RemoteID      string             `json:"remote_id,omitempty"`
 	Ahead         int                `json:"ahead"`
 	Behind        int                `json:"behind"`
 	Staged        int                `json:"staged"`
@@ -48,6 +50,7 @@ type Repo struct {
 	Status        string             `json:"status"`
 	StashCount    int                `json:"stash_count"`
 	WorktreeCount int                `json:"worktree_count"`
+	Worktrees     []Worktree         `json:"worktrees,omitempty"`
 	NotesFiles    []models.NoteFile  `json:"notes_files,omitempty"`
 	LastModified  *time.Time         `json:"last_modified,omitempty"`
 	PR            *forge.PullRequest `json:"pr,omitempty"`
@@ -61,6 +64,13 @@ type Repo struct {
 	DependabotAlerts map[string]int         `json:"dependabot_alerts,omitempty"`
 
 	Error string `json:"error,omitempty"`
+}
+
+// Worktree is one checkout of a repo, naming where a branch already lives.
+type Worktree struct {
+	Path   string `json:"path"`
+	Branch string `json:"branch,omitempty"`
+	Locked bool   `json:"locked,omitempty"`
 }
 
 // githubClient holds the gh-backed fetchers used only when fresh retrieval is
@@ -184,7 +194,7 @@ func loadRepo(
 		return nil
 	}
 
-	repo := newRepo(&summary, len(worktrees), pr, prCount)
+	repo := newRepo(&summary, worktrees, pr, prCount)
 	repo.CI = lookupCI(ctx, client, path, summary.RemoteID, opts.Fresh)
 	if opts.Fresh && client.alerts != nil {
 		repo.DependabotAlerts = client.alerts(ctx, path, summary.RemoteRepo)
@@ -213,13 +223,17 @@ func lookupCI(
 	return ci
 }
 
-func newRepo(summary *models.RepoSummary, worktreeCount int, pr *forge.PullRequest, prCount *int) Repo {
+func newRepo(
+	summary *models.RepoSummary, worktrees []vcs.WorktreeInfo, pr *forge.PullRequest, prCount *int,
+) Repo {
 	repo := Repo{
 		Path:          summary.Path,
 		Name:          summary.Name(),
 		VCS:           summary.VCSType.String(),
 		Branch:        summary.Branch,
 		Upstream:      summary.Upstream,
+		Remote:        summary.RemoteRepo,
+		RemoteID:      summary.RemoteID,
 		Ahead:         summary.Ahead,
 		Behind:        summary.Behind,
 		Staged:        summary.Staged,
@@ -229,7 +243,8 @@ func newRepo(summary *models.RepoSummary, worktreeCount int, pr *forge.PullReque
 		Dirty:         summary.IsDirty(),
 		Status:        summary.Status().String(),
 		StashCount:    summary.StashCount,
-		WorktreeCount: worktreeCount,
+		WorktreeCount: len(worktrees),
+		Worktrees:     worktreeList(worktrees),
 		NotesFiles:    summary.NotesFiles,
 		PR:            pr,
 		PRCount:       prCount,
@@ -248,6 +263,25 @@ func newRepo(summary *models.RepoSummary, worktreeCount int, pr *forge.PullReque
 	}
 
 	return repo
+}
+
+// worktreeList drops bare worktrees, which hold no checkout to review.
+func worktreeList(worktrees []vcs.WorktreeInfo) []Worktree {
+	var out []Worktree
+
+	for i := range worktrees {
+		if worktrees[i].IsBare {
+			continue
+		}
+
+		out = append(out, Worktree{
+			Path:   worktrees[i].Path,
+			Branch: worktrees[i].Branch,
+			Locked: worktrees[i].IsLocked,
+		})
+	}
+
+	return out
 }
 
 // lookupPR returns the pull request for branch from the cache, fetching via gh

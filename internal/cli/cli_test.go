@@ -160,7 +160,7 @@ func TestRepoJSONShape(t *testing.T) {
 				&models.RepoSummary{
 					RepoSummary: vcs.RepoSummary{Path: "/repos/demo", VCSType: vcs.TypeGit, Branch: "main"},
 				},
-				0,
+				nil,
 				nil,
 				nil,
 			),
@@ -177,6 +177,8 @@ func TestRepoJSONShape(t *testing.T) {
 						VCSType:      vcs.TypeJJ,
 						Branch:       "feature",
 						Upstream:     "origin/feature",
+						RemoteRepo:   "acme/wip",
+						RemoteID:     "github.com/acme/wip",
 						Ahead:        2,
 						Behind:       1,
 						Unstaged:     3,
@@ -184,7 +186,10 @@ func TestRepoJSONShape(t *testing.T) {
 						LastModified: lastModified,
 					},
 				},
-				2,
+				[]vcs.WorktreeInfo{
+					{Path: "/repos/wip", Branch: "feature"},
+					{Path: "/repos/wip-main", Branch: "main"},
+				},
 				&forge.PullRequest{
 					Number:  42,
 					Title:   "Add feature",
@@ -197,9 +202,13 @@ func TestRepoJSONShape(t *testing.T) {
 				intPtr(3),
 			),
 			expected: `{"path":"/repos/wip","name":"wip","vcs":"jj","branch":"feature",` +
-				`"upstream":"origin/feature","ahead":2,"behind":1,"staged":0,"unstaged":3,` +
+				`"upstream":"origin/feature","remote":"acme/wip","remote_id":"github.com/acme/wip",` +
+				`"ahead":2,"behind":1,"staged":0,"unstaged":3,` +
 				`"untracked":0,"conflicted":0,"dirty":true,"status":"diverged",` +
-				`"stash_count":1,"worktree_count":2,"last_modified":"2026-01-02T03:04:05Z",` +
+				`"stash_count":1,"worktree_count":2,` +
+				`"worktrees":[{"path":"/repos/wip","branch":"feature"},` +
+				`{"path":"/repos/wip-main","branch":"main"}],` +
+				`"last_modified":"2026-01-02T03:04:05Z",` +
 				`"pr":{"number":42,"title":"Add feature","state":"OPEN",` +
 				`"url":"https://example.com/pr/42","is_draft":false,"head_ref":"feature",` +
 				`"base_ref":"main","checks":{"total":2,"passing":1,"failing":0,"pending":1,"skipped":0}},` +
@@ -383,7 +392,7 @@ func TestRepoCarriesTemplateDrift(t *testing.T) {
 			t.Parallel()
 
 			summary := models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: "/repos/app"}, TemplateInfo: tt.info}
-			repo := cli.NewRepo(&summary, 0, nil, nil)
+			repo := cli.NewRepo(&summary, nil, nil, nil)
 
 			if repo.TemplateDrift != tt.wantDrift {
 				t.Errorf("template_drift = %v, want %v", repo.TemplateDrift, tt.wantDrift)

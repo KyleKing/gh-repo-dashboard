@@ -46,7 +46,11 @@ gh repo-dashboard --cli --fresh --fetch --mani ~/Developer/mani.yaml
 ### Fields
 
 Local fields (branch, ahead/behind, file counts, stashes, notes, template) cost
-no API calls and are always present. `--fetch` runs `git fetch` first, so
+no API calls and are always present. `remote` is the `owner/name` the checkout
+pushes to and `remote_id` prefixes it with the host, which is what lets another
+tool match a directory to a pull request. `worktrees` lists each worktree's path
+and branch, so a consumer can find where a branch is already checked out rather
+than shelling out to git itself. `--fetch` runs `git fetch` first, so
 ahead/behind reflects the remote rather than the last local fetch.
 
 `pr`, `pr_count`, `ci`, and `dependabot_alerts` need the network and appear only
@@ -56,6 +60,14 @@ to name the jobs and steps that broke.
 
 ```jsonc
 {
+  "path": "/Users/me/Developer/acme/app",
+  "remote": "acme/app",
+  "remote_id": "github.com/acme/app",
+  "branch": "feature-a",
+  "worktrees": [
+    {"path": "/Users/me/Developer/acme/app", "branch": "feature-a"},
+    {"path": "/Users/me/Developer/acme/app-main", "branch": "main"}
+  ],
   "template_src": "gh:KyleKing/calcipy_template",
   "template_version": "5.0.3",
   "template_latest": "5.1.1",
