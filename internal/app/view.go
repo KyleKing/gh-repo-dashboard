@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/kyleking/aragonite/tui/overlay"
 	"github.com/kyleking/aragonite/tui/table"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
@@ -221,15 +222,11 @@ func withSelection(s lipgloss.Style, selected bool) lipgloss.Style {
 	return s
 }
 
-// centerModal centers content on screen as a single block. Content is first
-// left-padded to a uniform width because lipgloss.Place centers each line of
-// a multi-line string independently based on that line's own width, which
-// would otherwise stagger rows of differing length (e.g. table rows).
+// centerModal centers content on screen as a single block, and clips it to the
+// screen rather than letting an overlarge modal push itself off it. The modals
+// here carry their own border, so the overlay adds no frame of its own.
 func centerModal(m Model, content string) string {
-	width := lipgloss.Width(content)
-	content = lipgloss.NewStyle().Width(width).Render(content)
-
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+	return overlay.Center(content, m.width, m.height, overlay.Styles{})
 }
 
 func (m Model) renderBreadcrumbs() string {
