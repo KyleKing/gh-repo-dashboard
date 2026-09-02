@@ -1,3 +1,13 @@
+## v1.11.0 (2026-09-02)
+
+### Feat
+
+- **cli**: emit remote, remote_id, and worktrees in JSON output
+
+### Refactor
+
+- **app**: center modals through aragonite
+
 ## v1.10.2 (2026-08-31)
 
 ### Fix
