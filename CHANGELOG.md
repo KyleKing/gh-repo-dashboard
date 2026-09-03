@@ -1,3 +1,9 @@
+## v1.11.1 (2026-09-03)
+
+### Fix
+
+- **ci**: force bash for test:coverage-min to support pipefail on dash runners
+
 ## v1.11.0 (2026-09-02)
 
 ### Feat
