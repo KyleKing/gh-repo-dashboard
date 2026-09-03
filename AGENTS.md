@@ -15,7 +15,7 @@ a green build. Reproduce all five locally:
 ```bash
 hk check --all                            # every hook step; also re-runs `mise run ci`
 mise exec -- actionlint                   # separate CI job; the validator for workflow YAML
-mise exec -- golangci-lint run ./...      # separate CI job, not an hk step
+mise exec -- golangci-lint run --allow-serial-runners ./...  # separate CI job, not an hk step
 mise exec -- golangci-lint config verify  # `run` accepts v1 schema keys silently
 mise run bench                            # compiles and runs the benchmarks
 ```
@@ -42,6 +42,10 @@ Known false negatives, each of which has already cost a session:
   binary published ten times. Confirm with
   `gh release download <tag> -p checksums.txt -O - | awk '{print $1}' | sort -u | wc -l`
   and expect the same number as there are binaries.
+- **`hk check --all` aborts without mise on PATH.** The hk steps shell out to mise's
+  tools, so a plain shell (no `mise activate`) dies on `ls-lint: command not found`
+  and every later step reads as aborted. Run it as
+  `mise exec -- hk check --all`.
 - **No function anywhere may be named `total*`.** `test:coverage-min` pulls the
   percentage out with `grep total`, so a second matching line makes `$coverage` two
   values, the `awk` comparison dies, and the empty result reads as passing. The task
