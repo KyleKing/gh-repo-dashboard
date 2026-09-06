@@ -4,7 +4,25 @@
 
 See the status of every git and jj repository under a directory in one dashboard,
 with GitHub pull request and CI state beside the local status. Fetch, prune, and
-delete merged branches across all of them at once.
+delete merged branches across all of them at once, but you probably want to use one
+of these instead:
+
+| Name | Notes |
+| --- | --- |
+| [gh-dash](https://github.com/dlvhdr/gh-dash) | "A rich terminal UI for GitHub that doesn't break your flow" |
+| [ghorg](https://github.com/gabrie30/ghorg) | "Quickly clone or backup massive amounts of org/users repositories into one directory" |
+| [git-xargs](https://github.com/gruntwork-io/git-xargs) | "git-xargs is a command-line tool (CLI) for making updates across multiple Github repositories with a single command" |
+| [gita](https://github.com/nosarthur/gita) | "Manage many git repos with sanity" |
+| [gr](https://github.com/mixu/gr) | "Multiple git repository management tool" |
+| [lazygit](https://github.com/jesseduffield/lazygit) | "simple terminal UI for git commands" (single repo, not a multi-repo dashboard) |
+| [mani](https://github.com/alajmo/mani) | "CLI tool to help you manage repositories" |
+| [meta](https://github.com/mateodelnorte/meta) | "tool for turning many repos into a meta repo" |
+| [mu-repo](https://github.com/fabioz/mu-repo) | "Tool to help in dealing with multiple git repositories" |
+| [myrepos](https://myrepos.branchable.com/) | "a tool to manage all your version control repositories" |
+| [repo](https://android.googlesource.com/tools/repo) | Google's tool for checking out and syncing the many Git repositories behind a single Android build |
+| [Sourcegraph](https://sourcegraph.com) | "Universal code search" (Closed source) |
+| [tsrc](https://github.com/your-tools/tsrc) | "Manage groups of git repositories" |
+| [vcstool](https://github.com/dirk-thomas/vcstool) | "Vcstool is a command line tool designed to make working with multiple repositories easier" |
 
 ## Install
 
