@@ -62,7 +62,7 @@ func (m Model) renderTabBar(width int) string {
 
 	labels := make([]string, 0, len(tabBar))
 	for _, spec := range tabBar {
-		label := " " + markHotkey(spec.title, spec.key) + " "
+		label := markHotkey(spec.title, spec.key)
 		if spec.tab == current {
 			labels = append(labels, styles.SelectedTabStyle.Render(label))
 

@@ -5,6 +5,7 @@ package styles
 import (
 	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/tui/markdown"
+	"github.com/kyleking/aragonite/tui/skin"
 	"github.com/kyleking/aragonite/tui/theme"
 )
 
@@ -68,14 +69,8 @@ var (
 				Background(Surface0).
 				Foreground(Text)
 
-	TabStyle = lipgloss.NewStyle().
-			Background(Surface0).
-			Foreground(Overlay1)
-
-	SelectedTabStyle = lipgloss.NewStyle().
-				Background(Blue).
-				Foreground(Base).
-				Bold(true)
+	TabStyle         = skin.New(Palette, Blue).Tab
+	SelectedTabStyle = skin.New(Palette, Blue).TabActive
 
 	// TabRuleStyle draws the divider separating the tab bar from the content
 	// below it, so the bar reads as a strip rather than floating text.
