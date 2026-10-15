@@ -1,7 +1,12 @@
 // Package filters implements repo list filtering, fuzzy search, and sorting.
+// The generic half is aragonite/filter — the predicate type, the and/or/not
+// combinators, and Keep are its. What stays here is the repo's own domain:
+// the GlobMatch syntax the search box spells, the scope prefixes it takes,
+// the recency queries, and the predicate-atom language.
 package filters
 
 import (
+	"github.com/kyleking/aragonite/filter"
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
@@ -13,19 +18,10 @@ func FilterRepos(paths []string, summaries map[string]models.RepoSummary, mode m
 		return paths
 	}
 
-	var filtered []string
-	for _, path := range paths {
+	return filter.Keep(paths, func(path string) bool {
 		summary, ok := summaries[path]
-		if !ok {
-			continue
-		}
-
-		if passesFilter(&summary, mode) {
-			filtered = append(filtered, path)
-		}
-	}
-
-	return filtered
+		return ok && passesFilter(&summary, mode)
+	})
 }
 
 // FilterReposMulti returns the subset of paths whose summary passes every enabled filter, honoring inversion.
@@ -43,31 +39,24 @@ func FilterReposMulti(
 		return paths
 	}
 
-	var filtered []string
-	for _, path := range paths {
+	return filter.Keep(paths, func(path string) bool {
 		summary, ok := summaries[path]
 		if !ok {
-			continue
+			return false
 		}
 
-		passesAll := true
 		for _, f := range enabledFilters {
 			passes := passesFilter(&summary, f.Mode)
 			if f.Inverted {
 				passes = !passes
 			}
 			if !passes {
-				passesAll = false
-				break
+				return false
 			}
 		}
 
-		if passesAll {
-			filtered = append(filtered, path)
-		}
-	}
-
-	return filtered
+		return true
+	})
 }
 
 func passesFilter(s *models.RepoSummary, mode models.FilterMode) bool {

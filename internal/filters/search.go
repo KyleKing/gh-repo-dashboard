@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kyleking/aragonite/filter"
 	"github.com/sahilm/fuzzy"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
@@ -212,44 +213,28 @@ func SearchRepos(paths []string, summaries map[string]models.RepoSummary, search
 // "p:123", otherwise a case-insensitive title substring.
 func filterByPR(paths []string, summaries map[string]models.RepoSummary, query string) []string {
 	if num, err := strconv.Atoi(query); err == nil {
-		var results []string
-
-		for _, path := range paths {
-			if pr := summaries[path].PRInfo; pr != nil && pr.Number == num {
-				results = append(results, path)
-			}
-		}
-
-		return results
+		return filter.Keep(paths, func(path string) bool {
+			pr := summaries[path].PRInfo
+			return pr != nil && pr.Number == num
+		})
 	}
 
 	queryLower := strings.ToLower(query)
 
-	var results []string
-
-	for _, path := range paths {
-		if pr := summaries[path].PRInfo; pr != nil && GlobMatch(queryLower, strings.ToLower(pr.Title)) {
-			results = append(results, path)
-		}
-	}
-
-	return results
+	return filter.Keep(paths, func(path string) bool {
+		pr := summaries[path].PRInfo
+		return pr != nil && GlobMatch(queryLower, strings.ToLower(pr.Title))
+	})
 }
 
 // filterByTemplate matches a repo's copier template source, "t:my_go_template".
 func filterByTemplate(paths []string, summaries map[string]models.RepoSummary, query string) []string {
 	queryLower := strings.ToLower(query)
 
-	var results []string
-
-	for _, path := range paths {
+	return filter.Keep(paths, func(path string) bool {
 		info := summaries[path].TemplateInfo
-		if info != nil && GlobMatch(queryLower, strings.ToLower(info.SrcPath)) {
-			results = append(results, path)
-		}
-	}
-
-	return results
+		return info != nil && GlobMatch(queryLower, strings.ToLower(info.SrcPath))
+	})
 }
 
 // recencyCmp is the comparison a "c:" search performs against a repo's last
@@ -330,27 +315,19 @@ func filterByCommitAge(paths []string, summaries map[string]models.RepoSummary, 
 		return nil
 	}
 
-	var results []string
-
-	for _, path := range paths {
+	return filter.Keep(paths, func(path string) bool {
 		summary := summaries[path]
 		if summary.LastModified.IsZero() {
-			continue
+			return false
 		}
 
 		age := time.Since(summary.LastModified)
-
-		matches := age <= dur
 		if cmp == recencyOlderThan {
-			matches = age > dur
+			return age > dur
 		}
 
-		if matches {
-			results = append(results, path)
-		}
-	}
-
-	return results
+		return age <= dur
+	})
 }
 
 // FuzzyMatch reports whether text matches pattern via substring or fuzzy matching.

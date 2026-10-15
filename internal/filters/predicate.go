@@ -5,13 +5,16 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/kyleking/aragonite/filter"
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
-// Predicate reports whether a value of T matches a filter expression.
-type Predicate[T any] func(T) bool
+// Predicate reports whether a value of T matches a filter expression. It is
+// aragonite/filter's own, so the parser below composes with All, Any, and Not
+// rather than spelling the same combinators out again.
+type Predicate[T any] = filter.Predicate[T]
 
 // ParseError reports a filter predicate expression that failed to parse.
 type ParseError struct {
@@ -141,8 +144,7 @@ func (p *parser[T]) parseOr() (Predicate[T], error) {
 		if err != nil {
 			return nil, err
 		}
-		l := left
-		left = func(v T) bool { return l(v) || right(v) }
+		left = filter.Any(left, right)
 	}
 }
 
@@ -161,8 +163,7 @@ func (p *parser[T]) parseAnd() (Predicate[T], error) {
 		if err != nil {
 			return nil, err
 		}
-		l := left
-		left = func(v T) bool { return l(v) && right(v) }
+		left = filter.All(left, right)
 	}
 }
 
@@ -180,7 +181,7 @@ func (p *parser[T]) parseUnary() (Predicate[T], error) {
 			return nil, err
 		}
 
-		return func(v T) bool { return !inner(v) }, nil
+		return filter.Not(inner), nil
 
 	case "(":
 		p.pos++
