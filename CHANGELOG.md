@@ -1,3 +1,10 @@
+## v1.11.2 (2026-10-21)
+
+### Refactor
+
+- **styles**: take the tab faces from aragonite skin
+- **filters**: share the generic half with aragonite/filter
+
 ## v1.11.1 (2026-09-03)
 
 ### Fix
