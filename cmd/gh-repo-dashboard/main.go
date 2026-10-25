@@ -20,6 +20,7 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/config"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/tasks"
 )
 
 var (
@@ -127,13 +128,14 @@ over the config file's scan_paths, which takes precedence over the enclosing
 repo (walking up from the current directory) or the current directory itself.
 
 Optional config file (scan_paths, depth, cache_ttl_minutes, notes_filenames,
-cache_to_disk, diff.external, pr_views):
+cache_to_disk, diff.external, pr_views, tasks):
   %s
 
 Run "%s --script -" with a "help" line to list the :commands.
+Run "%s run <task>" to run a [[tasks]] entry headlessly; "%s run -h" lists its flags.
 
 Flags:
-`, os.Args[0], configPath, os.Args[0])
+`, os.Args[0], configPath, os.Args[0], os.Args[0], os.Args[0])
 	flag.PrintDefaults()
 }
 
@@ -216,8 +218,28 @@ func absolutePaths(paths []string) ([]string, error) {
 	return absPathList, nil
 }
 
+func runMain(args []string) {
+	if err := preflight(os.Stderr); err != nil {
+		exitWith(err)
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		exitWith(err)
+	}
+	applyConfig(cfg, new(int))
+	if err := runCommand(args, cfg, os.Stdout, os.Stderr); err != nil {
+		exitWith(err)
+	}
+}
+
 func main() {
 	flag.Usage = printUsage
+
+	if len(os.Args) > 1 && os.Args[1] == "run" {
+		runMain(os.Args[2:])
+
+		return
+	}
 
 	showVersion := flag.Bool("version", false, "Show version information")
 	depth := flag.Int("depth", 1, "Maximum directory depth to scan")
@@ -264,7 +286,10 @@ func main() {
 	}
 
 	if *cliMode {
-		opts := cli.Options{MaxDepth: *depth, Fresh: *fresh, Fetch: *fetch, Predicate: *filterExpr}
+		opts := cli.Options{MaxDepth: *depth, Fresh: *fresh, Fetch: *fetch, Predicate: *filterExpr, Tasks: cfg.Tasks}
+		if store, err := tasks.DefaultStore(); err == nil {
+			opts.Store = store
+		}
 		if err := cli.Run(context.Background(), os.Stdout, absPathList, opts); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)

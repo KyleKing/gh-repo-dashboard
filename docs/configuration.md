@@ -36,6 +36,7 @@ search = "is:open draft:false -review:approved -author:app/dependabot sort:updat
 ```
 
 Flags and positional paths on the command line take precedence over the file.
+Task definitions are covered in [Tasks](#tasks).
 
 ## Diff viewer
 
@@ -66,6 +67,47 @@ A widened search also needs a subject. A view scoped only by the repo it ran in
 (`is:open`) would otherwise match every open pull request on GitHub, so
 `involves:@me` is added unless the query already names one with `author:`,
 `org:`, `review-requested:`, or any other qualifier that says whose work it is.
+
+## Tasks
+
+A `[[tasks]]` entry is a named shell command the dashboard runs in each repo it
+selects, replacing a mani task list. Run one with
+[`gh repo-dashboard run`](./cli.md#running-tasks).
+
+```toml
+[[tasks]]
+name = "gc"
+desc = "aggressive gc for bloated repos"
+run = "git -c pack.threads=3 -c pack.windowMemory=1024m gc --prune=now --aggressive"
+where = "git_size > 1G"
+concurrency = 1        # serial; default runs up to 8 repos in parallel
+confirm = true
+every = "30d"          # due once per repo per 30 days, when where also holds
+
+[[tasks]]
+name = "copier-update"
+run = "copier update --UNSAFE --conflict=rej --defaults && git status --short"
+where = "template ~ calcipy"
+```
+
+| Key | Meaning |
+|-----|---------|
+| `name` | Required, unique, no whitespace |
+| `desc` | One-line description |
+| `run` | Required. Run with `sh -c` in the repo directory, with `REPO_NAME` and `REPO_PATH` set |
+| `where` | A [predicate](./filtering.md#predicate-expressions) choosing the repos the task applies to. Empty means every repo |
+| `concurrency` | Repos run at once. `1` is serial, and unset or `0` runs up to 8 in parallel |
+| `confirm` | Ask before running. `run --yes` skips the prompt |
+| `every` | How long a successful run keeps a repo from being due, as `30d`, `2w`, `12h`, or `90m`. Without it the task is never due |
+
+A malformed task, including a `where` that does not parse, stops the program at
+startup with the entry and key named.
+
+Each run writes the repo's combined output to
+`<user cache dir>/gh-repo-dashboard/tasks/<task>/<repo>-<hash>/run.log` and a
+last-run stamp beside it. A repo is due when `where` holds and it has never
+succeeded or last succeeded longer ago than `every`. A failed run does not reset
+the clock.
 
 ## Caching
 

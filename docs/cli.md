@@ -24,8 +24,40 @@ Flags and positional paths override the [config file](./configuration.md).
 | `--filter <expr>` | Narrow `--cli` output by a [predicate expression](./filtering.md) |
 | `--fresh` | With `--cli`, fetch fresh GitHub PR, CI, and Dependabot data instead of reading the cache |
 | `--mani <path>` | Read the repo roster from a mani.yaml instead of scanning directories |
+| `run <task>` | Run a configured [task](#running-tasks) over the repos, instead of the TUI |
 | `--script <path>` | Run `:command` lines headlessly from a file, or `-` for stdin |
 | `--version` | Print version information |
+
+## Running tasks
+
+`run` executes a [`[[tasks]]`](./configuration.md#tasks) entry over the scanned
+repos and prints one row per repo with its status, exit code, duration, and log
+path. It exits nonzero when the task name is unknown or any repo failed.
+
+```bash
+# Run gc on every repo its where matches
+gh repo-dashboard run gc ~/Developer
+
+# List the repos it would run on, and run nothing
+gh repo-dashboard run gc --dry-run
+
+# Narrow further with a predicate, and skip a confirm prompt
+gh repo-dashboard run copier-update --where 'clean' --yes
+
+# Run every task on the repos whose every schedule is due
+gh repo-dashboard run --due
+```
+
+| Flag | Effect |
+|------|--------|
+| `--where <expr>` | Also require this predicate, on top of the task's own |
+| `--dry-run` | Print the repos selected and run nothing |
+| `--due` | Only repos the task's `every` calls for. With no task name, every task |
+| `--yes` | Skip the prompt a `confirm` task asks. Without it a non-interactive run declines |
+| `-depth N`, `--mani <path>` | Roster selection, as for the other modes |
+
+The task name can come before or after the flags. Paths are scan roots, as in
+the other modes.
 
 ## JSON output
 
@@ -44,6 +76,8 @@ gh repo-dashboard --cli --fresh --fetch --mani ~/Developer/mani.yaml
 ```
 
 ### Fields
+
+`git_size_bytes` is the size of the repo's `.git` directory.
 
 Local fields (branch, ahead/behind, file counts, stashes, notes, template) cost
 no API calls and are always present. `remote` is the `owner/name` the checkout

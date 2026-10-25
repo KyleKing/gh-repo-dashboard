@@ -56,16 +56,19 @@ Anything that reaches the remote or destroys work asks for confirmation first.
 
 ## What it does not do
 
-- Commit, stage, rebase, or resolve conflicts. The writes it does make are
+- Commit, stage, rebase, or resolve conflicts on its own. The built-in writes are
   `fetch`, remote prune, deleting a branch, applying or dropping a stash,
-  switching branch, pushing, and creating or squash-merging a pull request
+  switching branch, pushing, and creating or squash-merging a pull request. A
+  `[[tasks]]` entry runs whatever shell command you give it
 - Replace a single-repo client. Use lazygit or gitui for staging, hunk-level
   work, and history surgery
 - Replace `gh`. Pull request data comes from the `gh` CLI, and every non-GitHub
   column still works when `gh` is missing or logged out
 - Edit your notes files itself. It reads them, and hands one to `$EDITOR` on
   request so the writing stays yours
-- Run as a server or daemon. `--cli` and `--script` are one-shot headless runs
+- Run as a server or daemon. `--cli`, `--script`, and `run` are one-shot headless runs
+- Schedule anything. A task's `every` only marks it due, and `run --due` runs when
+  you or your own cron invoke it
 
 Full docs: [./docs](./docs)
 

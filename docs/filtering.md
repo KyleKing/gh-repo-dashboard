@@ -32,6 +32,28 @@ silently matching nothing.
 latest tag, or pinned to a commit or branch rather than a tag, where currency
 cannot be judged at all.
 
+Three comparisons and one call go beyond bare atoms:
+
+```
+git_size > 1G
+template ~ calcipy
+last_run(gc) > 30d
+due(gc)
+```
+
+- `git_size` takes `>`, `>=`, `<`, `<=`, or `=` against a size with an optional
+  binary `K`, `M`, `G`, or `T` suffix. It sums the files under `.git` (a
+  non-colocated jj repo's backing store otherwise) and memoizes the answer for a
+  minute
+- `template ~ text` matches the copier template's source, ignoring case
+- `last_run(task)` compares how long ago the [task](./configuration.md#tasks)
+  last ran on the repo, using the same comparisons against an age such as `30d`.
+  A repo that never ran it counts as infinitely old
+- `due(task)` holds when the task's `every` schedule calls for a run. It ignores
+  the task's own `where`
+
+`--cli` output reports the same size as `git_size_bytes`.
+
 `:filter all` clears both the mode and any predicate.
 
 ## Selection

@@ -166,7 +166,8 @@ func TestRepoJSONShape(t *testing.T) {
 			),
 			expected: `{"path":"/repos/demo","name":"demo","vcs":"git","branch":"main",` +
 				`"ahead":0,"behind":0,"staged":0,"unstaged":0,"untracked":0,"conflicted":0,` +
-				`"dirty":false,"status":"clean","stash_count":0,"worktree_count":0,"template_drift":false}`,
+				`"dirty":false,"git_size_bytes":0,"status":"clean","stash_count":0,` +
+				`"worktree_count":0,"template_drift":false}`,
 		},
 		{
 			name: "full repo includes pr and counts",
@@ -204,7 +205,7 @@ func TestRepoJSONShape(t *testing.T) {
 			expected: `{"path":"/repos/wip","name":"wip","vcs":"jj","branch":"feature",` +
 				`"upstream":"origin/feature","remote":"acme/wip","remote_id":"github.com/acme/wip",` +
 				`"ahead":2,"behind":1,"staged":0,"unstaged":3,` +
-				`"untracked":0,"conflicted":0,"dirty":true,"status":"diverged",` +
+				`"untracked":0,"conflicted":0,"dirty":true,"git_size_bytes":0,"status":"diverged",` +
 				`"stash_count":1,"worktree_count":2,` +
 				`"worktrees":[{"path":"/repos/wip","branch":"feature"},` +
 				`{"path":"/repos/wip-main","branch":"main"}],` +

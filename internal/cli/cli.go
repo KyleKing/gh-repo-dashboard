@@ -15,10 +15,12 @@ import (
 	"github.com/kyleking/aragonite/forge/github"
 	"github.com/kyleking/aragonite/vcs"
 
+	"github.com/kyleking/gh-repo-dashboard/internal/config"
 	"github.com/kyleking/gh-repo-dashboard/internal/copier"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/tasks"
 )
 
 const maxConcurrentRepos = 8
@@ -55,6 +57,7 @@ type Repo struct {
 	LastModified  *time.Time         `json:"last_modified,omitempty"`
 	PR            *forge.PullRequest `json:"pr,omitempty"`
 	PRCount       *int               `json:"pr_count,omitempty"`
+	GitSizeBytes  int64              `json:"git_size_bytes"`
 
 	TemplateSrc      string                 `json:"template_src,omitempty"`
 	TemplateVersion  string                 `json:"template_version,omitempty"`
@@ -103,13 +106,22 @@ type Options struct {
 	Fresh     bool
 	Fetch     bool
 	Predicate string
+	// Tasks and Store back the due(task) and last_run(task) predicates. A nil
+	// Store reads as no run history.
+	Tasks []config.Task
+	Store *tasks.Store
 }
 
 // Run discovers repos under scanPaths and writes their summaries as JSON to w.
 func Run(ctx context.Context, w io.Writer, scanPaths []string, opts Options) error {
 	var pred filters.Predicate[models.RepoSummary]
 	if opts.Predicate != "" {
-		parsed, err := filters.ParsePredicate(opts.Predicate, filters.RepoAtoms())
+		sel := tasks.Selector{Store: opts.Store, Tasks: opts.Tasks}
+		runs := filters.Runs{}
+		if opts.Store != nil {
+			runs = sel.Runs()
+		}
+		parsed, err := filters.ParseGrammar(opts.Predicate, filters.RepoGrammar(runs))
 		if err != nil {
 			return fmt.Errorf("invalid --filter predicate: %w", err)
 		}
@@ -248,6 +260,7 @@ func newRepo(
 		NotesFiles:    summary.NotesFiles,
 		PR:            pr,
 		PRCount:       prCount,
+		GitSizeBytes:  models.GitSize(summary.Path),
 	}
 
 	if info := summary.TemplateInfo; info != nil {
