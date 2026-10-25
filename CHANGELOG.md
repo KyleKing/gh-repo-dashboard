@@ -1,3 +1,11 @@
+## v1.12.0 (2026-10-25)
+
+### Feat
+
+- **cli**: add the run subcommand for configured tasks
+- **tasks**: add the [[tasks]] config and a headless task engine
+- **filters**: add git_size, template, last_run, and due predicates
+
 ## v1.11.2 (2026-10-21)
 
 ### Refactor
