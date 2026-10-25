@@ -16,8 +16,8 @@ after one fails and exits nonzero at the end, so a rejected command or an
 unparsable predicate cannot pass for success.
 
 - Framework: Bubble Tea (Go TUI framework)
-- Theme: Catppuccin Macchiato
-- Philosophy: minimal color, single unified background, borders for hierarchy, vim-style keybindings
+- Theme: aragonite's Ink skin with a Sapphire accent
+- Philosophy: minimal color, single unified background, one header line and a pinned footer, vim-style keybindings
 
 ## Architecture
 
@@ -146,7 +146,7 @@ the [git vs jj mapping](#git-vs-jj-concept-mapping) above for those.
 |------|---------|
 | Repos tab | The default view: one row per scanned repo. Pressing `v` on a row opens the expand region, an inline detail block for that one repo (its branches and pull requests) without leaving the list. Pressing enter opens the single-repo view. |
 | PR map (`:prs`) | Every open pull request across the scanned repos, joined against each repo's local branches so a PR with no local checkout and a local branch with no PR are both visible in one table (`prmap.go`). |
-| Single-repo view | Opened by selecting a repo from the Repos tab: a breadcrumb naming the repo, and a grid of panels beside a detail pane. |
+| Single-repo view | Opened by selecting a repo from the Repos tab: a header naming the repo, and a grid of panels beside a detail pane. |
 | Panel | One of the five boxes in the single-repo view's left column: Status (`s`), Branches (`b`), Peers (`e`), Stashes (`t`), Notes (`n`). Each panel's own key both jumps to it and, in the collapsed grid, shows its row count. A jj repo has no Stashes panel. |
 | Detail pane / full preview | The pane to the right of the panel column. It always shows the focused panel's selected row in full; for Status, that full preview is the repo's identity facts (vcs, protocol, detached/dirty state, PR, checkouts, config drift) that don't fit the panel's own two-line collapsed view. |
 
@@ -262,21 +262,33 @@ it is common enough to earn permanent screen space.
 
 ## UI Design
 
-Catppuccin Macchiato palette. Color is reserved for actionable elements (badges,
-accents) over a single unified background; borders carry the visual hierarchy and
-the cursor uses Surface0.
+Every screen draws through aragonite's `tui/frame`: one header line (title, state
+facts, tab strip at the right), a body padded to the footer, and a footer pinned to
+the last row. Key hints sit on the footer's left and `keyhint.Fit` sheds the
+lowest-priority hints first as the line runs out of room. A status message takes
+the footer's right end and fades after three seconds, so it never covers a key.
+The help legend (`?`) is a per-view `keyhint` tree in a scrolling box over the view
+it documents, and a chord key opens its own page. The command bar's candidates
+float in the same kind of box.
 
-| Role | Hex |
-|------|-----|
-| Base (background) | `#24273a` |
-| Surface0 (cursor, elevated) | `#363a4f` |
-| Text | `#cad3f5` |
-| Subtext0 | `#a5adcb` |
-| Blue (primary accent, borders) | `#8aadf4` |
-| Mauve (search) | `#c6a0f6` |
-| Yellow (filter) | `#eed49f` |
-| Green (success, PRs) | `#a6da95` |
-| Peach (dirty repos) | `#f5a97f` |
+Styles come from `skin.New(theme.Ink(), Sapphire)` in `internal/ui/styles`. Ink is
+used whatever the terminal's background, and the accent tells this tool from its
+siblings (second-look uses Lavender). Color goes to what asks for action: a clean
+tree renders blank, a default branch renders Muted, and the cursor is a `▌` bar in
+the gutter with the selection tint behind the whole row.
+
+| Role | Skin face | Hex |
+|------|-----------|-----|
+| Background | Base | `#1e2128` |
+| Selection tint | Selection | accent over Base |
+| Body text | Body | `#c8ced8` |
+| Counts, hints | Subtitle | `#a3abb8` |
+| Quiet text, default branch | Muted | `#848d9c` |
+| Accent, cursor, filters | Accent | `#5fb8e0` |
+| Headings | Heading | `#7aa8ff` |
+| Success, open PRs | Success | `#5fd497` |
+| Dirty, unpushed | Warning | `#e8c35a` |
+| Failing | Error | `#f27a86` |
 
 ### View hierarchy
 
@@ -291,11 +303,9 @@ height never depends on which repo the cursor is on or on what is still loading.
 `ViewModeRepoDetail` (Enter) is a
 grid of panels (Status, Branches, Peers, Stashes, Notes, less the ones with nothing
 to list) beside a detail pane rendering whatever the cursor sits on; when discovery finds exactly one repo
-it opens directly, and esc still falls back to the one-row list. `ViewModePRList` (`P`, the second tab)
-answers one saved GitHub search at a time, scoped to the repo the cursor came from or widened
-across every repository the search reaches. `ViewModePalette`
+it opens directly, and esc still falls back to the one-row list. `ViewModePalette`
 (`space` in the focused view, `;` in the list) is the universal find.
-`ViewModeFilter` (f), `ViewModeSort` (s), and `ViewModeHelp` (?) are modals,
+`ViewModeFilter` (f) and `ViewModeSort` (s) dock an editor above the table, `ViewModeHelp` (?) floats a legend over the view,
 `ViewModeConfirm` gates every write action, and `ViewModeBatchProgress` shows a progress bar
 during batch runs.
 

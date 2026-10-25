@@ -58,7 +58,6 @@ Low priority; pick up when convenient.
   `actions/setup-go` disagree about `GOROOT` when both run in one job, which
   goes red the moment mise's `go = "latest"` resolves past `go.mod`. Confirm the
   newer template carries the fix before accepting its `ci.yml`
-- Full Catppuccin themes replacing the current textual themes
 - Motion policy: the app has zero animation (static discovery text, static
   batch gauge). Decide deliberate restraint or add a spinner
 - Deep-DRY items from the code-health survey, to do opportunistically when work

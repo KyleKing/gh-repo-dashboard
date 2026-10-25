@@ -2,8 +2,9 @@
 
 ## Keys
 
-Press `?` for the help overlay. It reads the live keymap, so it always matches
-the binary you are running. Trust it over this page, which lists only enough to
+Press `?` for the legend of the view you are in. It is a scrolling box (`j`/`k`,
+`pgup`/`pgdn`), and a key that waits on a second press, like `a` or `!`, opens its
+own page that `esc` leaves. Trust it over this page, which lists only enough to
 start.
 
 | Key | Action |
@@ -12,13 +13,13 @@ start.
 | `enter` | Open the repo under the cursor |
 | `esc` | Go back |
 | `/` | Fuzzy search by name |
-| `f` / `s` | Filter and sort modals |
+| `f` / `s` | Filter and sort docks |
 | `:` | Command mode |
 | `r` | Refresh, clearing caches |
 | `x` / `V` | Mark the row under the cursor / open a line-wise range motions extend |
 | `a` | Verbs for what is marked, or for whatever the current view has selected |
 | `!` | Batch operator, then a text object |
-| `?` | Help overlay |
+| `?` | Help legend |
 | `q` | Quit |
 
 Batch operations use a vim-style operator plus a text object, so `!f` alone
@@ -48,9 +49,11 @@ parallel checkout, and applying a stash leaves the stash in place.
 
 ## Views
 
-The header line names the screen and shows the tab strip at its right. The
-Repos tab is the fleet and everything you drill into from it. The footer is
-pinned to the last row, with a status message fading at its right end.
+The header line names the screen, carries its counts (a dirty count in the
+warning color, active filters and marks in the accent), and shows the tab strip at
+its right. The footer is pinned to the last row with the keys on offer bracketed
+inside their words, and a status message fades at its right end after three
+seconds. A sort shows as `▴` or `▾` on its column title.
 
 The repository list is the starting view. `enter` opens the focused repo view: a
 column of panels for Status, Branches, Peers, Stashes, and Notes beside a
@@ -64,7 +67,7 @@ of the height before the busier ones get more, so a long list is never squeezed
 out and a busy repo still arrives with its problems open.
 
 `enter` hands the keyboard to the detail pane, where `j`/`k` scroll its text and
-`esc` hands it back to the panel column. The blue border marks whichever region
+`esc` hands it back to the panel column. The accent border marks whichever region
 is live, and the panel column narrows while the detail pane holds focus, since
 nothing is being selected in it then. `O` opens the selected branch in its own full-screen view.
 
@@ -79,8 +82,9 @@ batch operators compose with the find.
 Launched from inside a repository, the scan finds only that one repo and the
 detail view opens straight away. `esc` still steps back to the one-row list.
 
-Filter (`f`), sort (`s`), and help (`?`) are modals over the current view. A
-batch run replaces the view with a progress screen until it finishes.
+Filter (`f`) and sort (`s`) dock above the table, and help (`?`) floats over the
+current view. A batch run replaces the view with a progress screen until it
+finishes.
 
 ## Repo list columns
 
@@ -114,7 +118,7 @@ The STATUS column shows the working tree as symbols:
 - `!N` for N conflicted files
 - `↑N` for N commits ahead of the tracking branch
 - `↓N` for N commits behind
-- `✓` when the working tree is clean
+- nothing when the working tree is clean
 
 Across the other columns, `·` marks a value still being fetched and `—` one the
 dashboard has read and found empty, so a quiet repo can be told from an unread

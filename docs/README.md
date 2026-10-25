@@ -44,4 +44,4 @@ colocated repository, one holding both `.git` and `.jj`, through jj.
 - Per-repo notes files shown as a badge, a preview line, and a Notes panel
 - Worktree and workspace detection, plus git stash counts
 - Copier template version, showing the installed tag and whether it is behind
-- Catppuccin Macchiato theme, which uses color only for actionable elements
+- Ink theme with a Sapphire accent, which uses color only for actionable elements
