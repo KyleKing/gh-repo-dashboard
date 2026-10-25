@@ -6,6 +6,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/display"
+	"github.com/kyleking/aragonite/tui/frame"
+	"github.com/kyleking/aragonite/tui/keyhint"
 	"github.com/kyleking/aragonite/tui/table"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
@@ -33,36 +35,20 @@ var prMapColSpecs = []table.Column{
 	{Key: colMapLocation, Title: colMapLocation, Min: 18, Weight: 1, Priority: 4},
 }
 
-func (m Model) renderPRMap() string {
-	var b strings.Builder
-
+func (m Model) prMapScreen() screen {
 	entries := m.buildPRMap()
 
-	b.WriteString(m.renderPRMapBreadcrumbs(entries))
-	b.WriteString("\n\n")
-	b.WriteString(m.renderPRMapTable(entries))
-
-	footer := m.prMapFooter()
-	contentLines := strings.Count(b.String(), "\n")
-	if padding := m.height - contentLines - 2; padding > 0 { //nolint:mnd // the footer and its blank line
-		b.WriteString(strings.Repeat("\n", padding))
-	} else {
-		b.WriteString("\n")
-	}
-	b.WriteString(styles.FooterStyle.Render(footer))
-
-	return b.String()
-}
-
-func (m Model) renderPRMapBreadcrumbs(entries []prMapEntry) string {
-	title := styles.TitleStyle.Render("Open PRs across " + strconv.Itoa(len(m.filteredPaths)) + " repos")
-	badges := []string{styles.Badge(prMapSummary(entries), styles.CountBadgeStyle)}
-
+	facts := []frame.Fact{{Text: prMapSummary(entries)}}
 	if pending := m.prMapPending(); pending > 0 {
-		badges = append(badges, styles.Badge("loading "+strconv.Itoa(pending), styles.CountBadgeStyle))
+		facts = append(facts, frame.Fact{Text: "loading " + strconv.Itoa(pending), Tone: frame.Accent})
 	}
 
-	return joinWithinWidth(title, badges, listWidth(m.width))
+	return screen{
+		title: "Open PRs across " + strconv.Itoa(len(m.filteredPaths)) + " repos",
+		facts: facts,
+		body:  m.renderPRMapTable(entries),
+		hints: prMapHints(),
+	}
 }
 
 func (m Model) renderPRMapTable(entries []prMapEntry) string {
@@ -78,7 +64,7 @@ func (m Model) renderPRMapTable(entries []prMapEntry) string {
 	layout := fitDetailCols(prMapColSpecs, listWidth(m.width))
 	rows := []string{detailHeader(layout)}
 
-	window := visibleRange(m.prMapCursor, len(entries), m.height-prMapChromeHeight)
+	window := visibleRange(m.prMapCursor, len(entries), m.bodyHeight()-prMapHeaderRows)
 	for i := window.start; i < window.end; i++ {
 		entry := entries[i]
 		selected := i == m.prMapCursor
@@ -93,7 +79,7 @@ func (m Model) renderPRMapTable(entries []prMapEntry) string {
 			colMapLocation: entry.Location,
 		}
 		cellStyles := map[string]lipgloss.Style{
-			colMapLocation: withSelection(styles.BranchStyle, selected),
+			colMapLocation: withSelection(styles.Skin.Body, selected),
 		}
 
 		if entry.HasPR() {
@@ -102,33 +88,31 @@ func (m Model) renderPRMapTable(entries []prMapEntry) string {
 			values[colMapState] = prStateCell(entry.PR)
 			values[colMapActivity] = display.PRActivitySummary(entry.PR)
 			cellStyles[colMapState] = withSelection(prStateStyle(entry.PR), selected)
-			cellStyles[colMapActivity] = withSelection(styles.SubtitleStyle, selected)
+			cellStyles[colMapActivity] = withSelection(styles.Skin.Subtitle, selected)
 		}
 
 		if entry.Location == emDash {
 			cellStyles[colMapLocation] = style
 		}
 
-		rows = append(rows, detailRow(rowCursorFor(selected), layout, renderCells(layout, values, cellStyles, &style)))
+		cells := renderCells(layout, values, cellStyles, &style)
+		rows = append(rows, detailRow(rowCursorFor(selected), layout, cells, style))
 	}
 
 	return strings.Join(rows, "\n")
 }
 
-// prMapChromeHeight is how many lines the map spends on its header, its column
-// header, and its footer, leaving the rest for rows.
-const prMapChromeHeight = 5
+// prMapHeaderRows is the column header the map spends before its rows.
+const prMapHeaderRows = 1
 
-// prMapFooter names the map's actions, collapsing by the shared hint rules.
+// prMapHints names the map's actions.
 //
 //nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
-func (m Model) prMapFooter() string {
-	hints := []footerHint{
-		{key: keyNavPair, desc: descNav, priority: 2},
-		{key: keyEnter, desc: "open repo", priority: 8},
-		{key: "o", desc: descOpen, priority: 3},
-		{key: keyEsc, desc: descBack, priority: 9},
+func prMapHints() []keyhint.Hint {
+	return []keyhint.Hint{
+		{Key: keyNavPair, What: descNav, Priority: 2},
+		{Key: keyEnter, What: "open repo", Priority: 8},
+		{Key: "o", What: "open", Priority: 3},
+		{Key: keyEsc, What: descBack, Priority: 9},
 	}
-
-	return renderHints(fittingHints(hints, listWidth(m.width)))
 }

@@ -135,6 +135,13 @@ type Model struct {
 	// selection until a verb runs or any other key backs out.
 	panelActions bool
 
+	// helpFrom is the view the legend was opened over and returns to, helpPath
+	// the keys taken into its pages, and helpAt how far the open page has
+	// scrolled.
+	helpFrom ViewMode
+	helpPath []string
+	helpAt   int
+
 	branches          []vcs.BranchInfo
 	deletableBranches map[string]bool
 	stashes           []vcs.StashDetail
@@ -221,7 +228,7 @@ func New(scanPaths []string, maxDepth int) Model {
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
-	sp.Style = lipgloss.NewStyle().Foreground(styles.Blue)
+	sp.Style = styles.Skin.Accent
 
 	return Model{
 		spinner:       sp,

@@ -322,7 +322,7 @@ func TestHeaderCountsShareTheFilterScope(t *testing.T) {
 	m.width, m.height = 140, 35
 
 	filtered, _ := m.ExecuteCommand("filter dirty")
-	header := plainText(filtered.renderRepoListBreadcrumbs())
+	header := headerLine(filtered)
 
 	for _, want := range []string{"1/2 repos", "1 dirty"} {
 		if !strings.Contains(header, want) {

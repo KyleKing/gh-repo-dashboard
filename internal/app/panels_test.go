@@ -6,10 +6,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/tui/skin"
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
@@ -303,7 +305,7 @@ func TestGrid_FillsTheTerminalExactly(t *testing.T) {
 
 			m := focusedModel(size[0], size[1])
 
-			if got := strings.Count(m.renderPanelGrid(), "\n") + 1; got != size[1] {
+			if got := strings.Count(m.renderScreen(), "\n") + 1; got != size[1] {
 				t.Errorf("grid rendered %d lines into a %d-line terminal", got, size[1])
 			}
 
@@ -313,9 +315,9 @@ func TestGrid_FillsTheTerminalExactly(t *testing.T) {
 			}
 
 			side := panelSideWidth(width, false)
-			column := m.renderPanelColumn(m.panelSet(side-panelBorderWidth), 1, side, m.height-gridChromeHeight)
+			column := m.renderPanelColumn(m.panelSet(side-panelBorderWidth), 1, side, m.bodyHeight())
 
-			if got, limit := strings.Count(column, "\n")+1, m.height-gridChromeHeight; got > limit {
+			if got, limit := strings.Count(column, "\n")+1, m.bodyHeight(); got > limit {
 				t.Errorf("panel column is %d lines in a %d-line body", got, limit)
 			}
 		})
@@ -391,5 +393,74 @@ func TestStatusPreviewShowsNewestEditAndDefaultBranchMismatch(t *testing.T) {
 	}
 	if !strings.Contains(preview, "default branch") || !strings.Contains(preview, "main") {
 		t.Errorf("Status's full preview does not flag the default-branch mismatch: %q", preview)
+	}
+}
+
+// bgGaps lists the cells of an ANSI line that carry no background color.
+func bgGaps(line string) []int {
+	var gaps []int
+
+	painted, cell := false, 0
+
+	for i := 0; i < len(line); {
+		if line[i] == '\x1b' {
+			end := strings.IndexByte(line[i:], 'm')
+			params := strings.Split(strings.TrimPrefix(line[i:i+end], "\x1b["), ";")
+
+			for j, p := range params {
+				switch {
+				case p == "" || p == "0" || p == "49":
+					painted = false
+				case p == "48" && j+1 < len(params):
+					painted = true
+				}
+			}
+
+			i += end + 1
+
+			continue
+		}
+
+		_, size := utf8.DecodeRuneInString(line[i:])
+		if !painted {
+			gaps = append(gaps, cell)
+		}
+
+		cell++
+		i += size
+	}
+
+	return gaps
+}
+
+// The selected row is one bar from its gutter to its last column, in the repo
+// list and in a panel table, with no unpainted cell between columns.
+func TestSelectedRowPaintsEveryCell(t *testing.T) {
+	t.Parallel()
+
+	repoList := ""
+
+	for _, line := range strings.Split(compactModel(140, 30).renderTable(), "\n") {
+		if strings.Contains(line, skin.CursorBar) {
+			repoList = line
+
+			break
+		}
+	}
+
+	branch := renderBranchRow(branchRow{
+		branch:   vcs.BranchInfo{Name: "feature/login", Upstream: "origin/feature/login", Ahead: 2},
+		pr:       &forge.PullRequest{Number: 4, State: "OPEN"},
+		selected: true,
+	}, fitPanelCols(branchPanelSpecs, 100))
+
+	for name, line := range map[string]string{"repo list": repoList, "branch panel": branch} {
+		if !strings.Contains(line, skin.CursorBar) {
+			t.Fatalf("%s: no selected row to measure", name)
+		}
+
+		if gaps := bgGaps(line); len(gaps) > 0 {
+			t.Errorf("%s: cells %v of the selected row are unpainted: %q", name, gaps, plainText(line))
+		}
 	}
 }

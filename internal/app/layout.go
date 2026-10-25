@@ -1,13 +1,8 @@
 package app
 
-import (
-	"strings"
+import "github.com/kyleking/aragonite/tui/table"
 
-	"charm.land/lipgloss/v2"
-	"github.com/kyleking/aragonite/tui/table"
-)
-
-// Frame geometry shared by every full-screen view. Content grows with the
+// Width limits shared by every full-screen view. Content grows with the
 // terminal up to maxContentWidth, past which lines get long enough that
 // scanning a row costs more than the extra density is worth.
 const (
@@ -45,36 +40,6 @@ func wideContentWidth(termWidth int) int {
 // nothing.
 func listWidth(termWidth int) int {
 	return max(contentWidth(termWidth), wideContentWidth(termWidth))
-}
-
-// frameLeftPad returns the indent that centers a contentW-wide block within
-// termWidth.
-func frameLeftPad(termWidth, contentW int) int {
-	return max((termWidth-contentW)/frameSides, 0)
-}
-
-// centerFrame indents every non-empty line of content so the block sits centered in
-// termWidth, then pads each line out to the full frame width. The padding
-// matters: a view whose lines are shorter than the previous view's leaves the
-// old tail on screen otherwise, because the renderer only repaints the cells a
-// line actually covers.
-func centerFrame(content string, termWidth, contentW int) string {
-	pad := frameLeftPad(termWidth, contentW)
-	prefix := strings.Repeat(" ", pad)
-	lineWidth := pad + contentW
-
-	lines := strings.Split(content, "\n")
-	for i, line := range lines {
-		if line != "" {
-			line = prefix + line
-		}
-		if gap := lineWidth - lipgloss.Width(line); gap > 0 {
-			line += strings.Repeat(" ", gap)
-		}
-		lines[i] = line
-	}
-
-	return strings.Join(lines, "\n")
 }
 
 // padCell truncates text to width and pads it to exactly width display cells.

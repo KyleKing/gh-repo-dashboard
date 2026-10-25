@@ -15,26 +15,6 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
-// renderRepoDetailBreadcrumbs names the repo alone. Its identity facts (vcs,
-// protocol, detached/dirty state, pull request, parallel checkouts, config
-// drift) live in the Status panel's full preview instead.
-func (m Model) renderRepoDetailBreadcrumbs() string {
-	summary, ok := m.summaries[m.selectedRepo]
-	if !ok {
-		return styles.TitleStyle.Render("repo-dashboard")
-	}
-
-	home := styles.SubtitleStyle.Render("Repos")
-	sep := styles.SubtitleStyle.Render(" > ")
-	repo := styles.TitleStyle.Render(summary.Name())
-
-	return home + sep + repo
-}
-
-func (m Model) renderRepoDetail() string {
-	return m.renderPanelGrid()
-}
-
 // prsByHeadRef indexes open pull requests by their head branch name.
 func prsByHeadRef(prs []forge.PullRequest) map[string]*forge.PullRequest {
 	byRef := make(map[string]*forge.PullRequest, len(prs))
@@ -113,11 +93,11 @@ func checksCellStyle(pr *forge.PullRequest, base lipgloss.Style) lipgloss.Style 
 
 	switch display.ChecksSummary(pr.Checks) {
 	case forge.StatusPassing:
-		return styles.CleanStyle
+		return styles.Skin.Success
 	case forge.StatusFailing:
-		return styles.ErrorStyle
+		return styles.Skin.Error
 	default:
-		return styles.WarningStyle
+		return styles.Skin.Warning
 	}
 }
 
@@ -154,19 +134,19 @@ func renderBranchRow(row branchRow, layout table.Layout) string {
 
 	style := rowStyleFor(row.selected)
 
-	nameStyle := styles.BranchStyle
+	nameStyle := styles.Skin.Body
 	if row.branch.IsCurrent {
-		nameStyle = styles.PROpenStyle
+		nameStyle = styles.PROpen
 	}
 
 	prStyle := style
 	if row.pr != nil {
-		prStyle = styles.PROpenStyle
+		prStyle = styles.PROpen
 	}
 
 	checkoutStyle := style
 	if row.checkout != "" && !row.branch.IsCurrent {
-		checkoutStyle = styles.WarningStyle
+		checkoutStyle = styles.Skin.Warning
 	}
 
 	values := map[string]string{
@@ -187,12 +167,12 @@ func renderBranchRow(row branchRow, layout table.Layout) string {
 
 	cells := renderCells(layout, values, cellStyles, &style)
 
-	rendered := detailRow(rowCursorFor(row.selected), layout, cells)
+	rendered := detailRow(rowCursorFor(row.selected), layout, cells, style)
 	if row.deletable {
-		rendered += "  " + styles.Badge("merged", styles.PROpenStyle)
+		rendered += "  " + styles.PROpen.Render("merged")
 	}
 	if isStaleBranch(row.branch) {
-		rendered += "  " + styles.Badge("stale", styles.SubtitleStyle)
+		rendered += "  " + styles.Skin.Subtitle.Render("stale")
 	}
 
 	return rendered
@@ -239,13 +219,13 @@ func relativeOrDash(t time.Time) string {
 func prStateStyle(pr *forge.PullRequest) lipgloss.Style {
 	switch {
 	case pr.IsDraft:
-		return styles.PRDraftStyle
+		return styles.PRDraft
 	case display.PRStatusDisplay(*pr) == forge.PRStatusMerged:
-		return styles.PRMergedStyle
+		return styles.PRMerged
 	case display.PRStatusDisplay(*pr) == forge.PRStatusClosed:
-		return styles.ErrorStyle
+		return styles.Skin.Error
 	default:
-		return styles.PROpenStyle
+		return styles.PROpen
 	}
 }
 

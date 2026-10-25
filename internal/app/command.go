@@ -183,9 +183,8 @@ func DefaultRegistry() Registry {
 				if m.headless {
 					return m, statusCmd(m.registry.Listing())
 				}
-				m.viewMode = ViewModeHelp
 
-				return m, nil
+				return m.openHelp(), nil
 			},
 		},
 		historyCommand(),

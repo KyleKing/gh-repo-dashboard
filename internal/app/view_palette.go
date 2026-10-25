@@ -6,9 +6,12 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/forge/github"
+	"github.com/kyleking/aragonite/tui/frame"
+	"github.com/kyleking/aragonite/tui/keyhint"
 	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/aragonite/vcs"
 
@@ -471,18 +474,24 @@ func (m Model) handlePaletteActionKey(msg tea.KeyMsg, targets []findResult) (tea
 	return m, nil
 }
 
-// renderPalette draws the find line, its matches, and a preview of the
-// highlighted one.
-func (m Model) renderPalette() string {
-	width := contentWidth(m.width)
+func (m Model) paletteScreen() screen {
 	results := m.findResults()
 
+	return screen{
+		title: nameFind,
+		facts: m.paletteFacts(len(results)),
+		body:  m.renderPalette(results),
+		hints: paletteHints(m.paletteActions),
+	}
+}
+
+// renderPalette draws the find line, its matches, and a preview of the
+// highlighted one.
+func (m Model) renderPalette(results []findResult) string {
+	width := contentWidth(m.width)
+
 	var b strings.Builder
-	b.WriteString(styles.TitleStyle.Render(nameFind))
-	b.WriteString(" ")
 	b.WriteString(m.paletteInput.View())
-	b.WriteString("\n")
-	b.WriteString(styles.SubtitleStyle.Render(m.paletteScopeLine(len(results))))
 	b.WriteString("\n\n")
 
 	b.WriteString(m.renderPaletteResults(results, width))
@@ -494,24 +503,25 @@ func (m Model) renderPalette() string {
 		b.WriteString(m.renderPalettePreview(results, width))
 	}
 
-	b.WriteString("\n")
-	b.WriteString(styles.FooterStyle.Render(paletteFooter(m.paletteActions)))
-
 	return b.String()
 }
 
-func (m Model) paletteScopeLine(matches int) string {
+func (m Model) paletteFacts(matches int) []frame.Fact {
 	scope := "this repo"
 	if m.paletteFleetScope || parseFindQuery(m.paletteInput.Value()).fleet {
 		scope = "all repos"
 	}
 
-	line := "scope: " + scope + compactSignalSep + strconv.Itoa(matches) + " " + plural(matches, "match", "matches")
-	if marks := len(m.paletteMarks); marks > 0 {
-		line += compactSignalSep + strconv.Itoa(marks) + " marked"
+	facts := []frame.Fact{
+		{Text: "scope: " + scope},
+		{Text: strconv.Itoa(matches) + " " + plural(matches, "match", "matches")},
 	}
 
-	return line
+	if marks := len(m.paletteMarks); marks > 0 {
+		facts = append(facts, frame.Fact{Text: strconv.Itoa(marks) + " marked", Tone: frame.Accent})
+	}
+
+	return facts
 }
 
 // paletteVisibleRows is how many matches the list shows before it scrolls.
@@ -519,7 +529,7 @@ const paletteVisibleRows = 10
 
 func (m Model) renderPaletteResults(results []findResult, width int) string {
 	if len(results) == 0 {
-		return styles.SubtitleStyle.Render("no matches")
+		return styles.Skin.Subtitle.Render("no matches")
 	}
 
 	window := visibleRange(m.paletteCursor, len(results), paletteVisibleRows)
@@ -527,19 +537,20 @@ func (m Model) renderPaletteResults(results []findResult, width int) string {
 	lines := make([]string, 0, window.end-window.start)
 	for i := window.start; i < window.end; i++ {
 		r := results[i]
-		style := rowStyleFor(i == m.paletteCursor)
+		selected := i == m.paletteCursor
 
 		mark := " "
 		if m.paletteMarks[r.key()] {
 			mark = "✓"
 		}
 
-		row := rowCursorFor(i == m.paletteCursor) + mark + " " +
+		text := rowStyleFor(selected).Render(mark + " " +
 			table.Pad(r.kindName(), paletteKindColWidth, table.AlignLeft) + " " +
-			table.Pad(r.label, max(width/paletteLabelShare, paletteKindColWidth), table.AlignLeft) + " " +
-			styles.SubtitleStyle.Render(r.detail)
+			table.Pad(r.label, max(width/paletteLabelShare, paletteKindColWidth), table.AlignLeft) + " ")
+		room := max(width-cursorWidth-lipgloss.Width(text), 0)
+		detail := withSelection(styles.Skin.Subtitle, selected).Render(table.Truncate(r.detail, room))
 
-		lines = append(lines, style.Render(table.Truncate(row, width)))
+		lines = append(lines, rowCursorFor(selected)+text+detail)
 	}
 
 	return strings.Join(lines, "\n")
@@ -577,32 +588,28 @@ func renderPaletteActions(targets []findResult) string {
 	actions := paletteActionsFor(homogeneousKind(targets))
 
 	lines := make([]string, 0, len(actions)+1)
-	lines = append(lines, styles.HeaderStyle.Render(label))
+	lines = append(lines, styles.Skin.Subtitle.Bold(true).Render(label))
 	for _, action := range actions {
-		lines = append(lines, styles.FooterKeyStyle.Render(action.key)+styles.FooterDescStyle.Render(" "+action.name))
+		lines = append(lines, styles.Skin.Key.Render(action.key)+styles.Skin.Subtitle.Render(" "+action.name))
 	}
 
 	return strings.Join(lines, "\n")
 }
 
-func paletteFooter(actions bool) string {
+//nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
+func paletteHints(actions bool) []keyhint.Hint {
 	if actions {
-		return styles.FooterKeyStyle.Render("key") + styles.FooterDescStyle.Render(" run  ") +
-			styles.FooterKeyStyle.Render(keyEsc) + styles.FooterDescStyle.Render(" back")
+		return []keyhint.Hint{
+			{Key: "key", What: "run", Priority: 2},
+			{Key: keyEsc, What: descBack, Priority: 1},
+		}
 	}
 
-	hints := [][2]string{
-		{keyEnter, "open"},
-		{keyTab, "mark"},
-		{actionLeader, "act on set"},
-		{"*", "widen to fleet"},
-		{keyEsc, "close"},
+	return []keyhint.Hint{
+		{Key: keyEnter, What: descOpen, Priority: 5},
+		{Key: keyTab, What: "mark", Priority: 3},
+		{Key: actionLeader, What: "act on set", Priority: 2},
+		{Key: "*", What: "widen to fleet", Priority: 1},
+		{Key: keyEsc, What: descClose, Priority: 4},
 	}
-
-	parts := make([]string, 0, len(hints))
-	for _, h := range hints {
-		parts = append(parts, styles.FooterKeyStyle.Render(h[0])+styles.FooterDescStyle.Render(" "+h[1]))
-	}
-
-	return strings.Join(parts, "  ")
 }

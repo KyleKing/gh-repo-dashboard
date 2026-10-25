@@ -51,7 +51,7 @@ func TestExpandRegion_KeepsTheFrameHeightFixed(t *testing.T) {
 				for cursor := range m.filteredPaths {
 					m.cursor = cursor
 
-					got := strings.Count(m.renderRepoList(), "\n") + 1
+					got := strings.Count(m.renderScreen(), "\n") + 1
 					if got != size.height {
 						t.Errorf("region open=%v, cursor=%d: rendered %d lines, want %d",
 							open, cursor, got, size.height)

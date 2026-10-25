@@ -80,7 +80,7 @@ func TestCIFetchesOnlyVisibleRepos(t *testing.T) {
 	t.Parallel()
 
 	m := New([]string{"/dev"}, 1)
-	m.width, m.height = 120, 20
+	m.width, m.height = 120, 14
 	m.loading = false
 	m.summaries = map[string]models.RepoSummary{}
 	m.repoPaths = nil

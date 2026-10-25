@@ -21,7 +21,7 @@ var tabBar = []tabSpec{
 
 // currentTab is the tab the view mode sits under. Every drill-down of the repo
 // list is still the repos tab, so the bar never contradicts the breadcrumb.
-func (m Model) currentTab() Tab {
+func (Model) currentTab() Tab {
 	return TabRepos
 }
 

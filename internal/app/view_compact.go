@@ -44,19 +44,19 @@ func (m Model) renderCompactRow(s models.RepoSummary, selected bool, layout tabl
 	values := map[string]string{
 		colCompactName:   s.Name(),
 		colCompactBranch: s.Branch,
-		colCompactState:  display.RepoStatusSummary(s.RepoSummary),
+		colCompactState:  statusText(s),
 	}
 	cellStyles := map[string]lipgloss.Style{
-		colCompactBranch: withSelection(styles.BranchStyle, selected),
+		colCompactBranch: withSelection(m.branchStyle(s), selected),
 		colCompactState:  withSelection(statusCellStyle(s, base), selected),
 	}
 
-	identity := base.Render(rowCursor(m.isMarked(s.Path), selected)) +
-		table.Join(renderCells(layout, values, cellStyles, &base))
+	identity := rowGutter(m.isMarked(s.Path), selected) +
+		paintRow(layout, renderCells(layout, values, cellStyles, &base), base)
 
 	signals := m.compactSignals(s)
 	signalWidth := listWidth(m.width) - len(compactIndent)
-	signalLine := styles.SubtitleStyle.Render(
+	signalLine := styles.Skin.Subtitle.Render(
 		compactIndent + table.Truncate(strings.Join(signals, compactSignalSep), signalWidth),
 	)
 

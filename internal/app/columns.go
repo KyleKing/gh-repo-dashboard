@@ -1,15 +1,17 @@
 package app
 
 import (
+	"slices"
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/kyleking/aragonite/tui/skin"
 	"github.com/kyleking/aragonite/tui/table"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
-// Column keys for the detail tabs, PR views, and batch results. Keys double
+// Column keys for the detail panels and batch results. Keys double
 // as rendered headers except where the header reads better shortened.
 const (
 	colBranchName  = "BRANCH"
@@ -29,18 +31,6 @@ const (
 	colCheckoutBranch = "BRANCH"
 	colCheckoutState  = "STATUS"
 	colCheckoutCommit = "LAST COMMIT"
-
-	colPRNumber   = "NUMBER"
-	colPRTitle    = "TITLE"
-	colPRState    = "STATE"
-	colPRActivity = "ACTIVITY"
-	colPRBranch   = "BRANCH"
-	colPRAuthor   = "AUTHOR"
-	colPRUpdated  = "UPDATED"
-
-	colCheckName     = "CHECK"
-	colCheckState    = "STATUS"
-	colCheckDuration = "DURATION"
 
 	colCommitHash    = "COMMIT"
 	colCommitSubject = "SUBJECT"
@@ -67,12 +57,6 @@ var (
 		{Key: colChecks, Title: colChecks, Min: 12, Priority: 3},
 		{Key: colCheckedOut, Title: colCheckedOut, Min: 16, Weight: 1, Priority: 5},
 		{Key: colLastCommit, Title: colLastCommit, Min: 12, Priority: 2},
-	}
-
-	checkColSpecs = []table.Column{
-		{Key: colCheckName, Title: colCheckName, Min: 20, Weight: 3},
-		{Key: colCheckState, Title: colCheckState, Min: 12},
-		{Key: colCheckDuration, Title: colCheckDuration, Min: 8, Priority: 1},
 	}
 
 	commitColSpecs = []table.Column{
@@ -112,52 +96,63 @@ func renderCells(
 }
 
 func detailHeader(layout table.Layout) string {
-	return styles.HeaderStyle.Render(strings.Repeat(" ", cursorWidth) + table.Header(layout))
+	return styles.Skin.Subtitle.Bold(true).Render(strings.Repeat(" ", cursorWidth) + table.Header(layout))
 }
 
-// detailRow joins already-styled cells behind a two-cell cursor, leaving the
-// header's hidden-column marker an empty column to sit above.
-func detailRow(cursor string, layout table.Layout, cells []string) string {
-	if marker := layout.Marker(); marker != "" {
-		cells = append(cells, strings.Repeat(" ", lipgloss.Width(marker)))
-	}
-
-	return cursor + table.Join(cells)
+// detailRow puts already-styled cells behind the row's two-cell gutter.
+func detailRow(cursor string, layout table.Layout, cells []string, face lipgloss.Style) string {
+	return cursor + paintRow(layout, cells, face)
 }
 
-// joinWithinWidth appends badges to head while they fit in limit display
-// cells, dropping the rest rather than letting the line run off the frame.
-// Badges are ordered most-important-first by their callers.
-func joinWithinWidth(head string, badges []string, limit int) string {
-	line := head
-	gap := "  "
-
-	for _, badge := range badges {
-		candidate := line + gap + badge
-		if lipgloss.Width(candidate) > limit {
-			break
+// paintRow joins already-styled cells with the gaps between them painted in
+// face's background, so a selected row reads as one bar. A face with no
+// background has nothing to paint, which keeps a long unselected list cheap.
+func paintRow(layout table.Layout, cells []string, face lipgloss.Style) string {
+	if _, bare := face.GetBackground().(lipgloss.NoColor); bare {
+		if marker := layout.Marker(); marker != "" {
+			cells = append(slices.Clone(cells), strings.Repeat(" ", lipgloss.Width(marker)))
 		}
 
-		line, gap = candidate, " "
+		return table.Join(cells)
 	}
 
-	return line
+	return table.Row(layout, cells, lipgloss.NewStyle().Background(face.GetBackground()))
 }
 
 var plainStyle = lipgloss.NewStyle()
 
+// rowStyleFor is the face a row's text is drawn in, with the selection behind
+// it for the row under the cursor.
 func rowStyleFor(selected bool) lipgloss.Style {
-	if selected {
-		return styles.SelectedRowStyle
-	}
-
-	return styles.TableRowStyle
+	return withSelection(styles.Skin.Body, selected)
 }
 
-func rowCursorFor(selected bool) string {
-	if selected {
-		return "> "
+// rowGutter is the two cells every row opens with: the cursor bar and the mark
+// that says the row is part of a batch. Both stay two cells wide whether or not
+// they are drawn, so a name never moves when the cursor does.
+func rowGutter(marked, selected bool) string {
+	if !marked && !selected {
+		return strings.Repeat(" ", cursorWidth)
 	}
 
-	return "  "
+	face := rowStyleFor(selected)
+
+	bar := face.Render(" ")
+	if selected {
+		bar = withSelection(styles.Skin.Cursor, true).Render(skin.CursorBar)
+	}
+
+	mark := face.Render(" ")
+	if marked {
+		mark = withSelection(styles.Skin.Accent, selected).Render(markGlyph)
+	}
+
+	return bar + mark
+}
+
+// markGlyph is what the gutter's second cell shows for a marked row.
+const markGlyph = "•"
+
+func rowCursorFor(selected bool) string {
+	return rowGutter(false, selected)
 }

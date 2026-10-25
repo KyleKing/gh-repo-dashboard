@@ -187,7 +187,7 @@ func TestFleetHeaderCountsBranchConflicts(t *testing.T) {
 		t.Errorf("counted %d repos in conflict, want 2 (app-a and app-b share main)", got)
 	}
 
-	header := plainText(m.renderRepoListBreadcrumbs())
+	header := headerLine(m)
 	if !strings.Contains(header, conflictMark+" 2 branch conflicts") {
 		t.Errorf("fleet header does not report the hazard: %q", header)
 	}

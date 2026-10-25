@@ -198,8 +198,8 @@ func TestPaletteRendersItsMatchesAndFooter(t *testing.T) {
 	m = mustModel(t, opened)
 	m.paletteInput.SetValue("#12")
 
-	rendered := plainText(m.renderPalette())
-	for _, want := range []string{"find", "2 matches", "Composable extras", "act on set"} {
+	rendered := plainText(m.renderScreen())
+	for _, want := range []string{"find", "2 matches", "Composable extras", "[a]ct on set"} {
 		if !strings.Contains(rendered, want) {
 			t.Errorf("palette is missing %q:\n%s", want, rendered)
 		}

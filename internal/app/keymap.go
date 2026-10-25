@@ -8,6 +8,7 @@ const (
 	keyEsc         = "esc"
 	keyTab         = "tab"
 	keyBracketPair = "[/]"
+	keyCtrlC       = "ctrl+c"
 )
 
 // KeyMap holds the key bindings used across the TUI.

@@ -1,8 +1,6 @@
 package app
 
 import (
-	"strings"
-
 	tea "charm.land/bubbletea/v2"
 )
 
@@ -35,27 +33,6 @@ func textObjects() []TextObject {
 			return m.isMarked(path)
 		}},
 	}
-}
-
-// textObjectKeys lists every text-object key for the help overlay, so a new
-// object appears there without a second edit.
-func textObjectKeys() string {
-	keys := make([]string, 0, len(textObjects()))
-	for _, obj := range textObjects() {
-		keys = append(keys, obj.Key)
-	}
-
-	return strings.Join(keys, "/")
-}
-
-// textObjectNames lists the scopes those keys name, in the same order.
-func textObjectNames() string {
-	names := make([]string, 0, len(textObjects()))
-	for _, obj := range textObjects() {
-		names = append(names, obj.Name)
-	}
-
-	return strings.Join(names, ", ")
 }
 
 func lookupTextObject(key string) (TextObject, bool) {

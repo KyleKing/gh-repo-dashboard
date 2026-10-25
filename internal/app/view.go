@@ -1,9 +1,6 @@
 package app
 
 import (
-	"fmt"
-	"strings"
-
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/tui/overlay"
@@ -59,174 +56,22 @@ func (m Model) View() tea.View {
 	return v
 }
 
-func (m Model) renderScreen() string {
-	if m.width == 0 {
-		return ""
-	}
-
-	frameW := m.frameWidth()
-
-	content := m.renderView()
-	if !m.selfCentering() {
-		content = centerFrame(content, m.width, frameW)
-	}
-
-	if m.commandMode {
-		line := centerFrame(m.commandInput.View(), m.width, frameW)
-		if candidates := m.renderCompletionCandidates(frameW); candidates != "" {
-			line = centerFrame(candidates, m.width, frameW) + "\n" + line
-		}
-
-		return overlayBottomLine(content, line, m.height)
-	}
-	if m.statusMessage != "" {
-		line := centerFrame(styles.StatusMessageStyle.Render(m.statusMessage), m.width, frameW)
-
-		return overlayBottomLine(content, line, m.height)
-	}
-
-	return content
-}
-
-// frameWidth is the width the frame centers and pads to. The repo list and the
-// focused grid are the dense views and share the later cap; everything else
-// stays within the single-column content width.
-func (m Model) frameWidth() int {
-	switch m.viewMode {
-	case ViewModeRepoList, ViewModePRMap, ViewModeFilter, ViewModeSort:
-		return listWidth(m.width)
-	case ViewModeRepoDetail:
-		return m.gridWidth()
-	default:
-		return contentWidth(m.width)
-	}
-}
-
-// selfCentering reports whether the current view already positions itself
-// within the full terminal, in which case the shared frame must not indent it
-// a second time.
-func (m Model) selfCentering() bool {
-	switch m.viewMode {
-	case ViewModeConfirm:
-		return true
-	default:
-		return false
-	}
-}
-
-// overlayBottomLine pins line (itself one line or several) onto the bottom
-// rows of content, padding or truncating content to keep the overall height
-// stable.
-func overlayBottomLine(content, line string, height int) string {
-	blockHeight := strings.Count(line, "\n") + 1
-
-	lines := strings.Split(content, "\n")
-	if height < blockHeight {
-		return content
-	}
-
-	room := height - blockHeight
-
-	switch {
-	case len(lines) >= room:
-		lines = lines[:room]
-	default:
-		for len(lines) < room {
-			lines = append(lines, "")
-		}
-	}
-
-	return strings.Join(lines, "\n") + "\n" + line
-}
-
-// maxRenderedCompletions caps how many candidates the command bar lists at
-// once. A bare ":" matches every registered command, and a predicate atom's
-// prefix can match most of the atom table, so an uncapped list would swallow
-// most of the screen rather than sitting as a hint above the command line.
-const maxRenderedCompletions = 8
-
-// renderCompletionCandidates renders what the command bar's current text
-// could complete to, live as each key lands, so the grammar (command names,
-// then that command's own arguments) is visible before Tab is ever pressed
-// rather than only revealed by pressing it. Each candidate carries its own
-// one-line description underneath its name, the same explanation the full
-// help overlay gives it, so the meaning of an atom or a command never has to
-// be memorized or looked up separately.
-func (m Model) renderCompletionCandidates(width int) string {
-	candidates, ok := m.commandCompletionCandidates()
-	if !ok || len(candidates) == 0 {
-		return ""
-	}
-
-	shown, hidden := candidates, 0
-	if len(shown) > maxRenderedCompletions {
-		hidden = len(shown) - maxRenderedCompletions
-		shown = shown[:maxRenderedCompletions]
-	}
-
-	lines := make([]string, 0, len(shown)+1)
-	for _, c := range shown {
-		line := styles.SubtitleStyle.Bold(true).Render(c.Name)
-		if c.Description != "" {
-			line += styles.SubtitleStyle.Render("  " + c.Description)
-		}
-		lines = append(lines, table.Truncate(line, width))
-	}
-	if hidden > 0 {
-		lines = append(lines, styles.SubtitleStyle.Render(fmt.Sprintf("+%d more", hidden)))
-	}
-
-	return strings.Join(lines, "\n")
-}
-
-func (m Model) renderView() string {
-	switch m.viewMode {
-	case ViewModeHelp:
-		return m.renderHelp()
-	case ViewModePRMap:
-		return m.renderPRMap()
-	case ViewModePalette:
-		return m.renderPalette()
-	case ViewModeRepoDetail:
-		return m.renderRepoDetail()
-	case ViewModeBranchDetail:
-		return m.renderBranchDetail()
-	case ViewModeFilter, ViewModeSort:
-		return m.renderRepoList()
-	case ViewModeBatchProgress:
-		return m.renderBatchProgress()
-	case ViewModeConfirm:
-		return m.renderConfirmModal()
-	default:
-		return m.renderRepoList()
-	}
-}
-
-// withSelection applies the shared selected-row background to s when selected is true.
+// withSelection paints the shared selection background behind s when selected
+// is true.
 func withSelection(s lipgloss.Style, selected bool) lipgloss.Style {
 	if selected {
-		return s.Background(styles.Surface0)
+		return styles.Selected(s)
 	}
 
 	return s
 }
 
-// centerModal centers content on screen as a single block, and clips it to the
-// screen rather than letting an overlarge modal push itself off it. The modals
-// here carry their own border, so the overlay adds no frame of its own.
+// centerModal centers content in the frame's body as a single block, and
+// clips it rather than letting an overlarge modal push itself off the screen.
+// The modals here carry their own border, so the overlay adds no frame of its
+// own.
 func centerModal(m Model, content string) string {
-	return overlay.Center(content, m.width, m.height, overlay.Styles{})
-}
-
-func (m Model) renderBreadcrumbs() string {
-	switch m.viewMode {
-	case ViewModeRepoDetail:
-		return m.renderRepoDetailBreadcrumbs()
-	case ViewModeBranchDetail:
-		return m.renderBranchDetailBreadcrumbs()
-	default:
-		return m.renderRepoListBreadcrumbs()
-	}
+	return overlay.Center(content, m.width, m.bodyHeight(), overlay.Styles{})
 }
 
 // truncate shortens s to at most maxLen terminal cells, marking the cut with

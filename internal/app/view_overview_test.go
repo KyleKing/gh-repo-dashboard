@@ -21,12 +21,12 @@ func TestListWidthFollowsTheWiderRule(t *testing.T) {
 	for _, width := range []int{80, 100, 140, 160, 180, 220, 260} {
 		m := compactModel(width, 40)
 
-		if got, floor := m.frameWidth(), contentWidth(width); got < floor {
-			t.Errorf("at %d cells the list frames to %d, narrower than the %d it had", width, got, floor)
+		if got, floor := listWidth(width), contentWidth(width); got < floor {
+			t.Errorf("at %d cells the list spans %d, narrower than the %d it had", width, got, floor)
 		}
 
-		if grid := m.gridWidth(); grid > contentWidth(width) && m.frameWidth() != grid {
-			t.Errorf("at %d cells the list frames to %d and the grid to %d", width, m.frameWidth(), grid)
+		if grid := m.gridWidth(); grid > contentWidth(width) && listWidth(width) != grid {
+			t.Errorf("at %d cells the list spans %d and the grid %d", width, listWidth(width), grid)
 		}
 
 		if got := layoutRepoCols(listWidth(width)).Hidden; width >= wideMinWidth && got != 0 {

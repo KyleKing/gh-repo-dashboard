@@ -3,13 +3,16 @@ package app
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/tui/frame"
 	"github.com/kyleking/aragonite/tui/region"
+	"github.com/kyleking/aragonite/tui/skin"
 	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/aragonite/vcs"
 
@@ -17,34 +20,32 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
-// Vertical budget of the repo list. The body is sized once and rendered to
-// exactly that many lines, so nothing the body does (the region opening, a
-// shorter repo set) can move the footer.
-const (
-	listChromeHeight   = 6
-	searchChromeHeight = 3
-)
+// searchChromeHeight is what the docked search spends above the table: the
+// input, its scope legend, and a blank line.
+const searchChromeHeight = 3
 
 // searchScopeLegend spells out every scope prefix "/" search accepts, short
 // key and long name together, so the grammar is visible the moment the
 // search box opens rather than living only behind "?" help.
 func searchScopeLegend() string {
-	return styles.SubtitleStyle.Render(
+	return styles.Skin.Subtitle.Render(
 		"[r]epo:  [b]ranch:  [p]r:  [t]emplate:  [n]otes:  [c]ommit:",
 	)
 }
 
-func (m Model) renderRepoList() string {
-	if m.panelActions {
-		return m.renderActionModal()
+func (m Model) repoListScreen() screen {
+	return screen{
+		title: appTitle,
+		facts: m.repoListFacts(),
+		body:  m.renderRepoList(),
+		hints: m.listHints(),
 	}
+}
 
+// renderRepoList is the list's body: whichever editor is docked above the
+// table, then the table and its expanded region.
+func (m Model) renderRepoList() string {
 	var b strings.Builder
-
-	b.WriteString(m.renderBreadcrumbs())
-	b.WriteString("\n\n")
-	b.WriteString(m.renderStatusBar())
-	b.WriteString("\n\n")
 
 	switch {
 	case m.searching:
@@ -61,8 +62,6 @@ func (m Model) renderRepoList() string {
 	}
 
 	b.WriteString(m.renderListBody())
-	b.WriteString("\n\n")
-	b.WriteString(m.renderFooter())
 
 	return b.String()
 }
@@ -72,7 +71,7 @@ func (m Model) renderRepoList() string {
 // covering it, so the table shrinks by whichever one is open rather than
 // disappearing behind a full-screen takeover.
 func (m Model) listBodyHeight() int {
-	height := m.height - listChromeHeight
+	height := m.bodyHeight()
 
 	switch {
 	case m.searching:
@@ -86,29 +85,28 @@ func (m Model) listBodyHeight() int {
 	return max(height, 1)
 }
 
-func (m Model) renderRepoListBreadcrumbs() string {
-	title := styles.TitleStyle.Render("repo-dashboard")
-
-	badges := []string{}
-
+// repoListFacts is the header's state beside the title: counts, with the ones
+// that ask for action in their status color, then whatever narrows the list.
+func (m Model) repoListFacts() []frame.Fact {
 	listable := len(m.listableRepos())
 
 	repoCount := fmt.Sprintf("%d repos", len(m.filteredPaths))
 	if len(m.filteredPaths) != listable {
 		repoCount = fmt.Sprintf("%d/%d repos", len(m.filteredPaths), listable)
 	}
-	badges = append(badges, styles.Badge(repoCount, styles.CountBadgeStyle))
+
+	facts := []frame.Fact{{Text: repoCount}}
 
 	if dirtyCount := m.DirtyCount(); dirtyCount > 0 {
-		badges = append(badges, styles.Badge(fmt.Sprintf("%d dirty", dirtyCount), styles.FilterBadgeStyle))
+		facts = append(facts, frame.Fact{Text: fmt.Sprintf("%d dirty", dirtyCount), Tone: frame.Warning})
 	}
 
 	if prCount := m.PRCount(); prCount > 0 {
-		badges = append(badges, styles.Badge(fmt.Sprintf("%d PRs", prCount), styles.PROpenStyle))
+		facts = append(facts, frame.Fact{Text: fmt.Sprintf("%d PRs", prCount)})
 	}
 
 	if notesCount := m.NotesCount(); notesCount > 0 {
-		badges = append(badges, styles.Badge(fmt.Sprintf("%d notes", notesCount), styles.NotesBadgeStyle))
+		facts = append(facts, frame.Fact{Text: fmt.Sprintf("%d notes", notesCount)})
 	}
 
 	if conflicts := m.BranchConflictCount(); conflicts > 0 {
@@ -116,14 +114,123 @@ func (m Model) renderRepoListBreadcrumbs() string {
 		if conflicts == 1 {
 			label = conflictMark + " 1 branch conflict"
 		}
-		badges = append(badges, styles.Badge(label, styles.WarningStyle))
+
+		facts = append(facts, frame.Fact{Text: label, Tone: frame.Warning})
 	}
 
 	if progress := m.loadingBadge(); progress != "" {
-		badges = append(badges, styles.Badge(progress, styles.CountBadgeStyle))
+		facts = append(facts, frame.Fact{Text: progress, Tone: frame.Accent})
 	}
 
-	return joinWithinWidth(title, badges, listWidth(m.width))
+	return append(facts, m.narrowingFacts()...)
+}
+
+// narrowingFacts names what is limiting the list: the enabled filters, the
+// predicate, the search, and the marks. Sort is drawn on its column title.
+func (m Model) narrowingFacts() []frame.Fact {
+	var facts []frame.Fact
+
+	for _, f := range m.activeFilters {
+		if f.Enabled && f.Mode != models.FilterModeAll {
+			label := f.Mode.String()
+			if f.Inverted {
+				label = "NOT " + label
+			}
+
+			facts = append(facts, frame.Fact{Text: label, Tone: frame.Accent})
+		}
+	}
+
+	if m.predicateText != "" {
+		facts = append(facts, frame.Fact{Text: m.predicateText, Tone: frame.Accent})
+	}
+
+	if m.searchText != "" {
+		facts = append(facts, frame.Fact{Text: "\"" + m.searchText + "\"", Tone: frame.Accent})
+	}
+
+	if summary := m.markSummary(); summary != "" {
+		facts = append(facts, frame.Fact{Text: summary, Tone: frame.Accent})
+	}
+
+	if m.isCompact() {
+		facts = append(facts, m.sortFacts()...)
+	}
+
+	return facts
+}
+
+// sortFacts names the enabled sorts in priority order, for the compact layout
+// that has no column titles to carry the mark.
+func (m Model) sortFacts() []frame.Fact {
+	enabled := m.enabledSorts()
+	facts := make([]frame.Fact, 0, len(enabled))
+
+	for _, s := range enabled {
+		facts = append(facts, frame.Fact{Text: s.Mode.String() + " " + sortArrow(s.Direction)})
+	}
+
+	return facts
+}
+
+// enabledSorts lists the enabled sorts, highest priority first.
+func (m Model) enabledSorts() []models.ActiveSort {
+	var enabled []models.ActiveSort
+
+	for _, s := range m.activeSorts {
+		if s.IsEnabled() {
+			enabled = append(enabled, s)
+		}
+	}
+
+	slices.SortFunc(enabled, func(a, b models.ActiveSort) int { return a.Priority - b.Priority })
+
+	return enabled
+}
+
+func sortArrow(d models.SortDirection) string {
+	if d == models.SortDirectionAsc {
+		return "▴"
+	}
+
+	return "▾"
+}
+
+// sortColumnKey is the column a sort mode orders by.
+func sortColumnKey(mode models.SortMode) string {
+	switch mode {
+	case models.SortModeName:
+		return colName
+	case models.SortModeModified:
+		return colModified
+	case models.SortModeStatus:
+		return colStatus
+	case models.SortModeBranch:
+		return colBranch
+	}
+
+	return ""
+}
+
+// markSort returns layout with the arrow of the highest-priority sort on its
+// column's title, or layout itself when that column is hidden or no sort is on.
+func (m Model) markSort(layout table.Layout) table.Layout {
+	enabled := m.enabledSorts()
+	if len(enabled) == 0 {
+		return layout
+	}
+
+	key := sortColumnKey(enabled[0].Mode)
+	marked := layout
+	marked.Columns = slices.Clone(layout.Columns)
+
+	for i, c := range marked.Columns {
+		if c.Key == key {
+			marked.Columns[i].Title += " " + sortArrow(enabled[0].Direction)
+		}
+	}
+
+	return marked
 }
 
 // loadingBadge reports what is still arriving, or is empty once the fleet has
@@ -143,83 +250,26 @@ func (m Model) loadingBadge() string {
 	return ""
 }
 
-func (m Model) renderStatusBar() string {
-	parts := []string{}
-	parts = appendFilterBadges(parts, m.activeFilters)
-	parts = appendSortBadges(parts, m.activeSorts)
-
-	if m.predicateText != "" {
-		parts = append(parts, styles.Badge(m.predicateText, styles.FilterBadgeStyle))
-	}
-
-	if m.searchText != "" {
-		parts = append(parts, styles.Badge("\""+m.searchText+"\"", styles.SearchBadgeStyle))
-	}
-
-	if summary := m.markSummary(); summary != "" {
-		parts = append(parts, styles.Badge(summary, styles.SortBadgeStyle))
-	}
-
-	return strings.Join(parts, " ")
-}
-
-// appendFilterBadges appends a badge for each enabled, non-"all" filter.
-func appendFilterBadges(parts []string, activeFilters []models.ActiveFilter) []string {
-	for _, f := range activeFilters {
-		if f.Enabled && f.Mode != models.FilterModeAll {
-			label := f.Mode.String()
-			if f.Inverted {
-				label = "NOT " + label
-			}
-			parts = append(parts, styles.Badge(label, styles.FilterBadgeStyle))
-		}
-	}
-
-	return parts
-}
-
-// appendSortBadges appends a badge for each enabled sort, in priority order.
-func appendSortBadges(parts []string, activeSorts []models.ActiveSort) []string {
-	enabledCount := 0
-	for _, s := range activeSorts {
-		if s.IsEnabled() {
-			enabledCount++
-		}
-	}
-
-	for priority := range enabledCount {
-		for _, s := range activeSorts {
-			if s.IsEnabled() && s.Priority == priority {
-				parts = append(parts, styles.Badge(s.DisplayName(), styles.SortBadgeStyle))
-				break
-			}
-		}
-	}
-
-	return parts
-}
-
 // renderModalRow renders one cursor/mark/key/label row, shared by the docked
 // filter and sort editors. Trailing is an extra styled column (a per-filter
 // match count), left empty where there is none.
 func renderModalRow(selected bool, mark, shortKey, label string, markStyle lipgloss.Style, trailing string) string {
 	cursor := "  "
-	rowStyle := styles.TableRowStyle
-	if selected {
-		cursor = "> "
-		rowStyle = styles.SelectedRowStyle
-	}
+	rowStyle := styles.Skin.Body
 
-	keyStyle := lipgloss.NewStyle().Foreground(styles.Mauve).Bold(true)
+	if selected {
+		cursor = styles.Skin.Cursor.Render(skin.CursorBar) + " "
+		rowStyle = styles.Selected(rowStyle)
+	}
 
 	row := fmt.Sprintf("%s%s  %s  %s",
 		cursor,
 		markStyle.Render(padCell(mark, modalMarkColWidth)),
-		keyStyle.Render(padCell(shortKey, modalKeyColWidth)),
+		styles.Skin.Key.Render(padCell(shortKey, modalKeyColWidth)),
 		rowStyle.Render(padCell(label, filterLabelColWidth)))
 
 	if trailing != "" {
-		row += "  " + styles.SubtitleStyle.Render(trailing)
+		row += "  " + styles.Skin.Subtitle.Render(trailing)
 	}
 
 	return row
@@ -252,10 +302,10 @@ func (m Model) filterDockHeight() int {
 func (m Model) renderFilterDock() string {
 	modes := models.SelectableFilterModes()
 
-	headerStyle := lipgloss.NewStyle().Foreground(styles.Subtext0).Bold(true)
+	headerStyle := styles.Skin.Subtitle.Bold(true)
 	header := fmt.Sprintf("  %s  %s  %s  %s",
 		padCell("", modalMarkColWidth), padCell("Key", modalKeyColWidth),
-		padCell("Filter", filterLabelColWidth), "If on")
+		padCell("Filter", filterLabelColWidth), "Matches")
 
 	lines := make([]string, 1, 1+len(modes)+1)
 	lines[0] = headerStyle.Render(header)
@@ -270,12 +320,12 @@ func (m Model) renderFilterDock() string {
 		}
 
 		mark := "   "
-		markStyle := lipgloss.NewStyle().Foreground(styles.Green)
+		markStyle := styles.Skin.Success
 
 		switch {
 		case filterState.Enabled && filterState.Inverted:
 			mark = "NOT"
-			markStyle = lipgloss.NewStyle().Foreground(styles.Peach)
+			markStyle = styles.Skin.Warning
 		case filterState.Enabled:
 			mark = " ✓ "
 		}
@@ -286,7 +336,7 @@ func (m Model) renderFilterDock() string {
 
 	if m.predicateText != "" {
 		lines = append(lines, renderModalRow(false, "AND", "x", m.predicateText,
-			lipgloss.NewStyle().Foreground(styles.Peach), "clear"))
+			styles.Skin.Warning, "clear"))
 	}
 
 	return strings.Join(lines, "\n")
@@ -303,7 +353,7 @@ func sortDockHeight() int {
 func (m Model) renderSortDock() string {
 	displaySorts := buildSortModalRows(m.activeSorts)
 
-	headerStyle := lipgloss.NewStyle().Foreground(styles.Subtext0).Bold(true)
+	headerStyle := styles.Skin.Subtitle.Bold(true)
 	header := fmt.Sprintf("  %s  %s  %s",
 		padCell("", modalMarkColWidth), padCell("Key", modalKeyColWidth), "Sort By")
 
@@ -331,7 +381,7 @@ func (m Model) renderSortDock() string {
 		}
 
 		lines = append(lines, renderModalRow(i == cursorIndex, mark, sortState.ShortKey(), label,
-			lipgloss.NewStyle().Foreground(styles.Green), ""))
+			styles.Skin.Success, ""))
 	}
 
 	return strings.Join(lines, "\n")
@@ -350,17 +400,6 @@ func (m Model) renderListBody() string {
 	}
 
 	return list + "\n" + fitBlock(strings.Join(m.expandLines(listWidth(m.width), expanded), "\n"), expanded)
-}
-
-// padBottom grows lines to exactly height by adding blanks below them, so a
-// note shorter than its region starts under the row above it and the slack
-// collects against the divider that closes the region.
-func padBottom(lines []string, height int) []string {
-	if len(lines) >= height {
-		return lines[:height]
-	}
-
-	return append(lines, make([]string, height-len(lines))...)
 }
 
 // fitBlock pads or truncates a block of lines to exactly height lines.
@@ -416,7 +455,7 @@ func (m Model) renderTable() string {
 		layout = table.Fit(compactColSpecs, width-cursorWidth)
 		rowHeight = compactRowHeight
 	} else {
-		rows = append(rows, styles.HeaderStyle.Render(renderRepoHeader(layout)))
+		rows = append(rows, styles.Skin.Subtitle.Bold(true).Render(renderRepoHeader(m.markSort(layout))))
 	}
 
 	window := m.visibleRepoRange(rowHeight)
@@ -642,9 +681,9 @@ func qualifiedRepoName(path string) string {
 func notesFileRule(label string, width int) string {
 	rule := strings.Repeat("─", max(width-lipgloss.Width(label)-notesRuleLead-notesRuleSpaces, 0))
 
-	return styles.SubtitleStyle.Render(strings.Repeat("─", notesRuleLead)+" ") +
-		styles.NotesPreviewNameStyle.Render(label) +
-		styles.SubtitleStyle.Render(" "+rule)
+	return styles.Skin.Subtitle.Render(strings.Repeat("─", notesRuleLead)+" ") +
+		styles.Skin.Heading.Render(label) +
+		styles.Skin.Subtitle.Render(" "+rule)
 }
 
 // notesRuleSpaces is the blank on each side of a rule's label.
@@ -658,14 +697,14 @@ const (
 func notesBodyLines(content string, width int) []string {
 	body := strings.Split(strings.TrimRight(content, "\n"), "\n")
 	if len(body) == 1 && strings.TrimSpace(body[0]) == "" {
-		return []string{styles.SubtitleStyle.Render("  (empty)")}
+		return []string{styles.Skin.Subtitle.Render("  (empty)")}
 	}
 
 	lines := make([]string, len(body))
 	for i, line := range body {
-		style := styles.NotesPreviewLineStyle
+		style := styles.Skin.Muted
 		if strings.HasPrefix(strings.TrimSpace(line), "!") {
-			style = styles.NotesPreviewBangStyle
+			style = styles.Skin.Warning
 		}
 
 		lines[i] = style.Render(table.TruncateMiddle(strings.TrimRight(line, " \t"), width))
@@ -687,7 +726,7 @@ func elideMiddle(lines []string, height int) []string {
 
 	out := make([]string, 0, height)
 	out = append(out, lines[:head]...)
-	out = append(out, styles.SubtitleStyle.Render(
+	out = append(out, styles.Skin.Subtitle.Render(
 		"  ⋯ "+strconv.Itoa(len(lines)-head-tail)+" more lines ⋯",
 	))
 
@@ -790,7 +829,7 @@ func notesMarker(s models.RepoSummary, base lipgloss.Style, selected bool) (stri
 		return " ", base
 	}
 
-	style := withSelection(styles.NotesBadgeStyle, selected)
+	style := withSelection(styles.Skin.Accent.Bold(true), selected)
 	if count == 1 {
 		return "N", style
 	}
@@ -817,10 +856,10 @@ func (m Model) peersCell(path string, base lipgloss.Style, selected bool) (strin
 
 	cell := "⧉ " + strconv.Itoa(len(peers))
 	if m.hasBranchConflict(path) {
-		return cell + conflictMark, withSelection(styles.WarningStyle, selected)
+		return cell + conflictMark, withSelection(styles.Skin.Warning, selected)
 	}
 
-	return cell, withSelection(styles.CountStyle, selected)
+	return cell, withSelection(styles.Skin.Accent.Bold(true), selected)
 }
 
 // ciBucketGlyphs names the CI column's four tracked run outcomes, in the
@@ -831,10 +870,10 @@ var ciBucketGlyphs = []struct {
 	icon  string
 	style lipgloss.Style
 }{
-	{"✓", styles.CleanStyle},
-	{"⊘", styles.CountStyle},
-	{"⊗", styles.WarningStyle},
-	{"✗", styles.ErrorStyle},
+	{"✓", styles.Skin.Success},
+	{"⊘", styles.Skin.Accent.Bold(true)},
+	{"⊗", styles.Skin.Warning},
+	{"✗", styles.Skin.Error},
 }
 
 // ciColumnTitle builds the CI column's header: the column name followed by
@@ -857,7 +896,7 @@ func ciColumnTitle() string {
 // in progress prefixes the count rather than taking one of the four slots,
 // since it has not resolved into any of those outcomes yet.
 func (m Model) ciListCell(s models.RepoSummary, width int, selected bool) string {
-	rowStyle := withSelection(styles.TableRowStyle, selected)
+	rowStyle := withSelection(styles.Skin.Body, selected)
 
 	if s.WorkflowInfo == nil {
 		text := m.pendingCell(m.fetchPending(s.Path, fetchCI) || m.summaryPending(s.Path))
@@ -874,7 +913,7 @@ func (m Model) ciListCell(s models.RepoSummary, width int, selected bool) string
 
 	parts := make([]string, len(counts))
 	for i, count := range counts {
-		style := withSelection(styles.SubtitleStyle, selected)
+		style := withSelection(styles.Skin.Subtitle, selected)
 		if count > 0 {
 			style = withSelection(ciBucketGlyphs[i].style, selected)
 		}
@@ -886,7 +925,7 @@ func (m Model) ciListCell(s models.RepoSummary, width int, selected bool) string
 	cell := strings.Join(parts, sep)
 
 	if wf.InProgress > 0 {
-		running := withSelection(styles.WarningStyle, selected).Render("…" + strconv.Itoa(wf.InProgress))
+		running := withSelection(styles.Skin.Warning, selected).Render("…" + strconv.Itoa(wf.InProgress))
 		cell = running + rowStyle.Render(" ") + cell
 	}
 
@@ -985,39 +1024,14 @@ func (m Model) BranchConflictCount() int {
 }
 
 func (m Model) renderTableRow(s models.RepoSummary, selected bool, layout table.Layout) string {
-	base := styles.TableRowStyle
-	if selected {
-		base = styles.SelectedRowStyle
-	}
+	base := rowStyleFor(selected)
 
-	cells := make([]string, 0, len(layout.Columns)+1)
+	cells := make([]string, 0, len(layout.Columns))
 	for _, c := range layout.Columns {
 		cells = append(cells, m.repoCell(c.Key, s, layout.Width(c.Key), base, selected))
 	}
 
-	if marker := layout.Marker(); marker != "" {
-		cells = append(cells, base.Render(strings.Repeat(" ", lipgloss.Width(marker))))
-	}
-
-	gutter := base.Render(strings.Repeat(" ", table.Gutter))
-
-	return base.Render(rowCursor(m.isMarked(s.Path), selected)) +
-		strings.Join(cells, gutter)
-}
-
-// rowCursor renders the two-cell leader: the cursor arrow and the batch
-// selection mark.
-func rowCursor(marked, selected bool) string {
-	cursorChar := " "
-	if selected {
-		cursorChar = ">"
-	}
-	markChar := " "
-	if marked {
-		markChar = "•"
-	}
-
-	return cursorChar + markChar
+	return rowGutter(m.isMarked(s.Path), selected) + paintRow(layout, cells, base)
 }
 
 // repoCell renders one column of a repo row, padded to exactly width cells so
@@ -1027,7 +1041,7 @@ func (m Model) repoCell(col string, s models.RepoSummary, width int, base lipglo
 	case colName:
 		return base.Render(padCell(s.Name(), width))
 	case colBranch:
-		return withSelection(styles.BranchStyle, selected).Render(padCell(m.branchCell(s, width), width))
+		return withSelection(m.branchStyle(s), selected).Render(padCell(m.branchCell(s, width), width))
 	case colStatus:
 		return m.statusCell(s, width, base, selected)
 	case colPeers:
@@ -1054,12 +1068,13 @@ func (m Model) repoCell(col string, s models.RepoSummary, width int, base lipglo
 // statusCell renders the status summary and the notes marker that shares its
 // column, keeping the marker right-aligned within the column. A summary still
 // being read has no state to report, and reporting a clean tree before the read
-// lands would be a claim about the repo rather than a placeholder.
+// lands would be a claim about the repo rather than a placeholder. A clean tree
+// renders blank, so color and glyphs go only to what needs a look.
 func (m Model) statusCell(s models.RepoSummary, width int, base lipgloss.Style, selected bool) string {
 	notesText, notesStyle := notesMarker(s, base, selected)
 	style := withSelection(statusCellStyle(s, base), selected)
 
-	summary := display.RepoStatusSummary(s.RepoSummary)
+	summary := statusText(s)
 	if m.summaryPending(s.Path) {
 		summary = pendingGlyph
 		style = base
@@ -1067,6 +1082,25 @@ func (m Model) statusCell(s models.RepoSummary, width int, base lipgloss.Style, 
 
 	return style.Render(padCell(summary, width-notesMarkerWidth)) +
 		notesStyle.Render(padCell(notesText, notesMarkerWidth))
+}
+
+// statusText is the working tree's symbols, or nothing for a clean tree.
+func statusText(s models.RepoSummary) string {
+	if s.Status() == vcs.RepoStatusClean {
+		return ""
+	}
+
+	return display.RepoStatusSummary(s.RepoSummary)
+}
+
+// branchStyle draws a branch name in the body face, and quietly when it is the
+// default branch, which is where a repo is expected to be.
+func (m Model) branchStyle(s models.RepoSummary) lipgloss.Style {
+	if m.ciBranch[s.Path] == s.Branch || vcs.IsDefaultBranchName(s.Branch) {
+		return styles.Skin.Muted
+	}
+
+	return styles.Skin.Body
 }
 
 // branchCell renders the checked-out branch name plus, once the repo's local
@@ -1098,19 +1132,16 @@ func (m Model) pendingCell(pending bool) string {
 }
 
 func statusCellStyle(s models.RepoSummary, base lipgloss.Style) lipgloss.Style {
-	switch {
-	case s.IsDirty():
-		return styles.DirtyStyle
-	case s.Status() == vcs.RepoStatusClean:
-		return styles.CleanStyle
-	default:
-		return base
+	if s.IsDirty() {
+		return styles.Dirty
 	}
+
+	return base
 }
 
 func prCellStyle(s models.RepoSummary, base lipgloss.Style, selected bool) lipgloss.Style {
 	if s.PRInfo != nil {
-		return withSelection(styles.PROpenStyle, selected)
+		return withSelection(styles.PROpen, selected)
 	}
 
 	return base
@@ -1118,206 +1149,14 @@ func prCellStyle(s models.RepoSummary, base lipgloss.Style, selected bool) lipgl
 
 func templateCellStyle(s models.RepoSummary, base lipgloss.Style, selected bool) lipgloss.Style {
 	if info := s.TemplateInfo; info != nil && (!info.IsTag || info.Behind) {
-		return withSelection(styles.WarningStyle, selected)
+		return withSelection(styles.Skin.Warning, selected)
 	}
 
 	return base
 }
 
-// The up/down hint, shared by every footer that has one.
-const (
-	keyNavPair = "j/k"
-	descNav    = "nav"
-)
-
-// Hints repeated across more than one footer.
-const (
-	descBack    = "back"
-	descCopyURL = "copy URL"
-	descOpen    = "open"
-	descOpenPR  = "open in browser"
-)
-
-// footerHint is one key hint and how readily it is dropped when the footer no
-// longer fits. Priority is the hint's value at a glance, so the lowest goes
-// first and the survivors are the keys a new user needs: enter, /, f, s, ?, q.
-type footerHint struct {
-	key      string
-	desc     string
-	priority int
-}
-
-// footerHints lists every repo-list hint in render order. The expand hint
-// outranks the rest of the second tier while the region is open, because the
-// key that closes a region taking most of the screen must stay on offer.
-//
-//nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
-func footerHints(expandOpen bool, marked string) []footerHint {
-	expand := footerHint{key: "v", desc: "expand", priority: 3}
-	if expandOpen {
-		expand = footerHint{key: "v", desc: "hide", priority: 11}
-	}
-
-	// The mark hint states the count once there is one, since that count is
-	// what every operator is about to act on and nothing else on screen says
-	// it. With nothing marked it names the key's job instead.
-	mark := footerHint{key: markToggleKey, desc: "mark", priority: 2}
-	if marked != "" {
-		mark = footerHint{key: markToggleKey, desc: marked, priority: 12}
-	}
-
-	return []footerHint{
-		{key: keyNavPair, desc: descNav, priority: 4},
-		{key: keyEnter, desc: nameSelect, priority: 8},
-		expand,
-		mark,
-		{key: actionLeader, desc: nameActions, priority: 7},
-		{key: "f", desc: nameFilter, priority: 6},
-		{key: "s", desc: nameSort, priority: 5},
-		{key: "/", desc: "search", priority: 5},
-		{key: ":", desc: "command", priority: 1},
-		{key: "r", desc: nameRefresh, priority: 1},
-		{key: "?", desc: nameHelp, priority: 9},
-		{key: "q", desc: nameQuit, priority: 10},
-	}
-}
-
-// filterDockFooterHints lists the filter dock's own keys, so the grammar
-// (cycle, invert, reset, clear the predicate) is visible while the dock is
-// actually open rather than only behind the help overlay.
-//
-//nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
-func filterDockFooterHints(hasPredicate bool) []footerHint {
-	hints := []footerHint{
-		{key: keyNavPair, desc: descNav, priority: 5},
-		{key: "enter/key", desc: "cycle", priority: 6},
-		{key: "*", desc: "reset", priority: 4},
-		{key: keyEsc, desc: descBack, priority: 7},
-		{key: "q", desc: nameQuit, priority: 8},
-	}
-	if hasPredicate {
-		hints = append(hints, footerHint{key: "x", desc: "clear predicate", priority: 3})
-	}
-
-	return hints
-}
-
-// sortDockFooterHints lists the sort dock's own keys.
-//
-//nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
-func sortDockFooterHints() []footerHint {
-	return []footerHint{
-		{key: keyNavPair, desc: descNav, priority: 5},
-		{key: "enter/key", desc: "cycle", priority: 6},
-		{key: keyBracketPair, desc: "reorder", priority: 4},
-		{key: "*", desc: "reset", priority: 3},
-		{key: keyEsc, desc: descBack, priority: 7},
-		{key: "q", desc: nameQuit, priority: 8},
-	}
-}
-
-func (m Model) renderFooter() string {
-	prefix := ""
-	if m.pendingOperator != "" {
-		hint := m.pendingOperator + m.pendingObject
-		pendingHint := " pending (ar/br/dr/pr/sr, " +
-			strings.ToLower(m.pendingOperator) + "=all, esc cancels)"
-		prefix = styles.FooterKeyStyle.Render(hint) + styles.FooterDescStyle.Render(pendingHint) + "  "
-	}
-
-	var dockHints []footerHint
-
-	switch m.viewMode {
-	case ViewModeFilter:
-		dockHints = filterDockFooterHints(m.predicateText != "")
-	case ViewModeSort:
-		dockHints = sortDockFooterHints()
-	default:
-		dockHints = footerHints(m.expandOpen, m.markSummary())
-	}
-
-	return prefix + renderHints(fittingHints(dockHints, listWidth(m.width)-lipgloss.Width(prefix)))
-}
-
-// hintLabel writes one hint and says which bytes of it are the key, so the two
-// can be colored apart. A description containing its own key gets the key
-// bracketed inside the word it triggers ("pre[v]iew"), the way the tab bar and
-// the panel borders write theirs. A description that does not contain it takes
-// the key in front of it bare, since brackets around a letter that is not in
-// the word say nothing the color has not already said.
-func hintLabel(h footerHint) hintPart {
-	marked := markHotkey(h.desc, h.key)
-	if strings.HasPrefix(h.key, "[") || marked == "["+h.key+"] "+h.desc {
-		return hintPart{key: h.key, after: " " + h.desc}
-	}
-
-	bracketed := "[" + h.key + "]"
-	before, after, _ := strings.Cut(marked, bracketed)
-
-	return hintPart{before: before, key: bracketed, after: after}
-}
-
-// hintPart is one rendered hint split at its key.
-type hintPart struct {
-	before string
-	key    string
-	after  string
-}
-
-func (p hintPart) width() int {
-	return lipgloss.Width(p.before) + lipgloss.Width(p.key) + lipgloss.Width(p.after)
-}
-
-// renderHints draws a fitted hint row, styling each hint's key apart from the
-// words around it.
-func renderHints(hints []footerHint) string {
-	parts := make([]string, 0, len(hints))
-
-	for _, h := range hints {
-		label := hintLabel(h)
-		parts = append(parts, styles.FooterDescStyle.Render(label.before)+
-			styles.FooterKeyStyle.Render(label.key)+
-			styles.FooterDescStyle.Render(label.after))
-	}
-
-	return strings.Join(parts, "  ")
-}
-
-// fittingHints drops the lowest-priority hints until the rendered footer fits
-// in width, so the line ends on a whole hint instead of a clipped one.
-func fittingHints(hints []footerHint, width int) []footerHint {
-	kept := make([]footerHint, len(hints))
-	copy(kept, hints)
-
-	for len(kept) > 1 && hintsWidth(kept) > width {
-		victim := 0
-		for i, h := range kept {
-			if h.priority < kept[victim].priority {
-				victim = i
-			}
-		}
-
-		kept = append(kept[:victim], kept[victim+1:]...)
-	}
-
-	return kept
-}
-
-func hintsWidth(hints []footerHint) int {
-	total := 0
-	for i, h := range hints {
-		if i > 0 {
-			total += table.Gutter
-		}
-
-		total += hintLabel(h).width()
-	}
-
-	return total
-}
-
 // regionStyles are the faces the expandable regions draw with, kept in one
 // place so the Repos and PRs tabs cannot drift apart.
 func regionStyles() region.Styles {
-	return region.Styles{Rule: styles.SubtitleStyle, Label: styles.NotesPreviewNameStyle}
+	return region.Styles{Rule: styles.Skin.Subtitle, Label: styles.Skin.Heading}
 }

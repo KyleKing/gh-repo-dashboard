@@ -232,7 +232,7 @@ func TestPRMapSummaryCounts(t *testing.T) {
 func TestPRMapRendersEveryColumn(t *testing.T) {
 	t.Parallel()
 
-	rendered := plainText(mapFleet().renderPRMap())
+	rendered := plainText(mapFleet().renderScreen())
 	want := []string{"REPO", "#7", "Add the login flow", localOnlyLabel, "peer: app-wt", "feature/orphan"}
 	for _, want := range want {
 		if !strings.Contains(rendered, want) {

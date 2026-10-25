@@ -35,6 +35,29 @@ var panelKeys = map[panelID]string{
 	panelStatus:   "s",
 }
 
+// panelOrder is the grid order, which the legend and the jump-key list follow.
+var panelOrder = []panelID{panelStatus, panelBranches, panelPeers, panelStashes, panelNotes}
+
+// panelTitles names each panel for the legend, which cannot ask a panel built
+// against a repo.
+var panelTitles = map[panelID]string{
+	panelStatus:   tabNameStatus,
+	panelBranches: tabNameBranches,
+	panelPeers:    tabNamePeers,
+	panelStashes:  tabNameStashes,
+	panelNotes:    tabNameNotes,
+}
+
+// panelJumpKeys lists every panel's jump key in grid order.
+func panelJumpKeys() string {
+	keys := make([]string, 0, len(panelOrder))
+	for _, id := range panelOrder {
+		keys = append(keys, panelKeys[id])
+	}
+
+	return strings.Join(keys, "/")
+}
+
 // panelAlwaysShown names the panels the grid keeps even with nothing to list.
 // Status reports state rather than listing anything, and a repo always has a
 // branch, so an empty Branches panel means the load failed rather than that
@@ -231,10 +254,10 @@ func panelTitle(p *panelContent, focused bool) string {
 	}
 
 	if focused {
-		return styles.FooterKeyStyle.Render(label)
+		return styles.Skin.Key.Render(label)
 	}
 
-	return styles.SubtitleStyle.Render(label)
+	return styles.Skin.Subtitle.Render(label)
 }
 
 // markHotkey brackets the letter key names inside title. The bracketed letter

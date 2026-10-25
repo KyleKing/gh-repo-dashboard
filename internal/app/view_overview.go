@@ -23,6 +23,7 @@ const (
 	rowNameSync     = "Sync"
 	rowNameFiles    = "Files"
 	tabNameBranches = "Branches"
+	tabNameStatus   = "Status"
 	tabNamePeers    = "Peers"
 	tabNameStashes  = "Stashes"
 	tabNamePRs      = "PRs"

@@ -153,8 +153,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.withFadingStatus("Opened in browser: " + msg.URL)
 
 	case StatusMsg:
-		m.statusMessage = msg.Message
-		return m, nil
+		return m.withFadingStatus(msg.Message)
 
 	case ClearStatusMsg:
 		m.statusMessage = ""
@@ -219,6 +218,9 @@ func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	if m.commandMode {
 		return m.handleCommandKey(msg)
+	}
+	if m.viewMode == ViewModeHelp {
+		return m.handleHelpKey(msg)
 	}
 	if newM, cmd, handled := m.handleChordKey(msg); handled {
 		return newM, cmd
@@ -444,8 +446,8 @@ func (m Model) handleGrammarKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		return next, cmd, true
 	}
 
-	if newM, cmd, handled := m.handleLeaderKey(msg); handled {
-		return newM, cmd, true
+	if newM, handled := m.handleLeaderKey(msg); handled {
+		return newM, nil, true
 	}
 
 	if key.Matches(msg, m.keys.Repeat) {
@@ -469,14 +471,14 @@ func (m Model) handleGrammarKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 
 // handleLeaderKey answers the verb leader. Handled is false if msg is
 // anything else.
-func (m Model) handleLeaderKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+func (m Model) handleLeaderKey(msg tea.KeyMsg) (Model, bool) {
 	if msg.String() == actionLeader {
 		m.panelActions = true
 
-		return m, nil, true
+		return m, true
 	}
 
-	return m, nil, false
+	return m, false
 }
 
 // handleModeKey handles the keys that only swap which full-screen mode is
@@ -484,13 +486,7 @@ func (m Model) handleLeaderKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 func (m Model) handleModeKey(msg tea.KeyMsg) (Model, bool) {
 	switch {
 	case key.Matches(msg, m.keys.Help):
-		if m.viewMode == ViewModeHelp {
-			m.viewMode = ViewModeRepoList
-		} else {
-			m.viewMode = ViewModeHelp
-		}
-
-		return m, true
+		return m.openHelp(), true
 
 	case key.Matches(msg, m.keys.Filter):
 		m.viewMode = ViewModeFilter
@@ -844,8 +840,6 @@ func (m Model) handleBackKey() (tea.Model, tea.Cmd) {
 		m.viewMode = ViewModeRepoList
 	case ViewModeBranchDetail:
 		m.viewMode = ViewModeRepoDetail
-	case ViewModeHelp:
-		m.viewMode = ViewModeRepoList
 	case ViewModeFilter:
 		m.viewMode = ViewModeRepoList
 	case ViewModeSort:
@@ -1026,8 +1020,7 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDetailOpenKey()
 
 	case key.Matches(msg, m.keys.Help):
-		m.viewMode = ViewModeHelp
-		return m, nil
+		return m.openHelp(), nil
 	}
 
 	return m, nil
@@ -1113,8 +1106,7 @@ func (m Model) handleDetailPaneKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDetailOpenKey()
 
 	case key.Matches(msg, m.keys.Help):
-		m.viewMode = ViewModeHelp
-		return m, nil
+		return m.openHelp(), nil
 	}
 
 	return m, nil
@@ -1490,8 +1482,7 @@ func (m Model) handleBranchDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case key.Matches(msg, m.keys.Help):
-		m.viewMode = ViewModeHelp
-		return m, nil
+		return m.openHelp(), nil
 	}
 
 	return m.handleActionKey(msg)
@@ -1747,7 +1738,7 @@ func (m Model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	case "ctrl+c":
+	case keyCtrlC:
 		return m, tea.Quit
 	}
 
@@ -1775,7 +1766,7 @@ func (m Model) handleCommandKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		return m.ExecuteCommand(line)
 
-	case "ctrl+c":
+	case keyCtrlC:
 		return m, tea.Quit
 
 	case keyTab:

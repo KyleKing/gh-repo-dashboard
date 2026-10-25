@@ -259,7 +259,7 @@ func TestPanelActionMenuRunsAVerbAndClosesOnAnythingElse(t *testing.T) {
 	if !opened.panelActions {
 		t.Fatal("the leader key should open the verb menu")
 	}
-	menu := plainText(opened.renderView())
+	menu := plainText(opened.renderScreen())
 	if !strings.Contains(menu, "push") || !strings.Contains(menu, "feature/thing") {
 		t.Errorf("the open menu should list the branch verbs against the selection, got %q", menu)
 	}
@@ -298,7 +298,7 @@ func TestPanelActionMenuKeepsItsVerbsUnderALongTitle(t *testing.T) {
 	}}
 	m.panelActions = true
 
-	view := plainText(m.renderView())
+	view := plainText(m.renderScreen())
 	for _, verb := range panelActionsFor(panelBranches) {
 		if !strings.Contains(view, verb.name) {
 			t.Errorf("the menu dropped %q:\n%s", verb.name, view)

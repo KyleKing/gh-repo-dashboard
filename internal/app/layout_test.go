@@ -132,26 +132,6 @@ func TestContentWidth_CapsAndFloors(t *testing.T) {
 	}
 }
 
-// The fleet map (renderPRMap) had the same gap: its own table fit to raw
-// m.width while its breadcrumbs and footer fit to contentWidth, and the
-// shared frame used contentWidth too, so on a wide terminal the table
-// rendered wider than the frame that was supposed to contain it.
-func TestFrameWidth_PRMapMatchesRepoList(t *testing.T) {
-	t.Parallel()
-
-	m := Model{width: 200}
-
-	m.viewMode = ViewModeRepoList
-	repoList := m.frameWidth()
-
-	m.viewMode = ViewModePRMap
-	prMap := m.frameWidth()
-
-	if prMap != repoList {
-		t.Errorf("frameWidth(PRMap) = %d, frameWidth(RepoList) = %d; want equal", prMap, repoList)
-	}
-}
-
 func TestTruncate_MeasuresDisplayWidthNotBytes(t *testing.T) {
 	t.Parallel()
 
@@ -179,28 +159,6 @@ func TestTruncate_MeasuresDisplayWidthNotBytes(t *testing.T) {
 				t.Errorf("truncate(%q, %d) rendered %d cells wide", tt.input, tt.maxLen, w)
 			}
 		})
-	}
-}
-
-func TestFrame_CentersContentAndLeavesBlankLinesEmpty(t *testing.T) {
-	t.Parallel()
-
-	framed := centerFrame("abc\n\ndef", 200, contentWidth(200))
-	lines := strings.Split(framed, "\n")
-
-	pad := frameLeftPad(200, contentWidth(200))
-	if pad == 0 {
-		t.Fatal("expected a non-zero indent at 200 columns")
-	}
-	if !strings.HasPrefix(lines[0], strings.Repeat(" ", pad)+"abc") {
-		t.Errorf("line 0 = %q, want %d-space indent", lines[0], pad)
-	}
-
-	want := pad + contentWidth(200)
-	for i, line := range lines {
-		if got := lipgloss.Width(line); got != want {
-			t.Errorf("line %d is %d cells wide, want %d; short lines leave stale cells on screen", i, got, want)
-		}
 	}
 }
 

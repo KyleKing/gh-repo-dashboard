@@ -7,6 +7,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/display"
+	"github.com/kyleking/aragonite/tui/frame"
+	"github.com/kyleking/aragonite/tui/keyhint"
 	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/aragonite/vcs"
 
@@ -23,7 +25,6 @@ const (
 	sideColumnFocusedPercent = 15
 	minSideColumnWidth       = 24
 	minDetailPaneWidth       = 30
-	gridChromeHeight         = 4
 )
 
 // panelSet builds the panels for the selected repo at the given content width.
@@ -54,7 +55,7 @@ func (m Model) panelSet(width int) []panelContent {
 
 		p.key = panelKeys[p.id]
 		if len(p.rows) == 0 {
-			p.rows = []string{styles.SubtitleStyle.Render(padCell(m.panelEmptyLabel(), width))}
+			p.rows = []string{styles.Skin.Subtitle.Render(padCell(m.panelEmptyLabel(), width))}
 		}
 
 		panels = append(panels, p)
@@ -114,7 +115,7 @@ func statusPanel(summary models.RepoSummary, width int) panelContent {
 
 	rows := make([]string, 0, len(lines))
 	for _, line := range lines {
-		rows = append(rows, styles.TableRowStyle.Render(padCell(line, width)))
+		rows = append(rows, styles.Skin.Body.Render(padCell(line, width)))
 	}
 
 	relevance := relevanceIdle
@@ -122,7 +123,7 @@ func statusPanel(summary models.RepoSummary, width int) panelContent {
 		relevance = relevanceUrgent
 	}
 
-	return panelContent{id: panelStatus, title: "Status", relevance: relevance, rows: rows}
+	return panelContent{id: panelStatus, title: tabNameStatus, relevance: relevance, rows: rows}
 }
 
 // statusExtras summarizes the counts that do not deserve their own line.
@@ -234,13 +235,13 @@ func (m Model) peersPanel(summary models.RepoSummary, width int) panelContent {
 		style := rowStyleFor(selected)
 
 		branch := checkout.Branch
-		branchStyle := styles.SubtitleStyle
+		branchStyle := styles.Skin.Subtitle
 		if !vcs.IsDefaultBranchName(checkout.Branch) {
-			branchStyle = styles.BranchStyle
+			branchStyle = styles.Skin.Body
 		}
 		if conflicts[branch] {
 			branch += " " + conflictMark
-			branchStyle = styles.WarningStyle
+			branchStyle = styles.Skin.Warning
 			conflicted++
 		}
 
@@ -253,7 +254,8 @@ func (m Model) peersPanel(summary models.RepoSummary, width int) panelContent {
 			colCheckoutBranch: withSelection(branchStyle, selected),
 		}
 
-		rows = append(rows, detailRow(rowCursorFor(selected), layout, renderCells(layout, values, cellStyles, &style)))
+		cells := renderCells(layout, values, cellStyles, &style)
+		rows = append(rows, detailRow(rowCursorFor(selected), layout, cells, style))
 	}
 
 	relevance := relevanceIdle
@@ -283,7 +285,7 @@ func (m Model) stashesPanel(width int) panelContent {
 			colStashDate:    display.StashRelativeDate(stash),
 		}
 
-		rows = append(rows, detailRow(rowCursorFor(selected), layout, renderCells(layout, values, nil, &style)))
+		rows = append(rows, detailRow(rowCursorFor(selected), layout, renderCells(layout, values, nil, &style), style))
 	}
 
 	relevance := relevanceIdle
@@ -387,47 +389,56 @@ func (m Model) panelSelected(id panelID, i int) bool {
 	return m.focusedPanel == id && m.detailCursor == i
 }
 
+func (m Model) repoDetailScreen() screen {
+	summary, ok := m.summaries[m.selectedRepo]
+	if !ok {
+		return screen{title: appTitle, body: "Repository not found"}
+	}
+
+	width := m.gridWidth()
+	sideWidth := m.sideWidth(width)
+	panels := m.panelSet(sideWidth - panelBorderWidth)
+	focused := panelIndex(panels, m.focusedPanel)
+
+	return screen{
+		title: "Repos › " + summary.Name(),
+		facts: []frame.Fact{{Text: summary.Path}},
+		body:  m.renderPanelGridOf(panels, focused, width, sideWidth),
+		hints: m.panelHints(panels, focused),
+	}
+}
+
+// sideWidth is the width the panel column renders into at the given grid
+// width: all of it when the grid stacks.
+func (m Model) sideWidth(width int) int {
+	if gridStacked(m.isCompact(), width) {
+		return width
+	}
+
+	return panelSideWidth(width, m.detailFocused)
+}
+
 // renderPanelGrid draws the focused repo view: a column of always-visible
 // panels beside a detail pane for the selected item. Below the compact
 // breakpoint the two stack, with the detail pane under the focused panel.
 func (m Model) renderPanelGrid() string {
-	summary, ok := m.summaries[m.selectedRepo]
-	if !ok {
+	if _, ok := m.summaries[m.selectedRepo]; !ok {
 		return "Repository not found"
 	}
 
 	width := m.gridWidth()
-	stacked := gridStacked(m.isCompact(), width)
-
-	sideWidth := width
-	if !stacked {
-		sideWidth = panelSideWidth(width, m.detailFocused)
-	}
-
+	sideWidth := m.sideWidth(width)
 	panels := m.panelSet(sideWidth - panelBorderWidth)
-	focused := panelIndex(panels, m.focusedPanel)
 
-	var b strings.Builder
-	b.WriteString(m.renderBreadcrumbs())
-	b.WriteString("\n")
-	b.WriteString(styles.SubtitleStyle.Render(truncate(summary.Path, width)))
-	b.WriteString("\n\n")
+	return m.renderPanelGridOf(panels, panelIndex(panels, m.focusedPanel), width, sideWidth)
+}
 
-	if m.panelActions {
-		return m.renderActionModal()
+func (m Model) renderPanelGridOf(panels []panelContent, focused, width, sideWidth int) string {
+	if gridStacked(m.isCompact(), width) {
+		return m.renderStackedGrid(panels, focused, sideWidth, m.bodyHeight())
 	}
 
-	body := m.height - gridChromeHeight
-	if stacked {
-		b.WriteString(m.renderStackedGrid(panels, focused, sideWidth, body))
-	} else {
-		b.WriteString(m.renderSplitGrid(panels, focused, sideWidth, width-sideWidth, body))
-	}
-
-	b.WriteString("\n")
-	b.WriteString(styles.FooterStyle.Render(m.panelFooter(panels, focused, width)))
-
-	return b.String()
+	return m.renderSplitGrid(panels, focused, sideWidth, width-sideWidth, m.bodyHeight())
 }
 
 // gridWidth is the width the focused repo view renders into.
@@ -459,7 +470,7 @@ func panelSideWidth(width int, detailFocused bool) int {
 // size, which is the geometry a scroll offset has to be clamped against.
 func (m Model) detailPaneSize() paneSize {
 	grid := m.gridWidth()
-	body := m.height - gridChromeHeight
+	body := m.bodyHeight()
 
 	if !gridStacked(m.isCompact(), grid) {
 		return paneSize{
@@ -585,17 +596,17 @@ func panelRows(p panelContent, lines, cursor int, focused bool) string {
 	return strings.Join(shown, "\n")
 }
 
-// focusBorder colors a box's border. Blue marks where the keyboard is; the
-// muted accent marks the box that still holds the selection while focus sits
+// focusBorder colors a box's border. The accent marks where the keyboard is;
+// the muted face marks the box that still holds the selection while focus sits
 // in the other region, so the two are never confused for one another.
 func focusBorder(active, current bool) color.Color {
 	switch {
 	case active && current:
-		return styles.Blue
+		return styles.Skin.Accent.GetForeground()
 	case current:
-		return styles.Overlay1
+		return styles.Skin.Muted.GetForeground()
 	default:
-		return styles.Surface2
+		return styles.Skin.Edge.GetForeground()
 	}
 }
 
@@ -621,7 +632,7 @@ func (m Model) focusedPanelTitle(panels []panelContent, focused int) string {
 	marker := m.detailScrollMarker()
 	title = truncate(title, max(m.detailPaneSize().width-lipgloss.Width(marker), 1))
 
-	return styles.SubtitleStyle.Render(title) + marker
+	return styles.Skin.Subtitle.Render(title) + marker
 }
 
 // detailScrollMarker reports how much of the pane's text is on screen, so text
@@ -636,7 +647,7 @@ func (m Model) detailScrollMarker() string {
 
 	shown := min(m.detailScroll+pane.height, total)
 
-	return styles.SubtitleStyle.Render("  " + strconv.Itoa(shown) + "/" + strconv.Itoa(total))
+	return styles.Skin.Subtitle.Render("  " + strconv.Itoa(shown) + "/" + strconv.Itoa(total))
 }
 
 func (m Model) panelDetailTitle(p panelContent) string {
@@ -792,12 +803,12 @@ func (m Model) branchDetailLines(width int) []string {
 	}
 
 	if m.branchDetail.Branch.Name != branch.Name {
-		return append(lines, "", styles.SubtitleStyle.Render("loading commits…"))
+		return append(lines, "", styles.Skin.Subtitle.Render("loading commits…"))
 	}
 
-	lines = append(lines, "", styles.HeaderStyle.Render("recent commits"))
+	lines = append(lines, "", styles.Skin.Subtitle.Bold(true).Render("recent commits"))
 	for _, commit := range m.branchDetail.Commits {
-		lines = append(lines, styles.TableRowStyle.Render(
+		lines = append(lines, styles.Skin.Body.Render(
 			truncate("  "+commit.ShortHash+" "+commit.Subject, width),
 		))
 	}
@@ -838,10 +849,10 @@ func (m Model) workingDiffLines(repoPath string, width int) []string {
 
 	body, loaded := texts[repoPath]
 	if !loaded {
-		return []string{"", styles.SubtitleStyle.Render("loading " + label + "…")}
+		return []string{"", styles.Skin.Subtitle.Render("loading " + label + "…")}
 	}
 
-	lines := []string{"", styles.HeaderStyle.Render(label)}
+	lines := []string{"", styles.Skin.Subtitle.Bold(true).Render(label)}
 	for _, line := range diffBodyLines(body) {
 		lines = append(lines, diffBodyLine(line, width))
 	}
@@ -868,10 +879,10 @@ func (m Model) stashDetailLines(width int) []string {
 
 	body, loaded := texts[stash.Index]
 	if !loaded {
-		return append(lines, "", styles.SubtitleStyle.Render("loading "+label+"…"))
+		return append(lines, "", styles.Skin.Subtitle.Render("loading "+label+"…"))
 	}
 
-	lines = append(lines, "", styles.HeaderStyle.Render(label))
+	lines = append(lines, "", styles.Skin.Subtitle.Bold(true).Render(label))
 	for _, line := range diffBodyLines(body) {
 		lines = append(lines, diffBodyLine(line, width))
 	}
@@ -891,7 +902,7 @@ func diffBodyLine(line string, width int) string {
 		return lipgloss.NewStyle().MaxWidth(max(width, 1)).Render(indented)
 	}
 
-	return styles.TableRowStyle.Render(truncate(indented, width))
+	return styles.Skin.Body.Render(truncate(indented, width))
 }
 
 // diffBodyLines caps the pane's line count, since the whole detail is
@@ -914,7 +925,7 @@ func (m Model) noteDetailLines(width int) []string {
 
 	content := note.Content
 	if strings.TrimSpace(content) == "" {
-		return []string{styles.SubtitleStyle.Render("(empty file)")}
+		return []string{styles.Skin.Subtitle.Render("(empty file)")}
 	}
 
 	return wrapLines(content, width)
@@ -962,39 +973,37 @@ const (
 	navHintStep       = 1
 )
 
-// panelFooter names the keys the focused panel supports, so what is on offer
+// panelHints names the keys the focused panel supports, so what is on offer
 // always matches what is selected and where the keyboard currently is. The
 // panel jump keys are absent because each panel's border already carries its
-// own.
-func (m Model) panelFooter(panels []panelContent, focused, width int) string {
+// own. Actions are dimmed rather than dropped where the panel has none.
+func (m Model) panelHints(panels []panelContent, focused int) []keyhint.Hint {
 	navDesc, backDesc := descNav, descBack
 	if m.detailFocused {
 		navDesc, backDesc = "scroll", "panels"
 	}
 
-	hints := []footerHint{
-		{key: keyNavPair, desc: navDesc, priority: panelHintPriority - navHintStep},
-		{key: keyEsc, desc: backDesc, priority: panelHintPriority - navHintStep*3},
-		{key: "space", desc: nameFind, priority: panelHintPriority - navHintStep*2},
+	hints := []keyhint.Hint{
+		{Key: keyNavPair, What: navDesc, Priority: panelHintPriority - navHintStep},
+		{Key: keyEsc, What: backDesc, Priority: panelHintPriority - navHintStep*3},
+		{Key: "space", What: nameFind, Priority: panelHintPriority - navHintStep*2},
 	}
 
 	if !m.detailFocused {
-		hints = append(hints, footerHint{
-			key: keyEnter, desc: nameDetail, priority: panelHintPriority - navHintStep*2,
+		hints = append(hints, keyhint.Hint{
+			Key: keyEnter, What: nameDetail, Priority: panelHintPriority - navHintStep*2,
 		})
 	}
 
-	if focused >= 0 && focused < len(panels) && len(panelActionsFor(panels[focused].id)) > 0 {
-		hints = append(hints, footerHint{
-			key: actionLeader, desc: nameActions, priority: panelHintPriority - navHintStep,
-		})
-	}
+	hasActions := focused >= 0 && focused < len(panels) && len(panelActionsFor(panels[focused].id)) > 0
 
-	return renderHints(fittingHints(hints, width))
+	return append(hints, keyhint.Hint{
+		Key: actionLeader, What: nameActions, Priority: panelHintPriority - navHintStep, Off: !hasActions,
+	})
 }
 
 func detailField(label, value string) string {
-	return styles.SubtitleStyle.Render(label+" ") + styles.TableRowStyle.Render(value)
+	return styles.Skin.Subtitle.Render(label+" ") + styles.Skin.Body.Render(value)
 }
 
 func orDash(value string) string {
@@ -1011,7 +1020,7 @@ func wrapLines(text string, width int) []string {
 
 	lines := strings.Split(wrapped, "\n")
 	for i, line := range lines {
-		lines[i] = styles.TableRowStyle.Render(line)
+		lines[i] = styles.Skin.Body.Render(line)
 	}
 
 	return lines

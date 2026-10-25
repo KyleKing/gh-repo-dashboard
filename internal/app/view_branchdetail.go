@@ -7,35 +7,66 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/tui/frame"
+	"github.com/kyleking/aragonite/tui/keyhint"
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
-func (m Model) renderBranchDetailBreadcrumbs() string {
+func (m Model) branchDetailScreen() screen {
 	summary, ok := m.summaries[m.selectedRepo]
 	if !ok {
-		return styles.TitleStyle.Render("repo-dashboard")
+		return screen{title: appTitle, body: m.renderBranchDetail(), hints: m.branchDetailHints()}
 	}
 
-	home := styles.SubtitleStyle.Render("Repos")
-	sep := styles.SubtitleStyle.Render(" > ")
-	repo := styles.BranchStyle.Render(summary.Name())
-	branch := styles.TitleStyle.Render(m.branchDetail.Branch.Name)
+	branch := m.branchDetail.Branch
 
-	var badges []string
-	if m.branchDetail.Branch.IsCurrent {
-		badges = append(badges, styles.Badge("current", styles.PROpenStyle))
-	}
-	if m.branchDetail.Branch.Ahead > 0 {
-		badges = append(badges, styles.Badge(fmt.Sprintf("↑%d", m.branchDetail.Branch.Ahead), styles.AheadStyle))
-	}
-	if m.branchDetail.Branch.Behind > 0 {
-		badges = append(badges, styles.Badge(fmt.Sprintf("↓%d", m.branchDetail.Branch.Behind), styles.BehindStyle))
+	var facts []frame.Fact
+	if branch.IsCurrent {
+		facts = append(facts, frame.Fact{Text: "current", Tone: frame.Accent})
 	}
 
-	return joinWithinWidth(home+sep+repo+sep+branch, badges, contentWidth(m.width))
+	if branch.Ahead > 0 {
+		facts = append(facts, frame.Fact{Text: fmt.Sprintf("↑%d", branch.Ahead), Tone: frame.Warning})
+	}
+
+	if branch.Behind > 0 {
+		facts = append(facts, frame.Fact{Text: fmt.Sprintf("↓%d", branch.Behind)})
+	}
+
+	return screen{
+		title: "Repos › " + summary.Name() + " › " + branch.Name,
+		facts: facts,
+		body:  m.renderBranchDetail(),
+		hints: m.branchDetailHints(),
+	}
+}
+
+// branchDetailHints are the branch view's own keys, in the order they are
+// worth offering: the ones that act on the branch go before the ones that only
+// leave.
+//
+//nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
+func (m Model) branchDetailHints() []keyhint.Hint {
+	hints := []keyhint.Hint{
+		{Key: "b", What: "copy branch name", Priority: 3},
+		{Key: "c", What: "switch", Priority: 6},
+		{Key: "p", What: "push", Priority: 5},
+	}
+
+	if m.branchDetail.PRInfo == nil {
+		hints = append(hints, keyhint.Hint{Key: "N", What: "new PR", Priority: 4})
+	} else {
+		hints = append(hints,
+			keyhint.Hint{Key: "o", What: "open PR URL", Priority: 4},
+			keyhint.Hint{Key: "M", What: "squash-merge", Priority: 2})
+	}
+
+	return append(hints,
+		keyhint.Hint{Key: keyEsc, What: descBack, Priority: 9},
+		keyhint.Hint{Key: "?", What: nameHelp, Priority: 7})
 }
 
 // branchDetailStyles are the shared styles used across renderBranchDetail's sections.
@@ -47,9 +78,9 @@ type branchDetailStyles struct {
 
 func newBranchDetailStyles() branchDetailStyles {
 	return branchDetailStyles{
-		section: lipgloss.NewStyle().Foreground(styles.Blue).Bold(true).PaddingLeft(1),
-		info:    lipgloss.NewStyle().Foreground(styles.Text).PaddingLeft(infoPaddingLeft),
-		label:   lipgloss.NewStyle().Foreground(styles.Subtext0).Width(detailLabelWidth),
+		section: styles.Skin.Heading.PaddingLeft(1),
+		info:    styles.Skin.Body.PaddingLeft(infoPaddingLeft),
+		label:   styles.Skin.Subtitle.Width(detailLabelWidth),
 	}
 }
 
@@ -65,13 +96,13 @@ func (s branchDetailStyles) writeInfoLine(b *strings.Builder, label, value strin
 func aheadBehindStatus(ahead, behind int) string {
 	status := ""
 	if ahead > 0 {
-		status += styles.AheadStyle.Render(fmt.Sprintf("↑%d ahead", ahead))
+		status += styles.Ahead.Render(fmt.Sprintf("↑%d ahead", ahead))
 	}
 	if behind > 0 {
 		if status != "" {
 			status += " "
 		}
-		status += styles.BehindStyle.Render(fmt.Sprintf("↓%d behind", behind))
+		status += styles.Behind.Render(fmt.Sprintf("↓%d behind", behind))
 	}
 
 	return status
@@ -102,14 +133,14 @@ func (m Model) writeBranchInfoSection(b *strings.Builder, s branchDetailStyles) 
 	fileChanges := m.branchDetail.FileChangesSummary(m.summaries[m.selectedRepo].VCSType)
 	fileStyle := s.info
 	if m.branchDetail.UncommittedCount() > 0 {
-		fileStyle = lipgloss.NewStyle().Foreground(styles.Peach).PaddingLeft(infoPaddingLeft)
+		fileStyle = styles.Skin.Warning.PaddingLeft(infoPaddingLeft)
 	}
 	b.WriteString(fileStyle.Render(s.label.Render("File changes:") + " " + fileChanges))
 	b.WriteString("\n")
 
 	if summary := m.summaries[m.selectedRepo]; summary.VCSType == vcs.TypeJJ {
 		if m.branchDetail.ChangeID != "" {
-			s.writeInfoLine(b, "Change ID:", styles.SubtitleStyle.Render(m.branchDetail.ChangeID))
+			s.writeInfoLine(b, "Change ID:", styles.Skin.Subtitle.Render(m.branchDetail.ChangeID))
 		}
 		if m.branchDetail.Description != "" {
 			s.writeInfoLine(b, "Description:", truncate(m.branchDetail.Description, descriptionTruncLen))
@@ -122,7 +153,7 @@ func (m Model) writeBranchInfoSection(b *strings.Builder, s branchDetailStyles) 
 // own tracking and dirty state.
 func (m Model) writeCheckoutLine(b *strings.Builder, s branchDetailStyles) {
 	if m.branchDetail.Branch.IsCurrent {
-		s.writeInfoLine(b, "Checked out in:", styles.CleanStyle.Render("here"))
+		s.writeInfoLine(b, "Checked out in:", styles.Skin.Success.Render("here"))
 		return
 	}
 
@@ -137,7 +168,7 @@ func (m Model) writeCheckoutLine(b *strings.Builder, s branchDetailStyles) {
 	}
 	detail += ")"
 
-	s.writeInfoLine(b, "Checked out in:", styles.WarningStyle.Render("⧉ "+detail))
+	s.writeInfoLine(b, "Checked out in:", styles.Skin.Warning.Render("⧉ "+detail))
 }
 
 func (m Model) writeDefaultBranchComparison(b *strings.Builder, s branchDetailStyles) {
@@ -148,7 +179,7 @@ func (m Model) writeDefaultBranchComparison(b *strings.Builder, s branchDetailSt
 
 	status := aheadBehindStatus(detail.DefaultAhead, detail.DefaultBehind)
 	if status == "" {
-		status = styles.CleanStyle.Render("up to date")
+		status = styles.Skin.Success.Render("up to date")
 	}
 	s.writeInfoLine(b, "vs "+detail.DefaultBranch+":", status)
 }
@@ -168,12 +199,12 @@ func (m Model) writeBranchPRSection(b *strings.Builder, s branchDetailStyles) {
 
 	if wf := m.branchDetail.WorkflowInfo; wf != nil {
 		wfStatus := display.WorkflowSummaryStatusDisplay(*wf)
-		wfStyle := styles.SubtitleStyle
+		wfStyle := styles.Skin.Subtitle
 		switch wfStatus {
 		case forge.StatusPassing:
-			wfStyle = styles.CleanStyle
+			wfStyle = styles.Skin.Success
 		case forge.StatusFailing:
-			wfStyle = styles.ErrorStyle
+			wfStyle = styles.Skin.Error
 		}
 		wfDetail := fmt.Sprintf("%s (%d/%d passing)", wfStatus, wf.Passing, wf.Total)
 		s.writeInfoLine(b, "Workflows:", wfStyle.Render(wfDetail))
@@ -182,24 +213,24 @@ func (m Model) writeBranchPRSection(b *strings.Builder, s branchDetailStyles) {
 
 func writeBranchPRInfo(b *strings.Builder, s branchDetailStyles, pr *forge.PullRequest) {
 	prStatus := display.PRStatusDisplay(*pr)
-	prStyle := styles.PROpenStyle
+	prStyle := styles.PROpen
 	switch prStatus {
 	case forge.PRStatusMerged:
-		prStyle = styles.CleanStyle
+		prStyle = styles.Skin.Success
 	case forge.PRStatusClosed:
-		prStyle = styles.SubtitleStyle
+		prStyle = styles.Skin.Subtitle
 	}
 
 	s.writeInfoLine(b, "PR:", prStyle.Render(fmt.Sprintf("#%d %s", pr.Number, prStatus)))
 	s.writeInfoLine(b, "Title:", truncate(pr.Title, descriptionTruncLen))
 
 	reviewStatus := display.PRReviewStatus(*pr)
-	reviewStyle := styles.SubtitleStyle
+	reviewStyle := styles.Skin.Subtitle
 	switch reviewStatus {
 	case forge.ReviewApproved:
-		reviewStyle = styles.CleanStyle
+		reviewStyle = styles.Skin.Success
 	case forge.ReviewChangesRequested:
-		reviewStyle = styles.ErrorStyle
+		reviewStyle = styles.Skin.Error
 	}
 	s.writeInfoLine(b, "Review:", reviewStyle.Render(reviewStatus))
 
@@ -210,12 +241,12 @@ func writeBranchPRInfo(b *strings.Builder, s branchDetailStyles, pr *forge.PullR
 
 	if pr.Checks.Total > 0 {
 		checkStatus := display.ChecksSummary(pr.Checks)
-		checkStyle := styles.SubtitleStyle
+		checkStyle := styles.Skin.Subtitle
 		switch checkStatus {
 		case forge.StatusPassing:
-			checkStyle = styles.CleanStyle
+			checkStyle = styles.Skin.Success
 		case forge.StatusFailing:
-			checkStyle = styles.ErrorStyle
+			checkStyle = styles.Skin.Error
 		}
 		checkDetail := fmt.Sprintf("%s (%d/%d passing)", checkStatus, pr.Checks.Passing, pr.Checks.Total)
 		s.writeInfoLine(b, "Checks:", checkStyle.Render(checkDetail))
@@ -239,9 +270,9 @@ func (m Model) writeBranchCommitsSection(b *strings.Builder, s branchDetailStyle
 
 	layout := fitDetailCols(commitColSpecs, m.width)
 	subtleStyles := map[string]lipgloss.Style{
-		colCommitHash:   styles.SubtitleStyle,
-		colCommitAuthor: styles.SubtitleStyle,
-		colCommitDate:   styles.SubtitleStyle,
+		colCommitHash:   styles.Skin.Subtitle,
+		colCommitAuthor: styles.Skin.Subtitle,
+		colCommitDate:   styles.Skin.Subtitle,
 	}
 	maxCommits := min(branchDetailMaxCommits, len(m.branchDetail.Commits))
 
@@ -255,58 +286,18 @@ func (m Model) writeBranchCommitsSection(b *strings.Builder, s branchDetailStyle
 		}
 
 		cells := renderCells(layout, values, subtleStyles, &plainStyle)
-		b.WriteString(detailRow("  ", layout, cells))
+		b.WriteString(detailRow("  ", layout, cells, plainStyle))
 		b.WriteString("\n")
 	}
-}
-
-func (m Model) writeBranchActionsSection(b *strings.Builder, s branchDetailStyles) {
-	b.WriteString("\n")
-	b.WriteString(s.section.Render("Actions"))
-	b.WriteString("\n\n")
-
-	actionStyle := lipgloss.NewStyle().Foreground(styles.Blue).PaddingLeft(infoPaddingLeft)
-
-	actions := []string{
-		styles.FooterKeyStyle.Render("b") + actionStyle.Render(" copy branch name"),
-		styles.FooterKeyStyle.Render("c") + actionStyle.Render(" switch"),
-		styles.FooterKeyStyle.Render("p") + actionStyle.Render(" push"),
-	}
-
-	if m.branchDetail.PRInfo == nil {
-		actions = append(actions,
-			styles.FooterKeyStyle.Render("N")+actionStyle.Render(" new PR"))
-	} else {
-		actions = append(actions,
-			styles.FooterKeyStyle.Render("o")+actionStyle.Render(" open PR URL"),
-			styles.FooterKeyStyle.Render("M")+actionStyle.Render(" squash-merge"))
-	}
-
-	b.WriteString(strings.Join(actions, "  "))
-	b.WriteString("\n")
 }
 
 func (m Model) renderBranchDetail() string {
 	var b strings.Builder
 
-	b.WriteString(m.renderBreadcrumbs())
-	b.WriteString("\n\n")
-
 	s := newBranchDetailStyles()
 	m.writeBranchInfoSection(&b, s)
 	m.writeBranchPRSection(&b, s)
 	m.writeBranchCommitsSection(&b, s)
-	m.writeBranchActionsSection(&b, s)
 
-	contentLines := strings.Count(b.String(), "\n")
-	footerHeight := 1
-	paddingNeeded := m.height - contentLines - footerHeight - 1
-	if paddingNeeded > 0 {
-		b.WriteString(strings.Repeat("\n", paddingNeeded))
-	} else {
-		b.WriteString("\n")
-	}
-	b.WriteString(styles.FooterStyle.Render("esc: back  ?: help"))
-
-	return b.String()
+	return strings.TrimRight(b.String(), "\n")
 }

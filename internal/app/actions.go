@@ -319,8 +319,7 @@ type panelAction struct {
 // depends on the view: a panel's selection in the grid, and the filtered fleet
 // in the repo list.
 func (m Model) actionMenu() actionMenu {
-	switch m.viewMode { //nolint:exhaustive // every other view answers with the focused panel's verbs
-	case ViewModeRepoList:
+	if m.viewMode == ViewModeRepoList {
 		target := strconv.Itoa(len(m.filteredPaths)) + " repos match the current filters"
 		if summary := m.markSummary(); summary != "" {
 			target = summary

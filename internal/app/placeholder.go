@@ -18,9 +18,9 @@ func placeholderBox(body string, compact bool) string {
 
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(styles.Surface1).
+		BorderForeground(styles.Skin.Edge.GetForeground()).
 		Padding(vPad, emptyStateHPad).
-		Foreground(styles.Subtext0).
+		Foreground(styles.Skin.Subtitle.GetForeground()).
 		Render(body)
 }
 

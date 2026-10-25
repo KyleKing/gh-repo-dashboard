@@ -7,133 +7,25 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/kyleking/aragonite/tui/keyhint"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
-func (m Model) renderHelp() string {
-	var b strings.Builder
-
-	b.WriteString(styles.TitleStyle.Render("Help"))
-	b.WriteString("\n\n")
-
-	sectionStyle := lipgloss.NewStyle().
-		Foreground(styles.Blue).
-		Bold(true).
-		PaddingLeft(1)
-
-	for _, section := range helpSections() {
-		b.WriteString(sectionStyle.Render(section.title))
-		b.WriteString("\n")
-		for _, k := range section.keys {
-			fmt.Fprintf(&b, "  %s  %s\n",
-				styles.HelpKeyStyle.Render(padCell(k.key, helpKeyColWidth)),
-				styles.HelpDescStyle.Render(k.desc))
-		}
-		b.WriteString("\n")
+//nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
+func (m Model) confirmScreen() screen {
+	if m.pendingAction == nil {
+		return m.repoListScreen()
 	}
 
-	contentLines := strings.Count(b.String(), "\n")
-	footerHeight := 1
-	paddingNeeded := m.height - contentLines - footerHeight - 1
-	if paddingNeeded > 0 {
-		b.WriteString(strings.Repeat("\n", paddingNeeded))
-	} else {
-		b.WriteString("\n")
-	}
-	b.WriteString(styles.FooterStyle.Render("Press ? or esc to close"))
-
-	return b.String()
-}
-
-type helpSection struct {
-	title string
-	keys  []struct{ key, desc string }
-}
-
-func helpSections() []helpSection {
-	return []helpSection{
-		{
-			"Navigation",
-			[]struct{ key, desc string }{
-				{"j/k, Up/Down", "Move up/down"},
-				{"gg/G", "Go to top/bottom"},
-				{keyEnter, "Select/enter"},
-				{"esc, backspace", "Go back"},
-				{"R/P", "Switch tabs: Repos and PRs, as bracketed in the bar"},
-				{"h/l, " + keyTab, "Move between panels (focused view)"},
-				{"s/b/e/t/n", "Jump straight to a panel, as bracketed in its title"},
-				{"space, ;", "Universal find (#12 PRs, b/s/n/r types, * fleet-wide)"},
-			},
-		},
-		{
-			"Marking",
-			[]struct{ key, desc string }{
-				{markToggleKey, "Mark the row under the cursor and step past it"},
-				{visualKey, "Line-wise range: every motion from here extends it"},
-				{keyEsc, "Clear the range and every mark"},
-				{actionLeader, "Verbs for what is marked, or for the row under the cursor"},
-				{operatorLeader + " + verb", "Run a batch operator over the marks, or ask for a text object"},
-			},
-		},
-		{
-			"Filtering & Sorting",
-			[]struct{ key, desc string }{
-				{"f", "Filter menu (enter/key cycles, *=reset)"},
-				{"s", "Sort menu (enter/key cycles, [/]=reorder, *=reset)"},
-				{"/", "Search repos: r:/b:/p:/t:/n:/c: to scope, */?/^/$ to glob or anchor"},
-				{":filter", "Boolean expression over the dock modes plus clean/https/ssh/" +
-					"has_upstream/config_override/error/template_drift (and/or/not, parens)"},
-				{":filter (PRs tab)", "Narrows the fetched list: draft/approved/changes_requested/" +
-					"review_required/needs_reviewer/failing/passing"},
-				{":pr-query", "Override the PRs tab's GitHub search for this session (PRs tab only)"},
-			},
-		},
-		{
-			"Branch & PR Actions",
-			[]struct{ key, desc string }{
-				{"]", "Parallel checkouts of the selected repo"},
-				{actionLeader, "Verbs for the focused panel's selection (focused view)"},
-				{actionLeader + "o", "Open the selected pull request in the browser"},
-				{actionLeader + "s", "Switch to the selected branch"},
-				{actionLeader + "p", "Push branch and its tags (--follow-tags)"},
-				{actionLeader + "n", "Create a PR for the selected branch"},
-				{actionLeader + "c", "Check the selected PR's branch out here"},
-				{"f, [/], *", "PRs tab: pick a saved view, cycle views, widen the scope"},
-				{"v (PRs tab)", "Preview the selected row's description, reviewers, and diffstat"},
-				{actionLeader + "m", "Squash-merge the PR and delete its branch"},
-			},
-		},
-		{
-			"Batch Actions",
-			[]struct{ key, desc string }{
-				{operatorLeader + "f", "Fetch all, then a text object"},
-				{operatorLeader + "p", "Prune remote, then a text object"},
-				{operatorLeader + "c", "Cleanup merged, then a text object"},
-				{operatorLeader + "r", "Refresh PR data, then a text object"},
-				{"the verb again", "Run it over the filtered set (!ff)"},
-			},
-		},
-		{
-			"Command Mode",
-			[]struct{ key, desc string }{
-				{":", "Command prompt (:filter dirty and has_pr, :help)"},
-				{"@:", "Repeat the last command"},
-				{":history", "Recent commands, newest first"},
-				{":prs", "Map open PRs to the branches and checkouts holding them"},
-				{operatorLeader + " + verb + object", "Run an operator over a text object (!fdr fetches dirty repos)"},
-				{textObjectKeys(), textObjectNames()},
-			},
-		},
-		{
-			"General",
-			[]struct{ key, desc string }{
-				{"r/ctrl+r", "Refresh all data (clears cache)"},
-				{"?", "Toggle help"},
-				{"q, ctrl+c", "Quit"},
-			},
+	return screen{
+		title: appTitle,
+		body:  m.renderConfirmModal(),
+		hints: []keyhint.Hint{
+			{Key: "y/enter", What: "confirm", Priority: 2},
+			{Key: "n/esc", What: "cancel", Priority: 1},
 		},
 	}
 }
@@ -141,32 +33,35 @@ func helpSections() []helpSection {
 // renderConfirmModal asks for confirmation of a parked write action, naming
 // what it will run against.
 func (m Model) renderConfirmModal() string {
-	if m.pendingAction == nil {
-		return m.renderRepoList()
-	}
-
 	var b strings.Builder
 
-	b.WriteString(styles.TitleStyle.Render(m.pendingAction.prompt))
+	b.WriteString(styles.Skin.Title.Render(m.pendingAction.prompt))
 	b.WriteString("\n\n")
-	b.WriteString(styles.TableRowStyle.Render(m.pendingAction.detail))
+	b.WriteString(styles.Skin.Body.Render(m.pendingAction.detail))
 	b.WriteString("\n")
 	scope := m.pendingAction.scope
 	if scope == "" {
 		scope = "in " + filepath.Base(m.selectedRepo)
 	}
-	b.WriteString(styles.SubtitleStyle.Render(scope))
-	b.WriteString("\n\n")
-	b.WriteString(styles.FooterKeyStyle.Render("y/enter") + styles.FooterDescStyle.Render(" confirm  "))
-	b.WriteString(styles.FooterKeyStyle.Render("n/esc") + styles.FooterDescStyle.Render(" cancel"))
+	b.WriteString(styles.Skin.Subtitle.Render(scope))
 
 	content := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(styles.Blue).
+		BorderForeground(styles.Skin.Accent.GetForeground()).
 		Padding(confirmModalVPad, confirmModalHPad).
 		Render(b.String())
 
 	return centerModal(m, content)
+}
+
+// actionScreen draws the verb menu in the body of the screen it was opened
+// from, which keeps that screen's header, so what the verbs act on stays named.
+func (m Model) actionScreen() screen {
+	s := m.baseScreen()
+	s.body = m.renderActionModal()
+	s.hints = []keyhint.Hint{{Key: keyEsc, What: descBack, Priority: 1}}
+
+	return s
 }
 
 // renderActionModal lists the current view's verbs over it. The menu names
@@ -177,26 +72,23 @@ func (m Model) renderActionModal() string {
 
 	menu := m.actionMenu()
 
-	lines := []string{styles.TitleStyle.Render(menu.title)}
+	lines := []string{styles.Skin.Title.Render(menu.title)}
 	lines = append(lines, wrapLines(menu.target, width)...)
 	lines = append(lines, "")
 
 	if len(menu.actions) == 0 {
-		lines = append(lines, styles.SubtitleStyle.Render("Nothing to do here"))
+		lines = append(lines, styles.Skin.Subtitle.Render("Nothing to do here"))
 	}
 
 	for _, action := range menu.actions {
 		lines = append(lines,
-			styles.HelpKeyStyle.Render(padCell(action.key, modalKeyColWidth))+"  "+
-				styles.HelpDescStyle.Render(action.name))
+			styles.Skin.Key.Render(padCell(action.key, modalKeyColWidth))+"  "+
+				styles.Skin.Subtitle.Render(action.name))
 	}
-
-	lines = append(lines, "",
-		styles.FooterKeyStyle.Render(keyEsc)+styles.FooterDescStyle.Render(" back"))
 
 	content := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(styles.Blue).
+		BorderForeground(styles.Skin.Accent.GetForeground()).
 		Padding(confirmModalVPad, confirmModalHPad).
 		Render(strings.Join(lines, "\n"))
 
@@ -288,11 +180,17 @@ func buildSortModalRows(activeSorts []models.ActiveSort) []models.ActiveSort {
 	return displaySorts
 }
 
+func (m Model) batchScreen() screen {
+	var hints []keyhint.Hint
+	if !m.batchRunning {
+		hints = []keyhint.Hint{{Key: keyEsc, What: descClose, Priority: 1}}
+	}
+
+	return screen{title: m.batchTask, body: m.renderBatchProgress(), hints: hints}
+}
+
 func (m Model) renderBatchProgress() string {
 	var b strings.Builder
-
-	b.WriteString(styles.TitleStyle.Render(m.batchTask))
-	b.WriteString("\n\n")
 
 	progressWidth := 40
 	filled := 0
@@ -300,12 +198,11 @@ func (m Model) renderBatchProgress() string {
 		filled = (m.batchProgress * progressWidth) / m.batchTotal
 	}
 	bar := strings.Repeat("█", filled) + strings.Repeat("░", progressWidth-filled)
-	progressStr := fmt.Sprintf("[%s] %d/%d", bar, m.batchProgress, m.batchTotal)
-	b.WriteString(progressStr)
-	b.WriteString("\n\n")
+	fmt.Fprintf(&b, "[%s] %d/%d", bar, m.batchProgress, m.batchTotal)
 
 	if len(m.batchResults) > 0 {
-		b.WriteString(styles.HeaderStyle.Render("Results"))
+		b.WriteString("\n\n")
+		b.WriteString(styles.Skin.Subtitle.Bold(true).Render("Results"))
 		b.WriteString("\n")
 
 		maxShow := 15
@@ -317,24 +214,20 @@ func (m Model) renderBatchProgress() string {
 		layout := fitDetailCols(batchColSpecs, m.width)
 		for i := startIdx; i < len(m.batchResults); i++ {
 			result := m.batchResults[i]
-			icon := styles.SuccessStyle.Render("✓")
+			icon := styles.Skin.Success.Render("✓")
 			if !result.Success {
-				icon = styles.ErrorStyle.Render("✗")
+				icon = styles.Skin.Error.Render("✗")
 			}
 			name := padCell(filepath.Base(result.Path), layout.Width(colBatchName))
 			msg := padCell(result.Message, layout.Width(colBatchMessage))
 
-			row := fmt.Sprintf("  %s %s  %s", icon, name, styles.SubtitleStyle.Render(msg))
-			b.WriteString(row)
-			b.WriteString("\n")
+			fmt.Fprintf(&b, "  %s %s  %s\n", icon, name, styles.Skin.Subtitle.Render(msg))
 		}
 	}
 
-	b.WriteString("\n")
 	if m.batchRunning {
-		b.WriteString(styles.SubtitleStyle.Render("Running... please wait"))
-	} else {
-		b.WriteString(styles.FooterStyle.Render("Press esc to close"))
+		b.WriteString("\n")
+		b.WriteString(styles.Skin.Subtitle.Render("Running... please wait"))
 	}
 
 	return b.String()
