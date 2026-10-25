@@ -1,3 +1,11 @@
+## v1.15.0 (2026-10-25)
+
+### Feat
+
+- **find**: type into the query until focus moves to the results
+- **tasks**: add a Tasks tab with previews, a run view, logs, and history
+- **tasks**: run fetch, prune, and cleanup through the task engine
+
 ## v1.14.0 (2026-10-25)
 
 ### Feat
