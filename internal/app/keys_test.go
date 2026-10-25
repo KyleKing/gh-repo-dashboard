@@ -186,7 +186,6 @@ func TestBackNavigationChain(t *testing.T) {
 	}{
 		{"repo detail to list", ViewModeRepoDetail, ViewModeRepoList},
 		{"branch detail to repo detail", ViewModeBranchDetail, ViewModeRepoDetail},
-		{"PR detail to repo detail", ViewModePRDetail, ViewModeRepoDetail},
 		{"help to list", ViewModeHelp, ViewModeRepoList},
 		{"filter to list", ViewModeFilter, ViewModeRepoList},
 		{"sort to list", ViewModeSort, ViewModeRepoList},

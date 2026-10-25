@@ -980,7 +980,7 @@ func (m Model) panelFooter(panels []panelContent, focused, width int) string {
 
 	if !m.detailFocused {
 		hints = append(hints, footerHint{
-			key: keyEnter, desc: descDetail, priority: panelHintPriority - navHintStep*2,
+			key: keyEnter, desc: nameDetail, priority: panelHintPriority - navHintStep*2,
 		})
 	}
 

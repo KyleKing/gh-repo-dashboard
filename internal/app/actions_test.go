@@ -283,24 +283,23 @@ func TestPanelActionMenuRunsAVerbAndClosesOnAnythingElse(t *testing.T) {
 	}
 }
 
-// The menu used to be a footer line, so a pull request title wider than the
-// terminal pushed the verbs off the end of it.
+// The menu used to be a footer line, so a target wider than the terminal
+// pushed the verbs off the end of it.
 func TestPanelActionMenuKeepsItsVerbsUnderALongTitle(t *testing.T) {
 	t.Parallel()
 
 	const width = 100
 
 	m := focusedModel(width, 30)
-	m.viewMode = ViewModePRList
-	m.prSearchCursor = 0
-	m.prSearch = []forge.PullRequest{{
-		Number: 10,
-		Title:  strings.TrimSpace(strings.Repeat("bump the go-dependencies group across 1 directory ", 4)),
+	m.focusedPanel = panelBranches
+	m.detailCursor = 0
+	m.branches = []vcs.BranchInfo{{
+		Name: strings.TrimSpace(strings.Repeat("bump-the-go-dependencies-group-across-one-directory ", 4)),
 	}}
 	m.panelActions = true
 
 	view := plainText(m.renderView())
-	for _, verb := range prListActions() {
+	for _, verb := range panelActionsFor(panelBranches) {
 		if !strings.Contains(view, verb.name) {
 			t.Errorf("the menu dropped %q:\n%s", verb.name, view)
 		}

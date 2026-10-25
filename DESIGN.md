@@ -144,8 +144,8 @@ the [git vs jj mapping](#git-vs-jj-concept-mapping) above for those.
 
 | Term | Meaning |
 |------|---------|
-| Repos tab (`[R]`) | The default view: one row per scanned repo. Pressing `v` on a row opens the expand region, an inline detail block for that one repo (its branches and pull requests) without leaving the list. Pressing enter opens the single-repo view. |
-| PRs tab (`[P]`) | Every open pull request across the scanned repos, joined against each repo's local branches so a PR with no local checkout and a local branch with no PR are both visible in one table (internally the "fleet map" or "PR map", `prmap.go`). |
+| Repos tab | The default view: one row per scanned repo. Pressing `v` on a row opens the expand region, an inline detail block for that one repo (its branches and pull requests) without leaving the list. Pressing enter opens the single-repo view. |
+| PR map (`:prs`) | Every open pull request across the scanned repos, joined against each repo's local branches so a PR with no local checkout and a local branch with no PR are both visible in one table (`prmap.go`). |
 | Single-repo view | Opened by selecting a repo from the Repos tab: a breadcrumb naming the repo, and a grid of panels beside a detail pane. |
 | Panel | One of the five boxes in the single-repo view's left column: Status (`s`), Branches (`b`), Peers (`e`), Stashes (`t`), Notes (`n`). Each panel's own key both jumps to it and, in the collapsed grid, shows its row count. A jj repo has no Stashes panel. |
 | Detail pane / full preview | The pane to the right of the panel column. It always shows the focused panel's selected row in full; for Status, that full preview is the repo's identity facts (vcs, protocol, detached/dirty state, PR, checkouts, config drift) that don't fit the panel's own two-line collapsed view. |
@@ -250,14 +250,14 @@ example, the `DIRTY` filter plus an `api` search yields dirty repos containing "
 - Filter modes: `ALL`, `DIRTY`, `AHEAD`, `BEHIND`, `HAS_PR`, `HAS_STASH`, `HAS_NOTES`, `GIT` (multi-filter with AND logic). The `f` dock shows one row per mode with its cycle state (off, on, `NOT`) and a live "if on" count: the fleet-wide total that mode would produce combined with every other filter, the predicate, and the search already active, not that mode evaluated alone.
 - Sort modes: `NAME`, `MODIFIED`, `STATUS`, `BRANCH`, with multi-field priority and ASC/DESC direction
 - Search: matches repo name or checked-out branch by default, updating in real time; falls back to fuzzy matching (`sahilm/fuzzy`) on the name when nothing matches as a substring/glob. Scope prefixes: `r:` name, `b:` branch, `p:` PR number/title, `t:` copier template source, `n:` note body content (only searches notes already loaded; a repo whose notes haven't fetched yet just doesn't match), `c:` commit recency (`c:<7d` within, `c:>30d` older than, bare `c:7d` defaults to within). Every scope supports glob syntax via `filters.GlobMatch`: a bare query matches anywhere, `^`/`$` anchor an edge (both together for an exact match), `*`/`?` are wildcards within the query, and `\` escapes a literal `^`, `$`, `*`, or `?`.
-- `filters.Predicate[T]` is generic over its subject type, so the same `and`/`or`/`not`/parens parser (`filters.ParsePredicate`) serves two atom maps: `filters.RepoAtoms()` (`ahead`, `behind`, `clean` = `not dirty`, `dirty`, `has_pr`, `has_stash`, `has_notes`, `git`, plus dock-absent `jj`, `https`, `ssh`, `has_upstream`, `config_override`, `error`, `template_drift`) and `filters.PRAtoms()` (`draft`, `approved`, `changes_requested`, `review_required`, `needs_reviewer`, `failing`, `passing`). `needs_reviewer` matches an open, non-draft pull request with nobody currently requested to review it (`PRInfo.Reviewers`, populated from `gh`'s `reviewRequests` field on both the list and detail reads), independent of `review_required`, which is GitHub's own review-decision rollup and can hold even once someone is assigned.
-- On the Repos tab, `:filter <expr>` layers a `RepoAtoms` predicate on top of the dock's filters as an extra AND term; it shows as its own row in the `f` dock when set, cleared independently with `x` (the dock's `*` resets everything, filters and predicate alike). On the PRs tab, `:filter <expr>` instead narrows the already-fetched PR list client-side against `PRAtoms`, with no refetch and its own badge; bare `:filter` clears it. `:pr-query <search>` replaces the current saved view's own GitHub search query for the session (for anything the local predicate can't express — labels, dates, anything GitHub's search syntax supports), reverting on bare `:pr-query` or on switching to a different view.
+- `filters.Predicate[T]` is generic over its subject type, so the same `and`/`or`/`not`/parens parser (`filters.ParsePredicate`) serves any atom map. `filters.RepoAtoms()` is the one in use: `ahead`, `behind`, `clean` = `not dirty`, `dirty`, `has_pr`, `has_stash`, `has_notes`, `git`, plus dock-absent `jj`, `https`, `ssh`, `has_upstream`, `config_override`, `error`, `template_drift`.
+- `:filter <expr>` layers a `RepoAtoms` predicate on top of the dock's filters as an extra AND term; it shows as its own row in the `f` dock when set, cleared independently with `x` (the dock's `*` resets everything, filters and predicate alike).
 
 Adding a filter mode: add the const to `models/enums.go`, a filter function in
 `filters/filter.go`, a case in `FilterRepos()`, and tests in `filters/filter_test.go`. A
 boolean criterion doesn't need dock promotion to be usable — it can live as a
-`:filter`-only predicate atom in `filters/predicate.go`'s `RepoAtoms()` (or
-`filters/predicate_pr.go`'s `PRAtoms()`) map instead; promote one to the dock only when
+`:filter`-only predicate atom in `filters/predicate.go`'s `RepoAtoms()` map
+instead; promote one to the dock only when
 it is common enough to earn permanent screen space.
 
 ## UI Design

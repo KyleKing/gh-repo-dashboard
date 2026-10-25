@@ -55,24 +55,6 @@ func TestReviewDecisionFoldsIntoTheStateCell(t *testing.T) {
 	}
 }
 
-// The PRs tab has to say who a pull request is waiting on, which is the last
-// person to touch it rather than the review decision.
-func TestPRListShowsActivityInsteadOfReview(t *testing.T) {
-	t.Parallel()
-
-	m := focusedModel(200, 40)
-	m.viewMode = ViewModePRList
-	m.prSearch = []forge.PullRequest{{
-		Number: 9, Title: "Add a thing", State: "OPEN", ReviewDecision: forge.ReviewApproved,
-		Activity: &forge.PRActivity{Author: "cjs", At: time.Now().Add(-3 * time.Hour)},
-	}}
-
-	rendered := plainText(m.renderPRList())
-	if !strings.Contains(rendered, "cjs") || !strings.Contains(rendered, "3 hours ago") {
-		t.Errorf("the PRs tab does not name who the pull request is waiting on:\n%s", rendered)
-	}
-}
-
 func TestCheckoutPRRefusesABranchAPeerHolds(t *testing.T) {
 	t.Parallel()
 

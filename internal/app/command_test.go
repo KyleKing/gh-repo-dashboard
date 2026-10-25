@@ -13,9 +13,8 @@ import (
 )
 
 var (
-	errBoom         = errors.New("boom")
-	errGHFailed     = errors.New("gh failed")
-	errPRDetailLoad = errors.New("failed to load PR details")
+	errBoom     = errors.New("boom")
+	errGHFailed = errors.New("gh failed")
 )
 
 // openDetailKey is the key that opens the focused view's selected item full

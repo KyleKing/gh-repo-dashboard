@@ -501,7 +501,7 @@ func (m Model) renderPalette() string {
 }
 
 func (m Model) paletteScopeLine(matches int) string {
-	scope := scopeThisRepo
+	scope := "this repo"
 	if m.paletteFleetScope || parseFindQuery(m.paletteInput.Value()).fleet {
 		scope = "all repos"
 	}

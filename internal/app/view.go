@@ -68,19 +68,19 @@ func (m Model) renderScreen() string {
 
 	content := m.renderView()
 	if !m.selfCentering() {
-		content = frame(content, m.width, frameW)
+		content = centerFrame(content, m.width, frameW)
 	}
 
 	if m.commandMode {
-		line := frame(m.commandInput.View(), m.width, frameW)
+		line := centerFrame(m.commandInput.View(), m.width, frameW)
 		if candidates := m.renderCompletionCandidates(frameW); candidates != "" {
-			line = frame(candidates, m.width, frameW) + "\n" + line
+			line = centerFrame(candidates, m.width, frameW) + "\n" + line
 		}
 
 		return overlayBottomLine(content, line, m.height)
 	}
 	if m.statusMessage != "" {
-		line := frame(styles.StatusMessageStyle.Render(m.statusMessage), m.width, frameW)
+		line := centerFrame(styles.StatusMessageStyle.Render(m.statusMessage), m.width, frameW)
 
 		return overlayBottomLine(content, line, m.height)
 	}
@@ -93,7 +93,7 @@ func (m Model) renderScreen() string {
 // stays within the single-column content width.
 func (m Model) frameWidth() int {
 	switch m.viewMode {
-	case ViewModeRepoList, ViewModePRList, ViewModePRMap, ViewModeFilter, ViewModeSort:
+	case ViewModeRepoList, ViewModePRMap, ViewModeFilter, ViewModeSort:
 		return listWidth(m.width)
 	case ViewModeRepoDetail:
 		return m.gridWidth()
@@ -187,21 +187,10 @@ func (m Model) renderView() string {
 		return m.renderPRMap()
 	case ViewModePalette:
 		return m.renderPalette()
-	case ViewModePRList:
-		if m.prViewMenu {
-			return m.renderPRViewModal()
-		}
-		if m.panelActions {
-			return m.renderActionModal()
-		}
-
-		return m.renderPRList()
 	case ViewModeRepoDetail:
 		return m.renderRepoDetail()
 	case ViewModeBranchDetail:
 		return m.renderBranchDetail()
-	case ViewModePRDetail:
-		return m.renderPRDetail()
 	case ViewModeFilter, ViewModeSort:
 		return m.renderRepoList()
 	case ViewModeBatchProgress:

@@ -25,7 +25,6 @@ const (
 	ViewModeRepoList ViewMode = iota
 	ViewModeRepoDetail
 	ViewModeBranchDetail
-	ViewModePRDetail
 	ViewModeHelp
 	ViewModeFilter
 	ViewModeSort
@@ -33,7 +32,6 @@ const (
 	ViewModeConfirm
 	ViewModePRMap
 	ViewModePalette
-	ViewModePRList
 )
 
 // Model is the root Bubble Tea model holding all TUI state.
@@ -82,9 +80,6 @@ type Model struct {
 	// operatorLeaderPending is "!" waiting for the verb that follows it, the
 	// step before pendingOperator holds one.
 	operatorLeaderPending bool
-
-	prPredicateText string
-	prPredicate     filters.Predicate[forge.PullRequest]
 
 	pendingOperator string
 	pendingObject   string
@@ -136,42 +131,6 @@ type Model struct {
 	// the selected item's text instead of moving between rows.
 	detailFocused bool
 	detailScroll  int
-	// prViewIndex selects which of models.PRViews the PRs tab is showing, and
-	// prFleet widens that view from this repo to everything the search reaches.
-	prViewIndex int
-	prFleet     bool
-	// prQueryOverride is a session-scoped ":pr-query" replacement for the
-	// current view's own Search string; empty means use the view's Search.
-	prQueryOverride string
-	prSearch        []forge.PullRequest
-	prSearchCursor  int
-	prSearchLoading bool
-	prViewMenu      bool
-	prSearchError   string
-	// prPreviewOpen shows the row under the PRs tab cursor in full underneath
-	// the table: its description, every requested reviewer, and its CI
-	// checks, the same "read one row in full without leaving the list" idea
-	// as the Repos tab's own expanded region.
-	prPreviewOpen bool
-	// prPreview caches each row's preview once read, keyed by the pull
-	// request's URL, so paging the cursor back over a row already open never
-	// re-fetches it.
-	prPreview map[string]forge.PRPreview
-	// prPreviewError records the rows whose preview read failed, so the region
-	// says so instead of showing a loading state that will never resolve.
-	prPreviewError map[string]string
-	// prPreviewRequested marks the rows a preview fetch has already been
-	// issued for, so scrolling back over one mid-flight does not re-request
-	// it.
-	prPreviewRequested map[string]bool
-	// prPreviewSeq counts cursor moves so a debounce tick can tell whether the
-	// cursor is still on the row it was scheduled for. Holding j or k must
-	// read the row it lands on, not every row it passes over.
-	prPreviewSeq int
-	// prListReturn is where esc goes from a pull request opened out of the PRs
-	// tab, which is the tab rather than the repo grid it was never in.
-	prListReturn ViewMode
-
 	// panelActions is the leader key's verb menu, open over the focused panel's
 	// selection until a verb runs or any other key backs out.
 	panelActions bool
@@ -202,11 +161,6 @@ type Model struct {
 	uncommittedDiffstat map[string]string
 	uncommittedDiff     map[string]string
 	uncommittedFullDiff bool
-	selectedPR          forge.PullRequest
-	prDetail            forge.PRDetail
-	// prDetailScroll is how far the PR detail page has scrolled past its own
-	// top, since its content can run longer than the terminal.
-	prDetailScroll int
 
 	// Universal find state. The palette answers from cached data only, so it
 	// holds no results of its own: they are recomputed from the query.
@@ -270,28 +224,25 @@ func New(scanPaths []string, maxDepth int) Model {
 	sp.Style = lipgloss.NewStyle().Foreground(styles.Blue)
 
 	return Model{
-		spinner:            sp,
-		scanPaths:          scanPaths,
-		maxDepth:           maxDepth,
-		summaries:          make(map[string]models.RepoSummary),
-		notesPreview:       make(map[string][]models.NoteFileContent),
-		prCount:            make(map[string]int),
-		branchCount:        make(map[string]int),
-		prMap:              make(map[string]PRMapLoadedMsg),
-		peerBranches:       make(map[string][]vcs.BranchInfo),
-		prPreview:          make(map[string]forge.PRPreview),
-		prPreviewError:     make(map[string]string),
-		prPreviewRequested: make(map[string]bool),
-		activeFilters:      activeFilters,
-		activeSorts:        sorts,
-		searchInput:        ti,
-		commandInput:       ci,
-		paletteInput:       pi,
-		registry:           DefaultRegistry(),
-		viewMode:           ViewModeRepoList,
-		loading:            true,
-		keys:               DefaultKeyMap(),
-		help:               help.New(),
+		spinner:       sp,
+		scanPaths:     scanPaths,
+		maxDepth:      maxDepth,
+		summaries:     make(map[string]models.RepoSummary),
+		notesPreview:  make(map[string][]models.NoteFileContent),
+		prCount:       make(map[string]int),
+		branchCount:   make(map[string]int),
+		prMap:         make(map[string]PRMapLoadedMsg),
+		peerBranches:  make(map[string][]vcs.BranchInfo),
+		activeFilters: activeFilters,
+		activeSorts:   sorts,
+		searchInput:   ti,
+		commandInput:  ci,
+		paletteInput:  pi,
+		registry:      DefaultRegistry(),
+		viewMode:      ViewModeRepoList,
+		loading:       true,
+		keys:          DefaultKeyMap(),
+		help:          help.New(),
 		// A diff without file text is rarely useful, and diffstat is one key
 		// away, so every diff pane opens fully expanded.
 		stashFullDiff:       true,
@@ -311,10 +262,6 @@ func (m Model) Init() tea.Cmd {
 // anyLoading reports whether any view is waiting on data. The spinner ticks
 // only while this holds, so a settled dashboard does not repaint on a timer.
 func (m Model) anyLoading() bool {
-	if m.viewMode == ViewModePRDetail && m.prDetail.Number == 0 {
-		return true
-	}
-
 	return m.loading || m.detailLoading || m.branchDetailLoading || m.fetchesInFlight() > 0
 }
 
@@ -512,12 +459,6 @@ func (m *Model) ResetFilters() {
 func (m *Model) SetPredicate(text string, pred filters.Predicate[models.RepoSummary]) {
 	m.predicate = pred
 	m.predicateText = text
-}
-
-// SetPRPredicate sets the active PR-tab filter predicate and its source text.
-func (m *Model) SetPRPredicate(text string, pred filters.Predicate[forge.PullRequest]) {
-	m.prPredicate = pred
-	m.prPredicateText = text
 }
 
 // SelectedCount returns the number of repos currently selected for batch operations.

@@ -185,41 +185,6 @@ type UncommittedDiffstatLoadedMsg struct {
 	Diffstat string
 }
 
-// PRDetailLoadedMsg reports the loaded detail for a single pull request.
-type PRDetailLoadedMsg struct {
-	Path     string
-	PRNumber int
-	Detail   forge.PRDetail
-	Error    error
-}
-
-// PRPreviewLoadedMsg reports one PRs tab row's inline preview, keyed by the
-// pull request URL so a stale in-flight answer can be told apart from the row
-// the cursor is on now.
-type PRPreviewLoadedMsg struct {
-	Key     string
-	Preview forge.PRPreview
-	Error   error
-}
-
-// PRPreviewTickMsg fires once the cursor has held still long enough to be
-// worth reading. Seq is the cursor-move counter the tick was scheduled at, so
-// every move but the last one is dropped.
-type PRPreviewTickMsg struct {
-	Seq int
-}
-
-// PRSearchLoadedMsg reports the pull requests one saved view returned. Query
-// and fleet identify which read this was, so an answer that arrives after the
-// view or the scope moved on is discarded rather than shown under the wrong
-// heading.
-type PRSearchLoadedMsg struct {
-	Query string
-	Fleet bool
-	PRs   []forge.PullRequest
-	Error error
-}
-
 // ActionResultMsg reports the outcome of a write action (branch switch, push,
 // PR creation, or PR merge) run against a single repo.
 type ActionResultMsg struct {

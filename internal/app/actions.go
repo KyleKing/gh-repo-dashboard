@@ -170,12 +170,8 @@ func (m Model) actionBranch() (vcs.BranchInfo, bool) {
 }
 
 // actionPR returns the pull request the current view's actions apply to: the
-// selected PR row, the branch's own PR, or the repo's PR.
+// branch's own PR, or the repo's PR.
 func (m Model) actionPR() (forge.PullRequest, bool) {
-	if m.viewMode == ViewModePRDetail && m.prDetail.Number > 0 {
-		return m.prDetail.PullRequest, true
-	}
-
 	branch, ok := m.actionBranch()
 	if !ok {
 		return forge.PullRequest{}, false
@@ -320,18 +316,10 @@ type panelAction struct {
 }
 
 // actionMenu is what the open verb menu is acting on and what it offers, which
-// depends on the view: a panel's selection in the grid, the row under the
-// cursor in the PRs tab, and the filtered fleet in the repo list.
+// depends on the view: a panel's selection in the grid, and the filtered fleet
+// in the repo list.
 func (m Model) actionMenu() actionMenu {
 	switch m.viewMode { //nolint:exhaustive // every other view answers with the focused panel's verbs
-	case ViewModePRList:
-		target := "nothing selected"
-		if pr, ok := m.selectedSearchPR(); ok {
-			target = "#" + strconv.Itoa(pr.Number) + " " + pr.Title
-		}
-
-		return actionMenu{title: tabNamePRs, target: target, actions: prListActions()}
-
 	case ViewModeRepoList:
 		target := strconv.Itoa(len(m.filteredPaths)) + " repos match the current filters"
 		if summary := m.markSummary(); summary != "" {

@@ -18,11 +18,11 @@ const (
 	nameAnd        = "and"
 	nameBranch     = "branch"
 	nameCopyPath   = "copy path"
+	nameDetail     = "detail"
 	nameFetch      = "fetch"
 	nameFilter     = "filter"
 	nameActions    = "actions"
 	nameHelp       = "help"
-	namePRQuery    = "pr-query"
 	nameQuit       = "quit"
 	nameRefresh    = "refresh"
 	nameSelect     = "select"
@@ -189,7 +189,6 @@ func DefaultRegistry() Registry {
 			},
 		},
 		historyCommand(),
-		prQueryCommand(),
 		Command{
 			Name:        "prs",
 			Description: "Map open PRs to the local branches and checkouts that hold them",
@@ -222,55 +221,34 @@ func DefaultRegistry() Registry {
 	)
 }
 
-// filterCommand builds the ":filter" command. On the Repos tab: a bare mode
-// name, a predicate expression, or no args to open the filter dock. On the
-// PRs tab: a predicate expression over PRAtoms narrows what's already been
-// fetched, instantly and with no refetch; no args clears it, since there is
-// no PR-side dock to open.
+// filterCommand builds the ":filter" command: a bare mode name, a predicate
+// expression, or no args to open the filter dock.
 func filterCommand() Command {
 	return Command{
-		Name: nameFilter,
-		Description: "Filter repos: :filter <mode|predicate> or :filter to open the modal. " +
-			"On the PRs tab, filters the fetched list: :filter <predicate>",
-		Complete: completeFilterCommand,
-		Describe: describeFilterCommand,
-		Run:      runFilterCommand,
+		Name:        nameFilter,
+		Description: "Filter repos: :filter <mode|predicate> or :filter to open the modal",
+		Complete:    completeFilterCommand,
+		Describe:    describeFilterCommand,
+		Run:         runFilterCommand,
 	}
 }
 
-// completeFilterCommand answers ":filter"'s own completion candidates: repo
-// atoms normally, or PR atoms on the PRs tab, since the predicate it parses
-// against switches the same way.
-func completeFilterCommand(m Model, args []string) []string {
+// completeFilterCommand answers ":filter"'s own completion candidates.
+func completeFilterCommand(_ Model, args []string) []string {
 	prefix := ""
 	if len(args) > 0 {
 		prefix = args[len(args)-1]
 	}
 
-	atomNames := filters.AtomNames(filters.RepoAtoms())
-	if m.viewMode == ViewModePRList {
-		atomNames = filters.AtomNames(filters.PRAtoms())
-	}
-
-	return predicateCandidates(prefix, atomNames)
+	return predicateCandidates(prefix, filters.AtomNames(filters.RepoAtoms()))
 }
 
-// describeFilterCommand explains one of completeFilterCommand's own
-// candidates, from whichever atom table is in play.
-func describeFilterCommand(m Model, candidate string) string {
-	atomDescs := filters.RepoAtomDescriptions()
-	if m.viewMode == ViewModePRList {
-		atomDescs = filters.PRAtomDescriptions()
-	}
-
-	return predicateDescription(candidate, atomDescs)
+// describeFilterCommand explains one of completeFilterCommand's own candidates.
+func describeFilterCommand(_ Model, candidate string) string {
+	return predicateDescription(candidate, filters.RepoAtomDescriptions())
 }
 
 func runFilterCommand(m Model, args []string) (Model, tea.Cmd) {
-	if m.viewMode == ViewModePRList {
-		return runPRFilterCommand(m, args)
-	}
-
 	if len(args) == 0 {
 		m.viewMode = ViewModeFilter
 		return m, nil
@@ -298,48 +276,6 @@ func runFilterCommand(m Model, args []string) (Model, tea.Cmd) {
 	m.cursor = 0
 
 	return m, nil
-}
-
-// runPRFilterCommand implements ":filter" on the PRs tab: no args clears the
-// active PR predicate, args parse against PRAtoms and narrow m.visiblePRs().
-func runPRFilterCommand(m Model, args []string) (Model, tea.Cmd) {
-	if len(args) == 0 {
-		m.SetPRPredicate("", nil)
-
-		return m, statusCmd("PR filter cleared")
-	}
-
-	expr := strings.Join(args, " ")
-	pred, err := filters.ParsePredicate(expr, filters.PRAtoms())
-	if err != nil {
-		return m, statusErrCmd(err.Error())
-	}
-	m.SetPRPredicate(expr, pred)
-
-	return m, nil
-}
-
-// prQueryCommand builds the ":pr-query" command: on the PRs tab, replaces the
-// current saved view's own GitHub search query for this session, for
-// anything the local ":filter" predicate can't express (labels, dates,
-// anything GitHub's search syntax supports). No args reverts to the view's
-// own query. The override is cleared automatically when a different view is
-// picked or cycled to, so it never silently outlives the view it was written
-// for.
-func prQueryCommand() Command {
-	return Command{
-		Name:        namePRQuery,
-		Description: "Override the PRs tab's GitHub query for this session: :pr-query <search> or :pr-query to revert",
-		Run: func(m Model, args []string) (Model, tea.Cmd) {
-			if m.viewMode != ViewModePRList {
-				return m, statusErrCmd(":pr-query only applies to the PRs tab")
-			}
-
-			m.prQueryOverride = strings.Join(args, " ")
-
-			return m.runPRSearch()
-		},
-	}
 }
 
 // selectCommand builds the ":select" command: "all", "none", or

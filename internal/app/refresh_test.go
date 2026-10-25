@@ -85,25 +85,6 @@ func TestRefreshFromBranchDetail(t *testing.T) {
 	}
 }
 
-func TestRefreshFromPRDetail(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.viewMode = ViewModePRDetail
-	m.selectedRepo = testRepoPath
-	m.selectedPR = forge.PullRequest{Number: 123}
-	m.prDetail = forge.PRDetail{
-		PullRequest: forge.PullRequest{Number: 123},
-	}
-
-	msg := tea.KeyPressMsg{Code: 'r', Text: "r"}
-	updatedModel, cmd := m.Update(msg)
-	_ = mustModel(t, updatedModel)
-
-	if cmd == nil {
-		t.Error("refresh should return a command from PR detail view")
-	}
-}
-
 func TestRefreshCompleteMessage(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
@@ -156,7 +137,7 @@ func TestRefreshClearsCache(t *testing.T) {
 func TestRefreshFromEmptyState(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
-	m.viewMode = ViewModePRDetail
+	m.viewMode = ViewModeBranchDetail
 
 	_, cmd := m.handleRefresh()
 
@@ -174,7 +155,6 @@ func TestRefreshPreservesViewMode(t *testing.T) {
 		{"repo list", ViewModeRepoList},
 		{"repo detail", ViewModeRepoDetail},
 		{"branch detail", ViewModeBranchDetail},
-		{"PR detail", ViewModePRDetail},
 	}
 
 	for _, tc := range testCases {
@@ -184,7 +164,6 @@ func TestRefreshPreservesViewMode(t *testing.T) {
 			m.viewMode = tc.viewMode
 			m.selectedRepo = testRepoPath
 			m.selectedBranch = vcs.BranchInfo{Name: mainBranchName}
-			m.selectedPR = forge.PullRequest{Number: 1}
 
 			m, _ = m.handleRefresh()
 
@@ -206,9 +185,6 @@ func TestRefreshClearsDownstreamFromRepoList(t *testing.T) {
 	m.branchDetail = models.BranchDetail{
 		Branch: vcs.BranchInfo{Name: featureBranchName},
 	}
-	m.prDetail = forge.PRDetail{
-		PullRequest: forge.PullRequest{Number: 123},
-	}
 
 	m, _ = m.handleRefresh()
 
@@ -227,9 +203,6 @@ func TestRefreshClearsDownstreamFromRepoList(t *testing.T) {
 	if m.branchDetail.Branch.Name != "" {
 		t.Error("refresh from repo list should clear branch detail")
 	}
-	if m.prDetail.Number != 0 {
-		t.Error("refresh from repo list should clear PR detail")
-	}
 }
 
 func TestRefreshClearsDownstreamFromRepoDetail(t *testing.T) {
@@ -243,9 +216,6 @@ func TestRefreshClearsDownstreamFromRepoDetail(t *testing.T) {
 	m.branchDetail = models.BranchDetail{
 		Branch: vcs.BranchInfo{Name: featureBranchName},
 	}
-	m.prDetail = forge.PRDetail{
-		PullRequest: forge.PullRequest{Number: 123},
-	}
 
 	m, _ = m.handleRefresh()
 
@@ -257,9 +227,6 @@ func TestRefreshClearsDownstreamFromRepoDetail(t *testing.T) {
 	}
 	if m.branchDetail.Branch.Name != "" {
 		t.Error("refresh from repo detail should clear branch detail")
-	}
-	if m.prDetail.Number != 0 {
-		t.Error("refresh from repo detail should clear PR detail")
 	}
 }
 
@@ -283,32 +250,5 @@ func TestRefreshClearsBranchDetail(t *testing.T) {
 	}
 	if len(m.branchDetail.Commits) != 0 {
 		t.Error("refresh should clear branch commits")
-	}
-}
-
-func TestRefreshClearsPRDetail(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.viewMode = ViewModePRDetail
-	m.selectedRepo = testRepoPath
-	m.selectedPR = forge.PullRequest{Number: 123}
-	m.prDetail = forge.PRDetail{
-		PullRequest: forge.PullRequest{
-			Number: 123,
-			Title:  "Test PR",
-		},
-		Author: "testuser",
-	}
-
-	m, _ = m.handleRefresh()
-
-	if m.prDetail.Number != 0 {
-		t.Error("refresh should clear PR detail number")
-	}
-	if m.prDetail.Title != "" {
-		t.Error("refresh should clear PR detail title")
-	}
-	if m.prDetail.Author != "" {
-		t.Error("refresh should clear PR detail author")
 	}
 }

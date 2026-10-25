@@ -132,27 +132,6 @@ func TestContentWidth_CapsAndFloors(t *testing.T) {
 	}
 }
 
-// The PRs tab builds its content at listWidth (renderPRList), so the shared
-// frame has to center and pad at that same width. Falling through to
-// contentWidth left it narrower than what it actually rendered, indenting the
-// tab bar and every row far past where the repo list's did at the same
-// terminal width.
-func TestFrameWidth_PRListMatchesRepoList(t *testing.T) {
-	t.Parallel()
-
-	m := Model{width: 200}
-
-	m.viewMode = ViewModeRepoList
-	repoList := m.frameWidth()
-
-	m.viewMode = ViewModePRList
-	prList := m.frameWidth()
-
-	if prList != repoList {
-		t.Errorf("frameWidth(PRList) = %d, frameWidth(RepoList) = %d; want equal", prList, repoList)
-	}
-}
-
 // The fleet map (renderPRMap) had the same gap: its own table fit to raw
 // m.width while its breadcrumbs and footer fit to contentWidth, and the
 // shared frame used contentWidth too, so on a wide terminal the table
@@ -206,7 +185,7 @@ func TestTruncate_MeasuresDisplayWidthNotBytes(t *testing.T) {
 func TestFrame_CentersContentAndLeavesBlankLinesEmpty(t *testing.T) {
 	t.Parallel()
 
-	framed := frame("abc\n\ndef", 200, contentWidth(200))
+	framed := centerFrame("abc\n\ndef", 200, contentWidth(200))
 	lines := strings.Split(framed, "\n")
 
 	pad := frameLeftPad(200, contentWidth(200))

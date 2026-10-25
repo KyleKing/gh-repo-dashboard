@@ -18,7 +18,6 @@ start.
 | `x` / `V` | Mark the row under the cursor / open a line-wise range motions extend |
 | `a` | Verbs for what is marked, or for whatever the current view has selected |
 | `!` | Batch operator, then a text object |
-| `R` / `P` | Switch tabs: Repos and PRs |
 | `?` | Help overlay |
 | `q` | Quit |
 
@@ -39,7 +38,6 @@ always match what is marked or selected. `a` then a letter runs one:
 | Peers | `y` copy path |
 | Stashes | `a` apply, `d` drop, `o` toggle the full diff |
 | Notes | `e` edit in `$EDITOR`, `y` copy path |
-| PRs tab | `c` check out, `o` open in browser, `u` copy URL |
 
 Anything that reaches the remote or destroys work asks first: push, new PR,
 squash-merge, PR checkout, prune, cleanup, branch delete, and stash drop. Answer
@@ -50,9 +48,9 @@ parallel checkout, and applying a stash leaves the stash in place.
 
 ## Views
 
-Two tabs sit above everything, switched with the capital letter each bar entry
-brackets: `[R]epos` and `[P]Rs`. The repos tab is the fleet and everything you
-drill into from it; the PRs tab is described below.
+The header line names the screen and shows the tab strip at its right. The
+Repos tab is the fleet and everything you drill into from it. The footer is
+pinned to the last row, with a status message fading at its right end.
 
 The repository list is the starting view. `enter` opens the focused repo view: a
 column of panels for Status, Branches, Peers, Stashes, and Notes beside a
@@ -68,8 +66,7 @@ out and a busy repo still arrives with its problems open.
 `enter` hands the keyboard to the detail pane, where `j`/`k` scroll its text and
 `esc` hands it back to the panel column. The blue border marks whichever region
 is live, and the panel column narrows while the detail pane holds focus, since
-nothing is being selected in it then. `O` opens the selected branch or pull request in its own full-screen
-view.
+nothing is being selected in it then. `O` opens the selected branch in its own full-screen view.
 
 `space` opens the universal find, scoped to the repo you are in (`;` opens it
 fleet-wide from the list, and `*` widens a repo-scoped query). Type `#12` for a
@@ -78,28 +75,6 @@ stashes, notes, or repos, or plain text to search everything. `enter` opens the
 highlighted result where it lives, `tab` marks rows, and `a` offers verbs for the
 whole set, including committing its repos to the marked-repos text object so
 batch operators compose with the find.
-
-## The PRs tab
-
-`P` opens a list of pull requests answering one saved search at a time. Each
-search is a name and a GitHub query, written the way the search box takes them,
-and the defaults are Open, Mine, Needs My Review, and Pending Review. `f` picks
-one by name, `[` and `]` cycle, and
-[configuration](./configuration.md) explains how to write your own.
-
-`*` widens the current search from this repo to everywhere it reaches, which is
-what makes a view like `review-requested:@me` worth having. A repo-scoped read
-comes back with check results; a fleet-wide one comes from GitHub's search
-index, which reports no checks and names the repository instead.
-
-`enter` opens the highlighted pull request full screen, and `!c` checks its
-branch out into whichever scanned repo it belongs to. A pull request from a
-repository this scan never saw can still be opened in a browser, but not checked
-out, and the status line says so.
-
-Answers are cached for the same window as the rest of the remote data
-(`cache_ttl_minutes`, five minutes by default), so cycling back to a view
-already read costs nothing and `r` is what forces a re-read.
 
 Launched from inside a repository, the scan finds only that one repo and the
 detail view opens straight away. `esc` still steps back to the one-row list.
@@ -156,8 +131,7 @@ The list has no symbols for stash counts, worktree counts, or workflow runs.
 Those appear in the focused view's panels, and the branch detail pane spells
 workflow status out as words, such as `passing (3/4 passing)`. Selecting a pull
 request names its failing and still-running checks, tallying the settled ones, so
-a red rollup can be read without leaving the panel; `O` opens the full-screen PR
-view, which adds each check's run time and the most recent comment.
+a red rollup can be read without leaving the panel.
 
 ## Notes files
 

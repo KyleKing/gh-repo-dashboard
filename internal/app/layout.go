@@ -53,12 +53,12 @@ func frameLeftPad(termWidth, contentW int) int {
 	return max((termWidth-contentW)/frameSides, 0)
 }
 
-// frame indents every non-empty line of content so the block sits centered in
+// centerFrame indents every non-empty line of content so the block sits centered in
 // termWidth, then pads each line out to the full frame width. The padding
 // matters: a view whose lines are shorter than the previous view's leaves the
 // old tail on screen otherwise, because the renderer only repaints the cells a
 // line actually covers.
-func frame(content string, termWidth, contentW int) string {
+func centerFrame(content string, termWidth, contentW int) string {
 	pad := frameLeftPad(termWidth, contentW)
 	prefix := strings.Repeat(" ", pad)
 	lineWidth := pad + contentW

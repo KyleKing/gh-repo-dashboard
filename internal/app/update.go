@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strings"
 	"time"
 
@@ -14,7 +13,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/kyleking/aragonite/cache"
-	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/forge/github"
 	"github.com/kyleking/aragonite/vcs"
 
@@ -24,10 +22,9 @@ import (
 )
 
 const (
-	textObjectKeyLen      = 2
-	branchDetailLogLimit  = 20
-	statusClearDelay      = 3 * time.Second
-	prDetailPrefetchCount = 3
+	textObjectKeyLen     = 2
+	branchDetailLogLimit = 20
+	statusClearDelay     = 3 * time.Second
 )
 
 // Update dispatches an incoming tea.Msg to the handler for its message type.
@@ -95,18 +92,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		return m, nil
-
-	case PRDetailLoadedMsg:
-		return m.handlePRDetailLoaded(msg)
-
-	case PRSearchLoadedMsg:
-		return m.handlePRSearchLoaded(msg)
-
-	case PRPreviewLoadedMsg:
-		return m.handlePRPreviewLoaded(msg)
-
-	case PRPreviewTickMsg:
-		return m.handlePRPreviewTick(msg)
 
 	case StashDiffLoadedMsg:
 		if msg.Path == m.selectedRepo {
@@ -247,16 +232,12 @@ func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDetailKey(msg)
 	case ViewModeBranchDetail:
 		return m.handleBranchDetailKey(msg)
-	case ViewModePRDetail:
-		return m.handlePRDetailKey(msg)
 	case ViewModeBatchProgress:
 		return m.handleBatchKey(msg)
 	case ViewModeConfirm:
 		return m.handleConfirmKey(msg)
 	case ViewModePRMap:
 		return m.handlePRMapKey(msg)
-	case ViewModePRList:
-		return m.handlePRListKey(msg)
 	case ViewModePalette:
 		return m.handlePaletteKey(msg)
 	default:
@@ -360,48 +341,6 @@ func (m Model) handleWorkflowLoaded(msg WorkflowLoadedMsg) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
-// handlePRDetailLoaded stores a loaded PR detail if it's still for the
-// currently selected repo/PR, preserving prior info on error.
-func (m Model) handlePRDetailLoaded(msg PRDetailLoadedMsg) (tea.Model, tea.Cmd) {
-	if msg.Path != m.selectedRepo || !m.showingPR(msg.PRNumber) {
-		return m, nil
-	}
-	if msg.Error != nil {
-		// Don't clear basic info on error - preserve what we already have
-		m.statusMessage = fmt.Sprintf("Failed to load PR details: %v", msg.Error)
-		return m, clearStatusAfterDelay()
-	}
-	m.prDetail = msg.Detail
-
-	return m, nil
-}
-
-// handlePRPreviewLoaded stores a PRs tab preview once read. A failed read is
-// recorded too, and clears the in-flight mark, so the region says what went
-// wrong and reopening it tries again instead of showing a loading state that
-// resolves for nobody.
-func (m Model) handlePRPreviewLoaded(msg PRPreviewLoadedMsg) (tea.Model, tea.Cmd) {
-	delete(m.prPreviewRequested, msg.Key)
-
-	if msg.Error != nil {
-		m.prPreviewError[msg.Key] = msg.Error.Error()
-
-		return m, nil
-	}
-
-	delete(m.prPreviewError, msg.Key)
-	m.prPreview[msg.Key] = msg.Preview
-
-	return m, nil
-}
-
-// showingPR reports whether the pull request is the one on screen. The
-// focused view tracks its selection with the panel cursor and never sets
-// selectedPR, which only the PR-detail view owns.
-func (m Model) showingPR(number int) bool {
-	return m.selectedPR.Number == number
-}
-
 // handleSpinnerTick advances the loading spinner. The tick chain stops once
 // nothing is loading, so an idle dashboard issues no further redraws.
 func (m Model) handleSpinnerTick(msg spinner.TickMsg) (tea.Model, tea.Cmd) {
@@ -416,8 +355,8 @@ func (m Model) handleSpinnerTick(msg spinner.TickMsg) (tea.Model, tea.Cmd) {
 }
 
 // handleDetailLoaded stores the loaded repo detail (branches, stashes,
-// worktrees, PRs, notes), fills the detail pane for whatever the cursor
-// already sits on, and prefetches the first few PR details.
+// worktrees, PRs, notes) and fills the detail pane for whatever the cursor
+// already sits on.
 func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
 	if msg.Path != m.selectedRepo {
 		return m, nil
@@ -434,14 +373,7 @@ func (m Model) handleDetailLoaded(msg DetailLoadedMsg) (tea.Model, tea.Cmd) {
 	m.newestFileTime = msg.NewestFileTime
 	m = m.snapFocusToShownPanel()
 
-	prefetchCount := min(prDetailPrefetchCount, len(msg.PRs))
-
-	cmds := []tea.Cmd{m.panelDetailCmd()}
-	for i := range prefetchCount {
-		cmds = append(cmds, prefetchPRDetailCmd(msg.Path, m.summaries[msg.Path].RemoteID, msg.PRs[i].Number))
-	}
-
-	return m, tea.Batch(cmds...)
+	return m, m.panelDetailCmd()
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -512,7 +444,7 @@ func (m Model) handleGrammarKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		return next, cmd, true
 	}
 
-	if newM, cmd, handled := m.handleLeaderOrTabKey(msg); handled {
+	if newM, cmd, handled := m.handleLeaderKey(msg); handled {
 		return newM, cmd, true
 	}
 
@@ -535,19 +467,13 @@ func (m Model) handleGrammarKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	return m, nil, false
 }
 
-// handleLeaderOrTabKey answers the two keys that leave the list behind: the
-// verb leader, and a tab bar key. Handled is false if msg is neither.
-func (m Model) handleLeaderOrTabKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+// handleLeaderKey answers the verb leader. Handled is false if msg is
+// anything else.
+func (m Model) handleLeaderKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	if msg.String() == actionLeader {
 		m.panelActions = true
 
 		return m, nil, true
-	}
-
-	if tab, ok := tabForKey(msg.String()); ok {
-		next, cmd := m.openTab(tab)
-
-		return next, cmd, true
 	}
 
 	return m, nil, false
@@ -682,7 +608,7 @@ func (m Model) handleChordKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 
 		return m, nil, true
 
-	case key.Matches(msg, m.keys.TopPrefix) && !m.acceptsCheckoutPR():
+	case key.Matches(msg, m.keys.TopPrefix):
 		m.pendingTop = true
 		return m, nil, true
 
@@ -696,14 +622,6 @@ func (m Model) handleChordKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	}
 
 	return m, nil, false
-}
-
-// acceptsCheckoutPR reports whether the current view has a pull request for
-// "g" to check out. Elsewhere "g" opens the "gg" chord for jumping to the top.
-// The panel grid is not one of them: its verbs live behind the leader key, so
-// "gg" means the same thing in every panel.
-func (m Model) acceptsCheckoutPR() bool {
-	return m.viewMode == ViewModePRDetail
 }
 
 func (m Model) moveToTop() Model {
@@ -907,8 +825,6 @@ func (m Model) handleEnterKey() (tea.Model, tea.Cmd) {
 	m.uncommittedDiff = nil
 	m.uncommittedFullDiff = true
 	m.branchDetail = models.BranchDetail{}
-	m.prDetail = forge.PRDetail{}
-	m.prDetailScroll = 0
 	m.detailLoading = true
 
 	return m, tea.Batch(loadDetailCmd(m.selectedRepo), m.spinner.Tick)
@@ -1072,10 +988,6 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if msg.String() == actionLeader {
 		m.panelActions = true
 		return m, nil
-	}
-
-	if tab, ok := tabForKey(msg.String()); ok {
-		return m.openTab(tab)
 	}
 
 	panels := m.panelSet(m.gridWidth())
@@ -1550,8 +1462,6 @@ func (m Model) openRepo(path string) (tea.Model, tea.Cmd) {
 	m.uncommittedDiff = nil
 	m.uncommittedFullDiff = true
 	m.branchDetail = models.BranchDetail{}
-	m.prDetail = forge.PRDetail{}
-	m.prDetailScroll = 0
 	m.detailLoading = true
 
 	return m, tea.Batch(loadDetailCmd(path), m.spinner.Tick)
@@ -1635,8 +1545,6 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		m.worktrees = nil
 		m.prs = nil
 		m.branchDetail = models.BranchDetail{}
-		m.prDetail = forge.PRDetail{}
-		m.prDetailScroll = 0
 		cmds = append(cmds, discoverReposCmd(m.scanPaths, m.maxDepth))
 
 	case ViewModeRepoDetail:
@@ -1647,8 +1555,6 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		m.prs = nil
 		m.notesFiles = nil
 		m.branchDetail = models.BranchDetail{}
-		m.prDetail = forge.PRDetail{}
-		m.prDetailScroll = 0
 		m.detailLoading = true
 
 		if m.selectedRepo != "" {
@@ -1667,15 +1573,6 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 			cmds = append(cmds, loadBranchDetailCmd(m.selectedRepo, m.selectedBranch.Name))
 		}
 
-	case ViewModePRDetail:
-		// Clear PR detail when refreshing
-		m.prDetail = forge.PRDetail{}
-
-		if m.selectedRepo != "" && m.selectedPR.Number > 0 {
-			cmds = append(cmds,
-				loadPRDetailCmd(m.selectedRepo, m.summaries[m.selectedRepo].RemoteID, m.selectedPR.Number))
-		}
-
 	default:
 		// no per-view refresh behavior for this view
 	}
@@ -1685,124 +1582,6 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 	}
 
 	return m, tea.Batch(cmds...)
-}
-
-// moveToAdjacentPR switches the PR-detail view to the PR delta positions away
-// from the currently selected one in m.prs, loading its detail and
-// prefetching the next one in the same direction.
-func (m Model) moveToAdjacentPR(delta int) (tea.Model, tea.Cmd) {
-	currentIdx := slices.IndexFunc(m.prs, func(pr forge.PullRequest) bool {
-		return pr.Number == m.selectedPR.Number
-	})
-
-	newIdx := currentIdx + delta
-	if currentIdx == -1 || newIdx < 0 || newIdx >= len(m.prs) {
-		return m, nil
-	}
-
-	m.selectedPR = m.prs[newIdx]
-	m.prDetail = forge.PRDetail{PullRequest: m.selectedPR}
-	m.prDetailScroll = 0
-
-	cmds := []tea.Cmd{loadPRDetailCmd(m.selectedRepo, m.summaries[m.selectedRepo].RemoteID, m.selectedPR.Number)}
-
-	if prefetchIdx := newIdx + delta; prefetchIdx >= 0 && prefetchIdx < len(m.prs) {
-		cmds = append(cmds,
-			prefetchPRDetailCmd(m.selectedRepo, m.summaries[m.selectedRepo].RemoteID, m.prs[prefetchIdx].Number))
-	}
-
-	return m, tea.Batch(cmds...)
-}
-
-// scrollPRDetail moves the PR detail page by delta lines, clamped so the last
-// line of content never scrolls past the top of the page.
-func (m Model) scrollPRDetail(delta int) Model {
-	m.prDetailScroll = min(max(m.prDetailScroll+delta, 0), m.maxPRDetailScroll())
-
-	return m
-}
-
-// maxPRDetailScroll bounds the scroll offset by the page's actual line count.
-// The breadcrumb strings passed to prDetailContentLines only change text
-// within its first line, never how many lines it produces, so blank
-// placeholders here still measure the same total.
-func (m Model) maxPRDetailScroll() int {
-	lines := m.prDetailContentLines("", "", "")
-	visible := max(m.height-prDetailChromeHeight, 1)
-
-	return max(len(lines)-visible, 0)
-}
-
-// handlePRDetailCopyOrOpenKey answers the PR detail view's open-in-browser and
-// clipboard keys. Handled is false if msg matched none of them.
-func (m Model) handlePRDetailCopyOrOpenKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
-	switch {
-	case key.Matches(msg, m.keys.OpenURL):
-		if m.prDetail.URL != "" {
-			return m, openURLCmd(m.prDetail.URL), true
-		}
-
-		return m, nil, true
-
-	case key.Matches(msg, m.keys.CopyURL):
-		if m.prDetail.URL != "" {
-			return m, copyToClipboardCmd(m.prDetail.URL), true
-		}
-
-		return m, nil, true
-
-	case key.Matches(msg, m.keys.CopyPRNumber):
-		return m, copyToClipboardCmd(fmt.Sprintf("#%d", m.prDetail.Number)), true
-
-	case key.Matches(msg, m.keys.CopyBranch):
-		if m.prDetail.HeadRef != "" {
-			return m, copyToClipboardCmd(m.prDetail.HeadRef), true
-		}
-
-		return m, nil, true
-	}
-
-	return m, nil, false
-}
-
-func (m Model) handlePRDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if next, cmd, handled := m.handlePRDetailCopyOrOpenKey(msg); handled {
-		return next, cmd
-	}
-
-	switch {
-	case key.Matches(msg, m.keys.Quit):
-		return m, tea.Quit
-
-	case key.Matches(msg, m.keys.Back):
-		m.viewMode = ViewModeRepoDetail
-		if m.prListReturn == ViewModePRList {
-			m.viewMode, m.prListReturn = ViewModePRList, 0
-		}
-
-		return m, nil
-
-	case key.Matches(msg, m.keys.Refresh):
-		return m.handleRefresh()
-
-	case key.Matches(msg, m.keys.Up):
-		return m.scrollPRDetail(-1), nil
-
-	case key.Matches(msg, m.keys.Down):
-		return m.scrollPRDetail(1), nil
-
-	case msg.String() == "[":
-		return m.moveToAdjacentPR(-1)
-
-	case msg.String() == "]":
-		return m.moveToAdjacentPR(1)
-
-	case key.Matches(msg, m.keys.Help):
-		m.viewMode = ViewModeHelp
-		return m, nil
-	}
-
-	return m.handleActionKey(msg)
 }
 
 func (m Model) handleFilterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
