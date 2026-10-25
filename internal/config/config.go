@@ -26,6 +26,7 @@ type Config struct {
 	CacheToDisk *bool      `toml:"cache_to_disk"`
 	Diff        DiffConfig `toml:"diff"`
 	PRViews     []PRView   `toml:"pr_views"`
+	Tasks       []Task     `toml:"tasks"`
 }
 
 // PRView is one named pull request search, in GitHub's own query syntax. The
@@ -100,6 +101,10 @@ func loadFile(path string) (Config, error) {
 	}
 	if cfg.CacheTTLMinutes < 0 {
 		return Config{}, fmt.Errorf("parsing config %s: %w", path, errNegativeTTL)
+	}
+
+	if err := validateTasks(cfg.Tasks); err != nil {
+		return Config{}, fmt.Errorf("parsing config %s: %w", path, err)
 	}
 
 	expanded, err := expandHomePaths(cfg.ScanPaths)

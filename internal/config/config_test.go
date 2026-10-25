@@ -33,6 +33,14 @@ cache_ttl_minutes = 10
 
 [diff]
 external = "difft --color=always"
+
+[[tasks]]
+name = "gc"
+run = "git gc"
+where = "git_size > 1G and last_run(gc) > 30d"
+concurrency = 1
+confirm = true
+every = "30d"
 `)
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	t.Setenv("HOME", "/home/tester")
@@ -60,6 +68,17 @@ external = "difft --color=always"
 	}
 	if want := "difft --color=always"; cfg.Diff.External != want {
 		t.Errorf("diff.external = %q; want %q", cfg.Diff.External, want)
+	}
+	assertGCTask(t, cfg.Tasks)
+}
+
+func assertGCTask(t *testing.T, got []config.Task) {
+	t.Helper()
+	if len(got) != 1 || got[0].Name != "gc" || got[0].Concurrency != 1 || !got[0].Confirm {
+		t.Fatalf("tasks = %+v", got)
+	}
+	if interval, err := got[0].Interval(); err != nil || interval != 30*24*time.Hour {
+		t.Errorf("interval = %v, %v; want 30 days", interval, err)
 	}
 }
 
@@ -96,18 +115,36 @@ func TestLoadErrors(t *testing.T) {
 	tests := []struct {
 		name    string
 		content string
+		want    error
 	}{
-		{"malformed toml", "scan_paths = [unclosed"},
-		{"negative depth", "depth = -1"},
-		{"negative ttl", "cache_ttl_minutes = -5"},
+		{"malformed toml", "scan_paths = [unclosed", nil},
+		{"negative depth", "depth = -1", nil},
+		{"negative ttl", "cache_ttl_minutes = -5", nil},
+		{"task without name", "[[tasks]]\nrun = 'true'", config.ErrTaskNameMissing},
+		{"task name with space", "[[tasks]]\nname = 'a b'\nrun = 'true'", config.ErrTaskNameInvalid},
+		{
+			"duplicate task", "[[tasks]]\nname = 'a'\nrun = 'true'\n[[tasks]]\nname = 'a'\nrun = 'true'",
+			config.ErrTaskNameDuplicate,
+		},
+		{"task without run", "[[tasks]]\nname = 'a'", config.ErrTaskRunMissing},
+		{
+			"negative concurrency", "[[tasks]]\nname = 'a'\nrun = 'true'\nconcurrency = -1",
+			config.ErrTaskNegativeWorkers,
+		},
+		{"bad every", "[[tasks]]\nname = 'a'\nrun = 'true'\nevery = 'soon'", config.ErrTaskEveryInvalid},
+		{"bad where", "[[tasks]]\nname = 'a'\nrun = 'true'\nwhere = 'git_size >'", nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := writeConfig(t, tt.content)
 			t.Setenv("XDG_CONFIG_HOME", dir)
 
-			if _, err := config.Load(); err == nil {
-				t.Error("expected error, got nil")
+			_, err := config.Load()
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if tt.want != nil && !errors.Is(err, tt.want) {
+				t.Errorf("error = %v; want %v", err, tt.want)
 			}
 		})
 	}
