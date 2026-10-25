@@ -110,6 +110,7 @@ pressing `:`; bare keys act on the repo list.
 |---|---|
 | press `;` | opens the find view |
 | press `d` `i` `r` `t` `y` | find: dirty; matches: repo:dirty repo:dirty-pr |
+| press `tab` | opens the find view |
 | press `a` | opens the find view |
 | press `s` | selects dirty, dirty-pr |
 | press `!` `f` `s` `r` | opens the run view; starts run fetch (marked); over 2 repos |

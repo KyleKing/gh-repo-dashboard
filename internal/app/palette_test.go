@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
 
@@ -199,9 +200,119 @@ func TestPaletteRendersItsMatchesAndFooter(t *testing.T) {
 	m.paletteInput.SetValue("#12")
 
 	rendered := plainText(m.renderScreen())
-	for _, want := range []string{"find", "2 matches", "Composable extras", "[a]ct on set"} {
+	for _, want := range []string{"find", "2 matches", "Composable extras", "[tab/↓] results"} {
 		if !strings.Contains(rendered, want) {
 			t.Errorf("palette is missing %q:\n%s", want, rendered)
 		}
+	}
+
+	rendered = plainText(m.focusPaletteResults().renderScreen())
+	for _, want := range []string{"[a]ct on set", "[tab] mark", "[/] edit query"} {
+		if !strings.Contains(rendered, want) {
+			t.Errorf("the results footer is missing %q:\n%s", want, rendered)
+		}
+	}
+}
+
+func typeKeys(t *testing.T, m Model, text string) Model {
+	t.Helper()
+	for _, r := range text {
+		next, _ := m.Update(keyPress(r))
+		m = mustModel(t, next)
+	}
+
+	return m
+}
+
+func TestPalette_TypingCalcYieldsQueryCalc(t *testing.T) {
+	t.Parallel()
+
+	opened, _ := paletteFleet().openPalette()
+	m := typeKeys(t, mustModel(t, opened), "calc")
+
+	if got := m.paletteInput.Value(); got != "calc" {
+		t.Errorf("typing calc gave query %q; the a must reach the query, not open the verbs", got)
+	}
+	if m.paletteActions || m.paletteResults {
+		t.Errorf("typing must leave focus on the query line: actions %v results %v", m.paletteActions, m.paletteResults)
+	}
+}
+
+func TestPaletteFocusMovesBetweenTheQueryAndTheResults(t *testing.T) {
+	t.Parallel()
+
+	tab, down := tea.KeyPressMsg{Code: tea.KeyTab}, tea.KeyPressMsg{Code: tea.KeyDown}
+	ctrlN := tea.KeyPressMsg{Code: 'n', Mod: tea.ModCtrl}
+
+	tests := []struct {
+		name        string
+		keys        []tea.KeyPressMsg
+		wantQuery   string
+		wantResults bool
+		wantActions bool
+		wantMarks   int
+	}{
+		{
+			"g, :, and a are query text",
+			[]tea.KeyPressMsg{keyPress('g'), keyPress(':'), keyPress('a')},
+			"g:a", false, false, 0,
+		},
+		{"tab moves into the results", []tea.KeyPressMsg{keyPress('#'), keyPress('1'), tab}, "#1", true, false, 0},
+		{"down moves in", []tea.KeyPressMsg{down}, "", true, false, 0},
+		{"ctrl-n moves in", []tea.KeyPressMsg{ctrlN}, "", true, false, 0},
+		{"a opens the verbs from the results", []tea.KeyPressMsg{down, keyPress('a')}, "", true, true, 0},
+		{"tab marks from the results", []tea.KeyPressMsg{down, tab, tab}, "", true, false, 2},
+		{"slash returns to the query", []tea.KeyPressMsg{down, keyPress('/'), keyPress('a')}, "a", false, false, 0},
+		{"i returns to the query", []tea.KeyPressMsg{down, keyPress('i'), keyPress('b')}, "b", false, false, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := paletteFleet()
+			opened, _ := m.openPalette()
+			m = mustModel(t, opened)
+			m.paletteInput.SetValue("")
+			for _, k := range tt.keys {
+				next, _ := m.Update(k)
+				m = mustModel(t, next)
+			}
+
+			if m.paletteInput.Value() != tt.wantQuery || m.paletteResults != tt.wantResults ||
+				m.paletteActions != tt.wantActions || len(m.paletteMarks) != tt.wantMarks {
+				t.Errorf("query %q results %v actions %v marks %d; want %q %v %v %d",
+					m.paletteInput.Value(), m.paletteResults, m.paletteActions, len(m.paletteMarks),
+					tt.wantQuery, tt.wantResults, tt.wantActions, tt.wantMarks)
+			}
+			if m.viewMode != ViewModePalette {
+				t.Errorf("view = %v; want the palette still open", m.viewMode)
+			}
+		})
+	}
+}
+
+func TestPaletteQuitPathsEndTheProgramFromEitherFocus(t *testing.T) {
+	t.Parallel()
+
+	opened, _ := paletteFleet().openPalette()
+	query := mustModel(t, opened)
+	results := query.focusPaletteResults()
+
+	for name, tt := range map[string]struct {
+		m   Model
+		key tea.KeyPressMsg
+	}{
+		"ctrl-c in the query":   {query, tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}},
+		"ctrl-c in the results": {results, tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}},
+		"q in the results":      {results, keyPress('q')},
+	} {
+		if _, cmd := tt.m.Update(tt.key); cmd == nil {
+			t.Errorf("%s did not quit", name)
+		}
+	}
+
+	next, _ := query.Update(keyPress('q'))
+	if got := mustModel(t, next).paletteInput.Value(); got != "q" {
+		t.Errorf("q in the query gave %q; want it typed", got)
 	}
 }

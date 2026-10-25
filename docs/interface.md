@@ -74,12 +74,17 @@ is live, and the panel column narrows while the detail pane holds focus, since
 nothing is being selected in it then. `O` opens the selected branch in its own full-screen view.
 
 `space` opens the universal find, scoped to the repo you are in (`;` opens it
-fleet-wide from the list, and `*` widens a repo-scoped query). Type `#12` for a
-pull request number, `b`, `s`, `n`, or `r` plus a space to narrow to branches,
-stashes, notes, or repos, or plain text to search everything. `enter` opens the
-highlighted result where it lives, `tab` marks rows, and `a` offers verbs for the
-whole set, including committing its repos to the marked-repos text object so
-batch operators compose with the find.
+fleet-wide from the list, and `*` widens a repo-scoped query). The find opens with
+focus on its query line, where every key types, including `a`, `g`, and `:`. Type
+`#12` for a pull request number, `b`, `s`, `n`, or `r` plus a space to narrow to
+branches, stashes, notes, or repos, or plain text to search everything. `enter`
+opens the highlighted result where it lives.
+
+`tab`, `down`, or `ctrl-n` moves focus into the results, where letters are
+commands: `j`/`k` move, `tab` or `x` marks a row, and `a` offers verbs for the
+marked set (or every match), including committing its repos to the marked-repos
+text object so batch operators compose with the find. `/` or `i` returns to the
+query line, and `?` shows this legend. `ctrl-c` quits from either focus.
 
 Launched from inside a repository, the scan finds only that one repo and the
 detail view opens straight away. `esc` still steps back to the one-row list.

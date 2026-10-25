@@ -236,6 +236,7 @@ func (m Model) openPalette() (tea.Model, tea.Cmd) {
 	m.paletteCursor = 0
 	m.paletteMarks = nil
 	m.paletteActions = false
+	m.paletteResults = false
 	m.paletteInput.SetValue("")
 	m.paletteInput.Focus()
 	m.viewMode = ViewModePalette
@@ -251,39 +252,38 @@ func (m Model) closePalette() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handlePaletteKey drives the find line: typing requeries, tab marks, enter
-// acts on the highlighted row, and the action leader opens the verbs for the
-// whole set.
+// handlePaletteKey drives the find line. Keys type into the query until focus
+// moves to the results, where letters are commands: tab marks, the action
+// leader opens the verbs for the whole set, and / or i returns to the query.
 func (m Model) handlePaletteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	results := m.findResults()
 
-	if m.paletteActions {
+	switch {
+	case msg.String() == keyCtrlC:
+		return m, tea.Quit
+	case m.paletteActions:
 		return m.handlePaletteActionKey(msg, m.paletteTargets(results))
+	case m.paletteResults:
+		return m.handlePaletteResultsKey(msg, results)
 	}
 
+	return m.handlePaletteInputKey(msg, results)
+}
+
+func (m Model) handlePaletteInputKey(msg tea.KeyMsg, results []findResult) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case keyEsc:
 		return m.closePalette()
 
-	case keyTab:
-		return m.togglePaletteMark(results)
-
-	case actionLeader:
-		if len(results) > 0 {
-			m.paletteActions = true
-		}
-
-		return m, nil
-
 	case keyEnter:
 		return m.runPaletteDefault(results)
 
+	case keyTab, keyDown, "ctrl+n":
+		return m.focusPaletteResults(), nil
+
 	case "up", "ctrl+p":
 		m.paletteCursor = max(m.paletteCursor-1, 0)
-		return m, nil
 
-	case "down", "ctrl+n":
-		m.paletteCursor = min(m.paletteCursor+1, max(len(results)-1, 0))
 		return m, nil
 	}
 
@@ -292,6 +292,58 @@ func (m Model) handlePaletteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.paletteCursor = 0
 
 	return m, cmd
+}
+
+func (m Model) handlePaletteResultsKey(msg tea.KeyMsg, results []findResult) (tea.Model, tea.Cmd) {
+	last := max(len(results)-1, 0)
+
+	switch msg.String() {
+	case keyEsc:
+		return m.closePalette()
+
+	case "q":
+		return m, tea.Quit
+
+	case "?":
+		return m.openHelp(), nil
+
+	case "/", "i":
+		m.paletteResults = false
+
+		return m, m.paletteInput.Focus()
+
+	case keyTab, markToggleKey:
+		return m.togglePaletteMark(results)
+
+	case actionLeader:
+		m.paletteActions = len(results) > 0
+
+		return m, nil
+
+	case keyEnter:
+		return m.runPaletteDefault(results)
+
+	case "up", "ctrl+p", "k":
+		m.paletteCursor = max(m.paletteCursor-1, 0)
+
+	case keyDown, "ctrl+n", "j":
+		m.paletteCursor = min(m.paletteCursor+1, last)
+
+	case "home", "g":
+		m.paletteCursor = 0
+
+	case "end", "G":
+		m.paletteCursor = last
+	}
+
+	return m, nil
+}
+
+func (m Model) focusPaletteResults() Model {
+	m.paletteResults = true
+	m.paletteInput.Blur()
+
+	return m
 }
 
 // paletteTargets is the set an action applies to: the marked rows, or every
@@ -480,7 +532,7 @@ func (m Model) paletteScreen() screen {
 		title: nameFind,
 		facts: m.paletteFacts(len(results)),
 		body:  m.renderPalette(results),
-		hints: paletteHints(m.paletteActions),
+		hints: paletteHints(m.paletteActions, m.paletteResults),
 	}
 }
 
@@ -596,18 +648,27 @@ func renderPaletteActions(targets []findResult) string {
 }
 
 //nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
-func paletteHints(actions bool) []keyhint.Hint {
-	if actions {
+func paletteHints(actions, results bool) []keyhint.Hint {
+	switch {
+	case actions:
 		return []keyhint.Hint{
-			{Key: "key", What: "run", Priority: 2},
+			{Key: "key", What: nameRun, Priority: 2},
 			{Key: keyEsc, What: descBack, Priority: 1},
+		}
+	case results:
+		return []keyhint.Hint{
+			{Key: keyEnter, What: descOpen, Priority: 5},
+			{Key: keyTab, What: "mark", Priority: 3},
+			{Key: actionLeader, What: "act on set", Priority: 2},
+			{Key: "/", What: "edit query", Priority: 4},
+			{Key: keyNavPair, What: descNav, Priority: 1},
+			{Key: keyEsc, What: descClose, Priority: 6},
 		}
 	}
 
 	return []keyhint.Hint{
 		{Key: keyEnter, What: descOpen, Priority: 5},
-		{Key: keyTab, What: "mark", Priority: 3},
-		{Key: actionLeader, What: "act on set", Priority: 2},
+		{Key: keyTab + "/↓", What: "results", Priority: 3},
 		{Key: "*", What: "widen to fleet", Priority: 1},
 		{Key: keyEsc, What: descClose, Priority: 4},
 	}

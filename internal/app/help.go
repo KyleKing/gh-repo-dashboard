@@ -15,7 +15,7 @@ import (
 func helpFromView(mode ViewMode) ViewMode {
 	switch mode {
 	case ViewModeRepoDetail, ViewModeBranchDetail, ViewModePRMap,
-		ViewModeTasks, ViewModeTaskPreview, ViewModeTaskRun, ViewModeTaskLog:
+		ViewModeTasks, ViewModeTaskPreview, ViewModeTaskRun, ViewModeTaskLog, ViewModePalette:
 		return mode
 	default:
 		return ViewModeRepoList
@@ -45,6 +45,8 @@ func (m Model) helpTree() []keyhint.Hint {
 		return branchHelpTree()
 	case ViewModePRMap:
 		return prMapHelpTree()
+	case ViewModePalette:
+		return paletteHelpTree()
 	case ViewModeTasks:
 		return tasksHelpTree()
 	case ViewModeTaskPreview:
@@ -141,7 +143,7 @@ func (m Model) handleHelpKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.closeHelp(), nil
 	case "q", keyCtrlC:
 		return m, tea.Quit
-	case "j", "down":
+	case "j", keyDown:
 		m.helpAt++
 	case "k", "up":
 		m.helpAt--
@@ -275,6 +277,36 @@ func branchHelpTree() []keyhint.Hint {
 		{Key: "?", What: legendHelp},
 		{Key: "q", What: nameQuit},
 	}
+}
+
+func paletteHelpTree() []keyhint.Hint {
+	return []keyhint.Hint{
+		{What: "query line", Head: true},
+		{What: "every key types, including a, g, and :"},
+		{Key: "#12", What: "a pull request by number"},
+		{Key: "b s n r", What: "plus a space narrows to branches, stashes, notes, or repos"},
+		{Key: "*", What: "widens a repo-scoped find to the fleet"},
+		{Key: keyEnter, What: "open the highlighted result where it lives"},
+		{Key: keyTab + "/↓", What: "move focus into the results"},
+		{Key: keyEsc, What: descClose},
+		{What: "results", Head: true},
+		{Key: keyNavPair, What: "a result"},
+		{Key: keyTab + "/" + markToggleKey, What: "mark the result and step past it"},
+		{Key: actionLeader, What: "verbs for the marked results, or every match", Kids: paletteVerbHints()},
+		{Key: "/", What: "back to the query line, as does i"},
+		{Key: "q", What: nameQuit},
+	}
+}
+
+func paletteVerbHints() []keyhint.Hint {
+	actions := paletteActionsFor(findPR)
+
+	hints := make([]keyhint.Hint, 0, len(actions))
+	for _, action := range actions {
+		hints = append(hints, keyhint.Hint{Key: action.key, What: action.name})
+	}
+
+	return hints
 }
 
 func tasksHelpTree() []keyhint.Hint {

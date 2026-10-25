@@ -344,9 +344,15 @@ through `confirmAction` first.
 `internal/app/palette.go` parses the query grammar (`#12` a PR number, a
 one-letter prefix for branches/stashes/notes/repos, `*` to widen the scope, bare
 text for everything) and `view_palette.go` answers it from cache-resident data
-only, so no keystroke costs a fetch. `tab` marks rows, `!` opens the verbs for
-the target set, and selecting a repo set commits it to the selected-repos text
-object so `F`/`P`/`C`/`R` compose with a find. The input's placeholder spells
+only, so no keystroke costs a fetch. The palette has two focus states, held in
+`Model.paletteResults`. The query line has focus on open and every key types,
+because a find is mostly typing and a letter that doubles as a command would eat
+queries like `calc`. `tab`, `down`, or `ctrl-n` moves focus into the results,
+where letters are commands: `tab` marks rows, `a` opens the verbs for the target
+set, and `/` or `i` returns to the query. Selecting a repo set commits it to the
+selected-repos text object so `F`/`P`/`C`/`R` compose with a find. The palette is
+routed before the chord keys (`gg`, `:`), which would otherwise swallow those
+characters of a query. The input's placeholder spells
 the grammar out (`find... (#12, r/b/s/n, *)`) so it is visible the moment the
 palette opens rather than living only behind `?`; the Repos list's own `/`
 search carries the matching hint for its narrower `r:`/`b:` scope prefix.

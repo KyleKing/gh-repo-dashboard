@@ -44,11 +44,12 @@ The palette is the discoverability answer the `:` prompt never was: every object
 is reachable by typing what you remember about it, with a one-letter prefix to
 narrow the type and bare text to search everything.
 
-Acting on the result set is the point rather than previewing it. `tab` marks
-rows, `!` targets every match when nothing is marked, and a repo result set
+Acting on the result set is the point rather than previewing it. Keys type into
+the query until `tab` or `down` moves focus to the results, where `tab` marks
+rows, `a` targets every match when nothing is marked, and a repo result set
 commits to the existing selected-repos text object, so the batch operators
 compose with it exactly as `sr` does. "Which repos have PR 12" becomes `space`,
-`#12`, `!`, pick the verb.
+`#12`, `tab`, `a`, pick the verb.
 
 Scope defaults to the repo you are in and `*` widens it, because a fleet-wide
 default would make the common case the one that needs narrowing. `space` opens

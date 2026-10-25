@@ -248,15 +248,13 @@ func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleConfirmKey(msg)
 	case ViewModePRMap:
 		return m.handlePRMapKey(msg)
-	case ViewModePalette:
-		return m.handlePaletteKey(msg)
 	default:
 		return m.handleKey(msg)
 	}
 }
 
-// routeModalKey sends a text prompt and help their keys before the chord keys
-// see them, since a query must be able to hold a g or a colon.
+// routeModalKey sends a text prompt, help, and the find their keys before the
+// chord keys see them, since a query must be able to hold a g or a colon.
 func (m Model) routeModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 	switch {
 	case m.searching:
@@ -267,8 +265,15 @@ func (m Model) routeModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 		next, cmd := m.handleCommandKey(msg)
 
 		return next, cmd, true
-	case m.viewMode == ViewModeHelp:
+	}
+
+	switch m.viewMode { //nolint:exhaustive // every other mode takes its keys after the chords
+	case ViewModeHelp:
 		next, cmd := m.handleHelpKey(msg)
+
+		return next, cmd, true
+	case ViewModePalette:
+		next, cmd := m.handlePaletteKey(msg)
 
 		return next, cmd, true
 	}

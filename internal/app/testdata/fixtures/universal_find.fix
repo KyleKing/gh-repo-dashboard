@@ -5,6 +5,8 @@ then view = find
 when keys d i r t y
 then find = dirty
 then matches = repo:dirty repo:dirty-pr
+when keys tab
+then view = find
 when keys a
 then view = find
 when keys s

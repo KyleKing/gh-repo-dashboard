@@ -187,6 +187,8 @@ type Model struct {
 	paletteMarks      map[string]bool
 	paletteFleetScope bool
 	paletteActions    bool
+	// paletteResults is where palette keys go: the results once true, the query line while false.
+	paletteResults    bool
 	paletteReturnMode ViewMode
 
 	filterCursor int

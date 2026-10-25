@@ -41,9 +41,12 @@ func (m Model) currentTab() Tab {
 // underlyingMode is the view an overlay (help, find, a confirmation) was
 // opened over, and the view mode itself otherwise.
 func (m Model) underlyingMode() ViewMode {
-	switch m.viewMode { //nolint:exhaustive // every other mode is its own base
-	case ViewModeHelp:
-		return m.helpFrom
+	mode := m.viewMode
+	if mode == ViewModeHelp {
+		mode = m.helpFrom
+	}
+
+	switch mode { //nolint:exhaustive // every other mode is its own base
 	case ViewModePalette:
 		return m.paletteReturnMode
 	case ViewModeConfirm:
@@ -52,7 +55,7 @@ func (m Model) underlyingMode() ViewMode {
 		}
 	}
 
-	return m.viewMode
+	return mode
 }
 
 func (m Model) frameTabs() []frame.Tab {
