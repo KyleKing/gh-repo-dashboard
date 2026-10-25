@@ -3,6 +3,7 @@ package app
 
 import (
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -23,7 +24,15 @@ import (
 // to that in-memory cost (measured under 15ms at this size) specifically so
 // the test catches a real regression (an accidental O(n^2) walk, a blocking
 // call added to Update or View) without becoming flaky on a loaded CI runner.
-const scrollLatencyBudget = 75 * time.Millisecond
+//
+// The budget applies to the fastest of scrollSamples steps. Wall time of a
+// single step swings from 4ms to over 200ms when other parallel tests and
+// coverage instrumentation saturate the CPUs, while the minimum stays near 4ms
+// because contention only adds time. A real regression raises every sample.
+const (
+	scrollLatencyBudget = 75 * time.Millisecond
+	scrollSamples       = 15
+)
 
 // syntheticFleetSize and syntheticBranchSize are generous upper bounds on a
 // real fleet and a real repo's local branch count respectively (this app has
@@ -71,11 +80,17 @@ func syntheticFleetModel(t *testing.T) Model {
 func scrollStep(t *testing.T, m Model) time.Duration {
 	t.Helper()
 
-	start := time.Now()
-	updated, _ := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
-	_ = mustModel(t, updated).renderScreen()
+	best := time.Duration(math.MaxInt64)
 
-	return time.Since(start)
+	for range scrollSamples {
+		start := time.Now()
+		updated, _ := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
+		_ = mustModel(t, updated).renderScreen()
+
+		best = min(best, time.Since(start))
+	}
+
+	return best
 }
 
 func TestScrollLatency_RepoListStaysUnderBudget(t *testing.T) {
