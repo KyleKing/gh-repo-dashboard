@@ -21,11 +21,11 @@ func TestMarkFillsTheSelectedTextObject(t *testing.T) {
 	}
 
 	ran, cmd := pressKeys(t, marked, "!fsr")
-	if ran.batchTask != "Fetch All (marked)" {
-		t.Errorf("expected the marked scope, got %q", ran.batchTask)
+	if ran.run.label != "fetch (marked)" {
+		t.Errorf("expected the marked scope, got %q", ran.run.label)
 	}
-	if ran.batchTotal != 2 {
-		t.Errorf("expected 2 repos, got %d", ran.batchTotal)
+	if len(ran.run.paths) != 2 {
+		t.Errorf("expected 2 repos, got %d", len(ran.run.paths))
 	}
 	if cmd == nil {
 		t.Error("expected a batch cmd")

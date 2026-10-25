@@ -203,11 +203,11 @@ func TestExecuteCommandFetch(t *testing.T) {
 	t.Parallel()
 	m := commandModel()
 	m2, cmd := m.ExecuteCommand("fetch")
-	if m2.viewMode != ViewModeBatchProgress {
-		t.Errorf("expected ViewModeBatchProgress, got %v", m2.viewMode)
+	if m2.viewMode != ViewModeTaskRun {
+		t.Errorf("expected ViewModeTaskRun, got %v", m2.viewMode)
 	}
-	if !m2.batchRunning || m2.batchTotal != 2 {
-		t.Errorf("expected batch running over 2 repos, got running=%v total=%d", m2.batchRunning, m2.batchTotal)
+	if !m2.run.running || len(m2.run.paths) != 2 {
+		t.Errorf("expected batch running over 2 repos, got running=%v total=%d", m2.run.running, len(m2.run.paths))
 	}
 	if cmd == nil {
 		t.Error("expected batch cmd")
@@ -230,14 +230,14 @@ func TestExecuteCommandCleanupConfirmsFirst(t *testing.T) {
 
 	confirmed, cmd := m2.handleConfirmKey(keyPress('y'))
 	m3 := mustModel(t, confirmed)
-	if m3.viewMode != ViewModeBatchProgress {
-		t.Errorf("expected ViewModeBatchProgress, got %v", m3.viewMode)
+	if m3.viewMode != ViewModeTaskRun {
+		t.Errorf("expected ViewModeTaskRun, got %v", m3.viewMode)
 	}
-	if m3.batchTask != "Cleanup Merged" {
-		t.Errorf("expected task name %q, got %q", "Cleanup Merged", m3.batchTask)
+	if m3.run.label != "cleanup" {
+		t.Errorf("expected task name %q, got %q", "cleanup", m3.run.label)
 	}
-	if !m3.batchRunning || m3.batchTotal != 2 {
-		t.Errorf("expected batch running over 2 repos, got running=%v total=%d", m3.batchRunning, m3.batchTotal)
+	if !m3.run.running || len(m3.run.paths) != 2 {
+		t.Errorf("expected batch running over 2 repos, got running=%v total=%d", m3.run.running, len(m3.run.paths))
 	}
 	if cmd == nil {
 		t.Error("expected batch cmd")
@@ -251,7 +251,7 @@ func TestExecuteCommandCleanupCanceled(t *testing.T) {
 
 	canceled, _ := m2.handleConfirmKey(keyPress('n'))
 	m3 := mustModel(t, canceled)
-	if m3.batchRunning {
+	if m3.run.running {
 		t.Error("expected a canceled cleanup never to start")
 	}
 }
@@ -260,14 +260,14 @@ func TestExecuteCommandCleanupDryRun(t *testing.T) {
 	t.Parallel()
 	m := commandModel()
 	m2, cmd := m.ExecuteCommand("cleanup --dry-run")
-	if m2.viewMode != ViewModeBatchProgress {
-		t.Errorf("expected ViewModeBatchProgress, got %v", m2.viewMode)
+	if m2.viewMode != ViewModeTaskRun {
+		t.Errorf("expected ViewModeTaskRun, got %v", m2.viewMode)
 	}
-	if m2.batchTask != "Cleanup Merged (dry run)" {
-		t.Errorf("expected task name %q, got %q", "Cleanup Merged (dry run)", m2.batchTask)
+	if m2.run.label != "cleanup-preview" {
+		t.Errorf("expected task name %q, got %q", "cleanup-preview", m2.run.label)
 	}
-	if !m2.batchRunning || m2.batchTotal != 2 {
-		t.Errorf("expected batch running over 2 repos, got running=%v total=%d", m2.batchRunning, m2.batchTotal)
+	if !m2.run.running || len(m2.run.paths) != 2 {
+		t.Errorf("expected batch running over 2 repos, got running=%v total=%d", m2.run.running, len(m2.run.paths))
 	}
 	if cmd == nil {
 		t.Error("expected batch cmd")
@@ -278,11 +278,11 @@ func TestExecuteCommandCleanupDryRunWithPredicate(t *testing.T) {
 	t.Parallel()
 	m := commandModel()
 	m2, cmd := m.ExecuteCommand("cleanup --dry-run dirty")
-	if m2.batchTask != "Cleanup Merged (dry run) (dirty)" {
-		t.Errorf("expected task name %q, got %q", "Cleanup Merged (dry run) (dirty)", m2.batchTask)
+	if m2.run.label != "cleanup-preview (dirty)" {
+		t.Errorf("expected task name %q, got %q", "cleanup-preview (dirty)", m2.run.label)
 	}
-	if m2.batchTotal != 1 {
-		t.Errorf("expected 1 matching repo, got %d", m2.batchTotal)
+	if len(m2.run.paths) != 1 {
+		t.Errorf("expected 1 matching repo, got %d", len(m2.run.paths))
 	}
 	if cmd == nil {
 		t.Error("expected batch cmd")

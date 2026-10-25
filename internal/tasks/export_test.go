@@ -1,4 +1,4 @@
-package batch
+package tasks
 
 import (
 	"context"
@@ -6,12 +6,8 @@ import (
 	"github.com/kyleking/aragonite/vcs"
 )
 
-// RepoName exposes the unexported repoName helper to black-box tests.
-var RepoName = repoName
-
 // SetGetMergedPRHeadsForTest overrides the getMergedPRHeads seam for black-box
-// tests and returns a func that restores the original. Avoids shelling out to
-// a real gh CLI when testing squash-merged detection.
+// tests and returns a func that restores the original.
 func SetGetMergedPRHeadsForTest(
 	fn func(ctx context.Context, repoPath, remoteID string) (map[string]string, error),
 ) func() {
@@ -22,8 +18,7 @@ func SetGetMergedPRHeadsForTest(
 }
 
 // SetGetOperationsForTest overrides the getOperations seam for black-box tests
-// and returns a func that restores the original. Avoids shelling out to a real
-// git/jj CLI when testing squash-merged detection.
+// and returns a func that restores the original.
 func SetGetOperationsForTest(fn func(repoPath string) vcs.Operations) func() {
 	orig := getOperations
 	getOperations = fn

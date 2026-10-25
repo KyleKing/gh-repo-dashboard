@@ -15,8 +15,8 @@ type Snapshot struct {
 	Predicate     string   `json:"predicate,omitempty"`
 	Search        string   `json:"search,omitempty"`
 	CommandInput  string   `json:"command_input,omitempty"`
-	BatchTask     string   `json:"batch_task,omitempty"`
-	BatchTotal    int      `json:"batch_total,omitempty"`
+	RunTask       string   `json:"run_task,omitempty"`
+	RunTotal      int      `json:"run_total,omitempty"`
 	StatusMessage string   `json:"status_message,omitempty"`
 	Panel         string   `json:"panel,omitempty"`
 	Find          string   `json:"find,omitempty"`
@@ -42,8 +42,8 @@ func (v ViewMode) String() string {
 		return "prmap"
 	case ViewModePalette:
 		return nameFind
-	case ViewModeBatchProgress:
-		return "batch"
+	case ViewModeTaskRun:
+		return "run"
 	default:
 		return "unknown"
 	}
@@ -72,8 +72,8 @@ func (m Model) Snapshot() Snapshot {
 		Predicate:     m.predicateText,
 		Search:        m.searchText,
 		CommandInput:  m.commandInput.Value(),
-		BatchTask:     m.batchTask,
-		BatchTotal:    m.batchTotal,
+		RunTask:       m.run.label,
+		RunTotal:      len(m.run.paths),
 		StatusMessage: m.statusMessage,
 		Panel:         m.focusedPanelName(),
 		Find:          m.paletteInput.Value(),

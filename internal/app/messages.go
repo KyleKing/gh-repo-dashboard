@@ -124,30 +124,6 @@ type RefreshCompleteMsg struct {
 	ViewMode ViewMode
 }
 
-// BatchResult reports the outcome of a batch operation on a single repo.
-type BatchResult struct {
-	Path    string
-	Success bool
-	Message string
-}
-
-// BatchStartMsg reports the start of a batch operation over the given paths.
-type BatchStartMsg struct {
-	TaskName string
-	Paths    []string
-}
-
-// BatchProgressMsg reports the result of one repo completing within a batch operation.
-type BatchProgressMsg struct {
-	Result BatchResult
-}
-
-// BatchCompleteMsg reports that a batch operation finished with the given results.
-type BatchCompleteMsg struct {
-	TaskName string
-	Results  []BatchResult
-}
-
 // PRListLoadedMsg reports the loaded list of pull requests for a repo.
 type PRListLoadedMsg struct {
 	Path  string

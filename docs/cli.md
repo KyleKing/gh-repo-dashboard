@@ -30,9 +30,11 @@ Flags and positional paths override the [config file](./configuration.md).
 
 ## Running tasks
 
-`run` executes a [`[[tasks]]`](./configuration.md#tasks) entry over the scanned
-repos and prints one row per repo with its status, exit code, duration, and log
-path. It exits nonzero when the task name is unknown or any repo failed.
+`run` executes a [`[[tasks]]`](./configuration.md#tasks) entry, or one of the
+built-ins (`fetch`, `prune`, `cleanup`, `cleanup-preview`, `refresh-prs`), over
+the scanned repos and prints one row per repo with its status, exit code,
+duration, and log path. It exits nonzero when the task name is unknown or any
+repo failed.
 
 ```bash
 # Run gc on every repo its where matches
@@ -43,6 +45,9 @@ gh repo-dashboard run gc --dry-run
 
 # Narrow further with a predicate, and skip a confirm prompt
 gh repo-dashboard run copier-update --where 'clean' --yes
+
+# Fetch every repo, as the TUI's !ff does
+gh repo-dashboard run fetch
 
 # Run every task on the repos whose every schedule is due
 gh repo-dashboard run --due

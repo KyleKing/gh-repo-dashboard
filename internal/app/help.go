@@ -14,7 +14,7 @@ import (
 // helpFromView is the view a legend documents. The docks stand for the list.
 func helpFromView(mode ViewMode) ViewMode {
 	switch mode {
-	case ViewModeRepoDetail, ViewModeBranchDetail, ViewModePRMap:
+	case ViewModeRepoDetail, ViewModeBranchDetail, ViewModePRMap, ViewModeTaskRun:
 		return mode
 	default:
 		return ViewModeRepoList
@@ -44,6 +44,8 @@ func (m Model) helpTree() []keyhint.Hint {
 		return branchHelpTree()
 	case ViewModePRMap:
 		return prMapHelpTree()
+	case ViewModeTaskRun:
+		return runHelpTree()
 	default:
 		return listHelpTree()
 	}
@@ -173,7 +175,7 @@ func operatorHints() []keyhint.Hint {
 	hints := make([]keyhint.Hint, 0, len(operators()))
 	for _, op := range operators() {
 		hints = append(hints, keyhint.Hint{
-			Key: strings.ToLower(op.Key), What: strings.ToLower(op.TaskName), Kids: objects,
+			Key: strings.ToLower(op.Key), What: op.Task, Kids: objects,
 		})
 	}
 
@@ -264,6 +266,16 @@ func branchHelpTree() []keyhint.Hint {
 		{Key: keyEsc, What: "back to the repo"},
 		{Key: "?", What: legendHelp},
 		{Key: "q", What: nameQuit},
+	}
+}
+
+func runHelpTree() []keyhint.Hint {
+	return []keyhint.Hint{
+		{Key: keyNavPair, What: "a repo"},
+		{Key: keyCtrlC, What: "cancel the run: running repos stop and queued repos are canceled"},
+		{Key: keyEsc, What: "back, once the run has finished"},
+		{Key: "?", What: legendHelp},
+		{Key: "q", What: "quit, once the run has finished"},
 	}
 }
 

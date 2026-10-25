@@ -9,6 +9,7 @@ import (
 
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/tasks"
 )
 
 // Name words shared across command ids, mode names, text objects, and
@@ -176,7 +177,7 @@ func DefaultRegistry() Registry {
 		cleanupCommand(),
 		batchCommand("fetch",
 			"Fetch visible repos, optionally scoped: :fetch [predicate]",
-			taskFetchAll, batchFetchAllCmd),
+			tasks.NameFetch),
 		filterCommand(),
 		Command{
 			Name:        nameHelp,
@@ -199,10 +200,10 @@ func DefaultRegistry() Registry {
 		},
 		batchCommand("prs-refresh",
 			"Refresh PR data for visible repos, optionally scoped: :prs-refresh [predicate]",
-			taskRefreshPRs, batchRefreshPRsCmd),
+			tasks.NameRefreshPRs),
 		batchCommand("prune",
 			"Prune remote refs in visible repos, optionally scoped: :prune [predicate]",
-			"Prune Remote", batchPruneRemoteCmd),
+			tasks.NamePrune),
 		Command{
 			Name:        nameQuit,
 			Description: "Quit",
@@ -385,7 +386,7 @@ func sortCommand() Command {
 
 // batchCommand builds a batch operator command that runs over the visible
 // repos, narrowed by an optional predicate expression argument.
-func batchCommand(name, description, taskName string, taskCmd func([]string) tea.Cmd) Command {
+func batchCommand(name, description, taskName string) Command {
 	return Command{
 		Name:        name,
 		Description: description,
@@ -401,17 +402,15 @@ func batchCommand(name, description, taskName string, taskCmd func([]string) tea
 			return predicateDescription(candidate, filters.RepoAtomDescriptions())
 		},
 		Run: func(m Model, args []string) (Model, tea.Cmd) {
-			return runBatchCommand(m, args, taskName, false, taskCmd)
+			return runBatchCommand(m, args, taskName)
 		},
 	}
 }
 
 // runBatchCommand scopes paths to the visible repos, narrows them by an
-// optional predicate expression, and starts the batch task on the result.
-// Destructive tasks are confirmed first.
-func runBatchCommand(
-	m Model, args []string, taskName string, destructive bool, taskCmd func([]string) tea.Cmd,
-) (Model, tea.Cmd) {
+// optional predicate expression, and starts the task on the result. A task
+// that asks first is confirmed.
+func runBatchCommand(m Model, args []string, taskName string) (Model, tea.Cmd) {
 	paths := m.filteredPaths
 	label := taskName
 	if len(args) > 0 {
@@ -432,7 +431,7 @@ func runBatchCommand(
 		return m, statusCmd("No repos match")
 	}
 
-	return m.confirmBatchTask(label, destructive, paths, taskCmd)
+	return m.runNamed(taskName, label, paths)
 }
 
 // dryRunFlag is the ":cleanup" flag that previews deletions instead of
@@ -469,23 +468,19 @@ func cleanupCommand() Command {
 			return predicateDescription(candidate, filters.RepoAtomDescriptions())
 		},
 		Run: func(m Model, args []string) (Model, tea.Cmd) {
-			taskName := taskCleanupMerged
-			taskCmd := batchCleanupMergedCmd
-			destructive := true
+			taskName := tasks.NameCleanup
 
 			rest := make([]string, 0, len(args))
 			for _, arg := range args {
 				if arg == dryRunFlag {
-					taskName = "Cleanup Merged (dry run)"
-					taskCmd = batchPreviewCleanupCmd
-					destructive = false
+					taskName = tasks.NameCleanupPreview
 
 					continue
 				}
 				rest = append(rest, arg)
 			}
 
-			return runBatchCommand(m, rest, taskName, destructive, taskCmd)
+			return runBatchCommand(m, rest, taskName)
 		},
 	}
 }

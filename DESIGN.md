@@ -183,32 +183,40 @@ branches happens to make more often.
 
 ## Batch Tasks
 
-`BatchTaskRunner` runs maintenance tasks sequentially across the currently filtered
-repositories, using the VCS factory per repo, tracking progress, and continuing on
-failure (failures are highlighted, not fatal). Progress is reported via Tea messages.
+`internal/tasks` is the one engine for maintenance work. A `config.Task` is either a
+shell command from `config.toml` (`Run`) or a built-in function (`Func`), and
+`tasks.Run` executes either over a set of repos, at most `Concurrency` at a time,
+writing each repo's log and last-run stamp and appending the run to the task's
+history. It reports each repo through a progress callback and honors context
+cancellation, so the TUI, `run <task>`, and `--script` all drive the same code.
+Failures are highlighted, not fatal.
 
-Batch operations are read-only by default; write operations require an explicit
-keybinding. Scope is always the filtered set, making the blast radius explicit.
-Tasks that delete refs are parked behind `ViewModeConfirm` first, naming the
-repos and the count, whether they were started by the operator keys, `:cleanup`,
-or a text object.
+`tasks.Builtins` lists fetch, prune, cleanup, cleanup-preview, and refresh-prs, and
+`tasks.Registry` puts them after the configured tasks, rejecting a configured name
+that shadows one. Scope is always explicit: operator keys and `:commands` take the
+filtered or marked set. A task with `Confirm` is parked behind `ViewModeConfirm`
+first, naming the repos and the count.
 
-`batch.CleanupMerged` and `batch.PreviewCleanup` detect squash-merged branches by
-comparing `internal/github.GetMergedPRHeads` (cached merged PR head OIDs) against
+The app starts a run through `RunEngine`, a function type that tests replace with a
+fake. `startRun` opens the run view, and a command drains a buffered channel one
+message at a time (`RunProgressMsg`, then `RunDoneMsg`), so the engine never waits on
+the UI. `ctrl-c` cancels the run's context.
+
+`cleanup` and `cleanup-preview` detect squash-merged branches by comparing
+`internal/github.GetMergedPRHeads` (cached merged PR head OIDs) against
 `GetBranchList`'s `Head` field, reading through swappable `getMergedPRHeads`/
-`getOperations` package-level seams (`internal/batch/export_test.go`) so tests can
-stub gh/git access without shelling out. `PreviewCleanup` backs `:cleanup
+`getOperations` package-level seams (`internal/tasks/export_test.go`) so tests can
+stub gh/git access without shelling out. `cleanup-preview` backs `:cleanup
 --dry-run`: it runs the same detection plus each VCS's `PreviewMergedBranches` and
 reports what would be deleted without calling `CleanupMergedBranches`.
 
-Adding a new batch task:
+Adding a built-in task:
 
 1. Add the method to the `Mutator` interface (`vcs/operations.go`)
 2. Implement it in both `GitOperations` (`vcs/git.go`) and `JJOperations` (`vcs/jj.go`)
-3. Add a task function in `batch/tasks.go` wrapping the VCS call
-4. Handle it in `app/update.go` via `m.startBatchTask(...)`
-5. Register the keybinding in `app/keymap.go`
-6. Add tests in `internal/batch/batch_test.go`
+3. Add a function and a `Builtins` entry in `internal/tasks/builtin.go`
+4. Give it an operator key in `app/textobject.go` or a `:command` in `app/command.go`
+5. Add tests in `internal/tasks/builtin_test.go`
 
 ## Copier Template Info
 
@@ -288,8 +296,8 @@ to list) beside a detail pane rendering whatever the cursor sits on; when discov
 it opens directly, and esc still falls back to the one-row list. `ViewModePalette`
 (`space` in the focused view, `;` in the list) is the universal find.
 `ViewModeFilter` (f) and `ViewModeSort` (s) dock an editor above the table, `ViewModeHelp` (?) floats a legend over the view,
-`ViewModeConfirm` gates every write action, and `ViewModeBatchProgress` shows a progress bar
-during batch runs.
+`ViewModeConfirm` gates every write action, and `ViewModeTaskRun` shows one row per repo
+during a task run.
 
 ### Panel grid
 

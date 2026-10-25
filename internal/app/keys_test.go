@@ -625,29 +625,29 @@ func TestSearchTypingUpdatesLive(t *testing.T) {
 	}
 }
 
-func TestBatchKeyBlockedWhileRunning(t *testing.T) {
+func TestRunKeysBlockedWhileRunning(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
-	m.viewMode = ViewModeBatchProgress
-	m.batchRunning = true
+	m.viewMode = ViewModeTaskRun
+	m.run.running = true
 
 	_, cmd := m.Update(keyPress('q'))
 	if cmd != nil {
-		t.Error("quit should be blocked while batch is running")
+		t.Error("quit should be blocked while a task is running")
 	}
 
 	updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	m2 := mustModel(t, updatedModel)
-	if m2.viewMode != ViewModeBatchProgress {
-		t.Error("back should be blocked while batch is running")
+	if m2.viewMode != ViewModeTaskRun {
+		t.Error("back should be blocked while a task is running")
 	}
 }
 
-func TestBatchKeyAfterCompletion(t *testing.T) {
+func TestRunKeysAfterCompletion(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
-	m.viewMode = ViewModeBatchProgress
-	m.batchRunning = false
+	m.viewMode = ViewModeTaskRun
+	m.run.running = false
 
 	updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	m2 := mustModel(t, updatedModel)

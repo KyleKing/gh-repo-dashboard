@@ -74,8 +74,8 @@ func (m Model) baseScreen() screen {
 		return m.repoDetailScreen()
 	case ViewModeBranchDetail:
 		return m.branchDetailScreen()
-	case ViewModeBatchProgress:
-		return m.batchScreen()
+	case ViewModeTaskRun:
+		return m.runScreen()
 	case ViewModeConfirm:
 		return m.confirmScreen()
 	case ViewModeRepoList, ViewModeFilter, ViewModeSort:

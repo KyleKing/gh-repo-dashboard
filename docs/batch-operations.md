@@ -1,8 +1,21 @@
 # Batch operations
 
-Three maintenance tasks run across many repositories at once: fetch, prune, and
-merged-branch cleanup. They run sequentially, report progress in a modal, and
-keep going when one repo fails.
+Fetch, prune, merged-branch cleanup, and PR refresh are built-in
+[tasks](./configuration.md#tasks) that run across many repositories at once.
+They share the engine, the run view, the logs, and the last-run stamps with the
+tasks in `config.toml`, so `gh repo-dashboard run fetch` runs the same code as
+`!ff`. A run keeps going when one repo fails.
+
+| Task | Does | Asks first |
+|------|------|------------|
+| `fetch` | Updates remote refs | no |
+| `prune` | Clears stale remote-tracking refs | yes |
+| `cleanup` | Deletes merged and squash-merged branches | yes |
+| `cleanup-preview` | Lists what `cleanup` would delete | no |
+| `refresh-prs` | Re-reads open PRs from GitHub, one repo at a time | no |
+
+Repos run in parallel, up to 8 at a time, except `refresh-prs`, which runs one at
+a time to stay inside the GitHub API budget.
 
 ## Scoping the run
 
@@ -53,14 +66,22 @@ tip OID against the head OIDs of the merged PRs that `gh` reports.
 
 ## Previewing a cleanup
 
-`:cleanup --dry-run [predicate]` reports what would be deleted and deletes
-nothing. It over-reports the checked-out branch, which `git branch -d` then
+`:cleanup --dry-run [predicate]` runs `cleanup-preview`, which reports what would
+be deleted and deletes nothing. It over-reports the checked-out branch, which `git branch -d` then
 refuses to delete. The dry run never under-reports, so it names every branch
 before anything disappears.
 
+## The run view
+
+A run opens a view with one row per repo: status, exit code, duration, and what
+the task reported. Rows fill in as repos finish. `ctrl-c` cancels the run, which
+stops running repos and marks the queued ones canceled, and `esc` returns once
+the run is over. Each repo's output lands in the same log file a configured task
+writes.
+
 ## Safety
 
-- Batch operations only start from the repository list view
-- They only touch the currently filtered or selected repositories
+- Operator keys and `:commands` touch only the filtered or marked repositories
+- `prune` and `cleanup` ask for confirmation, naming the repos and their count
 - Each repo reports success or failure with a message, and one failure does not
   stop the run

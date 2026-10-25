@@ -29,7 +29,7 @@ const (
 	ViewModeHelp
 	ViewModeFilter
 	ViewModeSort
-	ViewModeBatchProgress
+	ViewModeTaskRun
 	ViewModeConfirm
 	ViewModePRMap
 	ViewModePalette
@@ -189,11 +189,9 @@ type Model struct {
 	filterCursor int
 	sortCursor   int
 
-	batchRunning  bool
-	batchTask     string
-	batchResults  []BatchResult
-	batchProgress int
-	batchTotal    int
+	// run is the latest task run, shown by the run view and its log pane.
+	run    taskRun
+	engine RunEngine
 
 	statusMessage string
 	pendingAction *pendingAction

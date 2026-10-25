@@ -17,7 +17,6 @@ import (
 	"github.com/kyleking/aragonite/forge/github"
 	"github.com/kyleking/aragonite/vcs"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -175,13 +174,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case RefreshCompleteMsg:
 		return m.withFadingStatus("Data refreshed")
 
-	case batch.TaskProgressMsg:
-		return m.recordBatchResults(msg.Result), nil
+	case RunProgressMsg:
+		return m.handleRunProgress(msg)
 
-	case batch.TaskCompleteMsg:
-		m.batchRunning = false
-
-		return m.recordBatchResults(msg.Results...), nil
+	case RunDoneMsg:
+		return m.handleRunDone(msg)
 
 	case ErrorMsg:
 		return m, nil
@@ -213,19 +210,6 @@ func (m Model) withFadingStatus(text string) (tea.Model, tea.Cmd) {
 	return m, clearStatusAfterDelay()
 }
 
-func (m Model) recordBatchResults(results ...batch.TaskResult) Model {
-	for _, r := range results {
-		m.batchResults = append(m.batchResults, BatchResult{
-			Path:    r.Path,
-			Success: r.Success,
-			Message: r.Message,
-		})
-	}
-	m.batchProgress = len(m.batchResults)
-
-	return m
-}
-
 // routeKeyMsg dispatches a key press to the handler for the current mode
 // (search, command-bar, or one of the view modes).
 func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -250,8 +234,8 @@ func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleDetailKey(msg)
 	case ViewModeBranchDetail:
 		return m.handleBranchDetailKey(msg)
-	case ViewModeBatchProgress:
-		return m.handleBatchKey(msg)
+	case ViewModeTaskRun:
+		return m.handleRunKey(msg)
 	case ViewModeConfirm:
 		return m.handleConfirmKey(msg)
 	case ViewModePRMap:
@@ -743,6 +727,8 @@ func (m Model) moveToTop() Model {
 		m.detailCursor = 0
 	case ViewModePRMap:
 		m.prMapCursor = 0
+	case ViewModeTaskRun:
+		m.run.cursor = 0
 	default:
 		m.cursor = 0
 	}
@@ -1050,7 +1036,7 @@ func (m Model) handleOperatorPendingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// capital, so either spelling repeats it.
 	case strings.EqualFold(keyStr, m.pendingOperator) && m.pendingObject == "":
 		m.pendingOperator = ""
-		return m.confirmBatchTask(op.TaskName, op.Destructive, m.filteredPaths, op.Cmd)
+		return m.runNamed(op.Task, op.Task, m.filteredPaths)
 	}
 
 	m.pendingObject += keyStr
@@ -1078,7 +1064,7 @@ func (m Model) handleOperatorPendingKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, statusCmd("No repos match " + obj.Name)
 	}
 
-	return m.confirmBatchTask(fmt.Sprintf("%s (%s)", op.TaskName, obj.Name), op.Destructive, paths, op.Cmd)
+	return m.runNamed(op.Task, fmt.Sprintf("%s (%s)", op.Task, obj.Name), paths)
 }
 
 func hasTextObjectPrefix(prefix string) bool {
@@ -1820,26 +1806,6 @@ func (m Model) handleSortKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) handleBatchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch {
-	case key.Matches(msg, m.keys.Quit):
-		if !m.batchRunning {
-			return m, tea.Quit
-		}
-
-		return m, nil
-
-	case key.Matches(msg, m.keys.Back):
-		if !m.batchRunning {
-			m.viewMode = ViewModeRepoList
-		}
-
-		return m, nil
-	}
-
-	return m, nil
-}
-
 func (m Model) handleSearchKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case keyEsc:
@@ -2050,26 +2016,6 @@ func (m *Model) searchNotes(paths []string, query string) []string {
 	return results
 }
 
-// confirmBatchTask gates a batch run that deletes things behind the same
-// confirmation single-repo writes get, naming how many repos it covers.
-// Read-only tasks start immediately.
-func (m Model) confirmBatchTask(
-	taskName string, destructive bool, paths []string, taskCmd func([]string) tea.Cmd,
-) (Model, tea.Cmd) {
-	if !destructive || len(paths) == 0 {
-		return m.startBatchTaskOn(taskName, paths, taskCmd)
-	}
-
-	scope := fmt.Sprintf("across %d repos", len(paths))
-	if len(paths) == 1 {
-		scope = "in " + filepath.Base(paths[0])
-	}
-
-	return m.confirmRun(taskName+"?", repoNameList(paths), scope, func(m Model) (Model, tea.Cmd) {
-		return m.startBatchTaskOn(taskName, paths, taskCmd)
-	})
-}
-
 // repoNameList names the repos an action covers, abbreviating a long set so
 // the confirmation stays one line.
 func repoNameList(paths []string) string {
@@ -2086,21 +2032,6 @@ func repoNameList(paths []string) string {
 	}
 
 	return list
-}
-
-func (m Model) startBatchTaskOn(taskName string, paths []string, taskCmd func([]string) tea.Cmd) (Model, tea.Cmd) {
-	if len(paths) == 0 {
-		return m, nil
-	}
-
-	m.viewMode = ViewModeBatchProgress
-	m.batchRunning = true
-	m.batchTask = taskName
-	m.batchResults = nil
-	m.batchProgress = 0
-	m.batchTotal = len(paths)
-
-	return m, taskCmd(paths)
 }
 
 // deletableBranches marks local, non-current branches whose tip matches a

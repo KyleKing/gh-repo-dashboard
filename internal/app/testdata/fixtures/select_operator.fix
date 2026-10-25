@@ -3,6 +3,6 @@ given standard
 when :select where dirty
 then selected = dirty dirty-pr
 when keys ! f s r
-then view = batch
-then task = Fetch All (marked)
+then view = run
+then task = fetch (marked)
 then total = 2

@@ -11,7 +11,7 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
-// Column keys for the detail panels and batch results. Keys double
+// Column keys for the detail panels. Keys double
 // as rendered headers except where the header reads better shortened.
 const (
 	colBranchName  = "BRANCH"
@@ -36,9 +36,6 @@ const (
 	colCommitSubject = "SUBJECT"
 	colCommitAuthor  = "AUTHOR"
 	colCommitDate    = "DATE"
-
-	colBatchName    = "REPO"
-	colBatchMessage = "RESULT"
 )
 
 // Collapse priorities below are information value under a narrow terminal, so
@@ -64,11 +61,6 @@ var (
 		{Key: colCommitSubject, Title: colCommitSubject, Min: 20, Weight: 3},
 		{Key: colCommitAuthor, Title: colCommitAuthor, Min: 10, Priority: 2},
 		{Key: colCommitDate, Title: colCommitDate, Min: 12, Priority: 1},
-	}
-
-	batchColSpecs = []table.Column{
-		{Key: colBatchName, Title: colBatchName, Min: 16, Weight: 2},
-		{Key: colBatchMessage, Title: colBatchMessage, Min: 20, Weight: 3},
 	}
 )
 

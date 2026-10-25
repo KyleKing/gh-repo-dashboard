@@ -3,6 +3,7 @@
 package app
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/tasks"
 )
 
 // breakpointSizes are the three terminal sizes the layout is designed against:
@@ -345,17 +347,22 @@ func TestGoldenBranchDetail(t *testing.T) {
 	golden.RequireEqual(t, []byte(m.renderScreen()))
 }
 
-func TestGoldenBatchProgress(t *testing.T) {
+func TestGoldenTaskRun(t *testing.T) {
 	m := goldenModel()
-	m.viewMode = ViewModeBatchProgress
-	m.batchTask = "Fetch All"
-	m.batchRunning = false
-	m.batchTotal = 3
-	m.batchProgress = 3
-	m.batchResults = []BatchResult{
-		{Path: "/Users/dev/alpha", Success: true, Message: "fetched"},
-		{Path: "/Users/dev/bravo", Success: true, Message: "fetched"},
-		{Path: "/Users/dev/charlie", Success: false, Message: "no remote configured"},
+	m.viewMode = ViewModeTaskRun
+	m.run = taskRun{label: "fetch", paths: m.repoPaths}
+	for i, path := range m.repoPaths {
+		result := tasks.Result{
+			Path: path, Repo: filepath.Base(path), Status: tasks.StatusOK, Duration: time.Duration(i+1) * 300 * time.Millisecond,
+		}
+		switch i {
+		case 1:
+			result.Message = "fetched 2 remotes"
+		case 2:
+			result.Status, result.ExitCode, result.Message = tasks.StatusFailed, 1, "no remote configured"
+		}
+		m.run.rows = append(m.run.rows, runRow{path: path, done: true, result: result})
 	}
+	m.run.rows[0].done = false
 	golden.RequireEqual(t, []byte(m.renderScreen()))
 }

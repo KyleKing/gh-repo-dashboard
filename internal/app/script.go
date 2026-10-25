@@ -11,7 +11,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/kyleking/aragonite/vcs"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
@@ -62,7 +61,7 @@ func RunScript(ctx context.Context, w io.Writer, scanPaths []string, maxDepth in
 // newScriptModel builds a Model with summaries loaded synchronously, since
 // script mode has no Tea event loop to deliver progressive updates.
 func newScriptModel(ctx context.Context, scanPaths []string, maxDepth int) Model {
-	m := New(scanPaths, maxDepth)
+	m := New(scanPaths, maxDepth) //nolint:contextcheck // New has no context to pass on
 	m.headless = true
 	m.loading = false
 	m.repoPaths = discovery.DiscoverRepos(scanPaths, maxDepth)
@@ -106,27 +105,27 @@ func runScriptLine(m Model, line string, w io.Writer) (Model, lineOutcome) {
 	var outcome lineOutcome
 
 	msg := cmd()
-	switch msg := msg.(type) {
-	case batch.TaskCompleteMsg:
-		for _, r := range msg.Results {
-			result := "ok"
-			if !r.Success {
-				result = "fail"
-				outcome.failed = true
-			}
-			scriptPrintf(w, "  %s\t%s\t%s\n", result, r.RepoName, r.Message)
+	for {
+		switch msg := msg.(type) {
+		case RunProgressMsg:
+			scriptPrintf(w, "  %s\t%s\t%s\n", msg.Result.Status, msg.Result.Repo, msg.Result.Note())
+			outcome.failed = outcome.failed || msg.Result.Failed()
+		case StatusMsg:
+			scriptPrintf(w, "  %s\n", strings.ReplaceAll(msg.Message, "\n", "\n  "))
+			outcome.failed = msg.IsError
+		case tea.QuitMsg:
+			return m, lineOutcome{quit: true}
 		}
-	case StatusMsg:
-		scriptPrintf(w, "  %s\n", strings.ReplaceAll(msg.Message, "\n", "\n  "))
-		outcome.failed = msg.IsError
-	case tea.QuitMsg:
-		return m, lineOutcome{quit: true}
-	}
 
-	if newModel, _ := m.Update(msg); newModel != nil {
+		newModel, next := m.Update(msg)
 		if updated, ok := newModel.(Model); ok {
 			m = updated
 		}
+
+		if _, running := msg.(RunProgressMsg); !running {
+			break
+		}
+		msg = next()
 	}
 
 	return m, outcome

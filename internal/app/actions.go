@@ -17,6 +17,7 @@ import (
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/tasks"
 )
 
 // pendingAction is a write action awaiting confirmation, along with the view
@@ -380,7 +381,7 @@ func startOperator(key string) func(Model) (tea.Model, tea.Cmd) {
 			summary := m.markSummary()
 			cleared, _ := m.clearMarks()
 
-			return cleared.confirmBatchTask(op.TaskName+" ("+summary+")", op.Destructive, marked, op.Cmd)
+			return cleared.runNamed(op.Task, op.Task+" ("+summary+")", marked)
 		}
 
 		m.pendingOperator = key
@@ -578,15 +579,15 @@ func (m Model) copyRepoPath() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) startRepoFetch() (tea.Model, tea.Cmd) {
-	return m.confirmBatchTask(taskFetchAll, false, []string{m.selectedRepo}, batchFetchAllCmd)
+	return m.runNamed(tasks.NameFetch, tasks.NameFetch, []string{m.selectedRepo})
 }
 
 func (m Model) startRepoPruneRemote() (tea.Model, tea.Cmd) {
-	return m.confirmBatchTask("Prune Remote", true, []string{m.selectedRepo}, batchPruneRemoteCmd)
+	return m.runNamed(tasks.NamePrune, tasks.NamePrune, []string{m.selectedRepo})
 }
 
 func (m Model) startRepoCleanupMerged() (tea.Model, tea.Cmd) {
-	return m.confirmBatchTask(taskCleanupMerged, true, []string{m.selectedRepo}, batchCleanupMergedCmd)
+	return m.runNamed(tasks.NameCleanup, tasks.NameCleanup, []string{m.selectedRepo})
 }
 
 func (m Model) openBranchURL() (tea.Model, tea.Cmd) {

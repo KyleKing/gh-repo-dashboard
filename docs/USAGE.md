@@ -10,7 +10,7 @@ pressing `:`; bare keys act on the repo list.
 
 | Input | Result |
 |---|---|
-| `:fetch dirty and has_pr` | opens the batch view; starts batch Fetch All (dirty and has_pr); over 1 repos |
+| `:fetch dirty and has_pr` | opens the run view; starts run fetch (dirty and has_pr); over 1 repos |
 
 ## Complete command names with tab
 
@@ -81,7 +81,7 @@ pressing `:`; bare keys act on the repo list.
 
 | Input | Result |
 |---|---|
-| press `!` `f` `d` `r` | opens the batch view; starts batch Fetch All (dirty); over 2 repos |
+| press `!` `f` `d` `r` | opens the run view; starts run fetch (dirty); over 2 repos |
 
 ## Search repos by name
 
@@ -102,7 +102,7 @@ pressing `:`; bare keys act on the repo list.
 | Input | Result |
 |---|---|
 | `:select where dirty` | selects dirty, dirty-pr |
-| press `!` `f` `s` `r` | opens the batch view; starts batch Fetch All (marked); over 2 repos |
+| press `!` `f` `s` `r` | opens the run view; starts run fetch (marked); over 2 repos |
 
 ## Find across the fleet, then commit the result set to a batch operator
 
@@ -112,4 +112,4 @@ pressing `:`; bare keys act on the repo list.
 | press `d` `i` `r` `t` `y` | find: dirty; matches: repo:dirty repo:dirty-pr |
 | press `a` | opens the find view |
 | press `s` | selects dirty, dirty-pr |
-| press `!` `f` `s` `r` | opens the batch view; starts batch Fetch All (marked); over 2 repos |
+| press `!` `f` `s` `r` | opens the run view; starts run fetch (marked); over 2 repos |

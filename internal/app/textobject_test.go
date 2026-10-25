@@ -99,12 +99,12 @@ func TestOperatorComposition(t *testing.T) {
 		expectedTotal int
 		confirms      bool
 	}{
-		{"fetch dirty", "!fdr", "Fetch All (dirty)", 2, false},
-		{"fetch behind", "!fbr", "Fetch All (behind)", 1, false},
-		{"cleanup with PRs", "!cpr", "Cleanup Merged (with PRs)", 1, true},
-		{"prune all", "!par", "Prune Remote (all)", 4, false},
-		{"doubled operator", "!ff", "Fetch All", 4, false},
-		{"doubled cleanup", "!cc", "Cleanup Merged", 4, true},
+		{"fetch dirty", "!fdr", "fetch (dirty)", 2, false},
+		{"fetch behind", "!fbr", "fetch (behind)", 1, false},
+		{"cleanup with PRs", "!cpr", "cleanup (with PRs)", 1, true},
+		{"prune all", "!par", "prune (all)", 4, true},
+		{"doubled operator", "!ff", "fetch", 4, false},
+		{"doubled cleanup", "!cc", "cleanup", 4, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -118,14 +118,14 @@ func TestOperatorComposition(t *testing.T) {
 				confirmed, next := m2.handleConfirmKey(keyPress('y'))
 				m2, cmd = mustModel(t, confirmed), next
 			}
-			if m2.viewMode != ViewModeBatchProgress {
-				t.Fatalf("expected batch progress view, got %v", m2.viewMode)
+			if m2.viewMode != ViewModeTaskRun {
+				t.Fatalf("expected the run view, got %v", m2.viewMode)
 			}
-			if m2.batchTask != tt.expectedTask {
-				t.Errorf("expected task %q, got %q", tt.expectedTask, m2.batchTask)
+			if m2.run.label != tt.expectedTask {
+				t.Errorf("expected task %q, got %q", tt.expectedTask, m2.run.label)
 			}
-			if m2.batchTotal != tt.expectedTotal {
-				t.Errorf("expected total %d, got %d", tt.expectedTotal, m2.batchTotal)
+			if len(m2.run.paths) != tt.expectedTotal {
+				t.Errorf("expected total %d, got %d", tt.expectedTotal, len(m2.run.paths))
 			}
 			if cmd == nil {
 				t.Error("expected batch cmd")
@@ -139,11 +139,11 @@ func TestOperatorSelectedComposition(t *testing.T) {
 	m := operatorModel()
 	m2, _ := m.ExecuteCommand("select where dirty")
 	m3, cmd := pressKeys(t, m2, "!fsr")
-	if m3.batchTask != "Fetch All (marked)" {
-		t.Errorf("expected the marked scope, got %q", m3.batchTask)
+	if m3.run.label != "fetch (marked)" {
+		t.Errorf("expected the marked scope, got %q", m3.run.label)
 	}
-	if m3.batchTotal != 2 {
-		t.Errorf("expected 2 repos, got %d", m3.batchTotal)
+	if len(m3.run.paths) != 2 {
+		t.Errorf("expected 2 repos, got %d", len(m3.run.paths))
 	}
 	if cmd == nil {
 		t.Error("expected batch cmd")
@@ -192,7 +192,7 @@ func TestOperatorEmptyScope(t *testing.T) {
 	m.updateFilteredPaths()
 
 	m2, cmd := pressKeys(t, m, "!fbr")
-	if m2.viewMode == ViewModeBatchProgress {
+	if m2.viewMode == ViewModeTaskRun {
 		t.Error("empty scope must not start a batch")
 	}
 	if cmd == nil {
@@ -219,11 +219,11 @@ func TestBatchCommandWithPredicate(t *testing.T) {
 	t.Parallel()
 	m := operatorModel()
 	m2, cmd := m.ExecuteCommand("fetch dirty and has_pr")
-	if m2.batchTask != "Fetch All (dirty and has_pr)" {
-		t.Errorf("expected scoped task label, got %q", m2.batchTask)
+	if m2.run.label != "fetch (dirty and has_pr)" {
+		t.Errorf("expected scoped task label, got %q", m2.run.label)
 	}
-	if m2.batchTotal != 1 {
-		t.Errorf("expected 1 repo, got %d", m2.batchTotal)
+	if len(m2.run.paths) != 1 {
+		t.Errorf("expected 1 repo, got %d", len(m2.run.paths))
 	}
 	if cmd == nil {
 		t.Error("expected batch cmd")
@@ -234,7 +234,7 @@ func TestBatchCommandPredicateNoMatch(t *testing.T) {
 	t.Parallel()
 	m := operatorModel()
 	m2, cmd := m.ExecuteCommand("prune has_stash")
-	if m2.viewMode == ViewModeBatchProgress {
+	if m2.viewMode == ViewModeTaskRun {
 		t.Error("no-match predicate must not start a batch")
 	}
 	if cmd == nil {

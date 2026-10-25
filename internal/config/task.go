@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -10,11 +11,18 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
-// Task is a named shell command run in each selected repo.
+// TaskFunc is a built-in task body. It reports what it did as message and
+// signals failure with a non-nil error.
+type TaskFunc func(ctx context.Context, repoPath string) (message string, err error)
+
+// Task is a named command run in each selected repo: a shell command from
+// config, or a built-in Func.
 type Task struct {
 	Name string `toml:"name"`
 	Desc string `toml:"desc"`
 	Run  string `toml:"run"`
+	// Func backs a built-in task and is never read from config.
+	Func TaskFunc `toml:"-"`
 	// Where is a predicate over the repo summary that selects the repos the
 	// task applies to. Empty means every repo.
 	Where string `toml:"where"`

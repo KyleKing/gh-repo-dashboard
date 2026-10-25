@@ -15,6 +15,7 @@ import (
 	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/aragonite/vcs"
 
+	"github.com/kyleking/gh-repo-dashboard/internal/tasks"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
@@ -390,8 +391,8 @@ type paletteAction struct {
 func paletteActionsFor(kind findKind) []paletteAction {
 	actions := []paletteAction{
 		{key: "s", name: "select repos", run: selectResultRepos},
-		{key: "f", name: "fetch repos", run: batchOverResults(taskFetchAll, false, batchFetchAllCmd)},
-		{key: "c", name: "cleanup merged", run: batchOverResults(taskCleanupMerged, true, batchCleanupMergedCmd)},
+		{key: "f", name: "fetch repos", run: taskOverResults(tasks.NameFetch)},
+		{key: "c", name: "cleanup merged", run: taskOverResults(tasks.NameCleanup)},
 	}
 
 	if kind == findPR {
@@ -412,18 +413,16 @@ func selectResultRepos(m Model, results []findResult) (Model, tea.Cmd) {
 	return m, statusCmd("Selected " + strconv.Itoa(len(paths)) + " repos")
 }
 
-// batchOverResults runs a batch task on the repos a result set touches, taking
-// the same confirmation the operator keys take when it deletes anything.
-func batchOverResults(
-	taskName string, destructive bool, taskCmd func([]string) tea.Cmd,
-) func(Model, []findResult) (Model, tea.Cmd) {
+// taskOverResults runs a built-in task on the repos a result set touches,
+// taking the confirmation the task asks for.
+func taskOverResults(taskName string) func(Model, []findResult) (Model, tea.Cmd) {
 	return func(m Model, results []findResult) (Model, tea.Cmd) {
 		paths := resultRepos(results)
 		if len(paths) == 0 {
 			return m, statusCmd("No repos in the result set")
 		}
 
-		return m.confirmBatchTask(taskName, destructive, paths, taskCmd)
+		return m.runNamed(taskName, taskName, paths)
 	}
 }
 

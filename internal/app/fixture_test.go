@@ -350,9 +350,9 @@ func fixtureAssertionValue(snap Snapshot, field string) (string, bool) {
 	case "status":
 		return snap.StatusMessage, true
 	case "task":
-		return snap.BatchTask, true
+		return snap.RunTask, true
 	case "total":
-		return strconv.Itoa(snap.BatchTotal), true
+		return strconv.Itoa(snap.RunTotal), true
 	case "view":
 		return snap.View, true
 	default:

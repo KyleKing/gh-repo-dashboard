@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -178,57 +177,4 @@ func buildSortModalRows(activeSorts []models.ActiveSort) []models.ActiveSort {
 	displaySorts = append(displaySorts, inactiveSorts...)
 
 	return displaySorts
-}
-
-func (m Model) batchScreen() screen {
-	var hints []keyhint.Hint
-	if !m.batchRunning {
-		hints = []keyhint.Hint{{Key: keyEsc, What: descClose, Priority: 1}}
-	}
-
-	return screen{title: m.batchTask, body: m.renderBatchProgress(), hints: hints}
-}
-
-func (m Model) renderBatchProgress() string {
-	var b strings.Builder
-
-	progressWidth := 40
-	filled := 0
-	if m.batchTotal > 0 {
-		filled = (m.batchProgress * progressWidth) / m.batchTotal
-	}
-	bar := strings.Repeat("█", filled) + strings.Repeat("░", progressWidth-filled)
-	fmt.Fprintf(&b, "[%s] %d/%d", bar, m.batchProgress, m.batchTotal)
-
-	if len(m.batchResults) > 0 {
-		b.WriteString("\n\n")
-		b.WriteString(styles.Skin.Subtitle.Bold(true).Render("Results"))
-		b.WriteString("\n")
-
-		maxShow := 15
-		startIdx := 0
-		if len(m.batchResults) > maxShow {
-			startIdx = len(m.batchResults) - maxShow
-		}
-
-		layout := fitDetailCols(batchColSpecs, m.width)
-		for i := startIdx; i < len(m.batchResults); i++ {
-			result := m.batchResults[i]
-			icon := styles.Skin.Success.Render("✓")
-			if !result.Success {
-				icon = styles.Skin.Error.Render("✗")
-			}
-			name := padCell(filepath.Base(result.Path), layout.Width(colBatchName))
-			msg := padCell(result.Message, layout.Width(colBatchMessage))
-
-			fmt.Fprintf(&b, "  %s %s  %s\n", icon, name, styles.Skin.Subtitle.Render(msg))
-		}
-	}
-
-	if m.batchRunning {
-		b.WriteString("\n")
-		b.WriteString(styles.Skin.Subtitle.Render("Running... please wait"))
-	}
-
-	return b.String()
 }

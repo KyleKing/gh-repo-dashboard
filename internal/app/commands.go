@@ -13,39 +13,11 @@ import (
 	"github.com/kyleking/aragonite/forge/github"
 	"github.com/kyleking/aragonite/vcs"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/copier"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/tasks"
 )
-
-// Batch task display names shared by :commands, operator keys, and batch cmds.
-const (
-	taskCleanupMerged = "Cleanup Merged"
-	taskFetchAll      = "Fetch All"
-	taskRefreshPRs    = "Refresh PRs"
-)
-
-func batchFetchAllCmd(paths []string) tea.Cmd {
-	return batch.RunTask(taskFetchAll, paths, batch.FetchAll)
-}
-
-func batchPruneRemoteCmd(paths []string) tea.Cmd {
-	return batch.RunTask("Prune Remote", paths, batch.PruneRemote)
-}
-
-func batchRefreshPRsCmd(paths []string) tea.Cmd {
-	return batch.RunTask(taskRefreshPRs, paths, batch.RefreshPRs)
-}
-
-func batchCleanupMergedCmd(paths []string) tea.Cmd {
-	return batch.RunTask(taskCleanupMerged, paths, batch.CleanupMerged)
-}
-
-func batchPreviewCleanupCmd(paths []string) tea.Cmd {
-	return batch.RunTask("Cleanup Merged (dry run)", paths, batch.PreviewCleanup)
-}
 
 func discoverReposCmd(scanPaths []string, maxDepth int) tea.Cmd {
 	return func() tea.Msg {

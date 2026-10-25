@@ -84,8 +84,9 @@ Launched from inside a repository, the scan finds only that one repo and the
 detail view opens straight away. `esc` still steps back to the one-row list.
 
 Filter (`f`) and sort (`s`) dock above the table, and help (`?`) floats over the
-current view. A batch run replaces the view with a progress screen until it
-finishes.
+current view. A batch run replaces the view with a run screen, one row per repo,
+until you leave it with `esc` after it finishes. `ctrl-c` cancels a run in
+progress.
 
 ## Repo list columns
 

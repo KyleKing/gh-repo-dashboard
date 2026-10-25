@@ -69,7 +69,7 @@ run. A dry run that disagrees with the real run fails the test.
 
 ### Known issue it pins
 
-`:cleanup --dry-run` over-reports the checked-out branch: `batch.PreviewCleanup`
+`:cleanup --dry-run` over-reports the checked-out branch: `tasks.previewCleanup`
 lists everything `git branch --merged` returns, but the real run's
 `git branch -d` refuses to delete a branch that is checked out. The branch is
 announced and then survives. The dry run over-reports and never under-reports, so

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 )
 
@@ -71,6 +72,75 @@ func (s *Store) LastStamp(task, repoPath string) (Stamp, bool) {
 	}
 
 	return stamp, true
+}
+
+// HistoryLimit is how many runs of a task the store keeps.
+const HistoryLimit = 10
+
+// Record summarizes one run of a task across its repos.
+type Record struct {
+	At       time.Time     `json:"at"`
+	Duration time.Duration `json:"duration"`
+	Repos    int           `json:"repos"`
+	OK       int           `json:"ok"`
+	Failed   int           `json:"failed"`
+	Canceled int           `json:"canceled"`
+}
+
+func newRecord(at time.Time, results []Result) Record {
+	rec := Record{At: at, Duration: time.Since(at), Repos: len(results)}
+	for _, result := range results {
+		switch result.Status {
+		case StatusOK:
+			rec.OK++
+		case StatusFailed:
+			rec.Failed++
+		case StatusCanceled:
+			rec.Canceled++
+		}
+	}
+
+	return rec
+}
+
+func (s *Store) historyPath(task string) string {
+	return filepath.Join(s.dir, task, "history.json")
+}
+
+// History returns the task's recorded runs, newest first, at most HistoryLimit.
+func (s *Store) History(task string) []Record {
+	data, err := os.ReadFile(s.historyPath(task))
+	if err != nil {
+		return nil
+	}
+	var records []Record
+	if err := json.Unmarshal(data, &records); err != nil {
+		return nil
+	}
+
+	slices.Reverse(records)
+
+	return records
+}
+
+func (s *Store) appendRun(task string, rec Record) error {
+	records := s.History(task)
+	slices.Reverse(records)
+	records = append(records, rec)
+	records = records[max(len(records)-HistoryLimit, 0):]
+
+	data, err := json.Marshal(records)
+	if err != nil {
+		return fmt.Errorf("encoding history: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(s.historyPath(task)), logDirMode); err != nil {
+		return fmt.Errorf("creating history directory: %w", err)
+	}
+	if err := os.WriteFile(s.historyPath(task), data, stampMode); err != nil {
+		return fmt.Errorf("writing history: %w", err)
+	}
+
+	return nil
 }
 
 func (s *Store) record(task, repoPath string, exitCode int, at time.Time) error {

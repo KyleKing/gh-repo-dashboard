@@ -29,7 +29,7 @@ func describeAssertion(a fixtureAssertion) string {
 	case "view":
 		return "opens the " + value + " view"
 	case "task":
-		return "starts batch " + value
+		return "starts run " + value
 	case "total":
 		return "over " + value + " repos"
 	case "input":

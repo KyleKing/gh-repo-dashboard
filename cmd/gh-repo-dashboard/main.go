@@ -206,11 +206,25 @@ func absolutePaths(paths []string) ([]string, error) {
 	return absPathList, nil
 }
 
+// loadConfig reads the config file and appends the built-in tasks to its own.
+func loadConfig() (config.Config, error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return cfg, fmt.Errorf("config: %w", err)
+	}
+
+	if cfg.Tasks, err = tasks.Registry(cfg.Tasks); err != nil {
+		return cfg, fmt.Errorf("config: %w", err)
+	}
+
+	return cfg, nil
+}
+
 func runMain(args []string) {
 	if err := preflight(os.Stderr); err != nil {
 		exitWith(err)
 	}
-	cfg, err := config.Load()
+	cfg, err := loadConfig()
 	if err != nil {
 		exitWith(err)
 	}
@@ -263,7 +277,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	cfg, err := config.Load()
+	cfg, err := loadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

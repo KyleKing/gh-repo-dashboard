@@ -76,7 +76,9 @@ where = "template ~ calcipy"
 | `every` | How long a successful run keeps a repo from being due, as `30d`, `2w`, `12h`, or `90m`. Without it the task is never due |
 
 A malformed task, including a `where` that does not parse, stops the program at
-startup with the entry and key named.
+startup with the entry and key named. The built-in names `cleanup`,
+`cleanup-preview`, `fetch`, `prune`, and `refresh-prs` are reserved: a task with
+one of them stops the program at startup too.
 
 Each run writes the repo's combined output to
 `<user cache dir>/gh-repo-dashboard/tasks/<task>/<repo>-<hash>/run.log` and a

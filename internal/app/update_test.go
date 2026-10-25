@@ -9,7 +9,6 @@ import (
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
 
-	"github.com/kyleking/gh-repo-dashboard/internal/batch"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
@@ -323,63 +322,6 @@ func TestPRListLoadedMsg(t *testing.T) {
 	}
 }
 
-func TestBatchTaskProgressMsg(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.batchRunning = true
-
-	msg := batch.TaskProgressMsg{
-		Result: batch.TaskResult{Path: testRepo1Path, Success: true, Message: "fetched"},
-	}
-	updatedModel, cmd := m.Update(msg)
-	m = mustModel(t, updatedModel)
-
-	if len(m.batchResults) != 1 {
-		t.Fatalf("expected 1 batch result, got %d", len(m.batchResults))
-	}
-	if m.batchResults[0].Path != testRepo1Path || !m.batchResults[0].Success || m.batchResults[0].Message != "fetched" {
-		t.Errorf("unexpected batch result: %+v", m.batchResults[0])
-	}
-	if m.batchProgress != 1 {
-		t.Errorf("expected batchProgress 1, got %d", m.batchProgress)
-	}
-	if cmd != nil {
-		t.Error("TaskProgressMsg should not return a command")
-	}
-}
-
-func TestBatchTaskCompleteMsg(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.batchRunning = true
-
-	msg := batch.TaskCompleteMsg{
-		TaskName: "Fetch All",
-		Results: []batch.TaskResult{
-			{Path: testRepo1Path, Success: true, Message: "ok"},
-			{Path: "/repo2", Success: false, Message: "failed"},
-		},
-	}
-	updatedModel, cmd := m.Update(msg)
-	m = mustModel(t, updatedModel)
-
-	if m.batchRunning {
-		t.Error("batchRunning should be false after completion")
-	}
-	if len(m.batchResults) != 2 {
-		t.Fatalf("expected 2 batch results, got %d", len(m.batchResults))
-	}
-	if m.batchResults[1].Success {
-		t.Error("second result should record failure")
-	}
-	if m.batchProgress != 2 {
-		t.Errorf("expected batchProgress 2, got %d", m.batchProgress)
-	}
-	if cmd != nil {
-		t.Error("TaskCompleteMsg should not return a command")
-	}
-}
-
 func TestUpdateFilteredPathsClampsCursor(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
@@ -422,7 +364,7 @@ func TestUpdateFilteredPathsEmptyResetsCursor(t *testing.T) {
 	}
 }
 
-func TestStartBatchTaskEmptyIsNoop(t *testing.T) {
+func TestOperatorOverNothingStartsNoRun(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.filteredPaths = nil
@@ -437,7 +379,7 @@ func TestStartBatchTaskEmptyIsNoop(t *testing.T) {
 	if m.viewMode != ViewModeRepoList {
 		t.Errorf("empty batch should not change view mode, got %v", m.viewMode)
 	}
-	if m.batchRunning {
+	if m.run.running {
 		t.Error("empty batch should not start running")
 	}
 	if cmd != nil {
@@ -445,7 +387,7 @@ func TestStartBatchTaskEmptyIsNoop(t *testing.T) {
 	}
 }
 
-func TestStartBatchTaskWithRepos(t *testing.T) {
+func TestOperatorStartsRunOverFilteredRepos(t *testing.T) {
 	t.Parallel()
 	m := New(nil, 1)
 	m.filteredPaths = []string{testRepo1Path, "/repo2"}
@@ -457,20 +399,20 @@ func TestStartBatchTaskWithRepos(t *testing.T) {
 	updatedModel, cmd := m.Update(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	m = mustModel(t, updatedModel)
 
-	if m.viewMode != ViewModeBatchProgress {
-		t.Errorf("expected ViewModeBatchProgress, got %v", m.viewMode)
+	if m.viewMode != ViewModeTaskRun {
+		t.Errorf("expected ViewModeTaskRun, got %v", m.viewMode)
 	}
-	if !m.batchRunning {
+	if !m.run.running {
 		t.Error("batch should be running")
 	}
-	if m.batchTask != "Fetch All" {
-		t.Errorf("expected task 'Fetch All', got %q", m.batchTask)
+	if m.run.label != "fetch" {
+		t.Errorf("expected task 'fetch', got %q", m.run.label)
 	}
-	if m.batchTotal != 2 {
-		t.Errorf("expected batchTotal 2, got %d", m.batchTotal)
+	if len(m.run.paths) != 2 {
+		t.Errorf("expected batchTotal 2, got %d", len(m.run.paths))
 	}
-	if m.batchProgress != 0 || m.batchResults != nil {
-		t.Error("batch progress and results should be reset")
+	if m.run.finished() != 0 || len(m.run.rows) != 2 {
+		t.Errorf("a new run starts with every repo queued, got %+v", m.run.rows)
 	}
 	if cmd == nil {
 		t.Error("batch start should return a command")
