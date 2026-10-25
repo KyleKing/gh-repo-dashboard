@@ -201,12 +201,10 @@ func TestHelpScrollsWalksPagesAndReturnsToItsView(t *testing.T) {
 	}
 }
 
-// Every screen draws through the shared frame, so each fills the terminal
-// exactly and keeps its footer on the last row at every size.
-func TestEveryScreenPinsItsFooter(t *testing.T) {
-	t.Parallel()
-
-	screens := map[string]func(t *testing.T, width, height int) Model{
+// footerScreens builds one model per screen at a given size, for the tests that
+// hold every screen to the same frame.
+func footerScreens() map[string]func(t *testing.T, width, height int) Model {
+	return map[string]func(t *testing.T, width, height int) Model{
 		"list":   func(_ *testing.T, w, h int) Model { return compactModel(w, h) },
 		"detail": func(_ *testing.T, w, h int) Model { return focusedModel(w, h) },
 		"branch": func(_ *testing.T, w, h int) Model {
@@ -230,6 +228,41 @@ func TestEveryScreenPinsItsFooter(t *testing.T) {
 
 			return mustModel(t, opened)
 		},
+		"tasks": func(_ *testing.T, w, h int) Model {
+			m := tasksGoldenModel()
+			m.width, m.height = w, h
+
+			return m
+		},
+		"preview": func(t *testing.T, w, h int) Model {
+			t.Helper()
+
+			m := tasksGoldenModel()
+			m.width, m.height = w, h
+			next, _ := m.openPreview(m.taskList()[0])
+
+			return mustModel(t, next)
+		},
+		"run": func(_ *testing.T, w, h int) Model {
+			m := tasksGoldenModel()
+			m.width, m.height = w, h
+			m.viewMode = ViewModeTaskRun
+			m.run = taskRun{label: "fetch", paths: m.repoPaths, running: true}
+			for _, path := range m.repoPaths {
+				m.run.rows = append(m.run.rows, runRow{path: path})
+			}
+
+			return m
+		},
+		"log": func(_ *testing.T, w, h int) Model {
+			m := tasksGoldenModel()
+			m.width, m.height = w, h
+			m.viewMode = ViewModeTaskLog
+			m.run = taskRun{label: "fetch"}
+			m.runLog = runLog{repo: "alpha", lines: []string{"fetching origin", "done"}}
+
+			return m
+		},
 		"help": func(_ *testing.T, w, h int) Model { return compactModel(w, h).openHelp() },
 		"actions": func(_ *testing.T, w, h int) Model {
 			m := compactModel(w, h)
@@ -251,6 +284,14 @@ func TestEveryScreenPinsItsFooter(t *testing.T) {
 			return m
 		},
 	}
+}
+
+// Every screen draws through the shared frame, so each fills the terminal
+// exactly and keeps its footer on the last row at every size.
+func TestEveryScreenPinsItsFooter(t *testing.T) {
+	t.Parallel()
+
+	screens := footerScreens()
 
 	for name, build := range screens {
 		for _, size := range [][2]int{{80, 24}, {120, 35}, {220, 50}} {

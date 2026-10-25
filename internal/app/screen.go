@@ -76,6 +76,12 @@ func (m Model) baseScreen() screen {
 		return m.branchDetailScreen()
 	case ViewModeTaskRun:
 		return m.runScreen()
+	case ViewModeTasks:
+		return m.tasksScreen()
+	case ViewModeTaskPreview:
+		return m.previewScreen()
+	case ViewModeTaskLog:
+		return m.logScreen()
 	case ViewModeConfirm:
 		return m.confirmScreen()
 	case ViewModeRepoList, ViewModeFilter, ViewModeSort:

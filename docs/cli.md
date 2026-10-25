@@ -156,7 +156,7 @@ gh repo-dashboard --script maintenance.txt ~/projects
 
 The same commands work in the TUI command bar (`:`) and in scripts, with tab
 completion on names and arguments: `cleanup`, `fetch`, `filter`, `help`,
-`history`, `prune`, `quit`, `refresh`, `select`, and `sort`. A unique prefix
+`history`, `prune`, `quit`, `refresh`, `run`, `select`, and `sort`. A unique prefix
 resolves, so `:fil` reaches `:filter`.
 
 `:history` lists the recognized commands you have run, capped at 50, shared

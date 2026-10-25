@@ -165,6 +165,11 @@ func (m Model) startRun(task config.Task, label string, paths []string) (Model, 
 		return m, nil
 	}
 
+	returnMode := m.viewMode
+	if returnMode == ViewModeTaskPreview {
+		returnMode = ViewModeTasks
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := make(chan tea.Msg, len(paths)+1)
 
@@ -175,7 +180,7 @@ func (m Model) startRun(task config.Task, label string, paths []string) (Model, 
 
 	m.run = taskRun{
 		id: m.run.id + 1, task: task, label: label, paths: paths, rows: rows,
-		running: true, cancel: cancel, ch: ch, returnMode: m.viewMode,
+		running: true, cancel: cancel, ch: ch, returnMode: returnMode,
 	}
 	m.viewMode = ViewModeTaskRun
 
@@ -220,7 +225,7 @@ func (m Model) handleRunDone(msg RunDoneMsg) (tea.Model, tea.Cmd) {
 		m.run = m.run.withResult(result)
 	}
 
-	var cmds []tea.Cmd
+	cmds := []tea.Cmd{loadTaskHistoryCmd(m.taskStore(), m.taskList())}
 	if m.taskSel != nil {
 		for _, path := range m.run.paths {
 			if summary, ok := m.summaries[path]; ok {
@@ -263,6 +268,8 @@ func (m Model) handleRunKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.run.cursor = 0
 	case key.Matches(msg, m.keys.Bottom):
 		m.run.cursor = max(len(m.run.rows)-1, 0)
+	case key.Matches(msg, m.keys.Enter):
+		return m.openRunLog()
 	}
 
 	return m, nil

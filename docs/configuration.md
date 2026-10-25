@@ -47,7 +47,8 @@ all of them, which is the way to configure a viewer that reads neither.
 
 A `[[tasks]]` entry is a named shell command the dashboard runs in each repo it
 selects, replacing a mani task list. Run one with
-[`gh repo-dashboard run`](./cli.md#running-tasks).
+[`gh repo-dashboard run`](./cli.md#running-tasks), or from the
+[Tasks tab](./interface.md#tasks-tab).
 
 ```toml
 [[tasks]]

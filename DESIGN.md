@@ -297,7 +297,10 @@ it opens directly, and esc still falls back to the one-row list. `ViewModePalett
 (`space` in the focused view, `;` in the list) is the universal find.
 `ViewModeFilter` (f) and `ViewModeSort` (s) dock an editor above the table, `ViewModeHelp` (?) floats a legend over the view,
 `ViewModeConfirm` gates every write action, and `ViewModeTaskRun` shows one row per repo
-during a task run.
+during a task run. The Tasks tab adds `ViewModeTasks` (the list), `ViewModeTaskPreview`
+(the repos a task would run on), and `ViewModeTaskLog` (one repo's log under the run).
+`R` and `T` switch tabs through `frame.Tabs`, and `currentTab` reads the view an overlay
+sits over.
 
 ### Panel grid
 

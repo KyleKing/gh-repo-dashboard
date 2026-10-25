@@ -43,7 +43,13 @@ func (v ViewMode) String() string {
 	case ViewModePalette:
 		return nameFind
 	case ViewModeTaskRun:
-		return "run"
+		return nameRun
+	case ViewModeTasks:
+		return "tasks"
+	case ViewModeTaskPreview:
+		return "preview"
+	case ViewModeTaskLog:
+		return "log"
 	default:
 		return "unknown"
 	}

@@ -14,7 +14,8 @@ import (
 // helpFromView is the view a legend documents. The docks stand for the list.
 func helpFromView(mode ViewMode) ViewMode {
 	switch mode {
-	case ViewModeRepoDetail, ViewModeBranchDetail, ViewModePRMap, ViewModeTaskRun:
+	case ViewModeRepoDetail, ViewModeBranchDetail, ViewModePRMap,
+		ViewModeTasks, ViewModeTaskPreview, ViewModeTaskRun, ViewModeTaskLog:
 		return mode
 	default:
 		return ViewModeRepoList
@@ -44,8 +45,14 @@ func (m Model) helpTree() []keyhint.Hint {
 		return branchHelpTree()
 	case ViewModePRMap:
 		return prMapHelpTree()
+	case ViewModeTasks:
+		return tasksHelpTree()
+	case ViewModeTaskPreview:
+		return previewHelpTree()
 	case ViewModeTaskRun:
 		return runHelpTree()
+	case ViewModeTaskLog:
+		return logHelpTree()
 	default:
 		return listHelpTree()
 	}
@@ -102,7 +109,7 @@ func (m Model) helpHints() []keyhint.Hint {
 	}
 
 	return []keyhint.Hint{
-		{Key: keyNavPair, What: "scroll", Priority: 3},
+		{Key: keyNavPair, What: descScroll, Priority: 3},
 		{Key: keyEsc, What: back, Priority: 5},
 		{Key: "?", What: descClose, Priority: 4},
 		{Key: "q", What: nameQuit, Priority: 2},
@@ -206,7 +213,7 @@ func listHelpTree() []keyhint.Hint {
 	return []keyhint.Hint{
 		{What: "moving", Head: true},
 		{Key: keyNavPair, What: "a row"},
-		{Key: "gg/G", What: "the ends"},
+		{Key: keysEnds, What: descEnds},
 		{Key: keyEnter, What: "open the repo"},
 		{Key: ";", What: "find a branch, stash, note, or PR: #12, b/s/n/r then a space, * fleet-wide"},
 		{Key: "]", What: "parallel checkouts of this repo"},
@@ -223,6 +230,7 @@ func listHelpTree() []keyhint.Hint {
 		{Key: "v", What: "read the repo under the cursor in full"},
 		{Key: actionLeader, What: "verbs for what is marked, or the fleet", Kids: actionHints(listActions(false))},
 		{Key: operatorLeader, What: "an operator, then a text object", Kids: operatorHints()},
+		{Key: tabKeyTasks + "/" + keyTab, What: "the Tasks tab, on the task due for this repo"},
 		{Key: "r", What: legendRefresh},
 		{What: "commands", Head: true},
 		{Key: ":", What: "command prompt, with :help listing them"},
@@ -269,9 +277,32 @@ func branchHelpTree() []keyhint.Hint {
 	}
 }
 
+func tasksHelpTree() []keyhint.Hint {
+	return []keyhint.Hint{
+		{Key: keyNavPair, What: "a task"},
+		{Key: keysEnds, What: descEnds},
+		{Key: keyEnter, What: "preview the repos the task would run on: the marked rows, else its where"},
+		{Key: tabKeyRepos + "/" + keyEsc, What: "back to the repos"},
+		{Key: ":", What: ":run <task> opens the same preview from any screen"},
+		{Key: "?", What: legendHelp},
+		{Key: "q", What: nameQuit},
+	}
+}
+
+func previewHelpTree() []keyhint.Hint {
+	return []keyhint.Hint{
+		{Key: keyNavPair, What: "a repo"},
+		{Key: keyEnter, What: "run on every repo listed, after a prompt when the task asks first"},
+		{Key: keyEsc, What: "back without running"},
+		{Key: "?", What: legendHelp},
+		{Key: "q", What: nameQuit},
+	}
+}
+
 func runHelpTree() []keyhint.Hint {
 	return []keyhint.Hint{
 		{Key: keyNavPair, What: "a repo"},
+		{Key: keyEnter, What: "that repo's log"},
 		{Key: keyCtrlC, What: "cancel the run: running repos stop and queued repos are canceled"},
 		{Key: keyEsc, What: "back, once the run has finished"},
 		{Key: "?", What: legendHelp},
@@ -279,10 +310,20 @@ func runHelpTree() []keyhint.Hint {
 	}
 }
 
+func logHelpTree() []keyhint.Hint {
+	return []keyhint.Hint{
+		{Key: keyNavPair, What: "scroll a line"},
+		{Key: "pgup/pgdn", What: "scroll a page"},
+		{Key: keysEnds, What: descEnds},
+		{Key: keyEsc, What: "back to the run"},
+		{Key: "?", What: legendHelp},
+	}
+}
+
 func prMapHelpTree() []keyhint.Hint {
 	return []keyhint.Hint{
 		{Key: keyNavPair, What: "a row"},
-		{Key: "gg/G", What: "the ends"},
+		{Key: keysEnds, What: descEnds},
 		{Key: keyEnter, What: "open the repo the row belongs to"},
 		{Key: "o", What: "open the pull request in the browser"},
 		{Key: keyEsc, What: "back to the list"},

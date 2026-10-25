@@ -71,13 +71,20 @@ be deleted and deletes nothing. It over-reports the checked-out branch, which `g
 refuses to delete. The dry run never under-reports, so it names every branch
 before anything disappears.
 
+## From the Tasks tab
+
+The [Tasks tab](./interface.md#tasks-tab) runs the same tasks, built-in or
+configured, over the marked rows or a task's own `where`, previewing the repos
+first. `:run <task>` opens that preview from any screen.
+
 ## The run view
 
 A run opens a view with one row per repo: status, exit code, duration, and what
-the task reported. Rows fill in as repos finish. `ctrl-c` cancels the run, which
-stops running repos and marks the queued ones canceled, and `esc` returns once
-the run is over. Each repo's output lands in the same log file a configured task
-writes.
+the task reported. Rows fill in as repos finish. `enter` on a row opens that
+repo's log, `ctrl-c` cancels the run (which stops running repos and marks the
+queued ones canceled), and `esc` returns once the run is over. Each repo's output
+lands in the log file a configured task writes, and each run adds a line to the
+task's history, which keeps the last 10.
 
 ## Safety
 

@@ -33,6 +33,9 @@ const (
 	ViewModeConfirm
 	ViewModePRMap
 	ViewModePalette
+	ViewModeTasks
+	ViewModeTaskPreview
+	ViewModeTaskLog
 )
 
 // Model is the root Bubble Tea model holding all TUI state.
@@ -189,9 +192,12 @@ type Model struct {
 	filterCursor int
 	sortCursor   int
 
-	// run is the latest task run, shown by the run view and its log pane.
-	run    taskRun
-	engine RunEngine
+	run         taskRun
+	runLog      runLog
+	preview     taskPreview
+	tasksCursor int
+	taskHistory map[string][]tasks.Record
+	engine      RunEngine
 
 	statusMessage string
 	pendingAction *pendingAction
@@ -243,6 +249,7 @@ func New(scanPaths []string, maxDepth int) Model {
 		summaries:     make(map[string]models.RepoSummary),
 		notesPreview:  make(map[string][]models.NoteFileContent),
 		due:           make(map[string][]string),
+		taskHistory:   make(map[string][]tasks.Record),
 		changedPaths:  make(map[string][]string),
 		freshness:     make(map[fetchKey]freshness),
 		shared:        make(map[string]bool),

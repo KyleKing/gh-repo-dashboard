@@ -218,6 +218,7 @@ func DefaultRegistry() Registry {
 				return m.handleRefresh()
 			},
 		},
+		runCommand(),
 		selectCommand(),
 		sortCommand(),
 	)

@@ -980,7 +980,7 @@ const (
 func (m Model) panelHints(panels []panelContent, focused int) []keyhint.Hint {
 	navDesc, backDesc := descNav, descBack
 	if m.detailFocused {
-		navDesc, backDesc = "scroll", "panels"
+		navDesc, backDesc = descScroll, "panels"
 	}
 
 	hints := []keyhint.Hint{

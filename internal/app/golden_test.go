@@ -11,6 +11,7 @@ import (
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
 
+	"github.com/kyleking/gh-repo-dashboard/internal/config"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 	"github.com/kyleking/gh-repo-dashboard/internal/tasks"
 )
@@ -29,60 +30,6 @@ func breakpointSizes() []struct {
 		{"120x35", 120, 35},
 		{"220x50", 220, 50},
 	}
-}
-
-func goldenModel() Model {
-	m := New([]string{"/Users/dev"}, 1)
-	m.width = 100
-	m.height = 30
-	m.loading = false
-
-	m.repoPaths = []string{"/Users/dev/alpha", "/Users/dev/bravo", "/Users/dev/charlie"}
-	m.summaries = map[string]models.RepoSummary{
-		"/Users/dev/alpha": {
-			RepoSummary: vcs.RepoSummary{
-				Path:         "/Users/dev/alpha",
-				VCSType:      vcs.TypeGit,
-				Branch:       mainBranchName,
-				Upstream:     "origin/main",
-				LastModified: time.Now().Add(-5 * time.Minute),
-			},
-		},
-		"/Users/dev/bravo": {
-			RepoSummary: vcs.RepoSummary{
-				Path:         "/Users/dev/bravo",
-				VCSType:      vcs.TypeGit,
-				Branch:       "feature/login",
-				Upstream:     "origin/feature/login",
-				Ahead:        2,
-				Staged:       1,
-				Unstaged:     3,
-				LastModified: time.Now().Add(-2 * time.Hour),
-			},
-			PRInfo: &forge.PullRequest{
-				Number:  42,
-				Title:   "Add login flow",
-				State:   "OPEN",
-				URL:     "https://github.com/dev/bravo/pull/42",
-				HeadRef: "feature/login",
-				BaseRef: mainBranchName,
-			},
-		},
-		"/Users/dev/charlie": {
-			RepoSummary: vcs.RepoSummary{
-				Path:         "/Users/dev/charlie",
-				VCSType:      vcs.TypeJJ,
-				Branch:       "trunk",
-				Untracked:    1,
-				LastModified: time.Now().Add(-3 * 24 * time.Hour),
-			},
-		},
-	}
-	bravo := m.summaries["/Users/dev/bravo"]
-	bravo.OpenPRs = []forge.PullRequest{*bravo.PRInfo}
-	m.summaries["/Users/dev/bravo"] = bravo
-	m.updateFilteredPaths()
-	return m
 }
 
 func TestGoldenRepoList(t *testing.T) {
@@ -364,5 +311,24 @@ func TestGoldenTaskRun(t *testing.T) {
 		m.run.rows = append(m.run.rows, runRow{path: path, done: true, result: result})
 	}
 	m.run.rows[0].done = false
+	golden.RequireEqual(t, []byte(m.renderScreen()))
+}
+
+func TestGoldenTasksBreakpoints(t *testing.T) {
+	for _, size := range breakpointSizes() {
+		t.Run(size.name, func(t *testing.T) {
+			m := tasksGoldenModel()
+			m.width, m.height = size.width, size.height
+			golden.RequireEqual(t, []byte(m.renderScreen()))
+		})
+	}
+}
+
+func TestGoldenTaskPreview(t *testing.T) {
+	m := tasksGoldenModel()
+	next, _ := m.openPreview(config.Task{
+		Name: "tidy", Desc: "remove untracked build output", Run: "git clean -fdx", Where: "dirty", Confirm: true,
+	})
+	m = mustAppModel(next)
 	golden.RequireEqual(t, []byte(m.renderScreen()))
 }

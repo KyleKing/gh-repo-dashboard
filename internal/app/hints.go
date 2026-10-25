@@ -12,6 +12,10 @@ const (
 	descBack   = "back"
 	descOpen   = "open"
 	descClose  = "close"
+	descScroll = "scroll"
+	keysEnds   = "gg/G"
+	descEnds   = "the ends"
+	nameRun    = "run"
 
 	pendingHintPriority = 100
 )
@@ -64,6 +68,7 @@ func listKeyHints(expandOpen bool, marked string) []keyhint.Hint {
 		expand,
 		mark,
 		{Key: actionLeader, What: nameActions, Priority: 7},
+		{Key: tabKeyTasks, What: "tasks", Priority: 3},
 		{Key: "f", What: nameFilter, Priority: 6},
 		{Key: "s", What: nameSort, Priority: 5},
 		{Key: "/", What: "search", Priority: 5},

@@ -106,6 +106,7 @@ func statusFace(status tasks.Status) lipgloss.Style {
 func runHints(running bool) []keyhint.Hint {
 	hints := []keyhint.Hint{
 		{Key: keyNavPair, What: descNav, Priority: 3},
+		{Key: keyEnter, What: "log", Priority: 8},
 		{Key: "?", What: nameHelp, Priority: 5},
 	}
 

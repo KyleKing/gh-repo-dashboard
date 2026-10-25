@@ -180,6 +180,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case RunDoneMsg:
 		return m.handleRunDone(msg)
 
+	case RunLogLoadedMsg:
+		return m.handleRunLogLoaded(msg)
+
+	case TaskHistoryLoadedMsg:
+		m.taskHistory = msg.History
+
+		return m, nil
+
 	case ErrorMsg:
 		return m, nil
 	}
@@ -213,14 +221,8 @@ func (m Model) withFadingStatus(text string) (tea.Model, tea.Cmd) {
 // routeKeyMsg dispatches a key press to the handler for the current mode
 // (search, command-bar, or one of the view modes).
 func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if m.searching {
-		return m.handleSearchKey(msg)
-	}
-	if m.commandMode {
-		return m.handleCommandKey(msg)
-	}
-	if m.viewMode == ViewModeHelp {
-		return m.handleHelpKey(msg)
+	if newM, cmd, handled := m.routeModalKey(msg); handled {
+		return newM, cmd
 	}
 	if newM, cmd, handled := m.handleChordKey(msg); handled {
 		return newM, cmd
@@ -236,6 +238,12 @@ func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleBranchDetailKey(msg)
 	case ViewModeTaskRun:
 		return m.handleRunKey(msg)
+	case ViewModeTasks:
+		return m.handleTasksKey(msg)
+	case ViewModeTaskPreview:
+		return m.handlePreviewKey(msg)
+	case ViewModeTaskLog:
+		return m.handleLogKey(msg)
 	case ViewModeConfirm:
 		return m.handleConfirmKey(msg)
 	case ViewModePRMap:
@@ -245,6 +253,27 @@ func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	default:
 		return m.handleKey(msg)
 	}
+}
+
+// routeModalKey sends a text prompt and help their keys before the chord keys
+// see them, since a query must be able to hold a g or a colon.
+func (m Model) routeModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	switch {
+	case m.searching:
+		next, cmd := m.handleSearchKey(msg)
+
+		return next, cmd, true
+	case m.commandMode:
+		next, cmd := m.handleCommandKey(msg)
+
+		return next, cmd, true
+	case m.viewMode == ViewModeHelp:
+		next, cmd := m.handleHelpKey(msg)
+
+		return next, cmd, true
+	}
+
+	return m, nil, false
 }
 
 // handleReposDiscovered records the discovered repo paths and kicks off a
@@ -519,6 +548,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Peers):
 		return m.openCheckouts()
+
+	case key.Matches(msg, m.keys.Tab), msg.String() == tabKeyTasks:
+		return m.openTasksOnDue()
 	}
 
 	return m, nil
@@ -727,8 +759,14 @@ func (m Model) moveToTop() Model {
 		m.detailCursor = 0
 	case ViewModePRMap:
 		m.prMapCursor = 0
+	case ViewModeTasks:
+		m.tasksCursor = 0
+	case ViewModeTaskPreview:
+		m.preview.cursor = 0
 	case ViewModeTaskRun:
 		m.run.cursor = 0
+	case ViewModeTaskLog:
+		m.runLog.at = 0
 	default:
 		m.cursor = 0
 	}

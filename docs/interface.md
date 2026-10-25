@@ -19,6 +19,7 @@ start.
 | `x` / `V` | Mark the row under the cursor / open a line-wise range motions extend |
 | `a` | Verbs for what is marked, or for whatever the current view has selected |
 | `!` | Batch operator, then a text object |
+| `T` / `R` / `tab` | Switch to the Tasks tab, back to Repos, or to the other tab |
 | `?` | Help legend |
 | `q` | Quit |
 
@@ -82,6 +83,26 @@ batch operators compose with the find.
 
 Launched from inside a repository, the scan finds only that one repo and the
 detail view opens straight away. `esc` still steps back to the one-row list.
+
+## Tasks tab
+
+`T` opens the Tasks tab beside Repos, and `R` or `esc` returns. It lists every
+task, the ones in `config.toml` first and the built-ins after, with its
+description, `where`, how many repos have it due, and the last run's age and
+outcome. The cursor row's recent runs (the last 10) show beneath the list. When
+the repo under the Repos cursor has a due task, `T` lands on that task, which is
+what the `⟳` token in its NEEDS cell names.
+
+`enter` on a task previews the repos it would run on: the rows you marked in the
+list, or else every repo its `where` selects. Each row shows its branch, when the
+task last ran there, and whether it is due. `esc` leaves without running. `enter`
+runs it, after a prompt when the task has `confirm = true`. `:run <task>` opens
+the same preview from any screen.
+
+A run shows one row per repo with its status, exit code, duration, and what the
+task reported, filling in as repos finish. `enter` on a row opens that repo's log
+in a scrolling pane (`j`/`k`, `pgup`/`pgdn`, `gg`/`G`, and `esc` to return), and
+`ctrl-c` cancels the run. `esc` returns to the task list once the run is over.
 
 Filter (`f`) and sort (`s`) dock above the table, and help (`?`) floats over the
 current view. A batch run replaces the view with a run screen, one row per repo,

@@ -10,7 +10,7 @@ file or stdin.
 
 - [Interface](./interface.md) for the views, the columns, the status symbols, and the handful of keys worth memorizing
 - [Filtering and sorting](./filtering.md) for filter modes, predicate expressions, sorting, and search
-- [Batch operations](./batch-operations.md) for fetch, prune, and merged-branch cleanup across many repos
+- [Batch operations](./batch-operations.md) for the built-in fetch, prune, and merged-branch cleanup tasks across many repos, and the run view
 - [Command line](./cli.md) for flags, JSON output, and script files
 - [Configuration](./configuration.md) for the TOML config file
 - [Troubleshooting](./troubleshooting.md) for the common blank columns and empty lists
@@ -41,6 +41,7 @@ colocated repository, one holding both `.git` and `.jj`, through jj.
 - TTL caching for pull request data, workflow status, and VCS reads
 - Multi-repo filters, predicate expressions, fuzzy search, and reversible sorts
 - Batch fetch, prune, and merged-branch cleanup over whatever is filtered
+- A Tasks tab that runs the built-ins and your own `[[tasks]]` over the marked rows or a predicate, with a live run view, logs, and run history
 - Per-repo notes files shown as a badge, a preview line, and a Notes panel
 - Worktree and workspace detection, plus git stash counts
 - Copier template version, showing the installed tag and whether it is behind

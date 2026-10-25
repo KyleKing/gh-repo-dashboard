@@ -11,7 +11,10 @@ The repo list is one full-width table of NAME, BRANCH, NEEDS, PRs, and MODIFIED,
 grouped into NEEDS YOU and QUIET by `needs.go`, with an expanded region `v` opens
 beneath it that is as tall as its content (`internal/app/view_repolist.go`). The focused repo view is a panel grid
 (`panels.go`, `view_panels.go`) and the universal find is `palette.go` and
-`view_palette.go`. The `:prs` fleet map lives in `internal/app/prmap.go`.
+`view_palette.go`. The `:prs` fleet map lives in `internal/app/prmap.go`. The
+Tasks tab (`tasktab.go`, `view_tasks.go`) and the run view (`taskrun.go`,
+`view_run.go`) sit on `internal/tasks`, which runs the built-in and configured
+tasks for the TUI and for `run <task>`.
 Open pull requests and default-branch CI draw from aragonite's stale cache at
 once and refresh behind it (`Model.freshness`). The live CI read stays lazy for
 visible rows, tracked by `Model.ciRequested`, so a repo scrolled past with nothing
@@ -62,7 +65,7 @@ Low priority; pick up when convenient.
   goes red the moment mise's `go = "latest"` resolves past `go.mod`. Confirm the
   newer template carries the fix before accepting its `ci.yml`
 - Motion policy: the app has zero animation (static discovery text, static
-  batch gauge). Decide deliberate restraint or add a spinner
+  run view). Decide deliberate restraint or add a spinner
 - Deep-DRY items from the code-health survey, to do opportunistically when work
   next touches these files: a shared repo-enrichment path for `cli.loadRepo`,
   `app.newScriptModel`, and app's summary/detail loading, and guard/update
@@ -81,14 +84,6 @@ Low priority; pick up when convenient.
   hand off to a persistent per-repo session (a tmux pane or window) that
   outlives the dashboard and that repeated shells jump back into. Decide once
   the one-shot path ships and the persistent case actually comes up
-- Absorb mani: gh-repo-dashboard already owns the repo list, so let it also
-  define and run the batch operations mani exists for (fetch, tag, and
-  whatever else mani's config currently drives across these repos), removing
-  the need to keep the two tools' repo lists in sync. Fits the vim-paradigm
-  operator model in the Vision section above: `fetch` becomes an operator
-  over the repos a predicate selects, the same shape as the planned `Fdr`.
-  Scope it against what mani's config for this repo set actually uses today
-  before generalizing past that
 - A vcs-doctor view surfacing local git/jj config that has drifted from
   global defaults, so a repo behaving oddly is diagnosable from the
   dashboard instead of by hand-checking config files. Candidates:

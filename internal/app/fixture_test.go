@@ -9,13 +9,16 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
 
+	"github.com/kyleking/gh-repo-dashboard/internal/config"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/tasks"
 )
 
 var (
@@ -401,4 +404,90 @@ func TestFixtures(t *testing.T) {
 			}
 		})
 	}
+}
+
+func goldenModel() Model {
+	m := New([]string{"/Users/dev"}, 1)
+	m.width = 100
+	m.height = 30
+	m.loading = false
+
+	m.repoPaths = []string{"/Users/dev/alpha", "/Users/dev/bravo", "/Users/dev/charlie"}
+	m.summaries = map[string]models.RepoSummary{
+		"/Users/dev/alpha": {
+			RepoSummary: vcs.RepoSummary{
+				Path:         "/Users/dev/alpha",
+				VCSType:      vcs.TypeGit,
+				Branch:       mainBranchName,
+				Upstream:     "origin/main",
+				LastModified: time.Now().Add(-5 * time.Minute),
+			},
+		},
+		"/Users/dev/bravo": {
+			RepoSummary: vcs.RepoSummary{
+				Path:         "/Users/dev/bravo",
+				VCSType:      vcs.TypeGit,
+				Branch:       "feature/login",
+				Upstream:     "origin/feature/login",
+				Ahead:        2,
+				Staged:       1,
+				Unstaged:     3,
+				LastModified: time.Now().Add(-2 * time.Hour),
+			},
+			PRInfo: &forge.PullRequest{
+				Number:  42,
+				Title:   "Add login flow",
+				State:   "OPEN",
+				URL:     "https://github.com/dev/bravo/pull/42",
+				HeadRef: "feature/login",
+				BaseRef: mainBranchName,
+			},
+		},
+		"/Users/dev/charlie": {
+			RepoSummary: vcs.RepoSummary{
+				Path:         "/Users/dev/charlie",
+				VCSType:      vcs.TypeJJ,
+				Branch:       "trunk",
+				Untracked:    1,
+				LastModified: time.Now().Add(-3 * 24 * time.Hour),
+			},
+		},
+	}
+	bravo := m.summaries["/Users/dev/bravo"]
+	bravo.OpenPRs = []forge.PullRequest{*bravo.PRInfo}
+	m.summaries["/Users/dev/bravo"] = bravo
+	m.updateFilteredPaths()
+
+	return m
+}
+
+func tasksGoldenModel() Model {
+	m := goldenModel()
+	registry, _ := tasks.Registry([]config.Task{ //nolint:errcheck // the names are not built-ins
+		{
+			Name: "gc", Desc: "aggressive gc for bloated repos", Run: "git gc",
+			Where: "git_size > 1G", Confirm: true, Every: "30d",
+		},
+		{
+			Name: "copier-update", Desc: "apply the template's latest release", Run: "copier update",
+			Where: "template ~ calcipy",
+		},
+		{
+			Name: "git-pull", Desc: "fast-forward the default branch", Run: "git pull --ff-only",
+			Where: "clean and behind",
+		},
+	})
+	m = m.WithTasks(tasks.Selector{Tasks: registry})
+	m.viewMode = ViewModeTasks
+	m.due = map[string][]string{"/Users/dev/alpha": {"gc"}, "/Users/dev/bravo": {"gc"}}
+	now := time.Now()
+	m.taskHistory = map[string][]tasks.Record{
+		"gc": {
+			{At: now.Add(-3 * 24 * time.Hour), Duration: 42 * time.Second, Repos: 3, OK: 2, Failed: 1},
+			{At: now.Add(-33 * 24 * time.Hour), Duration: 38 * time.Second, Repos: 3, OK: 3},
+		},
+		"fetch": {{At: now.Add(-2 * time.Hour), Duration: 4 * time.Second, Repos: 3, OK: 3}},
+	}
+
+	return m
 }
