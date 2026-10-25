@@ -1,3 +1,10 @@
+## v1.13.0 (2026-10-25)
+
+### Feat
+
+- **ui**: draw every screen through the aragonite frame
+- **ui**: remove the PRs tab
+
 ## v1.12.0 (2026-10-25)
 
 ### Feat
