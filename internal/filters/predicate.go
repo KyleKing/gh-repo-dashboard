@@ -89,11 +89,26 @@ func AtomNames[T any](atoms map[string]Predicate[T]) []string {
 	return names
 }
 
+// Field builds a comparison predicate such as "git_size > 1G", where arg is the
+// parenthesized argument of a call like "last_run(gc)" and empty for a bare name.
+type Field[T any] func(arg, op, operand string) (Predicate[T], error)
+
+// Call builds a predicate from a call with no operator, such as "due(gc)".
+type Call[T any] func(arg string) (Predicate[T], error)
+
+// Grammar is the vocabulary a predicate expression may use: bare atoms,
+// comparisons, and calls.
+type Grammar[T any] struct {
+	Atoms  map[string]Predicate[T]
+	Calls  map[string]Call[T]
+	Fields map[string]Field[T]
+}
+
 type parser[T any] struct {
-	input  string
-	tokens []string
-	pos    int
-	atoms  map[string]Predicate[T]
+	input   string
+	tokens  []string
+	pos     int
+	grammar Grammar[T]
 }
 
 // ParsePredicate parses expressions like "dirty and has_pr",
@@ -101,7 +116,13 @@ type parser[T any] struct {
 // atoms, an atom name to Predicate map such as RepoAtoms() or PRAtoms().
 // Precedence: not > and > or.
 func ParsePredicate[T any](input string, atoms map[string]Predicate[T]) (Predicate[T], error) {
-	p := &parser[T]{input: input, tokens: tokenize(input), atoms: atoms}
+	return ParseGrammar(input, Grammar[T]{Atoms: atoms})
+}
+
+// ParseGrammar parses input like ParsePredicate, additionally accepting the
+// comparisons and calls g defines.
+func ParseGrammar[T any](input string, g Grammar[T]) (Predicate[T], error) {
+	p := &parser[T]{input: input, tokens: tokenize(input), grammar: g}
 	if len(p.tokens) == 0 {
 		return nil, &ParseError{Input: input, Message: "empty expression"}
 	}
@@ -116,9 +137,54 @@ func ParsePredicate[T any](input string, atoms map[string]Predicate[T]) (Predica
 	return pred, nil
 }
 
+// tokenize splits on whitespace and standalone parens. A paren glued to a name
+// (not a keyword) and closed on the same expression stays in one token, so
+// "last_run(gc)" reaches the parser whole.
 func tokenize(input string) []string {
-	replaced := strings.NewReplacer("(", " ( ", ")", " ) ").Replace(input)
-	return strings.Fields(replaced)
+	var tokens []string
+	start := -1
+	flush := func(end int) {
+		if start >= 0 {
+			tokens = append(tokens, input[start:end])
+			start = -1
+		}
+	}
+
+	for i := 0; i < len(input); i++ {
+		switch c := input[i]; {
+		case c == ' ' || c == '\t' || c == '\n' || c == '\r':
+			flush(i)
+		case c == '(' && start >= 0 && !isKeyword(input[start:i]):
+			closing := strings.IndexByte(input[i:], ')')
+			if closing < 0 {
+				flush(i)
+				tokens = append(tokens, "(")
+
+				continue
+			}
+			i += closing
+		case c == '(' || c == ')':
+			flush(i)
+			tokens = append(tokens, string(c))
+		default:
+			if start < 0 {
+				start = i
+			}
+		}
+	}
+	flush(len(input))
+
+	return tokens
+}
+
+const (
+	kwAnd = "and"
+	kwNot = "not"
+	kwOr  = "or"
+)
+
+func isKeyword(tok string) bool {
+	return tok == kwNot || tok == kwAnd || tok == kwOr
 }
 
 func (p *parser[T]) peek() (string, bool) {
@@ -136,7 +202,7 @@ func (p *parser[T]) parseOr() (Predicate[T], error) {
 	}
 	for {
 		tok, ok := p.peek()
-		if !ok || tok != "or" {
+		if !ok || tok != kwOr {
 			return left, nil
 		}
 		p.pos++
@@ -155,7 +221,7 @@ func (p *parser[T]) parseAnd() (Predicate[T], error) {
 	}
 	for {
 		tok, ok := p.peek()
-		if !ok || tok != "and" {
+		if !ok || tok != kwAnd {
 			return left, nil
 		}
 		p.pos++
@@ -174,7 +240,7 @@ func (p *parser[T]) parseUnary() (Predicate[T], error) {
 	}
 
 	switch tok {
-	case "not":
+	case kwNot:
 		p.pos++
 		inner, err := p.parseUnary()
 		if err != nil {
@@ -197,17 +263,75 @@ func (p *parser[T]) parseUnary() (Predicate[T], error) {
 
 		return inner, nil
 
-	case ")", "and", "or":
+	case ")", kwAnd, kwOr:
 		return nil, &ParseError{Input: p.input, Message: fmt.Sprintf("unexpected token %q", tok)}
 
 	default:
-		atom, found := p.atoms[tok]
-		if !found {
-			msg := fmt.Sprintf("unknown atom %q (valid: %s)", tok, strings.Join(AtomNames(p.atoms), ", "))
-			return nil, &ParseError{Input: p.input, Message: msg}
-		}
-		p.pos++
-
-		return atom, nil
+		return p.parseTerm(tok)
 	}
+}
+
+func (p *parser[T]) parseTerm(tok string) (Predicate[T], error) {
+	name, arg := splitCall(tok)
+
+	if call, found := p.grammar.Calls[name]; found && arg != "" {
+		p.pos++
+		pred, err := call(arg)
+		if err != nil {
+			return nil, &ParseError{Input: p.input, Message: err.Error()}
+		}
+
+		return pred, nil
+	}
+
+	if field, found := p.grammar.Fields[name]; found {
+		return p.parseComparison(tok, field, arg)
+	}
+
+	atom, found := p.grammar.Atoms[tok]
+	if !found {
+		msg := fmt.Sprintf("unknown atom %q (valid: %s)", tok, strings.Join(p.validNames(), ", "))
+		return nil, &ParseError{Input: p.input, Message: msg}
+	}
+	p.pos++
+
+	return atom, nil
+}
+
+func (p *parser[T]) parseComparison(tok string, field Field[T], arg string) (Predicate[T], error) {
+	if p.pos+2 >= len(p.tokens) {
+		return nil, &ParseError{Input: p.input, Message: fmt.Sprintf("%q needs an operator and a value", tok)}
+	}
+	op, operand := p.tokens[p.pos+1], p.tokens[p.pos+2]
+	pred, err := field(arg, op, operand)
+	if err != nil {
+		return nil, &ParseError{Input: p.input, Message: err.Error()}
+	}
+	p.pos += 3
+
+	return pred, nil
+}
+
+func (p *parser[T]) validNames() []string {
+	names := AtomNames(p.grammar.Atoms)
+	for name := range p.grammar.Fields {
+		names = append(names, name)
+	}
+	for name := range p.grammar.Calls {
+		names = append(names, name+"(...)")
+	}
+	slices.Sort(names)
+
+	return names
+}
+
+// splitCall separates "name(arg)" into its parts, and returns tok with an empty
+// argument when it is not a call.
+func splitCall(tok string) (string, string) {
+	open := strings.IndexByte(tok, '(')
+	if open <= 0 || !strings.HasSuffix(tok, ")") {
+		return tok, ""
+	}
+
+	return tok[:open], tok[open+1 : len(tok)-1]
 }

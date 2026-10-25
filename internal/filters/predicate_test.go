@@ -2,7 +2,10 @@ package filters_test
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
@@ -101,5 +104,74 @@ func TestAtomNamesSorted(t *testing.T) {
 		if names[i] < names[i-1] {
 			t.Errorf("filters.AtomNames not sorted: %q before %q", names[i-1], names[i])
 		}
+	}
+}
+
+func TestParseGrammar(t *testing.T) {
+	t.Parallel()
+	bloated := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(bloated, ".git"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bloated, ".git", "pack"), make([]byte, 3*1024), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	big := models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: bloated}}
+	templated := models.RepoSummary{
+		TemplateInfo: &models.CopierTemplateInfo{SrcPath: "git@github.com:KyleKing/Calcipy-Template.git"},
+	}
+	now := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	runs := filters.Runs{
+		Now: func() time.Time { return now },
+		LastRun: func(task, _ string) (time.Time, bool) {
+			return now.Add(-40 * 24 * time.Hour), task == "gc"
+		},
+		Due: func(task string, _ models.RepoSummary) bool { return task == "gc" },
+	}
+
+	tests := []struct {
+		name     string
+		expr     string
+		summary  models.RepoSummary
+		expected bool
+	}{
+		{"git_size over", "git_size > 2K", big, true},
+		{"git_size under", "git_size < 2K", big, false},
+		{"git_size with unit suffix and B", "git_size >= 3KB", big, true},
+		{"git_size inside parens and not", "not (git_size > 1G)", big, true},
+		{"template substring ignores case", "template ~ calcipy", templated, true},
+		{"template miss", "template ~ mdformat", templated, false},
+		{"template without copier", "template ~ calcipy", models.RepoSummary{}, false},
+		{"last_run older", "last_run(gc) > 30d", big, true},
+		{"last_run newer", "last_run(gc) < 30d", big, false},
+		{"last_run never ran counts as old", "last_run(other) > 30d", big, true},
+		{"due", "due(gc) and dirty", models.RepoSummary{RepoSummary: vcs.RepoSummary{Unstaged: 1}}, true},
+		{"due unknown task", "due(other)", big, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			pred, err := filters.ParseGrammar(tt.expr, filters.RepoGrammar(runs))
+			if err != nil {
+				t.Fatalf("ParseGrammar(%q): %v", tt.expr, err)
+			}
+			if got := pred(tt.summary); got != tt.expected {
+				t.Errorf("%q = %v; want %v", tt.expr, got, tt.expected)
+			}
+		})
+	}
+
+	for _, expr := range []string{
+		"git_size", "git_size >", "git_size > lots", "git_size ~ 1G", "git_size(x) > 1G",
+		"template = calcipy", "last_run > 30d", "last_run(gc) > soon", "due", "(dirty",
+	} {
+		t.Run("rejects "+expr, func(t *testing.T) {
+			t.Parallel()
+			_, err := filters.ParseGrammar(expr, filters.RepoGrammar(filters.Runs{}))
+			var parseErr *filters.ParseError
+			if !errors.As(err, &parseErr) {
+				t.Errorf("ParseGrammar(%q) error = %v; want *filters.ParseError", expr, err)
+			}
+		})
 	}
 }
