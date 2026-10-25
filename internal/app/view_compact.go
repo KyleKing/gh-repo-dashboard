@@ -1,7 +1,6 @@
 package app
 
 import (
-	"strconv"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -21,7 +20,7 @@ const compactIndent = "    "
 const (
 	colCompactName   = "NAME"
 	colCompactBranch = "BRANCH"
-	colCompactState  = "STATUS"
+	colCompactPR     = "PRs"
 )
 
 // compactColSpecs lays out the identity line. Nothing collapses here: three
@@ -31,81 +30,42 @@ const (
 var compactColSpecs = []table.Column{
 	{Key: colCompactName, Title: colCompactName, Min: 20, Weight: 3},
 	{Key: colCompactBranch, Title: colCompactBranch, Min: 12, Weight: 2},
-	{Key: colCompactState, Title: colCompactState, Min: 12},
+	{Key: colCompactPR, Title: colCompactPR, Min: 12},
 }
 
-// renderCompactRow renders one repo as a two-line record: name, branch, and
-// working-tree state on the first line, and whichever fleet signals the repo
-// actually has on the second. A repo with no signals still gets the second
-// line so the cursor can step by a fixed number of rows.
-func (m Model) renderCompactRow(s models.RepoSummary, selected bool, layout table.Layout) string {
+// renderCompactRow renders one repo as two lines: identity, then its NEEDS tokens.
+func (m Model) renderCompactRow(s models.RepoSummary, n needs, selected bool, layout table.Layout) string {
 	base := rowStyleFor(selected)
-
-	values := map[string]string{
-		colCompactName:   s.Name(),
-		colCompactBranch: s.Branch,
-		colCompactState:  statusText(s),
+	cells := []string{
+		nameStyle(n, base, selected).Render(padCell(s.Name(), layout.Width(colCompactName))),
+		withSelection(m.branchStyle(s), selected).Render(padCell(s.Branch, layout.Width(colCompactBranch))),
+		m.prsCell(n, layout.Width(colCompactPR), base, selected),
 	}
-	cellStyles := map[string]lipgloss.Style{
-		colCompactBranch: withSelection(m.branchStyle(s), selected),
-		colCompactState:  withSelection(statusCellStyle(s, base), selected),
-	}
+	identity := rowGutter(m.isMarked(s.Path), selected) + paintRow(layout, cells, base)
 
-	identity := rowGutter(m.isMarked(s.Path), selected) +
-		paintRow(layout, renderCells(layout, values, cellStyles, &base), base)
-
-	signals := m.compactSignals(s)
-	signalWidth := listWidth(m.width) - len(compactIndent)
-	signalLine := styles.Skin.Subtitle.Render(
-		compactIndent + table.Truncate(strings.Join(signals, compactSignalSep), signalWidth),
-	)
-
-	return identity + "\n" + signalLine
+	return identity + "\n" + m.compactNeedsLine(s, n)
 }
 
-// compactSignals lists the non-empty fleet signals for a repo, in the order
-// they earn attention: peers first because a shared branch loses commits,
-// then review load, template drift, notes, and finally recency.
-func (m Model) compactSignals(s models.RepoSummary) []string {
-	var signals []string
+func (m Model) compactNeedsLine(s models.RepoSummary, n needs) string {
+	width := listWidth(m.width) - len(compactIndent)
+	age := ""
 
-	if peers := m.PeerCheckouts(s.Path); len(peers) > 0 {
-		peerSignal := peerPrefix + strconv.Itoa(len(peers))
-		if m.hasBranchConflict(s.Path) {
-			peerSignal += " " + conflictMark
-		}
-		signals = append(signals, peerSignal)
+	if !s.LastModified.IsZero() {
+		age = display.RepoRelativeModified(s.RepoSummary)
 	}
 
-	if s.PRInfo != nil {
-		signals = append(signals, formatPRCell(s))
+	if m.summaryPending(s.Path) {
+		return compactIndent + styles.Skin.Muted.Render(pendingGlyph)
 	}
 
-	if count, ok := m.prCount[s.Path]; ok && count > 0 {
-		signals = append(signals, strconv.Itoa(count)+" "+plural(count, "PR", "PRs"))
+	if len(n.tokens()) == 0 && !n.ciPending {
+		return compactIndent + styles.Skin.Muted.Render(table.Truncate(age, width))
 	}
 
-	if s.TemplateInfo != nil {
-		signals = append(signals, formatCopierCell(s, listWidth(m.width)))
-	}
+	room := width - lipgloss.Width(age) - len(needsGap)
+	cell := m.renderNeeds(n, max(room, 0), plainStyle, false)
 
-	if s.StashCount > 0 {
-		signals = append(signals, strconv.Itoa(s.StashCount)+" "+plural(s.StashCount, "stash", "stashes"))
-	}
-
-	if notes := len(s.NotesFiles); notes > 0 {
-		signals = append(signals, strconv.Itoa(notes)+" "+plural(notes, "note", "notes"))
-	}
-
-	if s.LastModified.IsZero() {
-		if len(signals) == 0 {
-			return []string{"nothing to report"}
-		}
-
-		return signals
-	}
-
-	return append(signals, display.RepoRelativeModified(s.RepoSummary))
+	return compactIndent + strings.TrimRight(cell, " ") + needsGap + styles.Skin.Muted.Render(age)
 }
 
 func plural(count int, one, many string) string {

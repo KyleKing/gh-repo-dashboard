@@ -34,11 +34,13 @@ func searchScopeLegend() string {
 }
 
 func (m Model) repoListScreen() screen {
+	cached := m.withNeedsCache()
+
 	return screen{
 		title: appTitle,
-		facts: m.repoListFacts(),
-		body:  m.renderRepoList(),
-		hints: m.listHints(),
+		facts: cached.repoListFacts(),
+		body:  cached.renderRepoList(),
+		hints: cached.listHints(),
 	}
 }
 
@@ -85,8 +87,6 @@ func (m Model) listBodyHeight() int {
 	return max(height, 1)
 }
 
-// repoListFacts is the header's state beside the title: counts, with the ones
-// that ask for action in their status color, then whatever narrows the list.
 func (m Model) repoListFacts() []frame.Fact {
 	listable := len(m.listableRepos())
 
@@ -95,34 +95,33 @@ func (m Model) repoListFacts() []frame.Fact {
 		repoCount = fmt.Sprintf("%d/%d repos", len(m.filteredPaths), listable)
 	}
 
+	counts := m.attentionCounts()
+
 	facts := []frame.Fact{{Text: repoCount}}
-
-	if dirtyCount := m.DirtyCount(); dirtyCount > 0 {
-		facts = append(facts, frame.Fact{Text: fmt.Sprintf("%d dirty", dirtyCount), Tone: frame.Warning})
-	}
-
-	if prCount := m.PRCount(); prCount > 0 {
-		facts = append(facts, frame.Fact{Text: fmt.Sprintf("%d PRs", prCount)})
-	}
-
-	if notesCount := m.NotesCount(); notesCount > 0 {
-		facts = append(facts, frame.Fact{Text: fmt.Sprintf("%d notes", notesCount)})
-	}
-
-	if conflicts := m.BranchConflictCount(); conflicts > 0 {
-		label := fmt.Sprintf("%s %d branch conflicts", conflictMark, conflicts)
-		if conflicts == 1 {
-			label = conflictMark + " 1 branch conflict"
-		}
-
-		facts = append(facts, frame.Fact{Text: label, Tone: frame.Warning})
-	}
+	facts = appendCount(facts, m.DirtyCount(), "dirty", "dirty", frame.Warning)
+	facts = appendCount(facts, counts.failing, "failing CI", "failing CI", frame.Error)
+	facts = appendCount(facts, counts.turn, "your turn", "your turn", frame.Accent)
+	facts = appendCount(facts, counts.drift, "behind template", "behind template", frame.Muted)
+	facts = appendCount(facts, counts.due, "task due", "tasks due", frame.Muted)
 
 	if progress := m.loadingBadge(); progress != "" {
 		facts = append(facts, frame.Fact{Text: progress, Tone: frame.Accent})
 	}
 
 	return append(facts, m.narrowingFacts()...)
+}
+
+func appendCount(facts []frame.Fact, count int, one, many string, tone frame.Tone) []frame.Fact {
+	if count == 0 {
+		return facts
+	}
+
+	label := many
+	if count == 1 {
+		label = one
+	}
+
+	return append(facts, frame.Fact{Text: strconv.Itoa(count) + " " + label, Tone: tone})
 }
 
 // narrowingFacts names what is limiting the list: the enabled filters, the
@@ -167,7 +166,9 @@ func (m Model) sortFacts() []frame.Fact {
 	facts := make([]frame.Fact, 0, len(enabled))
 
 	for _, s := range enabled {
-		facts = append(facts, frame.Fact{Text: s.Mode.String() + " " + sortArrow(s.Direction)})
+		if s.Mode != models.SortModeAttention {
+			facts = append(facts, frame.Fact{Text: s.Mode.String() + " " + sortArrow(s.Direction)})
+		}
 	}
 
 	return facts
@@ -204,9 +205,11 @@ func sortColumnKey(mode models.SortMode) string {
 	case models.SortModeModified:
 		return colModified
 	case models.SortModeStatus:
-		return colStatus
+		return colNeeds
 	case models.SortModeBranch:
 		return colBranch
+	case models.SortModeAttention:
+		return ""
 	}
 
 	return ""
@@ -387,19 +390,15 @@ func (m Model) renderSortDock() string {
 	return strings.Join(lines, "\n")
 }
 
-// renderListBody renders the repo table with the expanded region under it. The
-// result is always exactly listBodyHeight lines, and the split between the two
-// depends only on that height, so neither the selected repo nor what is still
-// loading can move the footer.
 func (m Model) renderListBody() string {
-	expanded := m.expandHeight(m.listBodyHeight())
-	list := fitBlock(m.renderTable(), m.tableHeight())
+	below := m.expandedLines()
+	list := fitBlock(m.renderTable(), m.listBodyHeight()-len(below))
 
-	if expanded == 0 {
+	if len(below) == 0 {
 		return list
 	}
 
-	return list + "\n" + fitBlock(strings.Join(m.expandLines(listWidth(m.width), expanded), "\n"), expanded)
+	return list + "\n" + strings.Join(below, "\n")
 }
 
 // fitBlock pads or truncates a block of lines to exactly height lines.
@@ -459,35 +458,33 @@ func (m Model) renderTable() string {
 	}
 
 	window := m.visibleRepoRange(rowHeight)
+	groups := m.attentionGroups()
+
 	for i := window.start; i < window.end; i++ {
 		path := m.filteredPaths[i]
 		summary := m.rowSummary(path)
+		n := m.needsOf(summary)
+
+		if groups.grouped && (i == window.start || groups.promoted[i] != groups.promoted[i-1]) {
+			rows = append(rows, groups.rule(groups.promoted[i], width))
+		}
 
 		if compact {
-			rows = append(rows, m.renderCompactRow(summary, i == m.cursor, layout))
+			rows = append(rows, m.renderCompactRow(summary, n, i == m.cursor, layout))
 		} else {
-			rows = append(rows, m.renderTableRow(summary, i == m.cursor, layout))
+			rows = append(rows, m.renderTableRow(summary, n, i == m.cursor, layout))
 		}
 	}
 
 	return strings.Join(rows, "\n")
 }
 
-// Expanded region geometry. Opening the region is a request to read one repo in
-// full, so it takes the larger share of the body; the table keeps enough rows
-// above it that scrolling still moves through the fleet rather than
-// re-centering a two-row window on every keypress. The minimum is the region's
-// own fixed head plus a note line and the divider that captions it.
 const (
 	expandPercent = 60
-	expandMinRows = expandHeadRows + 2
+	expandMinRows = 3
 	listMinRows   = 6
 )
 
-// expandHeight is how many of the body's lines the expanded region holds, or
-// zero when it is closed. It depends only on the body height, never on the
-// selected repo, so scrolling between a repo with notes and one without cannot
-// resize the table under the cursor.
 func (m Model) expandHeight(body int) int {
 	if !m.expandOpen {
 		return 0
@@ -506,12 +503,19 @@ func (m Model) expandHeight(body int) int {
 	return min(body*expandPercent/percentDenominator, room)
 }
 
+func (m Model) expandedLines() []string {
+	limit := m.expandHeight(m.listBodyHeight())
+	if limit == 0 {
+		return nil
+	}
+
+	return m.expandLines(listWidth(m.width), limit)
+}
+
 // tableHeight is how many of the body's lines the table keeps once the expanded
 // region has taken its share.
 func (m Model) tableHeight() int {
-	body := m.listBodyHeight()
-
-	return body - m.expandHeight(body)
+	return m.listBodyHeight() - len(m.expandedLines())
 }
 
 // percentDenominator scales the percentage budgets above; elisionEnds is how
@@ -520,6 +524,8 @@ const (
 	percentDenominator = 100
 	elisionEnds        = 2
 )
+
+const groupRuleCount = 2
 
 // visibleRepoRange returns the half-open slice of filteredPaths that fits the
 // window, keeping the cursor near the middle. The rowHeight argument is how
@@ -531,7 +537,18 @@ func (m Model) visibleRepoRange(rowHeight int) repoWindow {
 		availableLines--
 	}
 
-	return visibleRange(m.cursor, len(m.filteredPaths), availableLines/rowHeight)
+	total := len(m.filteredPaths)
+
+	if !m.groupedByAttention() {
+		return visibleRange(m.cursor, total, availableLines/rowHeight)
+	}
+
+	window := visibleRange(m.cursor, total, (availableLines-1)/rowHeight)
+	if m.straddlesGroups(window) {
+		window = visibleRange(m.cursor, total, (availableLines-groupRuleCount)/rowHeight)
+	}
+
+	return window
 }
 
 // visibleRange returns the half-open slice of a list of the given length that
@@ -555,17 +572,6 @@ type repoWindow struct {
 	end   int
 }
 
-// expandHeadRows is the region's fixed head: the rule that names the repo, one
-// row each for peers, branches, and pull requests, and the divider that
-// separates that metadata from the notes below it. Everything below it
-// belongs to the notes, which is the only section whose length the repo decides.
-const expandHeadRows = 5
-
-// expandLines renders the region below the table for the repo under the cursor:
-// a rule naming the repo, a row each for peers, branches, and pull requests,
-// then the repo's notes over whatever height is left, closed by the divider
-// that captions them. Sections whose data has not arrived say so rather than
-// disappearing, so the region's shape never moves as data lands.
 func (m Model) expandLines(width, height int) []string {
 	if m.cursor >= len(m.filteredPaths) {
 		return nil
@@ -573,24 +579,126 @@ func (m Model) expandLines(width, height int) []string {
 
 	path := m.filteredPaths[m.cursor]
 	summary := m.rowSummary(path)
-	data, loaded := m.prMap[path]
-	peersPending := m.loading || !loaded || m.fetchPending(path, fetchPeerBranches)
 	notes := m.expandNotes(path, summary, width)
 
 	block := region.Region{
 		Title: qualifiedRepoName(path) + compactSignalSep +
 			section(m.summaryPending(path), overviewIdentity(summary)),
-		Head: []region.Fact{
-			{Label: tabNamePeers, Value: section(peersPending, overviewRelevantPeers(m.relevantPeers(path)))},
-			{Label: tabNameBranches, Value: section(!loaded, expandBranches(data.Branches))},
-			{Label: tabNamePRs, Value: section(!loaded, expandPRs(data.PRs))},
-		},
-		Section: "notes",
-		Body:    notes.lines,
-		Caption: qualifiedRepoName(path) + compactSignalSep + notes.caption,
+		Head: m.expandFacts(path, summary),
 	}
 
-	return block.Render(regionStyles(), width, height)
+	if len(summary.NotesFiles) > 0 {
+		block.Section = "notes" + compactSignalSep + notes.caption
+		block.Body = notes.lines
+	}
+
+	return block.Lines(regionStyles(), width, height)
+}
+
+func (m Model) expandFacts(path string, summary models.RepoSummary) []region.Fact {
+	data, loaded := m.prMap[path]
+	peersPending := m.loading || !loaded || m.fetchPending(path, fetchPeerBranches)
+
+	candidates := []region.Fact{
+		{Label: "Changed", Value: m.expandChanged(path, summary)},
+		{Label: "CI", Value: m.expandCI(summary)},
+		{Label: "Template", Value: expandTemplate(summary.TemplateInfo)},
+		{Label: tabNamePeers, Value: section(peersPending, overviewRelevantPeers(m.relevantPeers(path)))},
+		{Label: tabNameBranches, Value: section(!loaded, expandBranches(data.Branches))},
+		{
+			Label: tabNamePRs,
+			Value: section(len(summary.OpenPRs) == 0 && m.fetchPending(path, fetchOpenPRs), expandPRs(summary.OpenPRs)),
+		},
+	}
+
+	facts := make([]region.Fact, 0, len(candidates))
+
+	for _, fact := range candidates {
+		if fact.Value != "" && fact.Value != emDash {
+			facts = append(facts, fact)
+		}
+	}
+
+	return facts
+}
+
+const changedPathsShown = 3
+
+func (m Model) expandChanged(path string, summary models.RepoSummary) string {
+	if summary.UncommittedCount() == 0 {
+		return ""
+	}
+
+	counts := workToken(summary.Staged+summary.Unstaged+summary.Conflicted, summary.Untracked)
+
+	paths, loaded := m.changedPaths[path]
+	if !loaded {
+		return counts + compactSignalSep + readingLabel
+	}
+
+	shown := paths[:min(len(paths), changedPathsShown)]
+	text := counts + compactSignalSep + strings.Join(shown, ", ")
+
+	if more := len(paths) - len(shown); more > 0 {
+		text += " +" + strconv.Itoa(more)
+	}
+
+	return text
+}
+
+func (m Model) expandCI(summary models.RepoSummary) string {
+	if summary.CI == nil {
+		return section(m.fetchPending(summary.Path, fetchCI), "")
+	}
+
+	runs := slices.Clone(summary.CI.Workflows)
+	slices.SortStableFunc(runs, func(a, b forge.CIWorkflowRun) int { return ciOrder(a) - ciOrder(b) })
+
+	parts := make([]string, 0, len(runs))
+	for i := range runs {
+		parts = append(parts, ciWorkflowText(runs[i]))
+	}
+
+	return strings.Join(parts, "  ")
+}
+
+func ciOrder(run forge.CIWorkflowRun) int {
+	switch {
+	case run.Conclusion == models.CIFailureConclusion:
+		return 0
+	case run.Status != forge.StatusCompleted:
+		return 1
+	default:
+		return 2 //nolint:mnd // third tier: everything that finished without failing
+	}
+}
+
+func ciWorkflowText(run forge.CIWorkflowRun) string {
+	switch {
+	case run.Conclusion == models.CIFailureConclusion && len(run.FailingJobs) > 0:
+		return "✗ " + run.Workflow + " (" + strings.Join(run.FailingJobs, ", ") + ")"
+	case run.Conclusion == models.CIFailureConclusion:
+		return "✗ " + run.Workflow
+	case run.Status != forge.StatusCompleted:
+		return "… " + run.Workflow
+	case run.Conclusion == "success":
+		return "✓ " + run.Workflow
+	default:
+		return "⊘ " + run.Workflow
+	}
+}
+
+func expandTemplate(info *models.CopierTemplateInfo) string {
+	switch {
+	case info == nil:
+		return ""
+	case !info.IsTag:
+		return info.Commit + " (pinned)"
+	case info.Behind && info.LatestTag != "":
+		return info.Commit + " → " + info.LatestTag
+	default:
+		return info.Commit + " (current)"
+	}
 }
 
 // expandBranches counts the repo's local branches and names the ones holding
@@ -645,7 +753,7 @@ type notesBlock struct {
 // expandNotes renders the selected repo's notes at the foot of the region.
 func (m Model) expandNotes(path string, summary models.RepoSummary, width int) notesBlock {
 	if len(summary.NotesFiles) == 0 {
-		return notesBlock{caption: "no notes"}
+		return notesBlock{}
 	}
 
 	contents, loaded := m.notesPreview[path]
@@ -661,14 +769,11 @@ func (m Model) expandNotes(path string, summary models.RepoSummary, width int) n
 
 	lines := make([]string, 0, len(contents))
 	for i := range contents {
-		lines = append(lines, notesFileRule(contents[i].Name, width))
+		lines = append(lines, sectionRule(contents[i].Name, width))
 		lines = append(lines, notesBodyLines(contents[i].Content, width)...)
 	}
 
-	return notesBlock{
-		lines:   lines,
-		caption: strconv.Itoa(len(contents)) + " " + plural(len(contents), "note", "notes"),
-	}
+	return notesBlock{lines: lines, caption: strconv.Itoa(len(contents)) + " files"}
 }
 
 // qualifiedRepoName names a repo by its parent directory as well as its own,
@@ -677,19 +782,18 @@ func qualifiedRepoName(path string) string {
 	return filepath.Join(filepath.Base(filepath.Dir(path)), filepath.Base(path))
 }
 
-// notesFileRule heads one note's text when the repo has more than one.
-func notesFileRule(label string, width int) string {
-	rule := strings.Repeat("─", max(width-lipgloss.Width(label)-notesRuleLead-notesRuleSpaces, 0))
+// sectionRule draws a labeled rule across width.
+func sectionRule(label string, width int) string {
+	rule := strings.Repeat("─", max(width-lipgloss.Width(label)-sectionRuleLead-sectionRuleSpaces, 0))
 
-	return styles.Skin.Subtitle.Render(strings.Repeat("─", notesRuleLead)+" ") +
+	return styles.Skin.Subtitle.Render(strings.Repeat("─", sectionRuleLead)+" ") +
 		styles.Skin.Heading.Render(label) +
 		styles.Skin.Subtitle.Render(" "+rule)
 }
 
-// notesRuleSpaces is the blank on each side of a rule's label.
 const (
-	notesRuleLead   = 2
-	notesRuleSpaces = 2
+	sectionRuleLead   = 2
+	sectionRuleSpaces = 2
 )
 
 // notesBodyLines styles a note's text one line per source line, cutting the
@@ -733,42 +837,6 @@ func elideMiddle(lines []string, height int) []string {
 	return append(out, lines[len(lines)-tail:]...)
 }
 
-// prCell renders the pull request open on the checked-out branch, if any,
-// plus a "+N" for the repo's other open pull requests once that count has
-// loaded, so the list's PR column carries the count a separate PRs column
-// used to. The own-PR text truncates first, reserving room for the suffix,
-// the same way branchCell does.
-func (m Model) prCell(s models.RepoSummary, width int) string {
-	text := absentCell(m.fetchPending(s.Path, fetchPR) || m.summaryPending(s.Path))
-	if s.PRInfo != nil {
-		text = formatPRCell(s)
-	}
-
-	others := m.prCount[s.Path]
-	if s.PRInfo != nil {
-		others--
-	}
-
-	suffix := ""
-	if others > 0 {
-		suffix = " +" + strconv.Itoa(others)
-	}
-
-	text = table.Truncate(text, max(width-lipgloss.Width(suffix), 0))
-
-	return text + suffix
-}
-
-// templateCell renders the copier-template column, standing in the
-// pending-or-absent placeholder for a repo whose template info has not arrived.
-func (m Model) templateCell(s models.RepoSummary, width int) string {
-	if s.TemplateInfo == nil {
-		return absentCell(m.fetchPending(s.Path, fetchTemplate) || m.summaryPending(s.Path))
-	}
-
-	return formatCopierCell(s, width)
-}
-
 // formatPRCell formats a repo's PR-column text: "#N" with a review-status
 // indicator and a CI/workflow failure indicator, or emDash if there's no PR.
 func formatPRCell(s models.RepoSummary) string {
@@ -785,15 +853,8 @@ func formatPRCell(s models.RepoSummary) string {
 		prNum += " ✗"
 	}
 
-	switch {
-	case s.PRInfo.Checks.Total > 0:
-		if display.ChecksSummary(s.PRInfo.Checks) == forge.StatusFailing {
-			prNum += " ⚠"
-		}
-	case s.WorkflowInfo != nil:
-		if display.WorkflowSummaryStatusDisplay(*s.WorkflowInfo) == forge.StatusFailing {
-			prNum += " ⚠"
-		}
+	if s.PRInfo.Checks.Total > 0 && display.ChecksSummary(s.PRInfo.Checks) == forge.StatusFailing {
+		prNum += " ⚠"
 	}
 
 	return prNum
@@ -823,137 +884,29 @@ func formatCopierCell(s models.RepoSummary, width int) string {
 	return info.Commit
 }
 
-func notesMarker(s models.RepoSummary, base lipgloss.Style, selected bool) (string, lipgloss.Style) {
-	count := len(s.NotesFiles)
-	if count == 0 {
-		return " ", base
-	}
-
-	style := withSelection(styles.Skin.Accent.Bold(true), selected)
-	if count == 1 {
-		return "N", style
-	}
-
-	return "N" + strconv.Itoa(count), style
-}
-
 func renderRepoHeader(layout table.Layout) string {
 	return strings.Repeat(" ", cursorWidth) + table.Header(layout)
 }
 
-// peersCell renders the count of peer checkouts holding a branch that tracks
-// one of this repo's open pull requests, or the pending-or-absent placeholder
-// while that is still being worked out. A repo with other checkouts but none
-// on a shared pull request reads as absent, not as zero peers: the noise the
-// filter exists to remove.
-func (m Model) peersCell(path string, base lipgloss.Style, selected bool) (string, lipgloss.Style) {
-	pending := m.loading || m.fetchPending(path, fetchExpand) || m.fetchPending(path, fetchPeerBranches)
-
-	peers := m.relevantPeers(path)
-	if len(peers) == 0 {
-		return absentCell(pending), base
-	}
-
-	cell := "⧉ " + strconv.Itoa(len(peers))
-	if m.hasBranchConflict(path) {
-		return cell + conflictMark, withSelection(styles.Skin.Warning, selected)
-	}
-
-	return cell, withSelection(styles.Skin.Accent.Bold(true), selected)
-}
-
-// ciBucketGlyphs names the CI column's four tracked run outcomes, in the
-// fixed order both the header legend and every row's numbers use, alongside
-// the color a nonzero count takes. A count of zero renders dim instead, so
-// the buckets that actually happened are what draws the eye.
-var ciBucketGlyphs = []struct {
-	icon  string
-	style lipgloss.Style
-}{
-	{"✓", styles.Skin.Success},
-	{"⊘", styles.Skin.Accent.Bold(true)},
-	{"⊗", styles.Skin.Warning},
-	{"✗", styles.Skin.Error},
-}
-
-// ciColumnTitle builds the CI column's header: the column name followed by
-// the four outcome icons in their semantic colors, so the row below reads as
-// numbers under a legend rather than requiring the glossary to decode.
-func ciColumnTitle() string {
-	icons := make([]string, len(ciBucketGlyphs))
-	for i := range ciBucketGlyphs {
-		icons[i] = ciBucketGlyphs[i].style.Render(ciBucketGlyphs[i].icon)
-	}
-
-	return colCI + " " + strings.Join(icons, "/")
-}
-
-// ciListCell renders the CI column's per-outcome breakdown for one row: how
-// many of the default branch's most recent workflow runs passed, were
-// skipped, were canceled, and failed, in ciBucketGlyphs' order, padded to
-// width itself so the row's selection background can be painted behind every
-// separator and pad space rather than just the colored digits. A run still
-// in progress prefixes the count rather than taking one of the four slots,
-// since it has not resolved into any of those outcomes yet.
-func (m Model) ciListCell(s models.RepoSummary, width int, selected bool) string {
-	rowStyle := withSelection(styles.Skin.Body, selected)
-
-	if s.WorkflowInfo == nil {
-		text := m.pendingCell(m.fetchPending(s.Path, fetchCI) || m.summaryPending(s.Path))
-
-		return rowStyle.Render(padCell(text, width))
-	}
-
-	wf := s.WorkflowInfo
-	if wf.Total == 0 {
-		return rowStyle.Render(padCell(emDash, width))
-	}
-
-	counts := []int{wf.Passing, wf.Skipped, wf.Canceled, wf.Failing}
-
-	parts := make([]string, len(counts))
-	for i, count := range counts {
-		style := withSelection(styles.Skin.Subtitle, selected)
-		if count > 0 {
-			style = withSelection(ciBucketGlyphs[i].style, selected)
-		}
-
-		parts[i] = style.Render(strconv.Itoa(count))
-	}
-
-	sep := rowStyle.Render("/")
-	cell := strings.Join(parts, sep)
-
-	if wf.InProgress > 0 {
-		running := withSelection(styles.Skin.Warning, selected).Render("…" + strconv.Itoa(wf.InProgress))
-		cell = running + rowStyle.Render(" ") + cell
-	}
-
-	if gap := width - lipgloss.Width(cell); gap > 0 {
-		cell += rowStyle.Render(strings.Repeat(" ", gap))
-	}
-
-	return cell
-}
-
 // ciCell renders the default branch's CI rollup as a single word: a check
-// when every run passed, the count of failures when not, the pending glyph
+// when every workflow passed, the count of failures when not, the pending glyph
 // while the fetch is in flight, and emDash once it is known there is nothing
 // to report. Used where a line of text has room for one signal, not a table
-// column; see ciListCell for the Repos list's fuller breakdown.
+// column; the expanded region names each workflow.
 func (m Model) ciCell(s models.RepoSummary) string {
-	if s.WorkflowInfo == nil {
+	if s.CI == nil {
 		return absentCell(m.fetchPending(s.Path, fetchCI) || m.summaryPending(s.Path))
 	}
 
-	wf := s.WorkflowInfo
+	failing, total := s.CIFailing()
+
 	switch {
-	case wf.Total == 0:
+	case total == 0:
 		return emDash
-	case wf.Failing > 0:
-		return "✗ " + strconv.Itoa(wf.Failing) + "/" + strconv.Itoa(wf.Total)
-	case wf.InProgress > 0:
-		return "…" + strconv.Itoa(wf.InProgress)
+	case failing > 0:
+		return "✗ " + strconv.Itoa(failing) + "/" + strconv.Itoa(total)
+	case s.CIRunning() > 0:
+		return "…" + strconv.Itoa(s.CIRunning())
 	default:
 		return "✓"
 	}
@@ -961,18 +914,6 @@ func (m Model) ciCell(s models.RepoSummary) string {
 
 // conflictMark flags a repo whose branch is checked out somewhere else too.
 const conflictMark = "⚠"
-
-// hasBranchConflict reports whether the repo shares its branch with one of its
-// peer checkouts, the state where a commit made in one is invisible to the
-// other.
-func (m Model) hasBranchConflict(path string) bool {
-	summary, ok := m.summaries[path]
-	if !ok {
-		return false
-	}
-
-	return models.ConflictingBranches(ownCheckoutOf(&summary), m.PeerCheckouts(path))[summary.Branch]
-}
 
 // ownCheckoutOf adapts a summary into the checkout form the conflict check
 // compares its peers against.
@@ -982,115 +923,84 @@ func ownCheckoutOf(summary *models.RepoSummary) *models.PeerCheckout {
 	return &own
 }
 
-// BranchConflictCount counts the repos sharing a branch with a peer checkout.
-// It groups every summary by remote once rather than checking each repo
-// against a freshly rebuilt full scan of every other repo, which made this
-// call quadratic in fleet size despite running on every render.
-func (m Model) BranchConflictCount() int {
-	filtered := make(map[string]bool, len(m.filteredPaths))
-	for _, path := range m.filteredPaths {
-		filtered[path] = true
-	}
+// refreshShared groups summaries by remote once, since checking each repo against every other makes a render quadratic.
+func (m *Model) refreshShared() {
+	shared := make(map[string]bool)
 
-	const minSharedRemote = 2 // a conflict needs at least one peer sharing the remote
-
-	count := 0
 	for _, group := range m.summariesByRemote() {
 		if len(group) < minSharedRemote {
 			continue
 		}
 
 		for i := range group {
-			if !filtered[group[i].Path] {
-				continue
-			}
-
-			own := ownCheckoutOf(&group[i])
-
 			peers := make([]models.PeerCheckout, 0, len(group)-1)
+
 			for j := range group {
 				if j != i {
 					peers = append(peers, models.OwnCheckout(&group[j]))
 				}
 			}
 
-			if models.ConflictingBranches(own, peers)[group[i].Branch] {
-				count++
+			if models.ConflictingBranches(ownCheckoutOf(&group[i]), peers)[group[i].Branch] {
+				shared[group[i].Path] = true
 			}
 		}
 	}
 
-	return count
+	m.shared = shared
 }
 
-func (m Model) renderTableRow(s models.RepoSummary, selected bool, layout table.Layout) string {
+const minSharedRemote = 2
+
+func (m Model) renderTableRow(s models.RepoSummary, n needs, selected bool, layout table.Layout) string {
 	base := rowStyleFor(selected)
 
 	cells := make([]string, 0, len(layout.Columns))
 	for _, c := range layout.Columns {
-		cells = append(cells, m.repoCell(c.Key, s, layout.Width(c.Key), base, selected))
+		cells = append(cells, m.repoCell(c.Key, s, n, layout.Width(c.Key), base, selected))
 	}
 
 	return rowGutter(m.isMarked(s.Path), selected) + paintRow(layout, cells, base)
 }
 
 // repoCell renders one column of a repo row, padded to exactly width cells so
-// the columns after it stay aligned.
-func (m Model) repoCell(col string, s models.RepoSummary, width int, base lipgloss.Style, selected bool) string {
+// the columns after it stay aligned. A repo that needs nothing draws its name
+// Muted, so the quiet rows recede.
+func (m Model) repoCell(
+	col string, s models.RepoSummary, n needs, width int, base lipgloss.Style, selected bool,
+) string {
 	switch col {
 	case colName:
-		return base.Render(padCell(s.Name(), width))
+		return nameStyle(n, base, selected).Render(padCell(s.Name(), width))
 	case colBranch:
 		return withSelection(m.branchStyle(s), selected).Render(padCell(m.branchCell(s, width), width))
-	case colStatus:
-		return m.statusCell(s, width, base, selected)
-	case colPeers:
-		text, style := m.peersCell(s.Path, base, selected)
+	case colNeeds:
+		if m.summaryPending(s.Path) {
+			return base.Render(padCell(pendingGlyph, width))
+		}
 
-		return style.Render(padCell(text, width))
+		return m.renderNeeds(n, width, base, selected)
 	case colPR:
-		return prCellStyle(s, base, selected).Render(padCell(m.prCell(s, width), width))
-	case colTemplate:
-		return templateCellStyle(s, base, selected).Render(padCell(m.templateCell(s, width), width))
-	case colCI:
-		return m.ciListCell(s, width, selected)
+		return m.prsCell(n, width, base, selected)
 	case colModified:
 		if m.summaryPending(s.Path) {
 			return base.Render(padCell(pendingGlyph, width))
 		}
 
-		return base.Render(padCell(display.RepoRelativeModified(s.RepoSummary), width))
+		age := padCell(display.RepoRelativeModified(s.RepoSummary), width)
+
+		return withSelection(styles.Skin.Muted, selected).Render(age)
 	default:
 		return base.Render(padCell("", width))
 	}
 }
 
-// statusCell renders the status summary and the notes marker that shares its
-// column, keeping the marker right-aligned within the column. A summary still
-// being read has no state to report, and reporting a clean tree before the read
-// lands would be a claim about the repo rather than a placeholder. A clean tree
-// renders blank, so color and glyphs go only to what needs a look.
-func (m Model) statusCell(s models.RepoSummary, width int, base lipgloss.Style, selected bool) string {
-	notesText, notesStyle := notesMarker(s, base, selected)
-	style := withSelection(statusCellStyle(s, base), selected)
-
-	summary := statusText(s)
-	if m.summaryPending(s.Path) {
-		summary = pendingGlyph
-		style = base
+func nameStyle(n needs, base lipgloss.Style, selected bool) lipgloss.Style {
+	if n.promotes() {
+		return base
 	}
 
-	return style.Render(padCell(summary, width-notesMarkerWidth)) +
-		notesStyle.Render(padCell(notesText, notesMarkerWidth))
-}
-
-// statusText is the working tree's symbols, or nothing for a clean tree.
-func statusText(s models.RepoSummary) string {
-	if s.Status() == vcs.RepoStatusClean {
-		return ""
-	}
-
-	return display.RepoStatusSummary(s.RepoSummary)
+	return withSelection(styles.Skin.Muted, selected)
 }
 
 // branchStyle draws a branch name in the body face, and quietly when it is the
@@ -1118,41 +1028,6 @@ func (m Model) branchCell(s models.RepoSummary, width int) string {
 	name := table.Truncate(s.Branch, max(width-lipgloss.Width(suffix), 0))
 
 	return name + suffix
-}
-
-// pendingCell marks a cell whose fetch is still in flight with the spinner
-// rather than emDash, so a count still loading cannot be mistaken for a count
-// of zero.
-func (m Model) pendingCell(pending bool) string {
-	if pending {
-		return m.spinner.View()
-	}
-
-	return emDash
-}
-
-func statusCellStyle(s models.RepoSummary, base lipgloss.Style) lipgloss.Style {
-	if s.IsDirty() {
-		return styles.Dirty
-	}
-
-	return base
-}
-
-func prCellStyle(s models.RepoSummary, base lipgloss.Style, selected bool) lipgloss.Style {
-	if s.PRInfo != nil {
-		return withSelection(styles.PROpen, selected)
-	}
-
-	return base
-}
-
-func templateCellStyle(s models.RepoSummary, base lipgloss.Style, selected bool) lipgloss.Style {
-	if info := s.TemplateInfo; info != nil && (!info.IsTag || info.Behind) {
-		return withSelection(styles.Skin.Warning, selected)
-	}
-
-	return base
 }
 
 // regionStyles are the faces the expandable regions draw with, kept in one

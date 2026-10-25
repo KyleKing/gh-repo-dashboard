@@ -126,18 +126,3 @@ func TestStatusMessageHandling(t *testing.T) {
 		})
 	}
 }
-
-func TestPRCountLoadedAccumulates(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-
-	m = afterUpdate(t, m, PRCountLoadedMsg{Path: testRepo1Path, Count: 5})
-	m = afterUpdate(t, m, PRCountLoadedMsg{Path: "/repo2", Count: 3})
-
-	if m.prCount[testRepo1Path] != 5 {
-		t.Errorf("expected 5 PRs for repo1, got %d", m.prCount[testRepo1Path])
-	}
-	if m.prCount["/repo2"] != 3 {
-		t.Errorf("expected 3 PRs for repo2, got %d", m.prCount["/repo2"])
-	}
-}

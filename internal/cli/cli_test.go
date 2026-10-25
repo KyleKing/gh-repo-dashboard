@@ -91,7 +91,7 @@ func TestLookupPR(t *testing.T) {
 }
 
 //nolint:paralleltest // asserts against shared global cache.ClearAll() state
-func TestLookupPRCount(t *testing.T) {
+func TestLookupOpenPRs(t *testing.T) {
 	cachedPRs := []forge.PullRequest{{Number: 1}, {Number: 2}}
 	freshPRs := []forge.PullRequest{{Number: 3}}
 
@@ -128,12 +128,12 @@ func TestLookupPRCount(t *testing.T) {
 			calls := 0
 			client := stubClient(nil, freshPRs, tt.fetchErr, &calls)
 
-			got := cli.LookupPRCount(context.Background(), client, "/repo", testRemoteID, tt.upstream, tt.fresh)
+			prs, known := cli.LookupOpenPRs(context.Background(), client, "/repo", testRemoteID, tt.upstream, tt.fresh)
 			switch {
-			case got == nil && tt.expected != nil, got != nil && tt.expected == nil:
-				t.Errorf("expected %v, got %v", tt.expected, got)
-			case got != nil && *got != *tt.expected:
-				t.Errorf("expected count %d, got %d", *tt.expected, *got)
+			case !known && tt.expected != nil, known && tt.expected == nil:
+				t.Errorf("expected %v, known %v", tt.expected, known)
+			case known && len(prs) != *tt.expected:
+				t.Errorf("expected count %d, got %d", *tt.expected, len(prs))
 			}
 			if calls != tt.wantCalls {
 				t.Errorf("expected %d gh calls, got %d", tt.wantCalls, calls)

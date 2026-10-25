@@ -22,10 +22,11 @@ func operatorModel() Model {
 		"/test/dirty":  {RepoSummary: vcs.RepoSummary{Path: "/test/dirty", Branch: mainBranchName, Unstaged: 2}},
 		"/test/dirty-pr": {
 			RepoSummary: vcs.RepoSummary{Path: "/test/dirty-pr", Branch: "feat", Unstaged: 1},
-			PRInfo:      &forge.PullRequest{Number: 7},
-			NotesFiles:  []models.NoteFile{{Name: "doing.md"}},
+			PRInfo:      &forge.PullRequest{Number: 7}, OpenPRs: []forge.PullRequest{{Number: 7}},
+			NotesFiles: []models.NoteFile{{Name: "doing.md"}},
 		},
 	}
+	sortByName(&m)
 	m.updateFilteredPaths()
 
 	return m

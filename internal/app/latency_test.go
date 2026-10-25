@@ -60,7 +60,6 @@ func syntheticFleetModel(t *testing.T) Model {
 				LastModified: time.Now().Add(-time.Duration(i) * time.Minute),
 			},
 		}
-		m.prCount[path] = i % 5
 		m.branchCount[path] = i%7 + 1
 	}
 

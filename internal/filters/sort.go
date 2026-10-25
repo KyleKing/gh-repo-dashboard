@@ -84,8 +84,14 @@ func compareByBranch(a, b *models.RepoSummary) bool {
 	return compareByName(a, b)
 }
 
+// Ranker scores a repo for SortModeAttention: a lower rank sorts first.
+type Ranker func(path string) int
+
 // SortPathsMulti returns a copy of paths sorted by multiple active sorts, applied in priority order.
-func SortPathsMulti(paths []string, summaries map[string]models.RepoSummary, activeSorts []models.ActiveSort) []string {
+// A nil rank leaves SortModeAttention to the next sort.
+func SortPathsMulti(
+	paths []string, summaries map[string]models.RepoSummary, activeSorts []models.ActiveSort, rank Ranker,
+) []string {
 	if len(paths) == 0 {
 		return paths
 	}
@@ -108,19 +114,23 @@ func SortPathsMulti(paths []string, summaries map[string]models.RepoSummary, act
 	sorted := make([]string, len(paths))
 	copy(sorted, paths)
 
+	before := func(mode models.SortMode, a, b string) bool {
+		if mode != models.SortModeAttention {
+			sa, sb := summaries[a], summaries[b]
+
+			return comparePaths(&sa, &sb, mode)
+		}
+
+		return rank != nil && compareByAttention(summaries, rank, a, b)
+	}
+
 	sort.Slice(sorted, func(i, j int) bool {
-		si := summaries[sorted[i]]
-		sj := summaries[sorted[j]]
-
 		for _, activeSort := range enabledSorts {
-			less := comparePaths(&si, &sj, activeSort.Mode)
-			if activeSort.Direction == models.SortDirectionDesc {
-				less = !less
-			}
+			less := before(activeSort.Mode, sorted[i], sorted[j])
+			greater := before(activeSort.Mode, sorted[j], sorted[i])
 
-			greater := comparePaths(&sj, &si, activeSort.Mode)
 			if activeSort.Direction == models.SortDirectionDesc {
-				greater = !greater
+				less, greater = !less, !greater
 			}
 
 			if less != greater {
@@ -132,4 +142,14 @@ func SortPathsMulti(paths []string, summaries map[string]models.RepoSummary, act
 	})
 
 	return sorted
+}
+
+func compareByAttention(summaries map[string]models.RepoSummary, rank Ranker, a, b string) bool {
+	if ra, rb := rank(a), rank(b); ra != rb {
+		return ra < rb
+	}
+
+	sa, sb := summaries[a], summaries[b]
+
+	return compareByModified(&sa, &sb)
 }

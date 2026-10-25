@@ -17,7 +17,7 @@ func TestRefreshFromRepoList(t *testing.T) {
 	m := New([]string{"/test"}, 1)
 	m.viewMode = ViewModeRepoList
 	m.summaries[testRepo1Path] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepo1Path}}
-	m.prCount[testRepo1Path] = 5
+	m.freshness[fetchKey{testRepo1Path, fetchCI}] = freshnessFresh
 
 	msg := tea.KeyPressMsg{Code: 'r', Text: "r"}
 	if !key.Matches(msg, m.keys.Refresh) {
@@ -37,8 +37,8 @@ func TestRefreshFromRepoList(t *testing.T) {
 	if len(m.summaries) != 0 {
 		t.Error("refresh should clear summaries")
 	}
-	if len(m.prCount) != 0 {
-		t.Error("refresh should clear PR count")
+	if len(m.freshness) != 0 {
+		t.Error("refresh should forget which cells were read live")
 	}
 }
 
@@ -129,8 +129,8 @@ func TestRefreshClearsCache(t *testing.T) {
 	if len(m.summaries) != 0 {
 		t.Error("handleRefresh should clear summaries map")
 	}
-	if len(m.prCount) != 0 {
-		t.Error("handleRefresh should clear prCount map")
+	if len(m.freshness) != 0 {
+		t.Error("handleRefresh should clear the freshness map")
 	}
 }
 

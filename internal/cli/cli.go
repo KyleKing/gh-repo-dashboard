@@ -199,8 +199,15 @@ func loadRepo(
 	//nolint:errcheck // absence just leaves the template fields empty
 	summary.TemplateInfo, _ = copier.GetTemplateInfo(ctx, path)
 	pr := lookupPR(ctx, client, path, summary.RemoteID, summary.Branch, summary.Upstream, opts.Fresh)
-	prCount := lookupPRCount(ctx, client, path, summary.RemoteID, summary.Upstream, opts.Fresh)
+	openPRs, known := lookupOpenPRs(ctx, client, path, summary.RemoteID, summary.Upstream, opts.Fresh)
 	summary.PRInfo = pr
+	summary.OpenPRs = openPRs
+
+	var prCount *int
+	if known {
+		count := len(openPRs)
+		prCount = &count
+	}
 
 	if pred != nil && !pred(summary) {
 		return nil
@@ -321,28 +328,28 @@ func lookupPR(
 	return pr
 }
 
-// lookupPRCount returns the repo's open PR count from the cache, fetching via
-// gh only when fresh is set. A miss (or fetch failure) yields nil.
-func lookupPRCount(ctx context.Context, client githubClient, repoPath, remoteID, upstream string, fresh bool) *int {
+// lookupOpenPRs returns the repo's open pull requests from the cache, fetching
+// via gh only when fresh is set. Known is false on a miss or fetch failure.
+func lookupOpenPRs(
+	ctx context.Context, client githubClient, repoPath, remoteID, upstream string, fresh bool,
+) ([]forge.PullRequest, bool) {
 	if upstream == "" {
-		return nil
+		return nil, false
 	}
 
 	if cached, ok := github.CachedPRs(repoPath, remoteID, upstream); ok {
-		count := len(cached)
-		return &count
+		return cached, true
 	}
 	if !fresh {
-		return nil
+		return nil, false
 	}
 
 	prs, err := client.prsForRepo(ctx, repoPath, remoteID, upstream)
 	if err != nil {
-		return nil
+		return nil, false
 	}
-	count := len(prs)
 
-	return &count
+	return prs, true
 }
 
 func writeOutput(w io.Writer, out Output) error {

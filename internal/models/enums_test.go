@@ -85,6 +85,7 @@ func TestSortModeString(t *testing.T) {
 		mode     models.SortMode
 		expected string
 	}{
+		{models.SortModeAttention, "Attention"},
 		{models.SortModeName, "Name"},
 		{models.SortModeModified, "Modified"},
 		{models.SortModeStatus, "Status"},
@@ -104,10 +105,11 @@ func TestSortModeNext(t *testing.T) {
 		mode     models.SortMode
 		expected models.SortMode
 	}{
+		{models.SortModeAttention, models.SortModeName},
 		{models.SortModeName, models.SortModeModified},
 		{models.SortModeModified, models.SortModeStatus},
 		{models.SortModeStatus, models.SortModeBranch},
-		{models.SortModeBranch, models.SortModeName},
+		{models.SortModeBranch, models.SortModeAttention},
 	}
 
 	for _, tt := range tests {

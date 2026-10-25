@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
@@ -63,8 +62,8 @@ func TestModelSortInitialization(t *testing.T) {
 	}
 
 	for _, s := range m.activeSorts {
-		if s.Mode == models.SortModeName && s.Direction != models.SortDirectionAsc {
-			t.Error("SortModeName should be Asc by default")
+		if s.Mode == models.SortModeAttention && s.Direction != models.SortDirectionAsc {
+			t.Error("SortModeAttention should be Asc by default")
 		}
 	}
 }
@@ -214,9 +213,9 @@ func TestModelCycleSortStateCompactsOnDisable(t *testing.T) {
 
 	for _, s := range m.activeSorts {
 		switch s.Mode {
-		case models.SortModeName:
+		case models.SortModeAttention:
 			if s.Priority != 0 {
-				t.Errorf("Name priority: expected 0, got %d", s.Priority)
+				t.Errorf("Attention priority: expected 0, got %d", s.Priority)
 			}
 		case models.SortModeStatus:
 			if s.Priority != 1 {
@@ -235,7 +234,7 @@ func TestMoveSortUpAfterEnable(t *testing.T) {
 	var nameIdx, modIdx int
 	for i, s := range m.activeSorts {
 		switch s.Mode {
-		case models.SortModeName:
+		case models.SortModeAttention:
 			nameIdx = i
 		case models.SortModeModified:
 			modIdx = i
@@ -252,7 +251,7 @@ func TestMoveSortUpAfterEnable(t *testing.T) {
 		t.Errorf("MoveSortUp after enable: expected Modified priority 0, got %d", m.activeSorts[modIdx].Priority)
 	}
 	if m.activeSorts[nameIdx].Priority != 1 {
-		t.Errorf("MoveSortUp after enable: expected Name priority 1, got %d", m.activeSorts[nameIdx].Priority)
+		t.Errorf("MoveSortUp after enable: expected Attention priority 1, got %d", m.activeSorts[nameIdx].Priority)
 	}
 }
 
@@ -288,9 +287,9 @@ func TestModelResetSorts(t *testing.T) {
 	m.ResetSorts()
 
 	for _, s := range m.activeSorts {
-		if s.Mode == models.SortModeName {
+		if s.Mode == models.SortModeAttention {
 			if s.Direction != models.SortDirectionAsc {
-				t.Error("Name should be Asc after reset")
+				t.Error("Attention should be Asc after reset")
 			}
 		} else {
 			if s.Direction != models.SortDirectionOff {
@@ -328,21 +327,6 @@ func TestHeaderCountsShareTheFilterScope(t *testing.T) {
 		if !strings.Contains(header, want) {
 			t.Errorf("header %q is missing %q; every count must follow the filter", header, want)
 		}
-	}
-}
-
-func TestModelPRCount(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.summaries = map[string]models.RepoSummary{
-		testRepo1Path: {RepoSummary: vcs.RepoSummary{Path: testRepo1Path}, PRInfo: &forge.PullRequest{Number: 1}},
-		"/repo2":      {RepoSummary: vcs.RepoSummary{Path: "/repo2"}, PRInfo: &forge.PullRequest{Number: 2}},
-		"/repo3":      {RepoSummary: vcs.RepoSummary{Path: "/repo3"}},
-	}
-	m.filteredPaths = []string{testRepo1Path, "/repo2", "/repo3"}
-
-	if m.PRCount() != 2 {
-		t.Errorf("expected 2 PRs, got %d", m.PRCount())
 	}
 }
 

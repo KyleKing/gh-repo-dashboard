@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -16,6 +17,7 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/copier"
 	"github.com/kyleking/gh-repo-dashboard/internal/discovery"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/tasks"
 )
 
 // Batch task display names shared by :commands, operator keys, and batch cmds.
@@ -95,8 +97,7 @@ func loadRepoSummaryCmd(path string) tea.Cmd {
 	}
 }
 
-// loadPRCmd reads the pull request open on the repo's checked-out branch, the
-// one the Repos list's PR column reports.
+// loadPRCmd reads the pull request open on the repo's checked-out branch.
 func loadPRCmd(path, remoteID, branch, upstream string) tea.Cmd {
 	if upstream == "" {
 		return nil
@@ -119,17 +120,23 @@ func loadDefaultBranchCICmd(path, remoteID string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()
 
-		def, err := vcs.DefaultBranchHead(ctx, path)
-		if err != nil {
-			return WorkflowLoadedMsg{Path: path}
-		}
-
-		summary, err := github.GetWorkflowRunsForCommit(ctx, path, remoteID, def.SHA)
+		ci, err := github.GetDefaultBranchCI(ctx, path, remoteID)
 		if err != nil {
 			return WorkflowLoadedMsg{Path: path, Error: err}
 		}
 
-		return WorkflowLoadedMsg{Path: path, Branch: def.Name, Workflow: summary}
+		return WorkflowLoadedMsg{Path: path, Branch: ci.Branch, CI: ci}
+	}
+}
+
+func staleDefaultBranchCICmd(path, remoteID string) tea.Cmd {
+	return func() tea.Msg {
+		ci, _, ok := github.CachedDefaultBranchCIStale(context.Background(), path, remoteID)
+		if !ok {
+			return WorkflowLoadedMsg{Path: path, Stale: true, Miss: true}
+		}
+
+		return WorkflowLoadedMsg{Path: path, Branch: ci.Branch, CI: ci, Stale: true}
 	}
 }
 
@@ -232,20 +239,107 @@ func loadBranchDetailCmd(repoPath, branchName string) tea.Cmd {
 	}
 }
 
-func loadPRCountCmd(path, remoteID, upstream string) tea.Cmd {
+func loadOpenPRsCmd(path, remoteID, upstream string) tea.Cmd {
 	if upstream == "" {
 		return nil
 	}
 
 	return func() tea.Msg {
-		ctx := context.Background()
-		count, err := github.GetPRCount(ctx, path, remoteID, upstream)
-		if err != nil {
-			return PRCountLoadedMsg{Path: path, Count: 0}
+		prs, err := github.GetPRsForRepo(context.Background(), path, remoteID, upstream)
+
+		return OpenPRsLoadedMsg{Path: path, PRs: prs, Error: err}
+	}
+}
+
+func staleOpenPRsCmd(path, remoteID, upstream string) tea.Cmd {
+	if upstream == "" {
+		return nil
+	}
+
+	return func() tea.Msg {
+		prs, _, ok := github.CachedPRsStale(path, remoteID, upstream)
+		if !ok {
+			return OpenPRsLoadedMsg{Path: path, Stale: true, Miss: true}
 		}
 
-		return PRCountLoadedMsg{Path: path, Count: count}
+		return OpenPRsLoadedMsg{Path: path, PRs: prs, Stale: true}
 	}
+}
+
+const viewerTimeout = 5 * time.Second
+
+// loadViewerCmd names the signed-in GitHub user. An unreadable login leaves no pull request waiting on anyone.
+func loadViewerCmd() tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), viewerTimeout)
+		defer cancel()
+
+		out, err := exec.CommandContext(ctx, "gh", "api", "user", "--jq", ".login").Output()
+		if err != nil {
+			return ViewerLoadedMsg{}
+		}
+
+		return ViewerLoadedMsg{Login: strings.TrimSpace(string(out))}
+	}
+}
+
+// loadDueTasksCmd runs off the UI thread because a task's where may walk the repo's git directory.
+func loadDueTasksCmd(sel tasks.Selector, summary models.RepoSummary) tea.Cmd {
+	return func() tea.Msg {
+		var due []string
+
+		for _, task := range sel.Tasks {
+			if task.Every == "" {
+				continue
+			}
+
+			if isDue, err := sel.Due(task, summary); err == nil && isDue {
+				due = append(due, task.Name)
+			}
+		}
+
+		return DueTasksLoadedMsg{Path: summary.Path, Tasks: due}
+	}
+}
+
+func loadChangedPathsCmd(path string, vcsType vcs.Type) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), changedPathsTimeout)
+		defer cancel()
+
+		args := []string{"git", "status", "--porcelain"}
+		if vcsType == vcs.TypeJJ {
+			args = []string{"jj", diffWord, "--summary", "--no-pager"}
+		}
+
+		cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+		cmd.Dir = path
+
+		out, err := cmd.Output()
+		if err != nil {
+			return ChangedPathsLoadedMsg{Path: path}
+		}
+
+		return ChangedPathsLoadedMsg{Path: path, Paths: parseChangedPaths(string(out))}
+	}
+}
+
+const (
+	changedPathsTimeout = 5 * time.Second
+	diffWord            = "diff"
+)
+
+func parseChangedPaths(out string) []string {
+	var paths []string
+
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if _, rest, found := strings.Cut(line, " "); found && strings.TrimSpace(rest) != "" {
+			paths = append(paths, strings.TrimSpace(rest))
+		}
+	}
+
+	return paths
 }
 
 // loadBranchCountCmd reads a repo's local branch count for the Repos list.

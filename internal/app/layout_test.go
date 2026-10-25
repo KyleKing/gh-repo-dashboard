@@ -45,21 +45,26 @@ func peerModel() Model {
 	return m
 }
 
-func TestRepoRow_PeerCountDoesNotShiftLaterColumns(t *testing.T) {
+func TestRepoRow_NeedsDoesNotShiftLaterColumns(t *testing.T) {
 	t.Parallel()
 
 	m := peerModel()
 	layout := layoutRepoCols(contentWidth(m.width))
 
-	withPeers := m.renderTableRow(m.summaries["/dev/alpha"], false, layout)
-	withoutPeers := m.renderTableRow(m.summaries["/dev/solo"], false, layout)
+	busy := m.summaries["/dev/alpha"]
+	busy.Ahead = 2
+	m.summaries["/dev/alpha"] = busy
 
-	if got, want := lipgloss.Width(withPeers), lipgloss.Width(withoutPeers); got != want {
-		t.Errorf("peer row width = %d, peerless row width = %d; rows must be equal width", got, want)
+	withNeeds := m.renderTableRow(busy, m.needsOf(busy), false, layout)
+	quiet := m.summaries["/dev/solo"]
+	withoutNeeds := m.renderTableRow(quiet, m.needsOf(quiet), false, layout)
+
+	if got, want := lipgloss.Width(withNeeds), lipgloss.Width(withoutNeeds); got != want {
+		t.Errorf("row with needs is %d cells, quiet row is %d; rows must be equal width", got, want)
 	}
 
-	if !strings.Contains(withPeers, "⧉ 1") {
-		t.Fatalf("expected a peer count in the row, got %q", withPeers)
+	if !strings.Contains(plainText(withNeeds), "↑2") {
+		t.Fatalf("expected the unpushed count in the row, got %q", withNeeds)
 	}
 }
 
@@ -72,7 +77,8 @@ func TestRepoRow_MatchesHeaderWidth(t *testing.T) {
 		layout := layoutRepoCols(contentWidth(termWidth))
 
 		header := lipgloss.Width(renderRepoHeader(layout))
-		row := lipgloss.Width(m.renderTableRow(m.summaries["/dev/alpha"], false, layout))
+		alpha := m.summaries["/dev/alpha"]
+		row := lipgloss.Width(m.renderTableRow(alpha, m.needsOf(alpha), false, layout))
 
 		if header != row {
 			t.Errorf("width %d: header is %d cells, row is %d cells", termWidth, header, row)
@@ -93,7 +99,7 @@ func TestLayoutRepoCols_FitsWithinContentWidth(t *testing.T) {
 	}
 }
 
-func TestLayoutRepoCols_HidesPRBeforeThePeerAndTemplateSignals(t *testing.T) {
+func TestLayoutRepoCols_HidesModifiedThenPRsAndNeverNeeds(t *testing.T) {
 	t.Parallel()
 
 	wide := layoutRepoCols(contentWidth(200))
@@ -101,20 +107,27 @@ func TestLayoutRepoCols_HidesPRBeforeThePeerAndTemplateSignals(t *testing.T) {
 		t.Errorf("hid %d columns at 200 columns, want 0", wide.Hidden)
 	}
 
-	narrow := layoutRepoCols(cursorWidth + 102)
-	if narrow.Width(colPR) != 0 {
-		t.Error("the current-branch PR column should be the first to hide")
-	}
-	if narrow.Width(colPeers) == 0 || narrow.Width(colTemplate) == 0 || narrow.Width(colCI) == 0 {
-		t.Error("peers, template, and CI are the actionable fleet signals and must outlast PR")
+	narrow := layoutRepoCols(cursorWidth + 76)
+	if narrow.Width(colModified) != 0 || narrow.Width(colPR) == 0 {
+		t.Error("MODIFIED should be the first column to hide, before PRs")
 	}
 	if narrow.Marker() != "…+1" {
 		t.Errorf("marker = %q, want %q", narrow.Marker(), "…+1")
 	}
 
 	cramped := layoutRepoCols(cursorWidth + 20)
-	if cramped.Width(colName) == 0 || cramped.Width(colBranch) == 0 || cramped.Width(colStatus) == 0 {
-		t.Error("name, branch, and status must never be hidden")
+	if cramped.Width(colName) == 0 || cramped.Width(colBranch) == 0 || cramped.Width(colNeeds) == 0 {
+		t.Error("name, branch, and needs must never be hidden")
+	}
+}
+
+func TestLayoutRepoCols_CapsNameAndBranchOnWideTerminals(t *testing.T) {
+	t.Parallel()
+
+	layout := layoutRepoCols(listWidth(220))
+	if layout.Width(colName) != 28 || layout.Width(colBranch) != 24 {
+		t.Errorf("name and branch are %d and %d cells at 220 columns, want 28 and 24",
+			layout.Width(colName), layout.Width(colBranch))
 	}
 }
 

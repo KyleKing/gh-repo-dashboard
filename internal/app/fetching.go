@@ -9,7 +9,7 @@ type fetchKind int
 // branch and pull request read the expanded region makes for one repo at a time.
 const (
 	fetchPR fetchKind = iota
-	fetchPRCount
+	fetchOpenPRs
 	fetchBranchCount
 	fetchTemplate
 	fetchCI

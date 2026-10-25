@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -66,10 +67,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case WorkflowLoadedMsg:
 		return m.handleWorkflowLoaded(msg)
 
-	case CopierInfoLoadedMsg:
-		m.settleSummary(msg.Path, fetchTemplate, func(s *models.RepoSummary) { s.TemplateInfo = msg.Info })
+	case OpenPRsLoadedMsg:
+		return m.handleOpenPRsLoaded(msg)
+
+	case ViewerLoadedMsg:
+		m.viewer = msg.Login
+		m.resortKeepingCursor()
 
 		return m, nil
+
+	case DueTasksLoadedMsg:
+		m.due[msg.Path] = msg.Tasks
+		m.resortKeepingCursor()
+
+		return m, nil
+
+	case ChangedPathsLoadedMsg:
+		m.changedPaths[msg.Path] = msg.Paths
+
+		return m, nil
+
+	case CopierInfoLoadedMsg:
+		return m.handleCopierInfoLoaded(msg)
 
 	case DetailLoadedMsg:
 		return m.handleDetailLoaded(msg)
@@ -134,12 +153,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	case PRCountLoadedMsg:
-		m.prCount[msg.Path] = msg.Count
-		m.finishFetch(msg.Path, fetchPRCount)
-
-		return m, nil
-
 	case BranchCountLoadedMsg:
 		m.branchCount[msg.Path] = msg.Count
 		m.finishFetch(msg.Path, fetchBranchCount)
@@ -181,12 +194,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // holds one, and marks the fetch settled either way, so a value arriving for a
 // repo that has since gone stops reading as in flight.
 func (m *Model) settleSummary(path string, kind fetchKind, apply func(*models.RepoSummary)) {
+	m.applyToSummary(path, apply)
+	m.finishFetch(path, kind)
+}
+
+func (m *Model) applyToSummary(path string, apply func(*models.RepoSummary)) {
 	if summary, ok := m.summaries[path]; ok {
 		apply(&summary)
 		m.summaries[path] = summary
 	}
-
-	m.finishFetch(path, kind)
 }
 
 // withFadingStatus shows text and schedules its own removal, which is what
@@ -300,6 +316,8 @@ func (m Model) handleRepoSummaryLoaded(msg RepoSummaryLoadedMsg) (tea.Model, tea
 	return m, tea.Batch(cmds...)
 }
 
+const staleReads = 2
+
 // followUpCmds starts the per-repo fetches a loaded summary enables, recording
 // each as in flight so the cell it fills reads as pending until it lands. A
 // repo with no upstream has no pull request to ask about, and its commands are
@@ -310,12 +328,12 @@ func (m *Model) followUpCmds(summary models.RepoSummary) []tea.Cmd {
 		cmd  tea.Cmd
 	}{
 		{fetchPR, loadPRCmd(summary.Path, summary.RemoteID, summary.Branch, summary.Upstream)},
-		{fetchPRCount, loadPRCountCmd(summary.Path, summary.RemoteID, summary.Upstream)},
+		{fetchOpenPRs, loadOpenPRsCmd(summary.Path, summary.RemoteID, summary.Upstream)},
 		{fetchBranchCount, loadBranchCountCmd(summary.Path)},
 		{fetchTemplate, loadCopierInfoCmd(summary.Path)},
 	}
 
-	cmds := make([]tea.Cmd, 0, len(started))
+	cmds := make([]tea.Cmd, 0, len(started)+staleReads)
 	for _, start := range started {
 		if start.cmd == nil {
 			continue
@@ -324,23 +342,122 @@ func (m *Model) followUpCmds(summary models.RepoSummary) []tea.Cmd {
 		cmds = append(cmds, start.cmd)
 	}
 
-	return cmds
+	return append(cmds,
+		staleOpenPRsCmd(summary.Path, summary.RemoteID, summary.Upstream),
+		staleDefaultBranchCICmd(summary.Path, summary.RemoteID))
 }
 
-// handleWorkflowLoaded records a CI fetch's outcome. A repo with no GitHub
-// remote, or one whose runs cannot be read, arrives with no workflow and is
-// still marked settled so its cell stops showing the in-flight placeholder.
+// handleWorkflowLoaded draws a cached value only until a live read lands. A
+// failed live read leaves a cached value standing.
 func (m Model) handleWorkflowLoaded(msg WorkflowLoadedMsg) (tea.Model, tea.Cmd) {
-	m.settleSummary(msg.Path, fetchCI, func(s *models.RepoSummary) { s.WorkflowInfo = msg.Workflow })
+	cell := fetchKey{msg.Path, fetchCI}
 
-	if msg.Branch != "" {
-		if m.ciBranch == nil {
-			m.ciBranch = make(map[string]string)
+	if msg.Stale {
+		if m.freshness[cell] != freshnessNone {
+			return m, nil
 		}
-		m.ciBranch[msg.Path] = msg.Branch
+
+		if msg.Miss {
+			m.freshness[cell] = freshnessMiss
+
+			return m, nil
+		}
+
+		m.applyToSummary(msg.Path, func(s *models.RepoSummary) { s.CI = msg.CI })
+		m.freshness[cell] = freshnessStale
+		m.rememberCIBranch(msg.Path, msg.Branch)
+		m.resortKeepingCursor()
+
+		return m, nil
 	}
 
+	if msg.Error == nil {
+		m.applyToSummary(msg.Path, func(s *models.RepoSummary) { s.CI = msg.CI })
+		m.freshness[cell] = freshnessFresh
+		m.rememberCIBranch(msg.Path, msg.Branch)
+	}
+
+	m.finishFetch(msg.Path, fetchCI)
+	m.resortKeepingCursor()
+	cmds := m.visibleCICmds()
+
+	return m, tea.Batch(cmds...)
+}
+
+func (m *Model) rememberCIBranch(path, branch string) {
+	if branch == "" {
+		return
+	}
+
+	if m.ciBranch == nil {
+		m.ciBranch = make(map[string]string)
+	}
+
+	m.ciBranch[path] = branch
+}
+
+func (m Model) handleOpenPRsLoaded(msg OpenPRsLoadedMsg) (tea.Model, tea.Cmd) {
+	cell := fetchKey{msg.Path, fetchOpenPRs}
+
+	if msg.Stale {
+		if m.freshness[cell] != freshnessNone {
+			return m, nil
+		}
+
+		if msg.Miss {
+			m.freshness[cell] = freshnessMiss
+
+			return m, nil
+		}
+
+		m.applyToSummary(msg.Path, func(s *models.RepoSummary) { s.OpenPRs = msg.PRs })
+		m.freshness[cell] = freshnessStale
+		m.resortKeepingCursor()
+
+		return m, nil
+	}
+
+	if msg.Error == nil {
+		m.applyToSummary(msg.Path, func(s *models.RepoSummary) { s.OpenPRs = msg.PRs })
+		m.freshness[cell] = freshnessFresh
+	}
+
+	m.finishFetch(msg.Path, fetchOpenPRs)
+	m.resortKeepingCursor()
+
 	return m, nil
+}
+
+func (m Model) handleCopierInfoLoaded(msg CopierInfoLoadedMsg) (tea.Model, tea.Cmd) {
+	m.settleSummary(msg.Path, fetchTemplate, func(s *models.RepoSummary) { s.TemplateInfo = msg.Info })
+	m.resortKeepingCursor()
+
+	if m.taskSel == nil {
+		return m, nil
+	}
+
+	summary, ok := m.summaries[msg.Path]
+	if !ok {
+		return m, nil
+	}
+
+	return m, loadDueTasksCmd(*m.taskSel, summary)
+}
+
+// resortKeepingCursor keeps the cursor on its repo as rows reorder. A cursor on the first row stays there.
+func (m *Model) resortKeepingCursor() {
+	if m.cursor == 0 || m.cursor >= len(m.filteredPaths) {
+		m.updateFilteredPaths()
+
+		return
+	}
+
+	selected := m.filteredPaths[m.cursor]
+	m.updateFilteredPaths()
+
+	if at := slices.Index(m.filteredPaths, selected); at >= 0 {
+		m.cursor = at
+	}
 }
 
 // handleSpinnerTick advances the loading spinner. The tick chain stops once
@@ -703,12 +820,6 @@ func (m Model) toggleExpand() (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// expandCmd reads the one thing the region shows that visiblePeerDataCmds
-// does not: the cursor row's own notes preview. The branches and pull
-// requests the region also shows come from the fleet map, which loads for
-// every visible row rather than only the one under the cursor, since a
-// repo's PEERS column needs the same data and a reader scrolling past it
-// should not have to open the region first to fill it in.
 func (m *Model) expandCmd() tea.Cmd {
 	if !m.expandOpen || m.cursor >= len(m.filteredPaths) {
 		return nil
@@ -721,16 +832,22 @@ func (m *Model) expandCmd() tea.Cmd {
 		return nil
 	}
 
+	var cmds []tea.Cmd
+
 	if _, cached := m.notesPreview[path]; !cached && len(summary.NotesFiles) > 0 {
-		return loadNotesContentCmd(path, summary.NotesFiles)
+		cmds = append(cmds, loadNotesContentCmd(path, summary.NotesFiles))
 	}
 
-	return nil
+	if _, cached := m.changedPaths[path]; !cached && summary.UncommittedCount() > 0 {
+		cmds = append(cmds, loadChangedPathsCmd(path, summary.VCSType))
+	}
+
+	return tea.Batch(cmds...)
 }
 
 // visiblePeerDataCmds loads the fleet map's pull requests and each peer
-// checkout's branch list for every row on screen, the data PEERS and the
-// expand region's branches/PRs rows need. Bounded to the viewport rather than
+// checkout's branch list for every row on screen, the data the expand region's
+// peers and branches rows need. Bounded to the viewport rather than
 // the whole fleet, the way visibleCICmds is: each repo's PR list costs a
 // GitHub call, not worth paying for a repo the operator has not scrolled to.
 func (m *Model) visiblePeerDataCmds() []tea.Cmd {
@@ -1525,7 +1642,9 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		// Clear all data including downstream views
 		m.loading = true
 		m.summaries = make(map[string]models.RepoSummary)
-		m.prCount = make(map[string]int)
+		m.freshness = make(map[fetchKey]freshness)
+		m.due = make(map[string][]string)
+		m.changedPaths = make(map[string][]string)
 		m.branchCount = make(map[string]int)
 		// Every fetch is reissued from discovery, so the old bookkeeping would
 		// otherwise suppress the new CI requests and leave phantom pending cells.
@@ -1551,7 +1670,7 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		if m.selectedRepo != "" {
 			cmds = append(cmds, loadDetailCmd(m.selectedRepo))
 			if summary, ok := m.summaries[m.selectedRepo]; ok && summary.Upstream != "" {
-				cmds = append(cmds, loadPRCountCmd(m.selectedRepo, summary.RemoteID, summary.Upstream))
+				cmds = append(cmds, loadOpenPRsCmd(m.selectedRepo, summary.RemoteID, summary.Upstream))
 			}
 		}
 
@@ -1866,10 +1985,19 @@ func (m *Model) completeCommand() {
 const notesSearchPrefix = "n:"
 
 func (m *Model) updateFilteredPaths() {
+	m.refreshShared()
+
+	ranks := make(map[string]int, len(m.repoPaths))
+	for _, path := range m.repoPaths {
+		ranks[path] = m.attentionRank(path)
+	}
+
+	rank := func(path string) int { return ranks[path] }
+
 	if strings.HasPrefix(m.searchText, notesSearchPrefix) {
 		filtered := filters.FilterReposMulti(m.listableRepos(), m.summaries, m.activeFilters)
 		filtered = m.searchNotes(filtered, strings.TrimPrefix(m.searchText, notesSearchPrefix))
-		m.filteredPaths = filters.SortPathsMulti(filtered, m.summaries, m.activeSorts)
+		m.filteredPaths = filters.SortPathsMulti(filtered, m.summaries, m.activeSorts, rank)
 	} else {
 		m.filteredPaths = filters.FilterAndSortMulti(
 			m.listableRepos(),
@@ -1877,6 +2005,7 @@ func (m *Model) updateFilteredPaths() {
 			m.activeFilters,
 			m.activeSorts,
 			m.searchText,
+			rank,
 		)
 	}
 

@@ -76,7 +76,9 @@ func goldenModel() Model {
 			},
 		},
 	}
-	m.prCount = map[string]int{"/Users/dev/bravo": 1}
+	bravo := m.summaries["/Users/dev/bravo"]
+	bravo.OpenPRs = []forge.PullRequest{*bravo.PRInfo}
+	m.summaries["/Users/dev/bravo"] = bravo
 	m.updateFilteredPaths()
 	return m
 }
@@ -93,6 +95,84 @@ func TestGoldenRepoListBreakpoints(t *testing.T) {
 	for _, size := range breakpointSizes() {
 		t.Run(size.name, func(t *testing.T) {
 			m := goldenModel()
+			m.width, m.height = size.width, size.height
+			golden.RequireEqual(t, []byte(m.renderScreen()))
+		})
+	}
+}
+
+// fleetGoldenModel is twenty repos, three of which need the viewer: one with
+// failing CI and unpushed commits, one dirty, one with a pull request waiting on
+// the viewer. Four quiet repos carry signals that show but never promote: a
+// stash, a note, template drift, and a due task.
+func fleetGoldenModel() Model {
+	m := New([]string{"/Users/dev"}, 1)
+	m.loading = false
+	m.viewer = "kyle"
+
+	names := []string{
+		"alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel", "india", "juliet",
+		"kilo", "lima", "mike", "november", "oscar", "papa", "quebec", "romeo", "sierra", "tango",
+	}
+
+	for i, name := range names {
+		path := "/Users/dev/" + name
+		m.repoPaths = append(m.repoPaths, path)
+		m.summaries[path] = models.RepoSummary{
+			RepoSummary: vcs.RepoSummary{
+				Path:         path,
+				VCSType:      vcs.TypeGit,
+				Branch:       mainBranchName,
+				Upstream:     "origin/main",
+				LastModified: time.Now().Add(-time.Duration(i+1) * 26 * time.Hour),
+			},
+		}
+	}
+
+	edit := func(name string, mutate func(*models.RepoSummary)) {
+		path := "/Users/dev/" + name
+		summary := m.summaries[path]
+		mutate(&summary)
+		m.summaries[path] = summary
+	}
+
+	edit("delta", func(s *models.RepoSummary) {
+		s.Ahead = 2
+		s.CI = &forge.DefaultBranchCI{Workflows: []forge.CIWorkflowRun{
+			{Workflow: "test", Status: forge.StatusCompleted, Conclusion: models.CIFailureConclusion},
+			{Workflow: "lint", Status: forge.StatusCompleted, Conclusion: "success"},
+		}}
+	})
+	edit("juliet", func(s *models.RepoSummary) {
+		s.Branch = "feature/login"
+		s.Staged, s.Unstaged, s.Untracked = 1, 2, 1
+		s.OpenPRs = []forge.PullRequest{{Number: 9, Author: "kyle", ReviewDecision: "REVIEW_REQUIRED"}}
+	})
+	edit("mike", func(s *models.RepoSummary) {
+		s.OpenPRs = []forge.PullRequest{
+			{Number: 31, Author: "kyle", ReviewDecision: "CHANGES_REQUESTED"},
+			{Number: 30, Author: "bot"},
+		}
+	})
+	edit("bravo", func(s *models.RepoSummary) { s.StashCount = 1 })
+	edit("echo", func(s *models.RepoSummary) { s.NotesFiles = []models.NoteFile{{Name: ".doing"}} })
+	edit("kilo", func(s *models.RepoSummary) {
+		s.TemplateInfo = &models.CopierTemplateInfo{Commit: "v0.15.1", IsTag: true, Behind: true, LatestTag: "v0.16.0"}
+	})
+	edit("papa", func(s *models.RepoSummary) { s.Behind = 3 })
+
+	m.due["/Users/dev/oscar"] = []string{"gc"}
+	m.updateFilteredPaths()
+
+	return m
+}
+
+// TestGoldenRepoListFleetBreakpoints pins the case the hierarchy has to get
+// right: a fleet where most rows are quiet and three ask for the viewer.
+func TestGoldenRepoListFleetBreakpoints(t *testing.T) {
+	for _, size := range breakpointSizes() {
+		t.Run(size.name, func(t *testing.T) {
+			m := fleetGoldenModel()
 			m.width, m.height = size.width, size.height
 			golden.RequireEqual(t, []byte(m.renderScreen()))
 		})
@@ -185,9 +265,11 @@ func TestGoldenRepoListLoading(t *testing.T) {
 	m.loading = true
 	m.loadingCount, m.loadedCount = 3, 2
 	delete(m.summaries, "/Users/dev/charlie")
-	for _, kind := range []fetchKind{fetchPR, fetchPRCount, fetchTemplate, fetchCI} {
+	for _, kind := range []fetchKind{fetchPR, fetchOpenPRs, fetchTemplate, fetchCI} {
 		m.startFetch("/Users/dev/alpha", kind)
 	}
+	m.freshness[fetchKey{"/Users/dev/alpha", fetchOpenPRs}] = freshnessMiss
+	m.freshness[fetchKey{"/Users/dev/alpha", fetchCI}] = freshnessMiss
 	golden.RequireEqual(t, []byte(m.renderScreen()))
 }
 

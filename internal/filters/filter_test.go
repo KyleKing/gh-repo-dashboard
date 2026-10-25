@@ -82,8 +82,11 @@ func TestFilterReposHasPR(t *testing.T) {
 	t.Parallel()
 	paths := []string{testRepo1Path, "/repo2"}
 	summaries := map[string]models.RepoSummary{
-		testRepo1Path: {RepoSummary: vcs.RepoSummary{Path: testRepo1Path}, PRInfo: &forge.PullRequest{Number: 123}},
-		"/repo2":      {RepoSummary: vcs.RepoSummary{Path: "/repo2"}},
+		testRepo1Path: {
+			RepoSummary: vcs.RepoSummary{Path: testRepo1Path},
+			PRInfo:      &forge.PullRequest{Number: 123}, OpenPRs: []forge.PullRequest{{Number: 123}},
+		},
+		"/repo2": {RepoSummary: vcs.RepoSummary{Path: "/repo2"}},
 	}
 
 	result := filters.FilterRepos(paths, summaries, models.FilterModeHasPR)
@@ -219,9 +222,12 @@ func TestFilterReposMultiWithPRAndDirty(t *testing.T) {
 	summaries := map[string]models.RepoSummary{
 		testRepo1Path: {
 			RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Staged: 2},
-			PRInfo:      &forge.PullRequest{Number: 123},
+			PRInfo:      &forge.PullRequest{Number: 123}, OpenPRs: []forge.PullRequest{{Number: 123}},
 		},
-		"/repo2": {RepoSummary: vcs.RepoSummary{Path: "/repo2"}, PRInfo: &forge.PullRequest{Number: 456}},
+		"/repo2": {
+			RepoSummary: vcs.RepoSummary{Path: "/repo2"},
+			PRInfo:      &forge.PullRequest{Number: 456}, OpenPRs: []forge.PullRequest{{Number: 456}},
+		},
 		"/repo3": {RepoSummary: vcs.RepoSummary{Path: "/repo3", Staged: 1}},
 	}
 
@@ -267,10 +273,13 @@ func TestFilterReposMultiMixedInverted(t *testing.T) {
 	summaries := map[string]models.RepoSummary{
 		testRepo1Path: {
 			RepoSummary: vcs.RepoSummary{Path: testRepo1Path, Ahead: 1},
-			PRInfo:      &forge.PullRequest{Number: 123},
+			PRInfo:      &forge.PullRequest{Number: 123}, OpenPRs: []forge.PullRequest{{Number: 123}},
 		},
 		"/repo2": {RepoSummary: vcs.RepoSummary{Path: "/repo2", Ahead: 1}},
-		"/repo3": {RepoSummary: vcs.RepoSummary{Path: "/repo3"}, PRInfo: &forge.PullRequest{Number: 456}},
+		"/repo3": {
+			RepoSummary: vcs.RepoSummary{Path: "/repo3"},
+			PRInfo:      &forge.PullRequest{Number: 456}, OpenPRs: []forge.PullRequest{{Number: 456}},
+		},
 		"/repo4": {RepoSummary: vcs.RepoSummary{Path: "/repo4"}},
 	}
 

@@ -123,36 +123,25 @@ func TestConflictingBranchesExemptsAnIdleDefaultBranch(t *testing.T) {
 	}
 }
 
-func TestPeersCellFlagsSharedBranches(t *testing.T) {
-	t.Parallel()
-
-	m := peerFleet(140, 35)
-
-	shared, _ := m.peersCell("/dev/app-a", plainStyle, false)
-	if shared != "⧉ 1"+conflictMark {
-		t.Errorf("peers cell = %q, want %q", shared, "⧉ 1"+conflictMark)
-	}
-
-	alone, _ := m.peersCell("/dev/solo", plainStyle, false)
-	if alone != emDash {
-		t.Errorf("a repo with no peers renders %q, want %q", alone, emDash)
-	}
-}
-
-func TestCompactRecordCarriesTheConflictMark(t *testing.T) {
+func TestSharedBranchesReachTheNeedsLines(t *testing.T) {
 	t.Parallel()
 
 	m := peerFleet(70, 24)
 	layout := table.Fit(compactColSpecs, 70)
 
-	shared := plainText(m.renderCompactRow(m.summaries["/dev/app-a"], false, layout))
-	if !strings.Contains(shared, peerPrefix+"1 "+conflictMark) {
-		t.Errorf("compact record drops the conflict the wide PEERS cell shows:\n%s", shared)
+	shared := m.summaries["/dev/app-a"]
+	if !m.needsOf(shared).shared {
+		t.Fatal("two checkouts of one remote on main, one with work, share a branch")
 	}
 
-	alone := plainText(m.renderCompactRow(m.summaries["/dev/solo"], false, layout))
-	if strings.Contains(alone, conflictMark) {
-		t.Errorf("a repo with no peers has nothing to conflict with:\n%s", alone)
+	record := plainText(m.renderCompactRow(shared, m.needsOf(shared), false, layout))
+	if !strings.Contains(record, conflictMark+" shared") {
+		t.Errorf("compact record drops the shared-branch token:\n%s", record)
+	}
+
+	alone := m.summaries["/dev/solo"]
+	if m.needsOf(alone).shared {
+		t.Error("a repo with no peers has nothing to share a branch with")
 	}
 }
 
@@ -176,20 +165,6 @@ func TestCheckoutKindDoesNotDependOnWhoIsLooking(t *testing.T) {
 	}
 	if kinds["app-b"] != "clone" {
 		t.Errorf("app-b reads as %q, want clone", kinds["app-b"])
-	}
-}
-
-func TestFleetHeaderCountsBranchConflicts(t *testing.T) {
-	t.Parallel()
-
-	m := peerFleet(140, 35)
-	if got := m.BranchConflictCount(); got != 2 {
-		t.Errorf("counted %d repos in conflict, want 2 (app-a and app-b share main)", got)
-	}
-
-	header := headerLine(m)
-	if !strings.Contains(header, conflictMark+" 2 branch conflicts") {
-		t.Errorf("fleet header does not report the hazard: %q", header)
 	}
 }
 

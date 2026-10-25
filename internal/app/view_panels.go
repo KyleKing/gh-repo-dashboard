@@ -844,7 +844,7 @@ func (m Model) peerDetailLines(width int) []string {
 func (m Model) workingDiffLines(repoPath string, width int) []string {
 	label, texts := "diffstat", m.uncommittedDiffstat
 	if m.uncommittedFullDiff {
-		label, texts = "diff", m.uncommittedDiff
+		label, texts = diffWord, m.uncommittedDiff
 	}
 
 	body, loaded := texts[repoPath]
@@ -874,7 +874,7 @@ func (m Model) stashDetailLines(width int) []string {
 
 	label, texts := "diffstat", m.stashDiffstat
 	if m.stashFullDiff {
-		label, texts = "diff", m.stashDiff
+		label, texts = diffWord, m.stashDiff
 	}
 
 	body, loaded := texts[stash.Index]

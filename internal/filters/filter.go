@@ -70,7 +70,7 @@ func passesFilter(s *models.RepoSummary, mode models.FilterMode) bool {
 	case models.FilterModeDirty:
 		return s.IsDirty()
 	case models.FilterModeHasPR:
-		return s.PRInfo != nil
+		return len(s.OpenPRs) > 0
 	case models.FilterModeHasStash:
 		return s.StashCount > 0
 	case models.FilterModeHasNotes:
@@ -109,6 +109,7 @@ func FilterAndSortMulti(
 	activeFilters []models.ActiveFilter,
 	activeSorts []models.ActiveSort,
 	searchText string,
+	rank Ranker,
 ) []string {
 	filtered := FilterReposMulti(paths, summaries, activeFilters)
 
@@ -116,7 +117,7 @@ func FilterAndSortMulti(
 		filtered = SearchRepos(filtered, summaries, searchText)
 	}
 
-	sorted := SortPathsMulti(filtered, summaries, activeSorts)
+	sorted := SortPathsMulti(filtered, summaries, activeSorts, rank)
 
 	return sorted
 }

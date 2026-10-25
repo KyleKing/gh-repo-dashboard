@@ -201,18 +201,15 @@ func TestWorkflowLoadedMsg(t *testing.T) {
 	m := New(nil, 1)
 	m.summaries[testRepo1Path] = models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: testRepo1Path}}
 
-	workflow := &forge.WorkflowSummary{}
-	updatedModel, cmd := m.Update(WorkflowLoadedMsg{Path: testRepo1Path, Workflow: workflow})
+	ci := &forge.DefaultBranchCI{}
+	updatedModel, _ := m.Update(WorkflowLoadedMsg{Path: testRepo1Path, CI: ci})
 	m = mustModel(t, updatedModel)
 
-	if m.summaries[testRepo1Path].WorkflowInfo != workflow {
-		t.Error("WorkflowInfo should be attached to the summary")
-	}
-	if cmd != nil {
-		t.Error("WorkflowLoadedMsg should not return a command")
+	if m.summaries[testRepo1Path].CI != ci {
+		t.Error("CI should be attached to the summary")
 	}
 
-	updatedModel, _ = m.Update(WorkflowLoadedMsg{Path: "/unknown", Workflow: workflow})
+	updatedModel, _ = m.Update(WorkflowLoadedMsg{Path: "/unknown", CI: ci})
 	m = mustModel(t, updatedModel)
 	if _, ok := m.summaries["/unknown"]; ok {
 		t.Error("unknown path should not create a summary")
@@ -323,21 +320,6 @@ func TestPRListLoadedMsg(t *testing.T) {
 
 	if len(m.prs) != 2 {
 		t.Error("mismatched path should not overwrite PR list")
-	}
-}
-
-func TestPRCountLoadedMsg(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-
-	updatedModel, cmd := m.Update(PRCountLoadedMsg{Path: testRepo1Path, Count: 3})
-	m = mustModel(t, updatedModel)
-
-	if m.prCount[testRepo1Path] != 3 {
-		t.Errorf("expected count 3, got %d", m.prCount[testRepo1Path])
-	}
-	if cmd != nil {
-		t.Error("PRCountLoadedMsg should not return a command")
 	}
 }
 

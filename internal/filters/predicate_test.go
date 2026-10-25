@@ -17,7 +17,11 @@ import (
 func TestParsePredicate(t *testing.T) {
 	t.Parallel()
 	dirty := models.RepoSummary{RepoSummary: vcs.RepoSummary{Unstaged: 2}}
-	dirtyWithPR := models.RepoSummary{RepoSummary: vcs.RepoSummary{Unstaged: 2}, PRInfo: &forge.PullRequest{Number: 1}}
+	pr := forge.PullRequest{Number: 1}
+	dirtyWithPR := models.RepoSummary{
+		RepoSummary: vcs.RepoSummary{Unstaged: 2}, PRInfo: &pr, OpenPRs: []forge.PullRequest{pr},
+	}
+	otherBranchPR := models.RepoSummary{OpenPRs: []forge.PullRequest{pr}}
 	behind := models.RepoSummary{RepoSummary: vcs.RepoSummary{Behind: 3}}
 	ahead := models.RepoSummary{RepoSummary: vcs.RepoSummary{Ahead: 1}}
 	clean := models.RepoSummary{}
@@ -47,6 +51,9 @@ func TestParsePredicate(t *testing.T) {
 		{"vcs atom", "jj", jjRepo, true},
 		{"clean is not dirty", "clean", dirty, false},
 		{"ahead counts as dirty", "dirty", ahead, true},
+		{"has_pr counts a PR on another branch", "has_pr", otherBranchPR, true},
+		{"branch_pr needs the current branch's PR", "branch_pr", otherBranchPR, false},
+		{"branch_pr matches the current branch's PR", "branch_pr", dirtyWithPR, true},
 		{"has_notes match", "has_notes", withNotes, true},
 		{"has_notes no match", "has_notes", clean, false},
 	}

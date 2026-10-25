@@ -30,8 +30,8 @@ var LookupCI = lookupCI
 // LookupPR exposes the unexported lookupPR helper to black-box tests.
 var LookupPR = lookupPR
 
-// LookupPRCount exposes the unexported lookupPRCount helper to black-box tests.
-var LookupPRCount = lookupPRCount
+// LookupOpenPRs exposes the unexported lookupOpenPRs helper to black-box tests.
+var LookupOpenPRs = lookupOpenPRs
 
 // NewRepo exposes the unexported newRepo helper to black-box tests.
 var NewRepo = newRepo

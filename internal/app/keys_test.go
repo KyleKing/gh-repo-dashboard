@@ -478,7 +478,7 @@ func TestSortModalPriorityMoves(t *testing.T) {
 	var nameIdx, modIdx int
 	for i, s := range m.activeSorts {
 		switch s.Mode {
-		case models.SortModeName:
+		case models.SortModeAttention:
 			nameIdx = i
 		case models.SortModeModified:
 			modIdx = i
@@ -499,7 +499,7 @@ func TestSortModalPriorityMoves(t *testing.T) {
 		t.Errorf("'[' should move Modified to priority 0, got %d", m.activeSorts[modIdx].Priority)
 	}
 	if m.activeSorts[nameIdx].Priority != 1 {
-		t.Errorf("'[' should demote Name to priority 1, got %d", m.activeSorts[nameIdx].Priority)
+		t.Errorf("'[' should demote Attention to priority 1, got %d", m.activeSorts[nameIdx].Priority)
 	}
 
 	updatedModel, _ = m.Update(keyPress(']'))
@@ -509,7 +509,7 @@ func TestSortModalPriorityMoves(t *testing.T) {
 		t.Errorf("']' should move Modified back to priority 1, got %d", m.activeSorts[modIdx].Priority)
 	}
 	if m.activeSorts[nameIdx].Priority != 0 {
-		t.Errorf("']' should restore Name to priority 0, got %d", m.activeSorts[nameIdx].Priority)
+		t.Errorf("']' should restore Attention to priority 0, got %d", m.activeSorts[nameIdx].Priority)
 	}
 }
 
@@ -524,9 +524,9 @@ func TestSortModalReset(t *testing.T) {
 	m = mustModel(t, updatedModel)
 
 	for _, s := range m.activeSorts {
-		if s.Mode == models.SortModeName {
+		if s.Mode == models.SortModeAttention {
 			if s.Direction != models.SortDirectionAsc {
-				t.Error("Name should be Asc after reset")
+				t.Error("Attention should be Asc after reset")
 			}
 		} else if s.Direction != models.SortDirectionOff {
 			t.Errorf("%v should be Off after reset", s.Mode)

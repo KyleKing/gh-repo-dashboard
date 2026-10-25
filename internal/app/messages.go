@@ -34,13 +34,15 @@ type PRLoadedMsg struct {
 	Error  error
 }
 
-// WorkflowLoadedMsg reports a loaded workflow summary or its load error, along
-// with the branch the runs belong to.
+// WorkflowLoadedMsg reports a repo's default-branch CI. Stale is a cached value
+// past its expiry, and Miss a cache read that found nothing.
 type WorkflowLoadedMsg struct {
-	Path     string
-	Branch   string
-	Workflow *forge.WorkflowSummary
-	Error    error
+	Path   string
+	Branch string
+	CI     *forge.DefaultBranchCI
+	Error  error
+	Stale  bool
+	Miss   bool
 }
 
 // CopierInfoLoadedMsg reports a repo's loaded copier template info, or nil
@@ -193,10 +195,31 @@ type ActionResultMsg struct {
 	Success bool
 }
 
-// PRCountLoadedMsg reports the loaded pull request count for a repo.
-type PRCountLoadedMsg struct {
+// OpenPRsLoadedMsg reports a repo's open pull requests. Stale is a cached list
+// past its expiry, and Miss a cache read that found nothing.
+type OpenPRsLoadedMsg struct {
 	Path  string
-	Count int
+	PRs   []forge.PullRequest
+	Error error
+	Stale bool
+	Miss  bool
+}
+
+// ViewerLoadedMsg reports the signed-in GitHub login, empty when gh cannot say.
+type ViewerLoadedMsg struct {
+	Login string
+}
+
+// DueTasksLoadedMsg reports which configured tasks are due on a repo.
+type DueTasksLoadedMsg struct {
+	Path  string
+	Tasks []string
+}
+
+// ChangedPathsLoadedMsg reports a repo's uncommitted paths for the expanded region.
+type ChangedPathsLoadedMsg struct {
+	Path  string
+	Paths []string
 }
 
 // BranchCountLoadedMsg reports the loaded local branch count for a repo.

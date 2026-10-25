@@ -62,6 +62,7 @@ func compactModel(width, height int) Model {
 		"/dev/charlie": {RepoSummary: vcs.RepoSummary{Path: "/dev/charlie", Branch: "trunk", LastModified: now}},
 	}
 	m.repoPaths = []string{"/dev/alpha", "/dev/bravo", "/dev/charlie"}
+	sortByName(&m)
 	m.updateFilteredPaths()
 
 	return m
@@ -82,12 +83,12 @@ func TestCompactLayoutRendersTwoLineRecords(t *testing.T) {
 		t.Error("the compact layout has no column header; the record itself is the row")
 	}
 
-	if !strings.Contains(plainText(lines[1]), "2 stashes") {
+	if !strings.Contains(plainText(lines[1]), "≡2") {
 		t.Errorf("signal line does not carry the stash count: %q", plainText(lines[1]))
 	}
 
-	if !strings.Contains(plainText(lines[3]), "1 note") {
-		t.Errorf("signal line does not carry the notes count: %q", plainText(lines[3]))
+	if got := plainText(lines[3]); !strings.Contains(got, "~1 ?1") || !strings.Contains(got, "✎ note") {
+		t.Errorf("signal line does not carry the work and notes tokens: %q", got)
 	}
 }
 

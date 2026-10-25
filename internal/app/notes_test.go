@@ -62,23 +62,36 @@ func TestExpandRegion_KeepsTheFrameHeightFixed(t *testing.T) {
 	}
 }
 
-// TestExpandRegion_HoldsTheListWindowSteady covers the second half of the same
-// complaint: the window must not resize as the cursor crosses between a repo
-// with notes and one without, or the rows jump under the cursor.
-func TestExpandRegion_HoldsTheListWindowSteady(t *testing.T) {
+// TestExpandRegion_SizesToItsContent covers the region's height: only as many
+// lines as it holds, never past the cap, so a repo with little to say leaves the
+// table the rest.
+func TestExpandRegion_SizesToItsContent(t *testing.T) {
 	t.Parallel()
 
-	m := compactModel(180, 30)
+	m := compactModel(180, 40)
 	m.expandOpen = true
 
 	m.cursor = 0
-	withoutNotes := m.visibleRepoRange(1)
+	quiet := len(m.expandedLines())
 
 	m.cursor = 1
-	withNotes := m.visibleRepoRange(1)
+	m.notesPreview = map[string][]models.NoteFileContent{
+		"/dev/bravo": {{Name: ".doing", Content: "one\ntwo\nthree"}},
+	}
+	noted := len(m.expandedLines())
 
-	if got, want := withNotes.end-withNotes.start, withoutNotes.end-withoutNotes.start; got != want {
-		t.Errorf("window holds %d rows on a repo with notes and %d on one without", got, want)
+	if quiet >= noted {
+		t.Errorf("a repo with notes holds %d lines, one without holds %d; the region must follow its content",
+			noted, quiet)
+	}
+
+	limit := m.expandHeight(m.listBodyHeight())
+	if noted > limit {
+		t.Errorf("region is %d lines, over its %d-line cap", noted, limit)
+	}
+
+	if tall := len(m.expandLines(120, 4)); tall > 4 {
+		t.Errorf("region drew %d lines under a 4-line cap", tall)
 	}
 }
 
@@ -93,6 +106,9 @@ func TestExpandRegion_SitsBelowTheTable(t *testing.T) {
 	m.notesPreview = map[string][]models.NoteFileContent{
 		"/dev/bravo": {{Name: ".doing", Content: "wip"}},
 	}
+	bravo := m.summaries["/dev/bravo"]
+	bravo.OpenPRs = []forge.PullRequest{{Number: 42, Title: "Add login flow"}}
+	m.summaries["/dev/bravo"] = bravo
 	m.prMap = map[string]PRMapLoadedMsg{
 		"/dev/bravo": {
 			Path:     "/dev/bravo",
@@ -106,8 +122,8 @@ func TestExpandRegion_SitsBelowTheTable(t *testing.T) {
 	// Each region row is anchored to the start of its line, which is what tells
 	// the PRs row from the PRs column of the table's header.
 	order := []string{
-		"charlie", "dev/bravo · git", "\nPeers", "\n" + tabNameBranches, "\n" + tabNamePRs,
-		"wip", "dev/bravo · .doing",
+		"charlie", "dev/bravo · git", "\n" + tabNameBranches, "\n" + tabNamePRs,
+		"notes · .doing", "wip",
 	}
 	at := -1
 	for _, want := range order {
@@ -137,6 +153,7 @@ func TestExpandRegion_ReadsWhileItsDataIsOutstanding(t *testing.T) {
 	m := compactModel(180, 30)
 	m.expandOpen = true
 	m.cursor = 1
+	m.startFetch("/dev/bravo", fetchOpenPRs)
 
 	body := plainText(m.renderListBody())
 
@@ -147,7 +164,7 @@ func TestExpandRegion_ReadsWhileItsDataIsOutstanding(t *testing.T) {
 		}
 	}
 
-	if !strings.Contains(body, "dev/bravo"+compactSignalSep+readingLabel) {
+	if !strings.Contains(body, "notes"+compactSignalSep+readingLabel) {
 		t.Errorf("the notes divider does not say the read is still out:\n%s", body)
 	}
 }
@@ -229,7 +246,7 @@ func TestNotesPreview_CaptionsTheRegionAtItsDivider(t *testing.T) {
 		{
 			name:  "one note is named by the divider alone",
 			files: []models.NoteFileContent{{Name: ".doing", Content: "wip"}},
-			want:  []string{"dev/bravo · .doing"},
+			want:  []string{"notes · .doing"},
 		},
 		{
 			name: "several notes are headed and counted",
@@ -237,7 +254,7 @@ func TestNotesPreview_CaptionsTheRegionAtItsDivider(t *testing.T) {
 				{Name: ".doing", Content: "wip"},
 				{Name: "TODO.md", Content: "later"},
 			},
-			want: []string{"── .doing", "── TODO.md", "dev/bravo · 2 notes"},
+			want: []string{"── .doing", "── TODO.md", "notes · 2 files"},
 		},
 	}
 
@@ -258,9 +275,8 @@ func TestNotesPreview_CaptionsTheRegionAtItsDivider(t *testing.T) {
 				}
 			}
 
-			if !strings.Contains(plainText(lines[len(lines)-1]), "dev/bravo") {
-				t.Errorf("the last line must be the divider that captions the region, got %q",
-					plainText(lines[len(lines)-1]))
+			if closing := plainText(lines[len(lines)-1]); strings.Trim(closing, "─") != "" {
+				t.Errorf("the last line must be a bare closing rule, got %q", closing)
 			}
 		})
 	}

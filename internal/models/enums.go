@@ -96,17 +96,20 @@ type SortMode int
 
 // SortMode values.
 const (
-	SortModeName SortMode = iota
+	SortModeAttention SortMode = iota
+	SortModeName
 	SortModeModified
 	SortModeStatus
 	SortModeBranch
 )
 
 // sortModeCount is the number of SortMode values, used to cycle modes.
-const sortModeCount = 4
+const sortModeCount = 5
 
 func (s SortMode) String() string {
 	switch s {
+	case SortModeAttention:
+		return "Attention"
 	case SortModeName:
 		return "Name"
 	case SortModeModified:
@@ -123,6 +126,8 @@ func (s SortMode) String() string {
 // ShortKey returns the single-character key binding label for the sort mode.
 func (s SortMode) ShortKey() string {
 	switch s {
+	case SortModeAttention:
+		return "a"
 	case SortModeName:
 		return "n"
 	case SortModeModified:
@@ -144,6 +149,7 @@ func (s SortMode) Next() SortMode {
 // AllSortModes returns every SortMode in display order.
 func AllSortModes() []SortMode {
 	return []SortMode{
+		SortModeAttention,
 		SortModeName,
 		SortModeModified,
 		SortModeStatus,

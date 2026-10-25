@@ -14,6 +14,7 @@ import (
 
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/tasks"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
@@ -102,11 +103,19 @@ type Model struct {
 	// region has requested it.
 	peerBranches map[string][]vcs.BranchInfo
 
-	// ciRequested marks the repos a CI fetch has already been issued for, so
-	// scrolling back over a row does not re-request it.
+	// ciRequested marks the repos a live CI read was issued for, so scrolling back does not repeat it.
 	ciRequested map[string]bool
 	// ciBranch names the default branch each repo's CI runs belong to.
 	ciBranch map[string]string
+
+	freshness    map[fetchKey]freshness
+	viewer       string
+	shared       map[string]bool
+	taskSel      *tasks.Selector
+	due          map[string][]string
+	changedPaths map[string][]string
+	// needsCache is valid for one render: it is set on a copy of the model and never kept.
+	needsCache map[string]needs
 
 	// fetching holds the per-repo fetches still in flight, so a cell they would
 	// fill reads as pending rather than as empty.
@@ -154,7 +163,6 @@ type Model struct {
 	branchDetail   models.BranchDetail
 
 	prs         []forge.PullRequest
-	prCount     map[string]int
 	branchCount map[string]int
 	// stashDiffstat caches each stash's diffstat by index, filled lazily as
 	// the panel cursor lands on one. stashDiff caches the full patch the same
@@ -220,7 +228,7 @@ func New(scanPaths []string, maxDepth int) Model {
 	sorts := make([]models.ActiveSort, 0, len(models.AllSortModes()))
 	for i, mode := range models.AllSortModes() {
 		sort := models.NewActiveSort(mode, i)
-		if mode == models.SortModeName {
+		if mode == models.SortModeAttention {
 			sort.Direction = models.SortDirectionAsc
 		}
 		sorts = append(sorts, sort)
@@ -236,7 +244,10 @@ func New(scanPaths []string, maxDepth int) Model {
 		maxDepth:      maxDepth,
 		summaries:     make(map[string]models.RepoSummary),
 		notesPreview:  make(map[string][]models.NoteFileContent),
-		prCount:       make(map[string]int),
+		due:           make(map[string][]string),
+		changedPaths:  make(map[string][]string),
+		freshness:     make(map[fetchKey]freshness),
+		shared:        make(map[string]bool),
 		branchCount:   make(map[string]int),
 		prMap:         make(map[string]PRMapLoadedMsg),
 		peerBranches:  make(map[string][]vcs.BranchInfo),
@@ -257,13 +268,20 @@ func New(scanPaths []string, maxDepth int) Model {
 	}
 }
 
+// WithTasks gives the list the configured tasks, so a repo with one due shows it in NEEDS.
+func (m Model) WithTasks(sel tasks.Selector) Model {
+	m.taskSel = &sel
+
+	return m
+}
+
 // paletteInputWidth is the find line's typing room; results wrap below it, so
 // the line itself never needs the full frame.
 const paletteInputWidth = 40
 
 // Init kicks off the initial repo discovery command.
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(discoverReposCmd(m.scanPaths, m.maxDepth), checkGHAuthCmd(), m.spinner.Tick)
+	return tea.Batch(discoverReposCmd(m.scanPaths, m.maxDepth), checkGHAuthCmd(), loadViewerCmd(), m.spinner.Tick)
 }
 
 // anyLoading reports whether any view is waiting on data. The spinner ticks
@@ -476,7 +494,7 @@ func (m Model) SelectedCount() int {
 // ResetSorts restores all sorts to their default direction and priority order.
 func (m *Model) ResetSorts() {
 	for i := range m.activeSorts {
-		if m.activeSorts[i].Mode == models.SortModeName {
+		if m.activeSorts[i].Mode == models.SortModeAttention {
 			m.activeSorts[i].Direction = models.SortDirectionAsc
 		} else {
 			m.activeSorts[i].Direction = models.SortDirectionOff
@@ -488,16 +506,6 @@ func (m *Model) ResetSorts() {
 // DirtyCount returns the number of visible repos with uncommitted changes.
 func (m Model) DirtyCount() int {
 	return m.countVisible(func(s models.RepoSummary) bool { return s.IsDirty() })
-}
-
-// PRCount returns the number of visible repos with an associated pull request.
-func (m Model) PRCount() int {
-	return m.countVisible(func(s models.RepoSummary) bool { return s.PRInfo != nil })
-}
-
-// NotesCount returns the number of visible repos with a notes file.
-func (m Model) NotesCount() int {
-	return m.countVisible(func(s models.RepoSummary) bool { return s.HasNotes() })
 }
 
 // countVisible counts the filtered repos matching match. Every header count

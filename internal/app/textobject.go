@@ -27,7 +27,7 @@ func textObjects() []TextObject {
 			return m.summaries[path].HasNotes()
 		}},
 		{Key: "pr", Name: "with PRs", Matches: func(m Model, path string) bool {
-			return m.summaries[path].PRInfo != nil
+			return len(m.summaries[path].OpenPRs) > 0
 		}},
 		{Key: "sr", Name: nameMarked, Matches: func(m Model, path string) bool {
 			return m.isMarked(path)

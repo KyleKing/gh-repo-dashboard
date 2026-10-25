@@ -60,8 +60,8 @@ func settleFetches(t *testing.T, start *Model) Model {
 		switch key.kind {
 		case fetchPR:
 			msg = PRLoadedMsg{Path: key.path}
-		case fetchPRCount:
-			msg = PRCountLoadedMsg{Path: key.path}
+		case fetchOpenPRs:
+			msg = OpenPRsLoadedMsg{Path: key.path}
 		case fetchBranchCount:
 			msg = BranchCountLoadedMsg{Path: key.path}
 		case fetchTemplate:
@@ -119,28 +119,42 @@ func TestPendingCellsAreDistinctFromAbsentOnes(t *testing.T) {
 	settled := settleFetches(t, &other)
 
 	path := "/dev/alpha"
+	pending.freshness[fetchKey{path, fetchOpenPRs}] = freshnessMiss
 	cells := []struct {
-		name string
-		cell func(Model) string
+		name    string
+		cell    func(Model) string
+		pending string
+		settled string
 	}{
-		{"PR", func(m Model) string { return m.prCell(m.summaries[path], maxContentWidth) }},
-		{"template", func(m Model) string { return m.templateCell(m.summaries[path], maxContentWidth) }},
-		{"CI", func(m Model) string {
-			text := m.ciCell(m.summaries[path])
+		{
+			name: "PRs",
+			cell: func(m Model) string {
+				s := m.summaries[path]
 
-			return text
-		}},
+				return strings.TrimSpace(plainText(m.prsCell(m.needsOf(s), 12, plainStyle, false)))
+			},
+			pending: strings.TrimSpace(plainText(pending.spinner.View())),
+			settled: "",
+		},
+		{
+			name: "CI",
+			cell: func(m Model) string {
+				return m.ciCell(m.summaries[path])
+			},
+			pending: pendingGlyph,
+			settled: emDash,
+		},
 	}
 
 	for _, cell := range cells {
 		t.Run(cell.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := plainText(cell.cell(pending)); got != pendingGlyph {
-				t.Errorf("in-flight %s cell = %q, want %q", cell.name, got, pendingGlyph)
+			if got := strings.TrimSpace(plainText(cell.cell(pending))); got != cell.pending {
+				t.Errorf("in-flight %s cell = %q, want %q", cell.name, got, cell.pending)
 			}
-			if got := cell.cell(settled); got != emDash {
-				t.Errorf("settled %s cell = %q, want %q", cell.name, got, emDash)
+			if got := cell.cell(settled); got != cell.settled {
+				t.Errorf("settled %s cell = %q, want %q", cell.name, got, cell.settled)
 			}
 		})
 	}
@@ -161,8 +175,9 @@ func TestUnreadSummaryRowsReadAsPending(t *testing.T) {
 		t.Errorf("unread row names the repo %q, want %q", summary.Name(), "alpha")
 	}
 
-	if got := plainText(m.statusCell(summary, 12, plainStyle, false)); !strings.Contains(got, pendingGlyph) {
-		t.Errorf("unread status cell = %q, want the pending glyph %q", got, pendingGlyph)
+	cell := m.repoCell(colNeeds, summary, m.needsOf(summary), 12, plainStyle, false)
+	if got := plainText(cell); !strings.Contains(got, pendingGlyph) {
+		t.Errorf("unread NEEDS cell = %q, want the pending glyph %q", got, pendingGlyph)
 	}
 
 	rows := m.overviewRows(summary, false)

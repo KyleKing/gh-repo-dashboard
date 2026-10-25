@@ -21,7 +21,7 @@ func predicateModel() Model {
 		"/test/dirty": {RepoSummary: vcs.RepoSummary{Path: "/test/dirty", Branch: mainBranchName, Unstaged: 2}},
 		"/test/dirty-pr": {
 			RepoSummary: vcs.RepoSummary{Path: "/test/dirty-pr", Branch: "feat", Unstaged: 1},
-			PRInfo:      &forge.PullRequest{Number: 7},
+			PRInfo:      &forge.PullRequest{Number: 7}, OpenPRs: []forge.PullRequest{{Number: 7}},
 		},
 	}
 	m.updateFilteredPaths()
@@ -164,11 +164,11 @@ func TestCountForFilterReflectsActiveFilters(t *testing.T) {
 	m.summaries = map[string]models.RepoSummary{
 		"/test/dirty-pr": {
 			RepoSummary: vcs.RepoSummary{Path: "/test/dirty-pr", Branch: mainBranchName, Unstaged: 1},
-			PRInfo:      &forge.PullRequest{Number: 1},
+			PRInfo:      &forge.PullRequest{Number: 1}, OpenPRs: []forge.PullRequest{{Number: 1}},
 		},
 		"/test/clean-pr": {
 			RepoSummary: vcs.RepoSummary{Path: "/test/clean-pr", Branch: mainBranchName},
-			PRInfo:      &forge.PullRequest{Number: 2},
+			PRInfo:      &forge.PullRequest{Number: 2}, OpenPRs: []forge.PullRequest{{Number: 2}},
 		},
 		"/test/dirty": {RepoSummary: vcs.RepoSummary{Path: "/test/dirty", Branch: mainBranchName, Unstaged: 1}},
 	}

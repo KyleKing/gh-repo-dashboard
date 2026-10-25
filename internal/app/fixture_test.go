@@ -168,12 +168,27 @@ func standardDataset() Model {
 		"/repos/dirty-pr": {
 			RepoSummary: vcs.RepoSummary{Path: "/repos/dirty-pr", Branch: "feat", Unstaged: 1},
 			PRInfo:      &forge.PullRequest{Number: 7},
+			OpenPRs:     []forge.PullRequest{{Number: 7}},
 			NotesFiles:  []models.NoteFile{{Name: "doing.md"}},
 		},
 	}
+	sortByName(&m)
 	m.updateFilteredPaths()
 
 	return m
+}
+
+// sortByName leaves name ascending as the only sort, for tests that assert on
+// row order without regard to what needs attention.
+func sortByName(m *Model) {
+	for i := range m.activeSorts {
+		m.activeSorts[i].Direction = models.SortDirectionOff
+		m.activeSorts[i].Priority = i
+
+		if m.activeSorts[i].Mode == models.SortModeName {
+			m.activeSorts[i].Direction = models.SortDirectionAsc
+		}
+	}
 }
 
 // quietRepo is a repo with nothing to act on: in sync, clean, no peers, no

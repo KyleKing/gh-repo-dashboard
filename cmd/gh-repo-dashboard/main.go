@@ -220,6 +220,15 @@ func runMain(args []string) {
 	}
 }
 
+func withTasks(model app.Model, cfg config.Config) app.Model {
+	store, err := tasks.DefaultStore()
+	if err != nil {
+		return model
+	}
+
+	return model.WithTasks(tasks.Selector{Store: store, Tasks: cfg.Tasks})
+}
+
 func main() {
 	flag.Usage = printUsage
 
@@ -295,7 +304,7 @@ func main() {
 		return
 	}
 
-	model := app.New(absPathList, *depth)
+	model := withTasks(app.New(absPathList, *depth), cfg)
 	p := tea.NewProgram(model)
 
 	if _, err := p.Run(); err != nil {

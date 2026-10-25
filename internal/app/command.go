@@ -140,19 +140,21 @@ func filterModeNames() map[string]models.FilterMode {
 
 func sortModeNames() map[string]models.SortMode {
 	return map[string]models.SortMode{
-		nameBranch: models.SortModeBranch,
-		"modified": models.SortModeModified,
-		"name":     models.SortModeName,
-		nameStatus: models.SortModeStatus,
+		"attention": models.SortModeAttention,
+		nameBranch:  models.SortModeBranch,
+		"modified":  models.SortModeModified,
+		"name":      models.SortModeName,
+		nameStatus:  models.SortModeStatus,
 	}
 }
 
 func sortModeDescriptions() map[string]string {
 	return map[string]string{
-		nameBranch: "sort by current branch name",
-		"modified": "sort by most recently modified",
-		"name":     "sort by repo name",
-		nameStatus: "sort by dirty/clean status",
+		"attention": "sort by what needs you first, grouped",
+		nameBranch:  "sort by current branch name",
+		"modified":  "sort by most recently modified",
+		"name":      "sort by repo name",
+		nameStatus:  "sort by dirty/clean status",
 	}
 }
 

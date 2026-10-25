@@ -11,12 +11,22 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
+var (
+	passingRun = forge.CIWorkflowRun{Status: forge.StatusCompleted, Conclusion: "success"}
+	failingRun = forge.CIWorkflowRun{Status: forge.StatusCompleted, Conclusion: models.CIFailureConclusion}
+	runningRun = forge.CIWorkflowRun{Status: "in_progress"}
+)
+
+func workflows(runs ...forge.CIWorkflowRun) *forge.DefaultBranchCI {
+	return &forge.DefaultBranchCI{Workflows: runs}
+}
+
 func TestCICellStates(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name      string
-		workflow  *forge.WorkflowSummary
+		ci        *forge.DefaultBranchCI
 		requested bool
 		settled   bool
 		want      string
@@ -24,18 +34,15 @@ func TestCICellStates(t *testing.T) {
 		{name: "not yet requested", want: emDash},
 		{name: "request in flight", requested: true, want: pendingGlyph},
 		{name: "failed fetch stops spinning", requested: true, settled: true, want: emDash},
-		{name: "no runs for the commit", workflow: &forge.WorkflowSummary{}, requested: true, want: emDash},
+		{name: "no runs for the commit", ci: &forge.DefaultBranchCI{}, requested: true, want: emDash},
+		{name: "all passing", ci: workflows(passingRun, passingRun, passingRun), requested: true, want: "✓"},
 		{
-			name:     "all passing",
-			workflow: &forge.WorkflowSummary{Total: 3, Passing: 3}, requested: true, want: "✓",
+			name: "one failure names the count",
+			ci:   workflows(passingRun, failingRun), requested: true, want: "✗ 1/2",
 		},
 		{
-			name:     "one failure names the count",
-			workflow: &forge.WorkflowSummary{Total: 2, Passing: 1, Failing: 1}, requested: true, want: "✗ 1/2",
-		},
-		{
-			name:     "still running",
-			workflow: &forge.WorkflowSummary{Total: 2, Passing: 1, InProgress: 1}, requested: true, want: "…1",
+			name: "still running",
+			ci:   workflows(passingRun, runningRun), requested: true, want: "…1",
 		},
 	}
 
@@ -48,7 +55,7 @@ func TestCICellStates(t *testing.T) {
 			if tt.requested && !tt.settled {
 				m.startFetch("/dev/app", fetchCI)
 			}
-			summary := models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: "/dev/app"}, WorkflowInfo: tt.workflow}
+			summary := models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: "/dev/app"}, CI: tt.ci}
 			m.summaries["/dev/app"] = summary
 
 			if got := m.ciCell(summary); got != tt.want {
@@ -115,8 +122,8 @@ func TestOverviewNamesTheBranchItsCIRanOn(t *testing.T) {
 	m.ciRequested = map[string]bool{"/dev/app": true}
 	m.ciBranch = map[string]string{"/dev/app": "trunk"}
 	summary := models.RepoSummary{
-		RepoSummary:  vcs.RepoSummary{Path: "/dev/app"},
-		WorkflowInfo: &forge.WorkflowSummary{Total: 1, Passing: 1},
+		RepoSummary: vcs.RepoSummary{Path: "/dev/app"},
+		CI:          workflows(passingRun),
 	}
 
 	if got := m.overviewCI(summary); got != "✓ on trunk" {
@@ -129,7 +136,7 @@ func TestStatusPreviewShowsCIStatus(t *testing.T) {
 
 	m := focusedModel(140, 35)
 	summary := m.summaries["/dev/alpha"]
-	summary.WorkflowInfo = &forge.WorkflowSummary{Total: 2, Passing: 1, Failing: 1}
+	summary.CI = workflows(passingRun, failingRun)
 	m.summaries["/dev/alpha"] = summary
 
 	preview := plainText(strings.Join(m.repoDetailLines(contentWidth(m.width)), "\n"))
