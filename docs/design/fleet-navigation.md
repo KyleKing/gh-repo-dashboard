@@ -13,8 +13,8 @@ fleet list, and `enter` re-roots the dashboard on a peer by pushing it onto the
 existing drill-down stack, so `esc` returns.
 
 Two checkouts on one branch is the state that loses local commits, so it is
-flagged as `⚠ same branch` and propagates upward: the repo list's PEERS cell
-renders `⧉2⚠` and the fleet header counts the conflicts. The hazard is visible
+flagged as `⚠ same branch` and propagates upward: the repo list's NEEDS cell
+shows `⚠ shared` and promotes the row. The hazard is visible
 without drilling in.
 
 All of this is local git data, so it costs no API calls and never waits on
@@ -55,7 +55,7 @@ Rules for every feature here:
 3. Everything network-derived goes through the cache registry with per-kind
    TTLs, and `r` stays the explicit escape hatch
 4. Fetch on demand and render from cache: the fleet map fetches only for
-   filtered repos, the CI column populates lazily as rows become visible, and
+   filtered repos, the live CI read runs lazily as rows become visible, with the last cached value drawn at once, and
    nothing fetches for repos scrolled past
 5. Show staleness rather than hiding it, so a cell served from cache past its
    TTL refresh point renders dim with an age suffix

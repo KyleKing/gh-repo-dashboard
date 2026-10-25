@@ -7,12 +7,15 @@ built from live in `docs/design/`, alongside
 [selection-and-verbs.md](docs/design/selection-and-verbs.md).
 
 The column engine lives in aragonite's `tui/table` and every table is sized by it.
-The repo list is one full-width table with an expanded region `v` opens beneath
-it (`internal/app/view_repolist.go`). The focused repo view is a panel grid
+The repo list is one full-width table of NAME, BRANCH, NEEDS, PRs, and MODIFIED,
+grouped into NEEDS YOU and QUIET by `needs.go`, with an expanded region `v` opens
+beneath it that is as tall as its content (`internal/app/view_repolist.go`). The focused repo view is a panel grid
 (`panels.go`, `view_panels.go`) and the universal find is `palette.go` and
 `view_palette.go`. The `:prs` fleet map lives in `internal/app/prmap.go`.
-Default-branch CI is fetched lazily for visible rows only, tracked by
-`Model.ciRequested`.
+Open pull requests and default-branch CI draw from aragonite's stale cache at
+once and refresh behind it (`Model.freshness`). The live CI read stays lazy for
+visible rows, tracked by `Model.ciRequested`, so a repo scrolled past with nothing
+cached has no CI until it is seen.
 
 ## Vision
 

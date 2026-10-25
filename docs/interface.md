@@ -49,9 +49,10 @@ parallel checkout, and applying a stash leaves the stash in place.
 
 ## Views
 
-The header line names the screen, carries its counts (a dirty count in the
-warning color, active filters and marks in the accent), and shows the tab strip at
-its right. The footer is pinned to the last row with the keys on offer bracketed
+The header line names the screen, carries its counts (`3 dirty` in the warning
+color, `8 failing CI` in the error color, `2 your turn` in the accent, `15 behind
+template` and `1 task due` muted, with zero counts left out; active filters and
+marks in the accent), and shows the tab strip at its right. The footer is pinned to the last row with the keys on offer bracketed
 inside their words, and a status message fades at its right end after three
 seconds. A sort shows as `▴` or `▾` on its column title.
 
@@ -88,15 +89,44 @@ finishes.
 
 ## Repo list columns
 
-NAME, BRANCH, STATUS, PEERS, PR, PRs, TEMPLATE, and MODIFIED.
+NAME, BRANCH, NEEDS, PRs, and MODIFIED. NEEDS is the one place the list says
+what a repo asks of you, and it is blank for a quiet repo. Each token has its own
+color, and the order never changes:
 
-PEERS counts the other checkouts of the same remote, whether sibling clones
-picked up by the same scan or worktrees of this repo, so `⧉2` means two other
-directories hold this project.
+| Token | Meaning | Color |
+|---|---|---|
+| `~3 ?1` | 3 changed files and 1 untracked | warning |
+| `↑2` | 2 commits not pushed | warning |
+| `↓1` | 1 commit behind the upstream | muted |
+| `✗ ci 7/9` | 7 of 9 default-branch workflows failing | error |
+| `… ci` | default-branch CI still running | muted |
+| `⚠ shared` | the branch is also checked out in a sibling clone or worktree | warning |
+| `✎ note` | a notes file is present | accent |
+| `≡2` | 2 stashes | muted |
+| `→ v0.16.0` | the copier template has a newer tag | muted |
+| `⟳ gc` | a [task](./configuration.md#tasks) is due on the repo | muted |
 
-TEMPLATE reads a repo's `.copier-answers.yml` and shows the installed template
-tag, `tag→latest` when the template has a newer tag, or the installed ref plus a
-warning icon when the recorded value is a commit SHA or branch rather than a tag.
+PRs counts the repo's open pull requests, whichever branch is checked out. When
+one waits on you it adds `#31 ←you` in the accent: your pull request has changes
+requested, or is approved with no failing check, or a review was requested of
+you. `has_pr` matches any open pull request, and `branch_pr` matches a pull
+request on the checked-out branch.
+
+Rows fall into two groups under labeled rules. NEEDS YOU holds a repo with
+uncommitted or unpushed work, a branch shared with another checkout, failing
+default-branch CI, or a pull request waiting on you. It sorts failing CI first,
+then unpushed, then dirty, then the rest, newest first within each. QUIET holds
+the others by most recent change, with the names muted. Behind, notes, stashes,
+template drift, and due tasks show in NEEDS but never move a repo up, so chores
+do not bury real work. Sorting by anything else (`s`) turns the groups off.
+
+Below 100 columns each repo is a two-line record. The first line holds the name,
+branch, and PRs, and the second holds the NEEDS tokens followed by the age, so
+failing CI still shows.
+
+Pull requests and CI draw from the last cache the moment a repo's summary loads,
+however old, and fresh reads replace them as they land. A value still waiting on a
+fresh read draws muted, and a spinner shows only where nothing was cached.
 
 ## Branch list columns
 
@@ -108,34 +138,27 @@ requested, or `draft`. CHECKS rolls its CI up as `passing 3/3`. CHECKED OUT read
 checkout holds, and `c` refuses to switch to the latter until that folder frees
 it.
 
-## Status symbols
+## Loading marks
 
-The STATUS column shows the working tree as symbols:
+`·` marks a value still being read and `—` one the dashboard has read and found
+empty, so a quiet repo can be told from an unread one. The header counts the same
+thing twice over: `Loading 8/54` while the repos are being read, then `Fetching 31`
+counting down the pull request, template, and CI reads that follow.
 
-- `+N` for N staged changes
-- `~N` for N unstaged changes
-- `?N` for N untracked files
-- `!N` for N conflicted files
-- `↑N` for N commits ahead of the tracking branch
-- `↓N` for N commits behind
-- nothing when the working tree is clean
+Press `v` to open the expanded region under the table. It is as tall as what it
+holds, up to 60% of the body, and answers why a row asks for you: the changed
+paths, CI per workflow with the failing ones first and the jobs that broke, the
+template's installed and latest tags, peer checkouts, local branches with
+unpushed commits, open pull requests, and the repo's notes in full. A fact with
+nothing to say is left out. `esc` closes the region, then clears the search, then
+the filters.
 
-Across the other columns, `·` marks a value still being fetched and `—` one the
-dashboard has read and found empty, so a quiet repo can be told from an unread
-one. The header counts the same thing twice over: `Loading 8/54` while the
-repos are being read, then `Fetching 31` counting down the pull request,
-template, and CI reads that follow.
-
-Alongside it, `N` marks a repo with one notes file and `N3` a repo with three.
-Press `v` to open the expanded region under the table, which reads those files in
-full for the repo under the cursor alongside its peers, local branches, and open
-pull requests. `esc` closes the region, then clears the search, then the filters.
-
-The list has no symbols for stash counts, worktree counts, or workflow runs.
-Those appear in the focused view's panels, and the branch detail pane spells
-workflow status out as words, such as `passing (3/4 passing)`. Selecting a pull
-request names its failing and still-running checks, tallying the settled ones, so
-a red rollup can be read without leaving the panel.
+The list has no column for stash counts beyond `≡N`, worktree counts, or the
+per-workflow CI breakdown. Those appear in the focused view's panels, and the
+branch detail pane spells workflow status out as words, such as
+`passing (3/4 passing)`. Selecting a pull request names its failing and
+still-running checks, tallying the settled ones, so a red rollup can be read
+without leaving the panel.
 
 ## Notes files
 

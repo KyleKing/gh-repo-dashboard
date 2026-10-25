@@ -154,33 +154,16 @@ the [git vs jj mapping](#git-vs-jj-concept-mapping) above for those.
 
 | Column | Meaning |
 |--------|---------|
-| BRANCH | The branch currently checked out. |
-| BRs | The repo's total local branch count, read once per repo as soon as its summary lands. |
-| STATUS | The working tree's state: sync position against the upstream plus uncommitted file counts. |
-| PEERS | How many *other* checkouts in the scanned fleet share this repo's branch and are tracking one of its open pull requests. Empty for the common case of a repo with no other checkout in play. |
-| PR | The pull request open on the branch currently checked out here, or a dash if there isn't one. |
-| PRs | The repo's total count of open pull requests, regardless of which branch is checked out. |
-| TEMPLATE | Whether the repo has drifted from the copier template it was generated from. |
-| CI | The default branch's most recent workflow run rollup. |
+| NAME | The checkout's directory name, muted when the repo needs nothing. |
+| BRANCH | The branch currently checked out, plus `+N` for the repo's other local branches (read once per repo as soon as its summary lands). Muted on a default branch. |
+| NEEDS | Every attention signal as colored glyph-and-count tokens in a fixed order, blank for a quiet repo: uncommitted and untracked files, unpushed and behind commits, failing or running default-branch CI, a branch shared with a peer checkout, notes, stashes, template drift, and a due task. `docs/interface.md` lists them. |
+| PRs | The repo's count of open pull requests regardless of branch, plus `#N ←you` when one waits on the signed-in user. |
+| MODIFIED | The repo's most recent change, muted. |
 
-`PR` and `PRs` answer different questions and sit side by side, which reads
-easily once you know the distinction but is easy to misread at a glance;
-see the note below.
-
-### Terminology worth reconsidering
-
-- `PR` (singular, current branch's own pull request) beside `PRs` (plural,
-  the repo's total open count) is precise but relies on a reader noticing
-  the trailing `s`. A clearer pair of names (e.g. `THIS PR` / `OPEN PRs`, or
-  moving one of the two into the STATUS line) would remove the need to read
-  carefully to tell them apart.
-- `BRs` is a fleet-dashboard abbreviation with no standard meaning outside
-  this app; `Br` or spelling it `BRANCHES` (there is no separate branch-list
-  column to collide with) would read more immediately.
-- PEERS answers a narrower question than its name suggests: it is peers
-  relevant to an open pull request, not every other checkout of the repo. A
-  name like `RELEVANT PEERS` or `PR PEERS` would set that expectation up
-  front instead of requiring a look at the glossary.
+A repo promotes into the NEEDS YOU group on local work (dirty, unpushed, shared
+branch), failing default-branch CI, or a pull request whose turn is the
+signed-in user's. Drift, notes, stashes, behind, and due tasks show in NEEDS but
+never promote (`needs.go`).
 
 ### Why branch loading is slower in the single-repo view than the list
 
@@ -239,8 +222,7 @@ non-tag rather than guessing. The latest-tag lookup is cached in
 `cache.CopierLatestTagCache` keyed by `_src_path` rather than by repo path, so
 every repo generated from the same template shares one network call. The pull
 request and workflow caches follow the same shape through `cache.RemoteScope`. The repo
-list's TEMPLATE column shows the installed tag, `tag→latest` when behind, or
-the installed ref plus a warning icon when it isn't a tag.
+list's NEEDS cell shows `→ latest` when the installed tag is behind.
 
 ## Filtering Architecture
 
@@ -248,9 +230,9 @@ Filtering is compositional: `FilterMode -> SearchText -> SortMode -> Display`. F
 example, the `DIRTY` filter plus an `api` search yields dirty repos containing "api".
 
 - Filter modes: `ALL`, `DIRTY`, `AHEAD`, `BEHIND`, `HAS_PR`, `HAS_STASH`, `HAS_NOTES`, `GIT` (multi-filter with AND logic). The `f` dock shows one row per mode with its cycle state (off, on, `NOT`) and a live "if on" count: the fleet-wide total that mode would produce combined with every other filter, the predicate, and the search already active, not that mode evaluated alone.
-- Sort modes: `NAME`, `MODIFIED`, `STATUS`, `BRANCH`, with multi-field priority and ASC/DESC direction
+- Sort modes: `ATTENTION` (the default, which also draws the NEEDS YOU and QUIET groups), `NAME`, `MODIFIED`, `STATUS`, `BRANCH`, with multi-field priority and ASC/DESC direction
 - Search: matches repo name or checked-out branch by default, updating in real time; falls back to fuzzy matching (`sahilm/fuzzy`) on the name when nothing matches as a substring/glob. Scope prefixes: `r:` name, `b:` branch, `p:` PR number/title, `t:` copier template source, `n:` note body content (only searches notes already loaded; a repo whose notes haven't fetched yet just doesn't match), `c:` commit recency (`c:<7d` within, `c:>30d` older than, bare `c:7d` defaults to within). Every scope supports glob syntax via `filters.GlobMatch`: a bare query matches anywhere, `^`/`$` anchor an edge (both together for an exact match), `*`/`?` are wildcards within the query, and `\` escapes a literal `^`, `$`, `*`, or `?`.
-- `filters.Predicate[T]` is generic over its subject type, so the same `and`/`or`/`not`/parens parser (`filters.ParsePredicate`) serves any atom map. `filters.RepoAtoms()` is the one in use: `ahead`, `behind`, `clean` = `not dirty`, `dirty`, `has_pr`, `has_stash`, `has_notes`, `git`, plus dock-absent `jj`, `https`, `ssh`, `has_upstream`, `config_override`, `error`, `template_drift`.
+- `filters.Predicate[T]` is generic over its subject type, so the same `and`/`or`/`not`/parens parser (`filters.ParsePredicate`) serves any atom map. `filters.RepoAtoms()` is the one in use: `ahead`, `behind`, `clean` = `not dirty`, `dirty`, `has_pr` (any open pull request), `branch_pr` (one on the checked-out branch), `has_stash`, `has_notes`, `git`, plus dock-absent `jj`, `https`, `ssh`, `has_upstream`, `config_override`, `error`, `template_drift`.
 - `:filter <expr>` layers a `RepoAtoms` predicate on top of the dock's filters as an extra AND term; it shows as its own row in the `f` dock when set, cleared independently with `x` (the dock's `*` resets everything, filters and predicate alike).
 
 Adding a filter mode: add the const to `models/enums.go`, a filter function in
@@ -383,7 +365,7 @@ Adding a keybinding: register it in `keymap.go`, handle it in `handleKey()`
 - Notes detection (surfacing as a Notes panel in the focused view): every configured notes filename (`.doing`, `doing.md`, `doing.txt`, `TODO.md` by default; overridable via config) present at a repo root is collected as a `models.NoteFile`, not just the first match; surfaces as a count badge in the Status column, the full text in the region `v` opens on the repo list, the focused view's Notes panel with the file body in the detail pane, and the `has_notes` filter/predicate with the `nr` text object; detection is a plain file check outside the VCS abstraction. The Notes panel's `!e` verb hands the file to `$EDITOR` through `tea.ExecProcess`, which is the only path by which the dashboard causes a notes file to be written
 - Configuration: optional TOML at `$XDG_CONFIG_HOME/gh-repo-dashboard/config.toml` (`internal/config`) supplies scan paths, depth, notes filenames, cache TTLs, and the `cache_to_disk` opt-out; flags take precedence
 - Command history: `ExecuteCommand` records recognized commands (capped at 50), shared by the command bar, `:history`, the `@:` repeat key, and `--script` runs
-- Parallel checkouts: repos sharing a remote (`RepoSummary.RemoteRepo`, derived from the remote URL) are peers of each other, as are a repo's own worktrees/workspaces; `models.FindPeerCheckouts` and `models.WorktreeCheckouts` build the full set, surfacing unfiltered as a repo-detail header badge, the branch list's CHECKED OUT column, and a branch-detail line, so branch-conflict detection always sees every peer regardless of what GitHub knows about it. A repo with no known remote never peers with anything, since an empty remote would group every unrelated local-only repo. The repo list's PEERS count and `v`-expand row narrow that same set further, to `relevantPeers` in `internal/app/peerpr.go`: a peer only counts there if one of its local branches (any of them, not just the one currently checked out) tracks the upstream ref of one of the repo's own open pull requests, matched by `PRInfo.MatchesUpstream` rather than by local branch name so a peer that renamed the branch still counts. Each relevant peer names its own full path rather than just its folder, since a worktree's folder name alone does not say which directory holds it, and is tagged when discovery found it under a different configured scan path than the repo currently open
+- Parallel checkouts: repos sharing a remote (`RepoSummary.RemoteRepo`, derived from the remote URL) are peers of each other, as are a repo's own worktrees/workspaces; `models.FindPeerCheckouts` and `models.WorktreeCheckouts` build the full set, surfacing unfiltered as a repo-detail header badge, the branch list's CHECKED OUT column, and a branch-detail line, so branch-conflict detection always sees every peer regardless of what GitHub knows about it. A repo with no known remote never peers with anything, since an empty remote would group every unrelated local-only repo. The repo list's `⚠ shared` token flags a repo whose branch another checkout holds, and the `v`-expand Peers row narrows the set further, to `relevantPeers` in `internal/app/peerpr.go`: a peer only counts there if one of its local branches (any of them, not just the one currently checked out) tracks the upstream ref of one of the repo's own open pull requests, matched by `PRInfo.MatchesUpstream` rather than by local branch name so a peer that renamed the branch still counts. Each relevant peer names its own full path rather than just its folder, since a worktree's folder name alone does not say which directory holds it, and is tagged when discovery found it under a different configured scan path than the repo currently open
 - Universal find: `space` (focused view) or `;` (fleet list) opens a typed-prefix palette over cache-resident data; `tab` marks rows, `!` runs a verb on the set, and a repo set commits to the selected-repos text object so batch operators compose with it
 - Panel verbs: the focused view's write actions sit behind the `!` leader, scoped to the focused panel (`panelActionsFor` in `internal/app/actions.go`) so the letters stay mnemonic without each costing a top-level key. Everything that touches the remote or destroys work is parked behind `ViewModeConfirm` rather than running on the keypress; switching and branch deletion are refused up front when the branch is already checked out here or held by a parallel checkout, and a stash is applied rather than popped so the stash survives a mistake. Results arrive as `ActionResultMsg` and reload the repo's summary and detail
 - Detail pane: renders whatever the panel cursor sits on, from data the panel load already holds. A pull request lists its failing and in-flight checks by name with the settled ones tallied, capped so a wall of failures cannot cost a frame; a stash shows its diffstat, with `!o` swapping in the full patch under a line cap, rendered by whatever external diff command git or `[diff] external` names (difftastic and friends) and printed with the viewer's own styling intact. Both are bounded because `panelDetailLines` is rebuilt several times per frame

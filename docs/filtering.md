@@ -23,10 +23,13 @@ same grammar works in `--filter` on the command line and in `:select where`.
 
 Precedence runs `not`, then `and`, then `or`, and parentheses group.
 
-The atoms are `ahead`, `behind`, `clean`, `config_override`, `dirty`, `error`,
-`git`, `has_notes`, `has_pr`, `has_stash`, `has_upstream`, `https`, `jj`, `ssh`,
-and `template_drift`. A malformed expression reports a parse error rather than
+The atoms are `ahead`, `behind`, `branch_pr`, `clean`, `config_override`, `dirty`,
+`error`, `git`, `has_notes`, `has_pr`, `has_stash`, `has_upstream`, `https`, `jj`,
+`ssh`, and `template_drift`. A malformed expression reports a parse error rather than
 silently matching nothing.
+
+`has_pr` matches a repo with any open pull request, and `branch_pr` one with a
+pull request on the checked-out branch.
 
 `template_drift` matches a copier-generated repo that is behind its template's
 latest tag, or pinned to a commit or branch rather than a tag, where currency
@@ -63,9 +66,15 @@ visible. The `sr` text object then scopes a batch operation to that selection.
 
 ## Sorting
 
-Sort by `name`, `modified`, `status`, or `branch` from the sort modal (`s`) or
-`:sort <mode>`. `R` reverses the current direction, and sorts combine by
+Sort by `attention`, `name`, `modified`, `status`, or `branch` from the sort modal
+(`s`) or `:sort <mode>`. `R` reverses the current direction, and sorts combine by
 priority.
+
+`attention` is the default. Its sort key is how urgently a repo needs you (failing
+CI, then unpushed commits, then uncommitted work, then a shared branch or a pull
+request waiting on you, then everything quiet), with the most recent change
+breaking ties, and it draws the NEEDS YOU and QUIET groups. Any other sort
+leading the priority list draws the list ungrouped, in the order that sort gives.
 
 ## Search
 

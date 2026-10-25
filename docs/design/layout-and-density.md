@@ -35,10 +35,10 @@ column from vanishing at a width where shrinking it would have been enough.
 Each table's priorities are ordered by information value observed against the
 real fleet rather than by column position, and every set lives next to its
 columns (`repoColSpecs` in `layout.go`, the rest in `columns.go` and
-`panels.go`). On the repo list that means the current branch's own PR goes
-first, since it is nearly always `—` on main, while PEERS and TEMPLATE are the
-actionable fleet signals and survive longest. Name, branch, and status carry no
-priority and never hide.
+`panels.go`). On the repo list that means MODIFIED goes first and PRs second,
+while NEEDS is the actionable fleet signal and never hides, with name and branch.
+NAME and BRANCH stop growing at 28 and 24 cells, so the surplus on a wide
+terminal goes to NEEDS.
 
 ## Density
 
@@ -47,7 +47,7 @@ needs no state to migrate.
 
 | Layout | Width | Why |
 |--------|-------|-----|
-| compact | < 100 | eight columns cannot be read at 80 cells, so compact is its own two-line-record layout rather than a shrunken table |
+| compact | < 100 | five columns cannot be read at 80 cells, so compact is its own two-line-record layout (identity, then the NEEDS tokens) rather than a shrunken table |
 | standard | >= 100 | the engine sizes the single table |
 
 Past 100 the width is continuous rather than stepped, and past roughly 160 cells
@@ -65,12 +65,12 @@ has. Above it the second wins, and the list and the focused view frame alike.
 the questions the table has no column for: peers, local branches with unpushed
 commits, open pull requests, and the repo's notes in full.
 
-Its height is a function of the body height alone, never of the selected repo or
-of what is still loading, so moving the cursor swaps text in place instead of
-resizing the table underneath. It takes 60% of the body, bounded so the table
-keeps six rows and the region keeps its head plus a note line. Sections still
-loading say `reading…` rather than `—`, and a note taller than the space has its
-middle elided so both ends survive.
+Its height follows its content, capped at 60% of the body and bounded so the table
+keeps six rows. A fact with nothing to say is left out, and the closing rule
+carries no caption. Sections still loading say `reading…` rather than `—`, and a
+note taller than the space has its middle elided so both ends survive. The table
+takes whatever lines the region leaves, so it grows and shrinks as the cursor
+moves between repos with more or less to say.
 
 Branches and pull requests come from the same per-repo read the `:prs` fleet map
 makes, cached per repo for the session, so opening the region costs one fetch per
