@@ -2,6 +2,10 @@
 
 ![demo](https://raw.githubusercontent.com/kyleking/gh-repo-dashboard/main/.github/assets/demo.gif)
 
+![The repo list, grouped by what needs you](docs/images/wide-list.png)
+
+![The focused repo view](docs/images/wide-focused.png)
+
 See the status of every git and jj repository under a directory in one dashboard,
 with GitHub pull request and CI state beside the local status. Fetch, prune, and
 delete merged branches across all of them at once, but you probably want to use one
