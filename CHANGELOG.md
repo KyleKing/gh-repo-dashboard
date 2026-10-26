@@ -1,3 +1,9 @@
+## v1.16.2 (2026-10-26)
+
+### Fix
+
+- **cli**: scan the launch directory in the TUI and keep scan_paths for headless runs
+
 ## v1.16.1 (2026-10-26)
 
 ### Fix
