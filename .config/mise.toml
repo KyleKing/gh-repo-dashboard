@@ -5,3 +5,7 @@
 
 [settings]
 experimental = true
+
+[env]
+# Wide enough for the 140-column preview pane, which the template's 1180px default is not.
+STILLS_BREAKPOINTS = "wide=1700x760 narrow=700x700"

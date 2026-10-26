@@ -21,17 +21,31 @@ Set Framerate 15
 Env COLORTERM "truecolor"
 
 Hide
-Type `eval "$(demo/stills-fleet.sh)" && echo fleet-$((6*7))` Enter
+Type `eval "$(demo/stills-fleet.sh)" && bin=$PWD/gh-repo-dashboard && cd "$STILLS_FLEET" && echo fleet-$((6*7))` Enter
 Wait+Screen /fleet-42/
 Type "clear" Enter
-Type "./gh-repo-dashboard" Enter
+Type "$bin" Enter
 Wait+Screen /NEEDS YOU/
 Wait+Screen /note.*gc/
 Show
 
+Down 2
+Wait+Screen /theta/
 Sleep 500ms
 Screenshot docs/images/__NAME__-list.png
 Sleep 1s
+
+Type "f"
+Type "d"
+Wait+Screen /Dirty ×/
+Sleep 300ms
+Screenshot docs/images/__NAME__-filter.png
+Sleep 1s
+
+Type "*"
+Escape
+Wait+Screen /NEEDS YOU/
+Up 2
 
 Down 3
 Type "v"

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Builds a deterministic fleet of throwaway repos for demo/stills.tape and prints
 # the exports that point the dashboard at it, so the real HOME and config are never read.
+# The TUI scans where it is launched, so start it from $STILLS_FLEET.
 # Usage: eval "$(demo/stills-fleet.sh [root])"
 set -euo pipefail
 
@@ -117,6 +118,7 @@ run = "git status --short"
 where = "dirty"
 TOML
 
+printf 'export STILLS_FLEET=%q\n' "$fleet"
 printf 'export HOME=%q\n' "$home"
 printf 'export XDG_CONFIG_HOME=%q\n' "$home/.config"
 printf 'export XDG_CACHE_HOME=%q\n' "$home/.cache"
