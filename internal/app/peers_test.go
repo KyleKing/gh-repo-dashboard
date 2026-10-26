@@ -254,9 +254,9 @@ func TestBracketOpensTheCheckoutsTab(t *testing.T) {
 func TestPeers_OwnCheckoutIsNotShared(t *testing.T) {
 	t.Parallel()
 
-	real := t.TempDir()
+	target := t.TempDir()
 	link := filepath.Join(t.TempDir(), "gamma")
-	if err := os.Symlink(real, link); err != nil {
+	if err := os.Symlink(target, link); err != nil {
 		t.Fatal(err)
 	}
 
@@ -270,7 +270,7 @@ func TestPeers_OwnCheckoutIsNotShared(t *testing.T) {
 	}
 	m.repoPaths = []string{link}
 	m.selectedRepo = link
-	m.worktrees = []vcs.WorktreeInfo{{Path: real, Branch: "feature/solo"}}
+	m.worktrees = []vcs.WorktreeInfo{{Path: target, Branch: "feature/solo"}}
 	m.updateFilteredPaths()
 
 	if got := m.RepoCheckouts(); len(got) != 0 {
