@@ -2,6 +2,8 @@
 package app
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -246,5 +248,36 @@ func TestBracketOpensTheCheckoutsTab(t *testing.T) {
 	if opened.viewMode != ViewModeRepoDetail || opened.focusedPanel != panelPeers {
 		t.Errorf("] landed in %v on tab %v, want the focused view's checkouts tab",
 			opened.viewMode, opened.focusedPanel)
+	}
+}
+
+func TestPeers_OwnCheckoutIsNotShared(t *testing.T) {
+	t.Parallel()
+
+	real := t.TempDir()
+	link := filepath.Join(t.TempDir(), "gamma")
+	if err := os.Symlink(real, link); err != nil {
+		t.Fatal(err)
+	}
+
+	m := New([]string{filepath.Dir(link)}, 1)
+	m.width, m.height = 160, 40
+	m.loading = false
+	m.summaries = map[string]models.RepoSummary{
+		link: {RepoSummary: vcs.RepoSummary{
+			Path: link, VCSType: vcs.TypeGit, Branch: "feature/solo", RemoteRepo: "acme/gamma",
+		}},
+	}
+	m.repoPaths = []string{link}
+	m.selectedRepo = link
+	m.worktrees = []vcs.WorktreeInfo{{Path: real, Branch: "feature/solo"}}
+	m.updateFilteredPaths()
+
+	if got := m.RepoCheckouts(); len(got) != 0 {
+		t.Errorf("the repo's own directory, named through a symlink, is listed as %d peer checkouts", len(got))
+	}
+
+	if rendered := plainText(renderPanel(m, panelPeers)); strings.Contains(rendered, conflictMark) {
+		t.Errorf("a lone checkout is flagged as shared:\n%s", rendered)
 	}
 }

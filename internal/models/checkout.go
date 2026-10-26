@@ -97,9 +97,11 @@ func OwnCheckout(s *RepoSummary) PeerCheckout {
 // WorktreeCheckouts converts a repo's worktree list into peer checkouts,
 // dropping the repo's own working directory and any bare entry.
 func WorktreeCheckouts(repoPath string, worktrees []vcs.WorktreeInfo) []PeerCheckout {
+	own := canonicalPath(repoPath)
+
 	var peers []PeerCheckout
 	for _, wt := range worktrees {
-		if wt.IsBare || wt.Path == "" || wt.Path == repoPath {
+		if wt.IsBare || wt.Path == "" || canonicalPath(wt.Path) == own {
 			continue
 		}
 
@@ -126,9 +128,11 @@ func MergeCheckouts(lists ...[]PeerCheckout) []PeerCheckout {
 	var merged []PeerCheckout
 	for _, list := range lists {
 		for _, checkout := range list {
-			at, seen := index[checkout.Path]
+			key := canonicalPath(checkout.Path)
+
+			at, seen := index[key]
 			if !seen {
-				index[checkout.Path] = len(merged)
+				index[key] = len(merged)
 				merged = append(merged, checkout)
 
 				continue
@@ -195,6 +199,17 @@ func ConflictingBranches(own *PeerCheckout, peers []PeerCheckout) map[string]boo
 	}
 
 	return conflicts
+}
+
+// canonicalPath resolves symlinks so the path git reports for a worktree
+// (always the real path, e.g. /private/tmp on macOS) matches the path discovery
+// found the same directory under.
+func canonicalPath(path string) string {
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		return resolved
+	}
+
+	return filepath.Clean(path)
 }
 
 func sortCheckouts(peers []PeerCheckout) {
