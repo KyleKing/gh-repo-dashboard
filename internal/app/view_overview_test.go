@@ -35,19 +35,19 @@ func TestListWidthFollowsTheWiderRule(t *testing.T) {
 	}
 }
 
-func TestExpandRegionTracksTheCursor(t *testing.T) {
+func TestDetailRegionTracksTheCursor(t *testing.T) {
 	t.Parallel()
 
-	m := compactModel(180, 40)
-	m.expandOpen = true
+	m := compactModel(120, 40)
+	m.detailOpen = true
 
-	first := plainText(m.renderListBody())
+	first := plainText(m.renderRepoList())
 	if !strings.Contains(first, "dev/alpha") {
 		t.Fatalf("the region does not name the first repo:\n%s", first)
 	}
 
 	m.cursor = 1
-	second := plainText(m.renderListBody())
+	second := plainText(m.renderRepoList())
 	if !strings.Contains(second, "dev/bravo") {
 		t.Errorf("the region did not follow the cursor to bravo:\n%s", second)
 	}

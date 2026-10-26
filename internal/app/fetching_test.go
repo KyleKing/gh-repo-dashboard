@@ -68,12 +68,14 @@ func settleFetches(t *testing.T, start *Model) Model {
 			msg = CopierInfoLoadedMsg{Path: key.path}
 		case fetchCI:
 			msg = WorkflowLoadedMsg{Path: key.path, Error: errGHFailed}
-		case fetchExpand:
+		case fetchPRMap:
 			msg = PRMapLoadedMsg{Path: key.path}
-		case fetchPeerBranches:
-			msg = PeerBranchesLoadedMsg{Path: key.path}
-		case fetchPreviewLog:
-			msg = PreviewCommitsLoadedMsg{Path: key.path}
+		case fetchCommitLog:
+			msg = CommitLogLoadedMsg{Path: key.path}
+		case fetchNotes:
+			msg = NotesContentLoadedMsg{Path: key.path}
+		case fetchChangedPaths:
+			msg = ChangedPathsLoadedMsg{Path: key.path}
 		}
 
 		updated, _ := m.Update(msg)

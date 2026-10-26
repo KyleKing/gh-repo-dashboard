@@ -73,9 +73,6 @@ func peerFleet(width, height int) Model {
 			PRs:  []forge.PullRequest{{Number: 1, HeadRef: "feature-x"}},
 		},
 	}
-	m.peerBranches = map[string][]vcs.BranchInfo{
-		"/dev/app-b": {{Name: "renamed-branch", Upstream: "origin/feature-x"}},
-	}
 
 	return m
 }

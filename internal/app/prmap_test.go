@@ -64,12 +64,6 @@ func mapFleet() Model {
 		"/dev/lib":    {Path: "/dev/lib", Branches: []vcs.BranchInfo{{Name: "main"}}},
 	}
 
-	// app-wt is app's peer; pre-warm its branch list so reopening the region
-	// costs no fetch.
-	m.peerBranches = map[string][]vcs.BranchInfo{
-		"/dev/app-wt": {{Name: "feature/peer"}},
-	}
-
 	return m
 }
 
@@ -263,11 +257,11 @@ func TestPRMapEnterOpensTheRepoBehindTheRow(t *testing.T) {
 	}
 }
 
-// TestExpandCacheSurvivesThePRMap pins the interaction between the expanded
+// TestDetailCacheSurvivesThePRMap pins the interaction between the detail
 // region and the fleet map, which share m.prMap: the region caches a repo's
 // branches and pull requests there so reopening it costs nothing, and the map
 // used to throw that away on both entry and exit.
-func TestExpandCacheSurvivesThePRMap(t *testing.T) {
+func TestDetailCacheSurvivesThePRMap(t *testing.T) {
 	t.Parallel()
 	m := mapFleet()
 	m.viewMode = ViewModeRepoList
@@ -291,9 +285,12 @@ func TestExpandCacheSurvivesThePRMap(t *testing.T) {
 		t.Errorf("expected %d cached PRs to survive, got %d", len(cached.PRs), len(got.PRs))
 	}
 
-	m.expandOpen = true
+	m.width, m.height = 120, 40
+	m.detailOpen = true
 	m.cursor = 0
-	if cmd := m.expandCmd(); cmd != nil {
-		t.Error("reopening the region on a cached repo should cost no fetch")
+	m.fetching = nil
+	m.requestDetail()
+	if m.fetchPending("/dev/app", fetchPRMap) {
+		t.Error("reopening the region on a cached repo should cost no pull request fetch")
 	}
 }

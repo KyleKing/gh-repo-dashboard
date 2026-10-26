@@ -83,7 +83,7 @@ func TestEscClearsMarksBeforeAnythingElse(t *testing.T) {
 	t.Parallel()
 
 	m := operatorModel()
-	m.expandOpen = true
+	m.detailOpen = true
 
 	marked, _ := pressKeys(t, m, "x")
 
@@ -91,7 +91,7 @@ func TestEscClearsMarksBeforeAnythingElse(t *testing.T) {
 	if len(cleared.markedPaths()) != 0 {
 		t.Errorf("esc should clear the marks, got %v", cleared.markedPaths())
 	}
-	if !cleared.expandOpen {
+	if !cleared.detailOpen {
 		t.Error("esc must not close the expanded region while marks are still up")
 	}
 }

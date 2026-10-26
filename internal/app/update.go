@@ -17,6 +17,7 @@ import (
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/forge/github"
 	"github.com/kyleking/aragonite/tui/handoff"
+	"github.com/kyleking/aragonite/tui/split"
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
@@ -29,17 +30,17 @@ const (
 	statusClearDelay     = 3 * time.Second
 )
 
-// Update dispatches msg, then asks for whatever the preview of the repo under
-// the cursor still lacks, wherever the message moved the cursor from.
+// Update dispatches msg, then asks for whatever the detail region of the repo
+// under the cursor still lacks, wherever the message moved the cursor from.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		next tea.Model
 		cmd  tea.Cmd
 	)
 
-	if loaded, isPreview := msg.(PreviewCommitsLoadedMsg); isPreview {
-		m.previewCommits[loaded.Path] = loaded.Commits
-		m.finishFetch(loaded.Path, fetchPreviewLog)
+	if loaded, isCommitLog := msg.(CommitLogLoadedMsg); isCommitLog {
+		m.commitLog[loaded.Path] = loaded.Commits
+		m.finishFetch(loaded.Path, fetchCommitLog)
 		next = m
 	} else {
 		next, cmd = m.dispatch(msg)
@@ -50,8 +51,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return next, cmd
 	}
 
-	if preview := updated.requestPreview(); preview != nil {
-		cmd = tea.Batch(cmd, preview)
+	if detail := updated.requestDetail(); detail != nil {
+		cmd = tea.Batch(cmd, detail)
 	}
 
 	return updated, cmd
@@ -67,7 +68,7 @@ func (m Model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.help.SetWidth(msg.Width)
 
-		return m, tea.Batch(append(m.visibleCICmds(), m.visiblePeerDataCmds()...)...)
+		return m, tea.Batch(m.visibleCICmds()...)
 
 	case spinner.TickMsg:
 		return m.handleSpinnerTick(msg)
@@ -113,6 +114,7 @@ func (m Model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ChangedPathsLoadedMsg:
 		m.changedPaths[msg.Path] = msg.Paths
+		m.finishFetch(msg.Path, fetchChangedPaths)
 
 		return m, nil
 
@@ -180,15 +182,7 @@ func (m Model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case PRMapLoadedMsg:
 		m.prMap[msg.Path] = msg
-		m.finishFetch(msg.Path, fetchExpand)
-
-		return m, nil
-
-	case PeerBranchesLoadedMsg:
-		for peerPath, branches := range msg.Branches {
-			m.peerBranches[peerPath] = branches
-		}
-		m.finishFetch(msg.Path, fetchPeerBranches)
+		m.finishFetch(msg.Path, fetchPRMap)
 
 		return m, nil
 
@@ -324,6 +318,11 @@ func (m Model) routeModalKey(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
 // handleReposDiscovered records the discovered repo paths and kicks off a
 // summary load for each.
 func (m Model) handleReposDiscovered(msg ReposDiscoveredMsg) (tea.Model, tea.Cmd) {
+	if msg.Gen != m.scopeGen {
+		return m, nil
+	}
+
+	m.fleetHidden = msg.Hidden
 	m.repoPaths = msg.Paths
 	m.loadingCount = len(msg.Paths)
 	m.loadedCount = 0
@@ -336,12 +335,12 @@ func (m Model) handleReposDiscovered(msg ReposDiscoveredMsg) (tea.Model, tea.Cmd
 
 	cmds := make([]tea.Cmd, 0, len(msg.Paths)+1)
 	for _, path := range msg.Paths {
-		cmds = append(cmds, loadRepoSummaryCmd(path))
+		cmds = append(cmds, loadRepoSummaryCmd(path, m.scopeGen))
 	}
 
 	// Scanning from inside a repo has nothing to list, so open it directly.
 	// esc still falls back to the one-row list.
-	if len(msg.Paths) == 1 {
+	if len(msg.Paths) == 1 && m.viewMode == ViewModeRepoList {
 		m.selectedRepo = msg.Paths[0]
 		m.viewMode = ViewModeRepoDetail
 		m.focusedPanel = panelBranches
@@ -355,6 +354,10 @@ func (m Model) handleReposDiscovered(msg ReposDiscoveredMsg) (tea.Model, tea.Cmd
 // handleRepoSummaryLoaded merges a loaded repo summary and, once every repo
 // has reported in, ends the initial loading state.
 func (m Model) handleRepoSummaryLoaded(msg RepoSummaryLoadedMsg) (tea.Model, tea.Cmd) {
+	if msg.Gen != m.scopeGen {
+		return m, nil
+	}
+
 	m.loadedCount++
 
 	m.summaries[msg.Path] = msg.Summary
@@ -368,7 +371,6 @@ func (m Model) handleRepoSummaryLoaded(msg RepoSummaryLoadedMsg) (tea.Model, tea
 		m.loading = false
 		m.updateFilteredPaths()
 		cmds = append(cmds, m.visibleCICmds()...)
-		cmds = append(cmds, m.visiblePeerDataCmds()...)
 	}
 
 	return m, tea.Batch(cmds...)
@@ -559,10 +561,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if newM, handled := m.handleCursorKey(msg); handled {
-		cmds := append(newM.visibleCICmds(), newM.visiblePeerDataCmds()...)
-		cmds = append(cmds, newM.expandCmd())
-
-		return newM, tea.Batch(cmds...)
+		return newM, tea.Batch(newM.visibleCICmds()...)
 	}
 
 	if newM, handled := m.handleModeKey(msg); handled {
@@ -588,8 +587,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Search):
 		return m.openSearch()
 
-	case key.Matches(msg, m.keys.Expand):
-		return m.toggleExpand()
+	case key.Matches(msg, m.keys.Detail):
+		return m.toggleDetail()
 
 	case key.Matches(msg, m.keys.Peers):
 		return m.openCheckouts()
@@ -754,7 +753,7 @@ func (m Model) openPRMap() (Model, tea.Cmd) {
 
 	cmds := make([]tea.Cmd, 0, len(m.filteredPaths)+1)
 	for _, path := range m.filteredPaths {
-		m.startFetch(path, fetchExpand)
+		m.startFetch(path, fetchPRMap)
 		cmds = append(cmds, loadPRMapCmd(path, m.summaries[path].RemoteID, m.summaries[path].Upstream))
 	}
 	cmds = append(cmds, m.spinner.Tick)
@@ -870,93 +869,29 @@ func (m Model) handleNotesContentLoaded(msg NotesContentLoadedMsg) (tea.Model, t
 		m.notesPreview = make(map[string][]models.NoteFileContent)
 	}
 	m.notesPreview[msg.Path] = msg.Files
+	m.finishFetch(msg.Path, fetchNotes)
 
 	return m, nil
 }
 
-// toggleExpand opens or closes the list's expanded region. A terminal too short
-// to seat one would swallow the keypress with nothing on screen to explain it,
-// so it says so instead.
-func (m Model) toggleExpand() (tea.Model, tea.Cmd) {
-	m.expandOpen = !m.expandOpen
+// toggleDetail opens or closes the detail region below the table. A terminal
+// too short to seat one would swallow the keypress with nothing on screen to
+// explain it, so it says so instead.
+func (m Model) toggleDetail() (tea.Model, tea.Cmd) {
+	if !m.detailToggleable() {
+		return m, nil
+	}
 
-	if m.expandOpen && m.expandHeight(m.listBodyHeight()) == 0 {
-		m.expandOpen = false
-		m.statusMessage = "Terminal too short for the expanded region"
+	m.detailOpen = !m.detailOpen
+
+	if m.detailOpen && m.detailPlacement() == split.None {
+		m.detailOpen = false
+		m.statusMessage = "Terminal too short for the detail region"
 
 		return m, clearStatusAfterDelay()
 	}
 
-	cmd := m.expandCmd()
-
-	return m, cmd
-}
-
-func (m *Model) expandCmd() tea.Cmd {
-	if !m.expandOpen || m.cursor >= len(m.filteredPaths) {
-		return nil
-	}
-
-	path := m.filteredPaths[m.cursor]
-
-	summary, ok := m.summaries[path]
-	if !ok {
-		return nil
-	}
-
-	var cmds []tea.Cmd
-
-	if _, cached := m.notesPreview[path]; !cached && len(summary.NotesFiles) > 0 {
-		cmds = append(cmds, loadNotesContentCmd(path, summary.NotesFiles))
-	}
-
-	if _, cached := m.changedPaths[path]; !cached && summary.UncommittedCount() > 0 {
-		cmds = append(cmds, loadChangedPathsCmd(path, summary.VCSType))
-	}
-
-	return tea.Batch(cmds...)
-}
-
-// visiblePeerDataCmds loads the fleet map's pull requests and each peer
-// checkout's branch list for every row on screen, the data the expand region's
-// peers and branches rows need. Bounded to the viewport rather than
-// the whole fleet, the way visibleCICmds is: each repo's PR list costs a
-// GitHub call, not worth paying for a repo the operator has not scrolled to.
-func (m *Model) visiblePeerDataCmds() []tea.Cmd {
-	rowHeight := 1
-	if m.isCompact() {
-		rowHeight = compactRowHeight
-	}
-
-	window := m.visibleRepoRange(rowHeight)
-
-	var cmds []tea.Cmd
-	for i := window.start; i < window.end; i++ {
-		path := m.filteredPaths[i]
-
-		summary, ok := m.summaries[path]
-		if !ok {
-			continue
-		}
-
-		if _, cached := m.prMap[path]; !cached && !m.fetchPending(path, fetchExpand) {
-			m.startFetch(path, fetchExpand)
-			cmds = append(cmds, loadPRMapCmd(path, summary.RemoteID, summary.Upstream))
-		}
-
-		var missingPeers []string
-		for _, peer := range m.PeerCheckouts(path) {
-			if _, cached := m.peerBranches[peer.Path]; !cached {
-				missingPeers = append(missingPeers, peer.Path)
-			}
-		}
-		if len(missingPeers) > 0 && !m.fetchPending(path, fetchPeerBranches) {
-			m.startFetch(path, fetchPeerBranches)
-			cmds = append(cmds, loadPeerBranchesCmd(path, missingPeers))
-		}
-	}
-
-	return cmds
+	return m, nil
 }
 
 // handleCursorKey handles the repo-list cursor movement keys (up/down/top/
@@ -1025,7 +960,7 @@ func (m Model) handleBackKey() (tea.Model, tea.Cmd) {
 }
 
 // dismissListLayer closes one layer of the repo list, most recently opened
-// first: the expanded region, then the search text, then the filters. The list
+// first: the detail region, then the search text, then the filters. The list
 // itself has no parent to pop to, so a back key with nothing open does
 // nothing rather than leaving the fleet.
 func (m Model) dismissListLayer() (tea.Model, tea.Cmd) {
@@ -1034,8 +969,8 @@ func (m Model) dismissListLayer() (tea.Model, tea.Cmd) {
 	}
 
 	switch {
-	case m.expandOpen:
-		m.expandOpen = false
+	case m.detailPlacement() == split.Below:
+		m.detailOpen = false
 
 		return m, nil
 
@@ -1766,24 +1701,8 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 
 	switch m.viewMode {
 	case ViewModeRepoList:
-		// Clear all data including downstream views
-		m.loading = true
-		m.summaries = make(map[string]models.RepoSummary)
-		m.freshness = make(map[fetchKey]freshness)
-		m.due = make(map[string][]string)
-		m.changedPaths = make(map[string][]string)
-		m.previewCommits = make(map[string][]vcs.CommitInfo)
-		m.branchCount = make(map[string]int)
-		// Every fetch is reissued from discovery, so the old bookkeeping would
-		// otherwise suppress the new CI requests and leave phantom pending cells.
-		m.fetching = nil
-		m.ciRequested = nil
-		m.branches = nil
-		m.stashes = nil
-		m.worktrees = nil
-		m.prs = nil
-		m.branchDetail = models.BranchDetail{}
-		cmds = append(cmds, discoverReposCmd(m.scanPaths, m.maxDepth))
+		m.resetListData()
+		cmds = append(cmds, m.discoverCmd())
 
 	case ViewModeRepoDetail:
 		// Clear detail views when refreshing repo detail
@@ -1822,6 +1741,53 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// resetListData drops everything loaded for the repos on the list, including
+// the views downstream of them, ahead of a fresh discovery.
+func (m *Model) resetListData() {
+	m.loading = true
+	m.summaries = make(map[string]models.RepoSummary)
+	m.freshness = make(map[fetchKey]freshness)
+	m.due = make(map[string][]string)
+	m.changedPaths = make(map[string][]string)
+	m.commitLog = make(map[string][]vcs.CommitInfo)
+	m.branchCount = make(map[string]int)
+	// Every fetch is reissued from discovery, so the old bookkeeping would
+	// otherwise suppress the new CI requests and leave phantom pending cells.
+	m.fetching = nil
+	m.ciRequested = nil
+	m.branches = nil
+	m.stashes = nil
+	m.worktrees = nil
+	m.prs = nil
+	m.branchDetail = models.BranchDetail{}
+}
+
+// switchScope toggles between the launch roots and the fleet, rescanning from
+// the new roots through the same discovery as the first load.
+func (m Model) switchScope() (tea.Model, tea.Cmd) {
+	if reason := m.fleet.unavailable(); reason != "" {
+		m.statusMessage = reason
+
+		return m, clearStatusAfterDelay()
+	}
+
+	m.fleetScope = !m.fleetScope
+	m.scopeGen++
+	m.scanPaths = m.hereRoots
+
+	if m.fleetScope {
+		m.scanPaths = m.fleet.Roots
+	}
+
+	m.fleetHidden = 0
+	m.repoPaths = nil
+	m.cursor = 0
+	m.resetListData()
+	m.updateFilteredPaths()
+
+	return m, tea.Batch(m.discoverCmd(), m.spinner.Tick)
+}
+
 func (m Model) handleFilterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Quit):
@@ -1837,6 +1803,9 @@ func (m Model) handleFilterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case msg.String() == "x" && m.predicateText != "":
 		m.SetPredicate("", nil)
+
+	case msg.String() == scopeKey:
+		return m.switchScope()
 
 	default:
 		i := slices.IndexFunc(models.SelectableFilterModes(), func(mode models.FilterMode) bool {

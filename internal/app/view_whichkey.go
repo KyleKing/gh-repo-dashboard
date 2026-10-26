@@ -96,13 +96,29 @@ func (m Model) filterPanelHints() []keyhint.Hint {
 		})
 	}
 
-	hints = append(hints, keyhint.Hint{Key: "*", What: "clear"})
+	hints = append(hints, m.scopeHint(), keyhint.Hint{Key: "*", What: "clear"})
 
 	if m.predicateText != "" {
 		hints = append(hints, keyhint.Hint{Key: "x", What: "drop " + m.predicateText, On: true})
 	}
 
 	return hints
+}
+
+// scopeKey toggles the fleet scope inside the filter panel.
+const scopeKey = "f"
+
+func (m Model) scopeHint() keyhint.Hint {
+	if reason := m.fleet.unavailable(); reason != "" {
+		return keyhint.Hint{Key: scopeKey, What: "fleet (" + reason + ")", Off: true}
+	}
+
+	hint := keyhint.Hint{Key: scopeKey, What: "fleet", On: m.fleetScope}
+	if m.fleetScope {
+		hint.Count = strconv.Itoa(len(m.repoPaths)) + "/" + strconv.Itoa(len(m.repoPaths)+m.fleetHidden)
+	}
+
+	return hint
 }
 
 func (m Model) sortPanelHints() []keyhint.Hint {
@@ -155,22 +171,37 @@ func (m Model) filterChips() []string {
 	return chips
 }
 
-func (m Model) chipsLine() string {
-	chips := m.filterChips()
-	if len(chips) == 0 {
+// scopeChip names the fleet scope and how many repos its activity filter hid,
+// so a repo missing from the list is never unexplained.
+func (m Model) scopeChip() string {
+	if !m.fleetScope {
 		return ""
 	}
 
-	rendered := make([]string, len(chips))
-	for i, chip := range chips {
-		rendered[i] = styles.Skin.Badge.Render(chip + " ×")
+	return "fleet" + compactSignalSep + strconv.Itoa(len(m.repoPaths)) + " active of " +
+		strconv.Itoa(len(m.repoPaths)+m.fleetHidden)
+}
+
+func (m Model) chipsLine() string {
+	chips := m.filterChips()
+	if len(chips) == 0 && m.scopeChip() == "" {
+		return ""
+	}
+
+	rendered := make([]string, 0, len(chips)+1)
+	if scope := m.scopeChip(); scope != "" {
+		rendered = append(rendered, styles.Skin.BadgeActive.Render(scope))
+	}
+
+	for _, chip := range chips {
+		rendered = append(rendered, styles.Skin.Badge.Render(chip+" ×"))
 	}
 
 	return ansi.Truncate(strings.Join(rendered, " "), repoTableWidth(m.width), table.Ellipsis)
 }
 
 func (m Model) chipsHeight() int {
-	if len(m.filterChips()) == 0 {
+	if len(m.filterChips()) == 0 && m.scopeChip() == "" {
 		return 0
 	}
 

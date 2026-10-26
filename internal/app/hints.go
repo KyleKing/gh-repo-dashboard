@@ -28,7 +28,7 @@ func (m Model) listHints() []keyhint.Hint {
 		return sortPanelFooter()
 	}
 
-	hints := listKeyHints(m.expandOpen, m.markSummary())
+	hints := listKeyHints(m.detailHints(), m.markSummary())
 
 	if m.pendingOperator == "" {
 		return hints
@@ -43,17 +43,26 @@ func (m Model) listHints() []keyhint.Hint {
 	return append([]keyhint.Hint{pending}, hints...)
 }
 
-// listKeyHints lists every repo-list hint in render order. The expand hint
+// detailHints is the v hint, which exists only where v does something. It
 // outranks the rest of the second tier while the region is open, because the
 // key that closes a region taking most of the screen must stay on offer.
 //
 //nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
-func listKeyHints(expandOpen bool, marked string) []keyhint.Hint {
-	expand := keyhint.Hint{Key: "v", What: "expand", Priority: 3}
-	if expandOpen {
-		expand = keyhint.Hint{Key: "v", What: "hide", Priority: 11}
+func (m Model) detailHints() []keyhint.Hint {
+	switch {
+	case !m.detailToggleable():
+		return nil
+	case m.detailOpen:
+		return []keyhint.Hint{{Key: "v", What: "hide", Priority: 11}}
 	}
 
+	return []keyhint.Hint{{Key: "v", What: "detail", Priority: 3}}
+}
+
+// listKeyHints lists every repo-list hint in render order.
+//
+//nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
+func listKeyHints(detail []keyhint.Hint, marked string) []keyhint.Hint {
 	// The mark hint states the count once there is one, since that count is
 	// what every operator is about to act on and nothing else on screen says
 	// it. With nothing marked it names the key's job instead.
@@ -62,10 +71,13 @@ func listKeyHints(expandOpen bool, marked string) []keyhint.Hint {
 		mark = keyhint.Hint{Key: markToggleKey, What: marked, Priority: 12}
 	}
 
-	return []keyhint.Hint{
+	hints := []keyhint.Hint{
 		{Key: keyNavPair, What: descNav, Priority: 4},
 		{Key: keyEnter, What: nameSelect, Priority: 8},
-		expand,
+	}
+	hints = append(hints, detail...)
+
+	return append(hints, []keyhint.Hint{
 		mark,
 		{Key: actionLeader, What: nameActions, Priority: 7},
 		{Key: tabKeyTasks, What: "tasks", Priority: 3},
@@ -76,7 +88,7 @@ func listKeyHints(expandOpen bool, marked string) []keyhint.Hint {
 		{Key: "r", What: nameRefresh, Priority: 1},
 		{Key: "?", What: nameHelp, Priority: 9},
 		{Key: "q", What: nameQuit, Priority: 10},
-	}
+	}...)
 }
 
 // filterPanelFooter lists the keys that act while the filter panel is open,

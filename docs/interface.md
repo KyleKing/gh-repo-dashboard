@@ -122,11 +122,36 @@ filter and keeps the panel open, `*` clears every filter, and `esc` closes it. T
 sort panel numbers the active sorts in priority order, and `[` and `]` move the sort
 you pressed last. Active filters, the `:filter` predicate, and a `/` search show as
 chips on the line above the table header, and the header reads "N of M repos".
-![The filter panel over the list, with the preview of the selected repo](images/wide-filter.png)
+![The filter panel over the list, with the detail of the selected repo](images/wide-filter.png)
 
-From 140 columns the table stops at 100 cells and the rest of the terminal previews
-the repo under the cursor: its NEEDS items in words, its PRs and CI, and its last
-commits. Below 140 columns the preview is absent.
+The filter panel's `f` entry switches the scope between the directories you
+launched from and the fleet, which is `scan_paths` limited to repos with a commit
+by you in the last `fleet_active` (180 days by default). In the fleet scope a chip
+reads `fleet · 71 active of 85`, so repos the activity filter hides are counted
+rather than missing. With no `scan_paths` the entry is dimmed and says so. The
+headless modes (`-cli`, `-script`, `run`) always cover all of `scan_paths`.
+
+## Detail region
+
+![The detail region beside the repo list](images/wide-detail.png)
+
+One region shows the repo under the cursor, placed by width:
+
+| Width | Placement |
+|-------|-----------|
+| 140 columns and up | Beside the table, which stops at 100 cells. Always shown |
+| 100 to 139 | Below the table, 60% of the body. `v` shows and hides it |
+| Under 100 | None. `enter` opens the focused view |
+
+It holds the repo's NEEDS items in words, then the state behind them (changed
+paths, the template's installed and latest tags, and local branches with unpushed
+commits), pull requests, CI, the last five commits, and the repo's notes in full.
+The heading names the repo as `owner/name`, with the owner taken from the origin
+remote and lowercased (the parent directory when there is no remote). A fact with
+nothing to say is left out, a section still loading says `reading…` rather than
+`none`, and a note taller than its share has its middle elided so both ends
+survive. A terminal too short to seat the region below the table says so in the
+status line. `esc` closes it, then clears the search, then the filters.
 
 Help (`?`) floats over the current view. A batch run replaces the view with a run screen, one row per repo,
 until you leave it with `esc` after it finishes. `ctrl-c` cancels a run in
@@ -189,14 +214,6 @@ it.
 empty, so a quiet repo can be told from an unread one. The header counts the same
 thing twice over: `Loading 8/54` while the repos are being read, then `Fetching 31`
 counting down the pull request, template, and CI reads that follow.
-
-Press `v` to open the expanded region under the table. It is as tall as what it
-holds, up to 60% of the body, and answers why a row asks for you: the changed
-paths, CI per workflow with the failing ones first and the jobs that broke, the
-template's installed and latest tags, peer checkouts, local branches with
-unpushed commits, open pull requests, and the repo's notes in full. A fact with
-nothing to say is left out. `esc` closes the region, then clears the search, then
-the filters.
 
 The list has no column for stash counts beyond `≡N`, worktree counts, or the
 per-workflow CI breakdown. Those appear in the focused view's panels, and the

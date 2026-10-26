@@ -182,41 +182,6 @@ func TestGoldenPanelGridBreakpoints(t *testing.T) {
 	}
 }
 
-// TestGoldenRepoListExpanded pins the region `v` opens under the table at each
-// breakpoint: the table keeps its rows above it, and the region's four sections
-// hold their order and their share of the height whatever the note says.
-func TestGoldenRepoListExpanded(t *testing.T) {
-	for _, size := range breakpointSizes() {
-		t.Run(size.name, func(t *testing.T) {
-			m := goldenModel()
-			m.width, m.height = size.width, size.height
-			m.cursor = 1
-			m.expandOpen = true
-
-			bravo := m.summaries["/Users/dev/bravo"]
-			bravo.NotesFiles = []models.NoteFile{{Name: ".doing", FirstLine: "wire up the session store"}}
-			m.summaries["/Users/dev/bravo"] = bravo
-
-			m.notesPreview = map[string][]models.NoteFileContent{
-				"/Users/dev/bravo": {{Name: ".doing", Content: "wire up the session store\nthen the logout flow"}},
-			}
-			m.prMap = map[string]PRMapLoadedMsg{
-				"/Users/dev/bravo": {
-					Path: "/Users/dev/bravo",
-					PRs: []forge.PullRequest{
-						{Number: 42, Title: "Add login flow", State: "OPEN", HeadRef: "feature/login"},
-					},
-					Branches: []vcs.BranchInfo{
-						{Name: mainBranchName, Upstream: "origin/main"},
-						{Name: "feature/login", Upstream: "origin/feature/login", Ahead: 2, IsCurrent: true},
-					},
-				},
-			}
-			golden.RequireEqual(t, []byte(m.renderScreen()))
-		})
-	}
-}
-
 // TestGoldenRepoListLoading pins the list mid-load: charlie's summary has not
 // been read, alpha's summary is in but every fetch it started is still out, and
 // bravo has settled. A pending cell that quietly renders as an absent one shows
@@ -234,8 +199,9 @@ func TestGoldenRepoListLoading(t *testing.T) {
 	golden.RequireEqual(t, []byte(m.renderScreen()))
 }
 
-// TestGoldenListSizes pins the filter panel with its chip line, and the preview
-// pane, which only the wide size has room for.
+// TestGoldenListSizes pins the filter panel with its chip line, in both scopes,
+// and the detail region: opened with v below the table at 120 columns, always
+// beside it at 200, and absent at 80 where enter opens the focused view.
 func TestGoldenListSizes(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -246,16 +212,34 @@ func TestGoldenListSizes(t *testing.T) {
 			m.updateFilteredPaths()
 			m.viewMode = ViewModeFilter
 		}},
-		{"preview", func(m *Model) {
+		{"fleet-filter-panel", func(m *Model) {
+			m.fleet = Fleet{Roots: []string{"/Users/dev"}, Authors: []string{"kyle@example.com"}}
+			m.fleetScope = true
+			m.fleetHidden = 5
+			m.viewMode = ViewModeFilter
+		}},
+		{"detail", func(m *Model) {
 			path := "/Users/dev/delta"
 			m.cursor = slices.Index(m.filteredPaths, path)
+			m.detailOpen = true
 			s := m.summaries[path]
+			s.RemoteRepo = "KyleKing/delta"
+			s.Untracked = 2
+			s.NotesFiles = []models.NoteFile{{Name: ".doing", FirstLine: "wire up the retry"}}
+			m.notesPreview[path] = []models.NoteFileContent{
+				{Name: ".doing", Content: "wire up the retry\nthen the backoff"},
+			}
+			m.changedPaths[path] = []string{"upload.go", "retry.go", "retry_test.go", "go.sum"}
+			m.prMap[path] = PRMapLoadedMsg{Path: path, Branches: []vcs.BranchInfo{
+				{Name: mainBranchName, Upstream: "origin/main"},
+				{Name: "fix/retry", Upstream: "origin/fix/retry", Ahead: 2},
+			}}
 			s.OpenPRs = []forge.PullRequest{
 				{Number: 12, Title: "Retry the flaky upload", Author: "kyle", ReviewDecision: "APPROVED"},
 				{Number: 14, Title: "Bump the template", Author: "bot", IsDraft: true},
 			}
 			m.summaries[path] = s
-			m.previewCommits[path] = []vcs.CommitInfo{
+			m.commitLog[path] = []vcs.CommitInfo{
 				{ShortHash: "a1b2c3d", Subject: "Retry uploads on a 502", Date: time.Now().Add(-3 * time.Hour)},
 				{ShortHash: "9f8e7d6", Subject: "Log the upload size", Date: time.Now().Add(-26 * time.Hour)},
 				{ShortHash: "5c4b3a2", Subject: "Pin the test image", Date: time.Now().Add(-5 * 24 * time.Hour)},

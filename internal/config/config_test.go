@@ -30,6 +30,8 @@ scan_paths = ["~/Developer", "/tmp/repos"]
 depth = 3
 notes_filenames = ["NOTES.md"]
 cache_ttl_minutes = 10
+fleet_active = "90d"
+fleet_authors = ["me@example.com"]
 
 [diff]
 external = "difft --color=always"
@@ -69,6 +71,9 @@ every = "30d"
 	if want := "difft --color=always"; cfg.Diff.External != want {
 		t.Errorf("diff.external = %q; want %q", cfg.Diff.External, want)
 	}
+	if cfg.FleetWindow() != 90*24*time.Hour || len(cfg.FleetAuthors) != 1 {
+		t.Errorf("fleet = %v %v; want 90d and one author", cfg.FleetWindow(), cfg.FleetAuthors)
+	}
 	assertGCTask(t, cfg.Tasks)
 }
 
@@ -95,6 +100,9 @@ func TestLoadMissingFileIsZeroConfig(t *testing.T) {
 	if !cfg.PersistCache() {
 		t.Error("persistence is an opt-out, so a missing file leaves it on")
 	}
+	if cfg.FleetWindow() != 180*24*time.Hour {
+		t.Errorf("fleet window = %v; want the 180d default", cfg.FleetWindow())
+	}
 }
 
 // Writing the key is the only way to turn the cache files off, so false has to
@@ -120,6 +128,8 @@ func TestLoadErrors(t *testing.T) {
 		{"malformed toml", "scan_paths = [unclosed", nil},
 		{"negative depth", "depth = -1", nil},
 		{"negative ttl", "cache_ttl_minutes = -5", nil},
+		{"unparsable fleet window", "fleet_active = 'recently'", nil},
+		{"zero fleet window", "fleet_active = '0d'", nil},
 		{"task without name", "[[tasks]]\nrun = 'true'", config.ErrTaskNameMissing},
 		{"task name with space", "[[tasks]]\nname = 'a b'\nrun = 'true'", config.ErrTaskNameInvalid},
 		{

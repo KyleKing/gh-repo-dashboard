@@ -150,7 +150,7 @@ func (m Model) handleActionResult(msg ActionResultMsg) (tea.Model, tea.Cmd) {
 		return m, clearStatusAfterDelay()
 	}
 
-	return m, tea.Batch(loadRepoSummaryCmd(msg.Path), loadDetailCmd(msg.Path), clearStatusAfterDelay())
+	return m, tea.Batch(loadRepoSummaryCmd(msg.Path, m.scopeGen), loadDetailCmd(msg.Path), clearStatusAfterDelay())
 }
 
 // actionBranch returns the branch the current view's actions apply to.

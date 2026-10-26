@@ -11,7 +11,7 @@ import (
 	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/tui/frame"
-	"github.com/kyleking/aragonite/tui/region"
+	"github.com/kyleking/aragonite/tui/split"
 	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/aragonite/vcs"
 
@@ -43,31 +43,24 @@ func (m Model) repoListScreen() screen {
 	}
 }
 
-// renderRepoList is the list's body: the docked search, then the table and its
-// expanded region.
+// renderRepoList is the list's body: the table with its search and chips, and
+// the detail region beside or below it where there is room.
 func (m Model) renderRepoList() string {
-	var b strings.Builder
-
-	if m.searching {
-		b.WriteString(m.searchInput.View())
-		b.WriteString("\n")
-		b.WriteString(searchScopeLegend())
-		b.WriteString("\n\n")
+	placement := m.detailPlacement()
+	if placement == split.None {
+		return strings.Join(m.renderListMain(), "\n")
 	}
 
-	b.WriteString(m.renderListBody())
+	main := func(_, _ int) []string { return m.renderListMain() }
+	lines := detailSpec.Render(placement, splitStyles(), m.width, m.bodyHeight(), main, m.renderDetail)
 
-	if previewShown(m.width) {
-		return m.withPreview(b.String())
-	}
-
-	return b.String()
+	return strings.Join(lines, "\n")
 }
 
-// listBodyHeight is how many lines the table and the expanded region share:
-// the body less the docked search and the chips line.
+// listBodyHeight is how many lines the table has: what the main block keeps
+// less the docked search and the chips line.
 func (m Model) listBodyHeight() int {
-	height := m.bodyHeight() - m.chipsHeight()
+	height := m.mainHeight() - m.chipsHeight()
 
 	if m.searching {
 		height -= searchChromeHeight
@@ -224,19 +217,18 @@ func (m Model) loadingBadge() string {
 	return ""
 }
 
-func (m Model) renderListBody() string {
-	below := m.expandedLines()
-	list := fitBlock(m.renderTable(), m.listBodyHeight()-len(below))
+func (m Model) renderListMain() []string {
+	var lines []string
 
-	if len(below) > 0 {
-		list += "\n" + strings.Join(below, "\n")
+	if m.searching {
+		lines = append(lines, m.searchInput.View(), searchScopeLegend(), "")
 	}
 
 	if chips := m.chipsLine(); chips != "" {
-		return chips + "\n" + list
+		lines = append(lines, chips)
 	}
 
-	return list
+	return append(lines, strings.Split(fitBlock(m.renderTable(), m.listBodyHeight()), "\n")...)
 }
 
 // fitBlock pads or truncates a block of lines to exactly height lines.
@@ -317,45 +309,6 @@ func (m Model) renderTable() string {
 	return strings.Join(rows, "\n")
 }
 
-const (
-	expandPercent = 60
-	expandMinRows = 3
-	listMinRows   = 6
-)
-
-func (m Model) expandHeight(body int) int {
-	if !m.expandOpen {
-		return 0
-	}
-
-	headerRows := 1
-	if m.isCompact() {
-		headerRows = 0
-	}
-
-	room := body - headerRows - listMinRows
-	if room < expandMinRows {
-		return 0
-	}
-
-	return min(body*expandPercent/percentDenominator, room)
-}
-
-func (m Model) expandedLines() []string {
-	limit := m.expandHeight(m.listBodyHeight())
-	if limit == 0 {
-		return nil
-	}
-
-	return m.expandLines(repoTableWidth(m.width), limit)
-}
-
-// tableHeight is how many of the body's lines the table keeps once the expanded
-// region has taken its share.
-func (m Model) tableHeight() int {
-	return m.listBodyHeight() - len(m.expandedLines())
-}
-
 // percentDenominator scales the percentage budgets above; elisionEnds is how
 // many ends of a list survive a middle elision.
 const (
@@ -370,7 +323,7 @@ const groupRuleCount = 2
 // many terminal lines one record covers, so the compact layout scrolls by
 // records rather than by lines.
 func (m Model) visibleRepoRange(rowHeight int) repoWindow {
-	availableLines := m.tableHeight()
+	availableLines := m.listBodyHeight()
 	if !m.isCompact() {
 		availableLines--
 	}
@@ -410,214 +363,16 @@ type repoWindow struct {
 	end   int
 }
 
-func (m Model) expandLines(width, height int) []string {
-	if m.cursor >= len(m.filteredPaths) {
-		return nil
+// repoLabel names a repo by its remote's owner as well as its own name, which
+// is what tells two checkouts of one project apart from a fork. A repo with no
+// parsed remote falls back to its parent directory.
+func (m Model) repoLabel(path string) string {
+	owner := strings.ToLower(repoOwner(m.summaries[path].RemoteRepo))
+	if owner == "" {
+		owner = filepath.Base(filepath.Dir(path))
 	}
 
-	path := m.filteredPaths[m.cursor]
-	summary := m.rowSummary(path)
-	notes := m.expandNotes(path, summary, width)
-
-	block := region.Region{
-		Title: qualifiedRepoName(path) + compactSignalSep +
-			section(m.summaryPending(path), overviewIdentity(summary)),
-		Head: m.expandFacts(path, summary),
-	}
-
-	if len(summary.NotesFiles) > 0 {
-		block.Section = "notes" + compactSignalSep + notes.caption
-		block.Body = notes.lines
-	}
-
-	return block.Lines(regionStyles(), width, height)
-}
-
-func (m Model) expandFacts(path string, summary models.RepoSummary) []region.Fact {
-	data, loaded := m.prMap[path]
-	peersPending := m.loading || !loaded || m.fetchPending(path, fetchPeerBranches)
-
-	candidates := []region.Fact{
-		{Label: "Changed", Value: m.expandChanged(path, summary)},
-		{Label: "CI", Value: m.expandCI(summary)},
-		{Label: "Template", Value: expandTemplate(summary.TemplateInfo)},
-		{Label: tabNamePeers, Value: section(peersPending, overviewRelevantPeers(m.relevantPeers(path)))},
-		{Label: tabNameBranches, Value: section(!loaded, expandBranches(data.Branches))},
-		{
-			Label: tabNamePRs,
-			Value: section(len(summary.OpenPRs) == 0 && m.fetchPending(path, fetchOpenPRs), expandPRs(summary.OpenPRs)),
-		},
-	}
-
-	facts := make([]region.Fact, 0, len(candidates))
-
-	for _, fact := range candidates {
-		if fact.Value != "" && fact.Value != emDash {
-			facts = append(facts, fact)
-		}
-	}
-
-	return facts
-}
-
-const changedPathsShown = 3
-
-func (m Model) expandChanged(path string, summary models.RepoSummary) string {
-	if summary.UncommittedCount() == 0 {
-		return ""
-	}
-
-	counts := workToken(summary.Staged+summary.Unstaged+summary.Conflicted, summary.Untracked)
-
-	paths, loaded := m.changedPaths[path]
-	if !loaded {
-		return counts + compactSignalSep + readingLabel
-	}
-
-	shown := paths[:min(len(paths), changedPathsShown)]
-	text := counts + compactSignalSep + strings.Join(shown, ", ")
-
-	if more := len(paths) - len(shown); more > 0 {
-		text += " +" + strconv.Itoa(more)
-	}
-
-	return text
-}
-
-func (m Model) expandCI(summary models.RepoSummary) string {
-	if summary.CI == nil {
-		return section(m.fetchPending(summary.Path, fetchCI), "")
-	}
-
-	runs := slices.Clone(summary.CI.Workflows)
-	slices.SortStableFunc(runs, func(a, b forge.CIWorkflowRun) int { return ciOrder(a) - ciOrder(b) })
-
-	parts := make([]string, 0, len(runs))
-	for i := range runs {
-		parts = append(parts, ciWorkflowText(runs[i]))
-	}
-
-	return strings.Join(parts, "  ")
-}
-
-func ciOrder(run forge.CIWorkflowRun) int {
-	switch {
-	case run.Conclusion == models.CIFailureConclusion:
-		return 0
-	case run.Status != forge.StatusCompleted:
-		return 1
-	default:
-		return 2 //nolint:mnd // third tier: everything that finished without failing
-	}
-}
-
-func ciWorkflowText(run forge.CIWorkflowRun) string {
-	switch {
-	case run.Conclusion == models.CIFailureConclusion && len(run.FailingJobs) > 0:
-		return "✗ " + run.Workflow + " (" + strings.Join(run.FailingJobs, ", ") + ")"
-	case run.Conclusion == models.CIFailureConclusion:
-		return "✗ " + run.Workflow
-	case run.Status != forge.StatusCompleted:
-		return "… " + run.Workflow
-	case run.Conclusion == "success":
-		return "✓ " + run.Workflow
-	default:
-		return "⊘ " + run.Workflow
-	}
-}
-
-func expandTemplate(info *models.CopierTemplateInfo) string {
-	switch {
-	case info == nil:
-		return ""
-	case !info.IsTag:
-		return info.Commit + " (pinned)"
-	case info.Behind && info.LatestTag != "":
-		return info.Commit + " → " + info.LatestTag
-	default:
-		return info.Commit + " (current)"
-	}
-}
-
-// expandBranches counts the repo's local branches and names the ones holding
-// commits their remote does not have, which are the branches with work on them.
-// The default branch is left out: it is where the work lands, not work itself.
-func expandBranches(branches []vcs.BranchInfo) string {
-	if len(branches) == 0 {
-		return emDash
-	}
-
-	defaultBranch := findDefaultBranch(branches)
-
-	names := make([]string, 0, len(branches))
-	for _, branch := range branches {
-		if branch.Ahead == 0 || branch.Name == defaultBranch {
-			continue
-		}
-
-		names = append(names, branch.Name+" ↑"+strconv.Itoa(branch.Ahead))
-	}
-
-	count := strconv.Itoa(len(branches)) + " local"
-	if len(names) == 0 {
-		return count
-	}
-
-	return count + compactSignalSep + strings.Join(names, ", ")
-}
-
-// expandPRs counts the repo's open pull requests and names them newest first.
-func expandPRs(prs []forge.PullRequest) string {
-	if len(prs) == 0 {
-		return emDash
-	}
-
-	titles := make([]string, 0, len(prs))
-	for i := range prs {
-		titles = append(titles, "#"+strconv.Itoa(prs[i].Number)+" "+prs[i].Title)
-	}
-
-	return strconv.Itoa(len(prs)) + " open" + compactSignalSep + strings.Join(titles, ", ")
-}
-
-// notesBlock is the region's notes section: the note text itself, and the
-// caption the closing divider carries, which is what names a note when nothing
-// else on screen does.
-type notesBlock struct {
-	lines   []string
-	caption string
-}
-
-// expandNotes renders the selected repo's notes at the foot of the region.
-func (m Model) expandNotes(path string, summary models.RepoSummary, width int) notesBlock {
-	if len(summary.NotesFiles) == 0 {
-		return notesBlock{}
-	}
-
-	contents, loaded := m.notesPreview[path]
-	if !loaded {
-		return notesBlock{caption: readingLabel}
-	}
-
-	// One note needs no heading of its own: the divider already names the
-	// file. Several do, or their text runs together.
-	if len(contents) == 1 {
-		return notesBlock{lines: notesBodyLines(contents[0].Content, width), caption: contents[0].Name}
-	}
-
-	lines := make([]string, 0, len(contents))
-	for i := range contents {
-		lines = append(lines, sectionRule(contents[i].Name, width))
-		lines = append(lines, notesBodyLines(contents[i].Content, width)...)
-	}
-
-	return notesBlock{lines: lines, caption: strconv.Itoa(len(contents)) + " files"}
-}
-
-// qualifiedRepoName names a repo by its parent directory as well as its own,
-// which is what tells two checkouts of the same project apart.
-func qualifiedRepoName(path string) string {
-	return filepath.Join(filepath.Base(filepath.Dir(path)), filepath.Base(path))
+	return owner + "/" + filepath.Base(path)
 }
 
 // sectionRule draws a labeled rule across width.
@@ -730,7 +485,7 @@ func renderRepoHeader(layout table.Layout) string {
 // when every workflow passed, the count of failures when not, the pending glyph
 // while the fetch is in flight, and emDash once it is known there is nothing
 // to report. Used where a line of text has room for one signal, not a table
-// column; the expanded region names each workflow.
+// column; the detail region names each workflow.
 func (m Model) ciCell(s models.RepoSummary) string {
 	if s.CI == nil {
 		return absentCell(m.fetchPending(s.Path, fetchCI) || m.summaryPending(s.Path))
@@ -866,10 +621,4 @@ func (m Model) branchCell(s models.RepoSummary, width int) string {
 	name := table.Truncate(s.Branch, max(width-lipgloss.Width(suffix), 0))
 
 	return name + suffix
-}
-
-// regionStyles are the faces the expandable regions draw with, kept in one
-// place so the Repos and PRs tabs cannot drift apart.
-func regionStyles() region.Styles {
-	return region.Styles{Rule: styles.Skin.Subtitle, Label: styles.Skin.Heading}
 }

@@ -19,10 +19,21 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/tasks"
 )
 
-func discoverReposCmd(scanPaths []string, maxDepth int) tea.Cmd {
+// discoverCmd finds the repos in scope. In the fleet scope it keeps only those
+// the reader committed to recently, and reports how many it dropped.
+func (m Model) discoverCmd() tea.Cmd {
+	roots, depth, fleet, scoped, gen := m.scanPaths, m.maxDepth, m.fleet, m.fleetScope, m.scopeGen
+
 	return func() tea.Msg {
-		paths := discovery.DiscoverRepos(scanPaths, maxDepth)
-		return ReposDiscoveredMsg{Paths: paths}
+		paths := discovery.DiscoverRepos(roots, depth)
+		if !scoped {
+			return ReposDiscoveredMsg{Paths: paths, Gen: gen}
+		}
+
+		activity := discovery.Activity{Since: time.Now().Add(-fleet.Active), Authors: fleet.Authors}
+		kept, hidden := discovery.FilterActive(context.Background(), paths, activity, tasks.DefaultConcurrency)
+
+		return ReposDiscoveredMsg{Paths: kept, Gen: gen, Hidden: hidden}
 	}
 }
 
@@ -57,12 +68,13 @@ func checkGHAuthCmd() tea.Cmd {
 	}
 }
 
-func loadRepoSummaryCmd(path string) tea.Cmd {
+func loadRepoSummaryCmd(path string, gen int) tea.Cmd {
 	return func() tea.Msg {
 		summary, err := models.ReadSummary(context.Background(), vcs.GetOperations(path), path)
 
 		return RepoSummaryLoadedMsg{
 			Path:    path,
+			Gen:     gen,
 			Summary: summary,
 			Error:   err,
 		}
@@ -325,11 +337,9 @@ func parseChangedPaths(out string) []string {
 	return paths
 }
 
-// loadBranchCountCmd reads a repo's local branch count for the Repos list.
-// The list's BRs column used to piggyback on the branch list the expanded
-// region loads, which only ever runs for whichever repo has that region open,
-// so every other row's count sat empty forever. This is its own read, local
-// and cheap, that runs for every repo the way the PR count does.
+// loadBranchCountCmd reads a repo's local branch count for the Repos list. It
+// is its own read, local and cheap, that runs for every repo the way the PR
+// count does, since the detail region loads branches for one repo only.
 func loadBranchCountCmd(path string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()

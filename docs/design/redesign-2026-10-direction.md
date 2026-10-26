@@ -46,6 +46,11 @@ Second round, after using it:
   as chips above the table
 - Selection is a full-row tint across every aragonite TUI; a left bar glyph
   marks nothing
+- One detail region replaces expand and preview: beside the table from 140
+  columns, below it behind `v` from 100, and absent under 100
+- The filter panel's `f` entry scopes the list to the fleet, `scan_paths` kept to
+  repos with a recent commit by `fleet_authors`, with the hidden count in a chip
+- Detail headings read `owner/name` from the origin remote, not the parent directory
 
 ## Feature set
 

@@ -12,6 +12,11 @@ import (
 // ReposDiscoveredMsg reports the repo paths found during discovery.
 type ReposDiscoveredMsg struct {
 	Paths []string
+	// Gen is the scope generation the run started under, so a run that a scope
+	// switch overtook is dropped. Hidden is how many repos the fleet scope's
+	// activity filter dropped.
+	Gen    int
+	Hidden int
 }
 
 // GHAuthCheckedMsg reports what, if anything, is wrong with the gh CLI setup.
@@ -23,6 +28,7 @@ type GHAuthCheckedMsg struct {
 // RepoSummaryLoadedMsg reports a loaded repo summary or its load error.
 type RepoSummaryLoadedMsg struct {
 	Path    string
+	Gen     int
 	Summary models.RepoSummary
 	Error   error
 }
@@ -201,7 +207,7 @@ type DueTasksLoadedMsg struct {
 	Tasks []string
 }
 
-// ChangedPathsLoadedMsg reports a repo's uncommitted paths for the expanded region.
+// ChangedPathsLoadedMsg reports a repo's uncommitted paths for the list's detail region.
 type ChangedPathsLoadedMsg struct {
 	Path  string
 	Paths []string

@@ -6,7 +6,7 @@ key is optional, and a missing file means the built-in defaults.
 
 ```toml
 # The fleet: what -cli, -script, and run scan when no paths are passed.
-# The TUI ignores it and scans where it is launched.
+# The TUI scans where it is launched and switches to it from the filter panel.
 scan_paths = ["~/Developer", "~/work"]
 
 # Default for -depth
@@ -21,6 +21,11 @@ cache_ttl_minutes = 5
 # Keep pull request data between runs, one file per remote (default true)
 cache_to_disk = true
 
+# The TUI's fleet scope keeps repos with a commit by one of fleet_authors
+# within fleet_active (default "180d", the syntax of a task's every)
+fleet_active = "180d"
+fleet_authors = ["me@example.com"]
+
 # Diff viewer, in the form git's diff.external takes; unset means git decides
 [diff]
 external = "difft --color=always --display=inline --syntax-highlight=off"
@@ -29,6 +34,22 @@ external = "difft --color=always --display=inline --syntax-highlight=off"
 
 Flags and positional paths on the command line take precedence over the file.
 Task definitions are covered in [Tasks](#tasks).
+
+## Fleet scope
+
+The filter panel (`f`, then `f` again) switches the list from the directories
+the TUI was launched in to the fleet: every repo under `scan_paths`, kept to those
+where one of `fleet_authors` committed within `fleet_active`. `fleet_active` takes
+`180d`, `26w`, `12h`, or `90m`, and must be positive. `fleet_authors` is a list of
+author emails, matched case-insensitively against every ref with `git log --all`,
+and defaults to the global `git config user.email`. With neither `scan_paths` nor an
+author the filter panel's entry is dimmed and names what is missing.
+
+Repos the filter drops are counted in the `fleet · 71 active of 85` chip above the
+table. The filter applies only to the TUI's fleet scope: `-cli`, `-script`, and `run`
+scan all of `scan_paths`, so a tool looking up a checkout finds repos you review
+without committing to. A repo with no `.git` entry (jj without a colocated git
+repo) cannot be read by `git log` and is always kept.
 
 ## Diff viewer
 

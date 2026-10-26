@@ -6,16 +6,18 @@ package app
 type fetchKind int
 
 // Fetch kinds: one per column the list fills after the summary lands, plus the
-// branch and pull request read the expanded region makes for one repo at a time.
+// pull request and branch read the fleet map and the detail region share, and
+// the commit log, notes, and uncommitted paths the detail region shows.
 const (
 	fetchPR fetchKind = iota
 	fetchOpenPRs
 	fetchBranchCount
 	fetchTemplate
 	fetchCI
-	fetchExpand
-	fetchPeerBranches
-	fetchPreviewLog
+	fetchPRMap
+	fetchCommitLog
+	fetchNotes
+	fetchChangedPaths
 )
 
 type fetchKey struct {

@@ -47,10 +47,12 @@ Pass the directories that hold your repositories:
 gh repo-dashboard -depth 2 ~/Developer
 ```
 
-Move with `j` and `k`, press `v` to expand the repo under the cursor without
-leaving the list, `x` to mark it, `enter` to open it, `T` for the Tasks tab, and
-`?` for the keymap. It scans the directory you launch it from, and `scan_paths`
-in the [config file](./docs/configuration.md) names the fleet that `run` and `-cli` cover.
+Move with `j` and `k`, press `v` to show the repo under the cursor without
+leaving the list (from 140 columns it is always there), `x` to mark it, `enter` to
+open it, `T` for the Tasks tab, and `?` for the keymap. It scans the directory you
+launch it from. `scan_paths` in the [config file](./docs/configuration.md) names
+the fleet that `run` and `-cli` cover, and `f` then `f` switches the list to it,
+limited to repos you committed to recently.
 
 Run it inside a repository and it opens that repo directly, listing each branch
 with its pull request, CI checks, and which sibling checkout or worktree

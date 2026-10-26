@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/kyleking/aragonite/cache"
@@ -114,9 +116,11 @@ func printUsage() {
 Positional paths are the directories to scan for repos. Without them the TUI
 scans the enclosing repo (walking up from the current directory) or the current
 directory itself, while -cli, -script, and run scan the config file's scan_paths.
+In the TUI, the filter panel (f) switches to scan_paths, limited to repos you
+committed to recently.
 
 Optional config file (scan_paths, depth, cache_ttl_minutes, notes_filenames,
-cache_to_disk, diff.external, tasks):
+cache_to_disk, fleet_active, fleet_authors, diff.external, tasks):
   %s
 
 Run "%s --script -" with a "help" line to list the :commands.
@@ -244,6 +248,28 @@ func runMain(args []string) {
 	}
 }
 
+// fleetOf is the scope the TUI's filter panel can switch to: scan_paths, kept to
+// repos with a recent commit by fleet_authors, or by git's global user.email.
+func fleetOf(cfg config.Config) app.Fleet {
+	authors := cfg.FleetAuthors
+	if len(authors) == 0 {
+		if email := globalGitEmail(); email != "" {
+			authors = []string{email}
+		}
+	}
+
+	return app.Fleet{Roots: cfg.ScanPaths, Active: cfg.FleetWindow(), Authors: authors}
+}
+
+func globalGitEmail() string {
+	out, err := exec.CommandContext(context.Background(), "git", "config", "--global", "user.email").Output()
+	if err != nil {
+		return ""
+	}
+
+	return strings.TrimSpace(string(out))
+}
+
 func withTasks(model app.Model, cfg config.Config) app.Model {
 	store, err := tasks.DefaultStore()
 	if err != nil {
@@ -328,7 +354,7 @@ func main() {
 		return
 	}
 
-	model := withTasks(app.New(absPathList, *depth), cfg)
+	model := withTasks(app.New(absPathList, *depth).WithFleet(fleetOf(cfg)), cfg)
 	p := tea.NewProgram(model)
 
 	if _, err := p.Run(); err != nil {

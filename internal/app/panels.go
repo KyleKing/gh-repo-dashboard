@@ -83,6 +83,9 @@ type panelContent struct {
 	// selectable is false for Status, which reports state rather than listing
 	// items the cursor can land on.
 	selectable bool
+	// elide cuts the middle of rows too long for the height rather than their
+	// end, for text whose newest lines are the last.
+	elide bool
 }
 
 // Relevance bounds. The scale is arbitrary; only the ratios matter, since

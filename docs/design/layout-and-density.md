@@ -59,35 +59,26 @@ proportional one the focused grid uses (90% of the terminal, capped at 200).
 Below about 156 cells the first wins, so a narrow terminal keeps every cell it
 has. Above it the second wins, and the list and the focused view frame alike.
 
-## Preview pane
+## Detail region
 
-From 140 columns (`previewMinWidth`) the repo list caps its table at 100 cells
-(`tableMaxWidth`) and the rest of the terminal previews the repo under the cursor
-behind the focused view's split rule: its name and branch, the NEEDS items spelled
-out, then the focused view's own PRs and CI sections and the last five commits.
-The preview borrows the focused view's section renderers on a copy of the model
-pointed at the cursor's repo, so it shows what the list already holds. The one
-read it adds is the local commit log, cached per repo and requested once as the
-cursor lands on a repo. Below 140 columns the preview is absent and the table
-takes the width it did before.
+One detail region replaces the earlier preview pane and expanded region, and
+aragonite's `tui/split` decides where it goes. From 140 columns (`detailSideMinWidth`)
+the table caps at 100 cells (`tableMaxWidth`) and the region sits beside it behind a
+one-cell rule, always shown. From 100 to 139 columns `v` opens it below the table at
+60% of the body, and a terminal under 15 body rows says it is too short instead of
+swallowing the key. Under 100 columns there is none, and `enter` opens the focused view.
 
-## Expanded region
+The renderer draws the repo's name as `owner/name` (the origin remote's owner,
+lowercased, else the parent directory), its NEEDS items spelled out, the facts the
+sections below lack (changed paths, template, branches with unpushed commits), then
+the focused view's PRs and CI sections on a copy of the model pointed at the cursor's
+repo, the last five commits, and the notes. A fact with nothing to say is left out,
+sections still loading say `reading…` rather than `none`, and a note taller than its
+share has its middle elided so both ends survive.
 
-`v` opens one region below the table for the repo under the cursor, answering
-the questions the table has no column for: peers, local branches with unpushed
-commits, open pull requests, and the repo's notes in full.
-
-Its height follows its content, capped at 60% of the body and bounded so the table
-keeps six rows. A fact with nothing to say is left out, and the closing rule
-carries no caption. Sections still loading say `reading…` rather than `—`, and a
-note taller than the space has its middle elided so both ends survive. The table
-takes whatever lines the region leaves, so it grows and shrinks as the cursor
-moves between repos with more or less to say.
-
-Branches and pull requests come from the same per-repo read the `:prs` fleet map
-makes, cached per repo for the session, so opening the region costs one fetch per
-repo and reopening it costs none. A terminal too short to seat the region says so
-in the status line instead of swallowing the keypress.
+Reads happen once per repo as the cursor lands on it: the local commit log, the
+notes, the uncommitted paths, and the branch list and pull requests the `:prs`
+fleet map also makes, so the map and the region share one cache.
 
 ## Consequences
 

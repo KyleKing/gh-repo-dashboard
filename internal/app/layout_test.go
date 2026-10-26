@@ -38,9 +38,6 @@ func peerModel() Model {
 			PRs:  []forge.PullRequest{{Number: 1, HeadRef: "feature-x"}},
 		},
 	}
-	m.peerBranches = map[string][]vcs.BranchInfo{
-		"/dev/bravo": {{Name: "feature-x", Upstream: "origin/feature-x"}},
-	}
 
 	return m
 }

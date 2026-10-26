@@ -40,17 +40,26 @@ const (
 
 // Model is the root Bubble Tea model holding all TUI state.
 type Model struct {
+	// scanPaths are the roots in scope now: hereRoots, or fleet.Roots once the
+	// fleet scope is on.
 	scanPaths []string
+	hereRoots []string
 	maxDepth  int
+
+	fleet      Fleet
+	fleetScope bool
+	scopeGen   int
+	// fleetHidden counts the discovered repos the activity filter dropped.
+	fleetHidden int
 
 	repoPaths []string
 	summaries map[string]models.RepoSummary
 
 	filteredPaths []string
 	cursor        int
-	// expandOpen is the one region the list opens below its table, holding the
-	// peers, branches, pull requests, and notes of the repo under the cursor.
-	expandOpen bool
+	// detailOpen is whether the reader opened the detail region below the table.
+	// Beside the table it is always shown, and on a compact terminal never.
+	detailOpen bool
 	// notesPreview caches each repo's notes read in full, keyed by repo path,
 	// so reopening the region or scrolling back never re-reads a file.
 	notesPreview map[string][]models.NoteFileContent
@@ -100,12 +109,6 @@ type Model struct {
 	prMap       map[string]PRMapLoadedMsg
 	prMapCursor int
 
-	// peerBranches holds each peer checkout's local branch list, keyed by the
-	// peer's own path rather than by the repo that asked for it, so two rows
-	// sharing a peer share one fetch. Populated only once a row's expand
-	// region has requested it.
-	peerBranches map[string][]vcs.BranchInfo
-
 	// ciRequested marks the repos a live CI read was issued for, so scrolling back does not repeat it.
 	ciRequested map[string]bool
 	// ciBranch names the default branch each repo's CI runs belong to.
@@ -117,8 +120,8 @@ type Model struct {
 	taskSel      *tasks.Selector
 	due          map[string][]string
 	changedPaths map[string][]string
-	// previewCommits caches the commit log the list's preview shows, by repo path.
-	previewCommits map[string][]vcs.CommitInfo
+	// commitLog caches the commit log the detail region shows, by repo path.
+	commitLog map[string][]vcs.CommitInfo
 	// needsCache is valid for one render: it is set on a copy of the model and never kept.
 	needsCache map[string]needs
 
@@ -248,35 +251,62 @@ func New(scanPaths []string, maxDepth int) Model {
 	sp.Style = styles.Skin.Accent
 
 	return Model{
-		spinner:        sp,
-		scanPaths:      scanPaths,
-		maxDepth:       maxDepth,
-		summaries:      make(map[string]models.RepoSummary),
-		notesPreview:   make(map[string][]models.NoteFileContent),
-		due:            make(map[string][]string),
-		taskHistory:    make(map[string][]tasks.Record),
-		changedPaths:   make(map[string][]string),
-		previewCommits: make(map[string][]vcs.CommitInfo),
-		freshness:      make(map[fetchKey]freshness),
-		shared:         make(map[string]bool),
-		branchCount:    make(map[string]int),
-		prMap:          make(map[string]PRMapLoadedMsg),
-		peerBranches:   make(map[string][]vcs.BranchInfo),
-		activeFilters:  activeFilters,
-		activeSorts:    sorts,
-		searchInput:    ti,
-		commandInput:   ci,
-		paletteInput:   pi,
-		registry:       DefaultRegistry(),
-		viewMode:       ViewModeRepoList,
-		loading:        true,
-		keys:           DefaultKeyMap(),
-		help:           help.New(),
+		spinner:       sp,
+		scanPaths:     scanPaths,
+		maxDepth:      maxDepth,
+		summaries:     make(map[string]models.RepoSummary),
+		notesPreview:  make(map[string][]models.NoteFileContent),
+		due:           make(map[string][]string),
+		taskHistory:   make(map[string][]tasks.Record),
+		changedPaths:  make(map[string][]string),
+		commitLog:     make(map[string][]vcs.CommitInfo),
+		freshness:     make(map[fetchKey]freshness),
+		shared:        make(map[string]bool),
+		branchCount:   make(map[string]int),
+		prMap:         make(map[string]PRMapLoadedMsg),
+		activeFilters: activeFilters,
+		activeSorts:   sorts,
+		searchInput:   ti,
+		commandInput:  ci,
+		paletteInput:  pi,
+		registry:      DefaultRegistry(),
+		viewMode:      ViewModeRepoList,
+		loading:       true,
+		keys:          DefaultKeyMap(),
+		help:          help.New(),
 		// A diff without file text is rarely useful, and diffstat is one key
 		// away, so every diff pane opens fully expanded.
 		stashFullDiff:       true,
 		uncommittedFullDiff: true,
 	}
+}
+
+// Fleet is the wider scope the filter panel can switch to: every repo under
+// Roots that one of Authors committed to within Active.
+type Fleet struct {
+	Roots   []string
+	Active  time.Duration
+	Authors []string
+}
+
+// unavailable says why the fleet scope cannot be entered, or "" when it can.
+func (f Fleet) unavailable() string {
+	switch {
+	case len(f.Roots) == 0:
+		return "set scan_paths to scope to the fleet"
+	case len(f.Authors) == 0:
+		return "set fleet_authors or git user.email to scope to the fleet"
+	}
+
+	return ""
+}
+
+// WithFleet gives the filter panel a fleet scope to switch to.
+func (m Model) WithFleet(f Fleet) Model {
+	m.fleet = f
+	m.hereRoots = m.scanPaths
+
+	return m
 }
 
 // WithTasks gives the list the configured tasks, so a repo with one due shows it in NEEDS.
@@ -292,7 +322,7 @@ const paletteInputWidth = 40
 
 // Init kicks off the initial repo discovery command.
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(discoverReposCmd(m.scanPaths, m.maxDepth), checkGHAuthCmd(), loadViewerCmd(), m.spinner.Tick)
+	return tea.Batch(m.discoverCmd(), checkGHAuthCmd(), loadViewerCmd(), m.spinner.Tick)
 }
 
 // anyLoading reports whether any view is waiting on data. The spinner ticks

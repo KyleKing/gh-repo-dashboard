@@ -99,7 +99,7 @@ leader, so an operator waiting for its object has to be dispatched before the
 leader keys. `handleGrammarKey` is that order, and reversing two of its cases
 breaks `!par` in a way no type checks.
 
-`esc` clears the marks ahead of closing the expanded region, since a range the
+`esc` clears the marks ahead of closing the detail region, since a range the
 user just drew is the nearest layer to back out of.
 
 `:select` and the palette still write `selectedPaths`, so both fill the same marks.

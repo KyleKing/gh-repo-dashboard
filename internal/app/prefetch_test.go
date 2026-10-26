@@ -72,21 +72,21 @@ func TestPanelsWithNoDetailFetchIssueNoCommand(t *testing.T) {
 func TestPreviewReadsCommitsOncePerRepoAndOnlyWhenShown(t *testing.T) {
 	t.Parallel()
 
-	for width, wantRead := range map[int]bool{previewMinWidth - 1: false, previewMinWidth: true} {
+	for width, wantRead := range map[int]bool{detailSideMinWidth - 1: false, detailSideMinWidth: true} {
 		m := compactModel(width, 30)
 
-		if got := m.requestPreview() != nil; got != wantRead {
+		if got := m.requestDetail() != nil; got != wantRead {
 			t.Errorf("width %d: first request issued a read = %v, want %v", width, got, wantRead)
 		}
 
-		if m.requestPreview() != nil {
+		if m.requestDetail() != nil {
 			t.Errorf("width %d: a read still in flight was requested again", width)
 		}
 
-		next, _ := m.Update(PreviewCommitsLoadedMsg{Path: m.filteredPaths[m.cursor]})
+		next, _ := m.Update(CommitLogLoadedMsg{Path: m.filteredPaths[m.cursor]})
 		loaded := mustModel(t, next)
 
-		if loaded.requestPreview() != nil {
+		if loaded.requestDetail() != nil {
 			t.Errorf("width %d: a repo whose log is cached was read again", width)
 		}
 	}

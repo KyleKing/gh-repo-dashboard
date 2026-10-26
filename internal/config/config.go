@@ -3,6 +3,7 @@
 package config
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -12,6 +13,8 @@ import (
 	"time"
 
 	toml "github.com/pelletier/go-toml/v2"
+
+	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 )
 
 // Config holds the user-configurable settings read from config.toml. Zero
@@ -25,7 +28,13 @@ type Config struct {
 	// an opt-out, and false is a value the user has to write.
 	CacheToDisk *bool      `toml:"cache_to_disk"`
 	Diff        DiffConfig `toml:"diff"`
-	Tasks       []Task     `toml:"tasks"`
+	// FleetActive is how recently one of FleetAuthors must have committed for
+	// the TUI's fleet scope to list a repo, in the syntax of a task's every.
+	FleetActive string `toml:"fleet_active"`
+	// FleetAuthors are the author emails whose commits keep a repo in the fleet
+	// scope. Empty means the global git user.email.
+	FleetAuthors []string `toml:"fleet_authors"`
+	Tasks        []Task   `toml:"tasks"`
 }
 
 // DiffConfig selects how a patch is rendered.
@@ -39,6 +48,19 @@ type DiffConfig struct {
 // per-upstream cache files, which they may unless the file says otherwise.
 func (c Config) PersistCache() bool {
 	return c.CacheToDisk == nil || *c.CacheToDisk
+}
+
+// DefaultFleetActive is the fleet scope's window when fleet_active is unset.
+const DefaultFleetActive = "180d"
+
+// FleetWindow returns FleetActive as a duration, DefaultFleetActive when unset.
+func (c Config) FleetWindow() time.Duration {
+	window, err := filters.ParseAge(cmp.Or(c.FleetActive, DefaultFleetActive))
+	if err != nil {
+		return 0
+	}
+
+	return window
 }
 
 // CacheTTL returns the configured cache TTL, or zero when unset.
@@ -94,6 +116,10 @@ func loadFile(path string) (Config, error) {
 		return Config{}, fmt.Errorf("parsing config %s: %w", path, errNegativeTTL)
 	}
 
+	if cfg.FleetActive != "" && cfg.FleetWindow() <= 0 {
+		return Config{}, fmt.Errorf("parsing config %s: fleet_active: %w", path, errFleetActive)
+	}
+
 	if err := validateTasks(cfg.Tasks); err != nil {
 		return Config{}, fmt.Errorf("parsing config %s: %w", path, err)
 	}
@@ -128,4 +154,5 @@ func expandHomePaths(paths []string) ([]string, error) {
 var (
 	errNegativeDepth = errors.New("depth must be non-negative")
 	errNegativeTTL   = errors.New("cache_ttl_minutes must be non-negative")
+	errFleetActive   = errors.New("must be a positive duration such as 180d or 12h")
 )

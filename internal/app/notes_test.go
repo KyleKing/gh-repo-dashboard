@@ -12,12 +12,12 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
 )
 
-// TestExpandRegion_KeepsTheFrameHeightFixed pins the bug the region used to
+// TestDetailRegion_KeepsTheFrameHeightFixed pins the bug the region used to
 // have: its lines were added to a body that had already been sized, so the
 // footer slid off the bottom whenever the whole repo set fitted on screen. Only
 // one repo of the fleet carries notes, branches, and pull requests, so a frame
 // that sized itself from the selection would fail here.
-func TestExpandRegion_KeepsTheFrameHeightFixed(t *testing.T) {
+func TestDetailRegion_KeepsTheFrameHeightFixed(t *testing.T) {
 	t.Parallel()
 
 	sizes := []struct {
@@ -25,7 +25,7 @@ func TestExpandRegion_KeepsTheFrameHeightFixed(t *testing.T) {
 		width, height int
 	}{
 		{name: "compact", width: 80, height: 24},
-		{name: "standard", width: 140, height: 20},
+		{name: "below", width: 120, height: 40},
 		{name: "wide", width: 180, height: 45},
 	}
 
@@ -46,7 +46,7 @@ func TestExpandRegion_KeepsTheFrameHeightFixed(t *testing.T) {
 			}
 
 			for _, open := range []bool{false, true} {
-				m.expandOpen = open
+				m.detailOpen = open
 
 				for cursor := range m.filteredPaths {
 					m.cursor = cursor
@@ -62,46 +62,13 @@ func TestExpandRegion_KeepsTheFrameHeightFixed(t *testing.T) {
 	}
 }
 
-// TestExpandRegion_SizesToItsContent covers the region's height: only as many
-// lines as it holds, never past the cap, so a repo with little to say leaves the
-// table the rest.
-func TestExpandRegion_SizesToItsContent(t *testing.T) {
+// TestDetailRegion_SitsBelowTheTable pins the shape: the table leads, the region
+// follows it, and the region's own sections keep a fixed order.
+func TestDetailRegion_SitsBelowTheTable(t *testing.T) {
 	t.Parallel()
 
-	m := compactModel(180, 40)
-	m.expandOpen = true
-
-	m.cursor = 0
-	quiet := len(m.expandedLines())
-
-	m.cursor = 1
-	m.notesPreview = map[string][]models.NoteFileContent{
-		"/dev/bravo": {{Name: ".doing", Content: "one\ntwo\nthree"}},
-	}
-	noted := len(m.expandedLines())
-
-	if quiet >= noted {
-		t.Errorf("a repo with notes holds %d lines, one without holds %d; the region must follow its content",
-			noted, quiet)
-	}
-
-	limit := m.expandHeight(m.listBodyHeight())
-	if noted > limit {
-		t.Errorf("region is %d lines, over its %d-line cap", noted, limit)
-	}
-
-	if tall := len(m.expandLines(120, 4)); tall > 4 {
-		t.Errorf("region drew %d lines under a 4-line cap", tall)
-	}
-}
-
-// TestExpandRegion_SitsBelowTheTable pins the redesign's shape: the table leads,
-// the region follows it, and the region's own sections keep a fixed order.
-func TestExpandRegion_SitsBelowTheTable(t *testing.T) {
-	t.Parallel()
-
-	m := compactModel(180, 30)
-	m.expandOpen = true
+	m := compactModel(120, 40)
+	m.detailOpen = true
 	m.cursor = 1
 	m.notesPreview = map[string][]models.NoteFileContent{
 		"/dev/bravo": {{Name: ".doing", Content: "wip"}},
@@ -117,19 +84,18 @@ func TestExpandRegion_SitsBelowTheTable(t *testing.T) {
 		},
 	}
 
-	body := plainText(m.renderListBody())
+	body := plainText(strings.Join(m.renderDetail(100, 38), "\n"))
 
-	// Each region row is anchored to the start of its line, which is what tells
-	// the PRs row from the PRs column of the table's header.
+	// Each row is anchored to the start of its line, which is what tells a
+	// section's label from the same word inside another row.
 	order := []string{
-		"charlie", "dev/bravo · git", "\n" + tabNameBranches, "\n" + tabNamePRs,
-		"notes · .doing", "wip",
+		"dev/bravo", "── NEEDS", "\n" + tabNameBranches, "── PULL REQUESTS", "── NOTES", "wip",
 	}
 	at := -1
 	for _, want := range order {
 		i := strings.Index(body, want)
 		if i < 0 {
-			t.Fatalf("the body is missing %q:\n%s", want, body)
+			t.Fatalf("the detail is missing %q:\n%s", want, body)
 		}
 		if i < at {
 			t.Errorf("%q renders above the section before it:\n%s", want, body)
@@ -137,36 +103,48 @@ func TestExpandRegion_SitsBelowTheTable(t *testing.T) {
 		at = i
 	}
 
-	for _, want := range []string{"2 local · feature ↑2", "1 open · #42 Add login flow"} {
+	for _, want := range []string{"2 local", "feature ↑2", "#42"} {
 		if !strings.Contains(body, want) {
-			t.Errorf("the region is missing %q:\n%s", want, body)
+			t.Errorf("the detail is missing %q:\n%s", want, body)
 		}
 	}
 }
 
-// TestExpandRegion_ReadsWhileItsDataIsOutstanding covers the other half of the
+// TestDetailRegion_ReadsWhileItsDataIsOutstanding covers the other half of the
 // pending treatment: a section with nothing yet says it is reading rather than
 // claiming the repo has no branches or pull requests.
-func TestExpandRegion_ReadsWhileItsDataIsOutstanding(t *testing.T) {
+func TestDetailRegion_ReadsWhileItsDataIsOutstanding(t *testing.T) {
 	t.Parallel()
 
-	m := compactModel(180, 30)
-	m.expandOpen = true
+	m := compactModel(120, 40)
+	m.detailOpen = true
 	m.cursor = 1
 	m.startFetch("/dev/bravo", fetchOpenPRs)
 
-	body := plainText(m.renderListBody())
+	body := plainText(strings.Join(m.renderDetail(100, 38), "\n"))
 
-	for _, section := range []string{tabNameBranches, tabNamePRs} {
-		line := lineStarting(t, body, section)
-		if !strings.Contains(line, readingLabel) {
-			t.Errorf("%s reads %q with its fetch still out, want %q", section, line, readingLabel)
+	for _, section := range []string{tabNameBranches, "── PULL REQUESTS", "── NOTES"} {
+		if !strings.Contains(lineStarting(t, body, section)+nextLine(body, section), readingLabel) {
+			t.Errorf("%s does not say it is reading with its fetch still out:\n%s", section, body)
 		}
 	}
 
-	if !strings.Contains(body, "notes"+compactSignalSep+readingLabel) {
-		t.Errorf("the notes divider does not say the read is still out:\n%s", body)
+	m.cursor = 0
+
+	if quiet := plainText(strings.Join(m.renderDetail(100, 38), "\n")); !strings.Contains(quiet, "none") {
+		t.Errorf("a repo with no pull requests must say none, not reading:\n%s", quiet)
 	}
+}
+
+func nextLine(body, prefix string) string {
+	lines := strings.Split(body, "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, prefix) && i+1 < len(lines) {
+			return lines[i+1]
+		}
+	}
+
+	return ""
 }
 
 // lineStarting returns the region row labeled want, which the column header
@@ -235,7 +213,7 @@ func TestNotesPanel_ShowsTheNoteWithoutFocusingIt(t *testing.T) {
 	}
 }
 
-func TestNotesPreview_CaptionsTheRegionAtItsDivider(t *testing.T) {
+func TestNotesPreview_HeadsEachNoteOfSeveral(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -244,9 +222,9 @@ func TestNotesPreview_CaptionsTheRegionAtItsDivider(t *testing.T) {
 		want  []string
 	}{
 		{
-			name:  "one note is named by the divider alone",
+			name:  "one note needs no heading of its own",
 			files: []models.NoteFileContent{{Name: ".doing", Content: "wip"}},
-			want:  []string{"notes · .doing"},
+			want:  []string{"NOTES · 1", "wip"},
 		},
 		{
 			name: "several notes are headed and counted",
@@ -254,7 +232,7 @@ func TestNotesPreview_CaptionsTheRegionAtItsDivider(t *testing.T) {
 				{Name: ".doing", Content: "wip"},
 				{Name: "TODO.md", Content: "later"},
 			},
-			want: []string{"── .doing", "── TODO.md", "notes · 2 files"},
+			want: []string{"NOTES · 2", "── .doing", "── TODO.md"},
 		},
 	}
 
@@ -262,21 +240,16 @@ func TestNotesPreview_CaptionsTheRegionAtItsDivider(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			m := compactModel(180, 40)
-			m.expandOpen = true
+			m := compactModel(120, 40)
+			m.detailOpen = true
 			m.cursor = 1 // bravo, the repo carrying notes
 			m.notesPreview = map[string][]models.NoteFileContent{"/dev/bravo": tt.files}
-			lines := m.expandLines(120, m.expandHeight(m.listBodyHeight()))
-			got := plainText(strings.Join(lines, "\n"))
+			got := plainText(strings.Join(m.renderDetail(100, 38), "\n"))
 
 			for _, want := range tt.want {
 				if !strings.Contains(got, want) {
-					t.Errorf("preview is missing %q:\n%s", want, got)
+					t.Errorf("detail is missing %q:\n%s", want, got)
 				}
-			}
-
-			if closing := plainText(lines[len(lines)-1]); strings.Trim(closing, "─") != "" {
-				t.Errorf("the last line must be a bare closing rule, got %q", closing)
 			}
 		})
 	}
@@ -288,8 +261,8 @@ func TestNotesPreview_CaptionsTheRegionAtItsDivider(t *testing.T) {
 func TestEscape_DismissesOneListLayerAtATime(t *testing.T) {
 	t.Parallel()
 
-	m := compactModel(180, 40)
-	m.expandOpen = true
+	m := compactModel(120, 40)
+	m.detailOpen = true
 	m.searchText = "alpha"
 	m.SetFilter(models.FilterModeDirty)
 	m.updateFilteredPaths()
@@ -298,8 +271,8 @@ func TestEscape_DismissesOneListLayerAtATime(t *testing.T) {
 
 	m = stepModel(t, &m, esc)
 
-	if m.expandOpen {
-		t.Fatal("the first escape must close the expanded region")
+	if m.detailOpen {
+		t.Fatal("the first escape must close the detail region")
 	}
 
 	if m.searchText != "alpha" || !m.filtersActive() {

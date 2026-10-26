@@ -49,9 +49,8 @@ Up 2
 
 Down 3
 Type "v"
-Wait+Screen /Changed.*main\.go/
-Sleep 300ms
-Screenshot docs/images/__NAME__-expanded.png
+Sleep 1s
+Screenshot docs/images/__NAME__-detail.png
 Sleep 1s
 
 Type "v"
