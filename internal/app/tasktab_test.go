@@ -86,7 +86,7 @@ func TestTabKeysSwitchBetweenReposAndTasks(t *testing.T) {
 			"j stops at the last task",
 			[]tea.KeyPressMsg{keyUpper('T'), keyUpper('G'), keyUpper('j')},
 			ViewModeTasks,
-			len(tabTasks) + len(tasks.Builtins()) - 1,
+			len(tabTasks) + len(config.Fleet(tasks.Builtins())) - 1,
 		},
 	}
 	for _, tt := range tests {

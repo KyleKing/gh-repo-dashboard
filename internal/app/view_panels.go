@@ -116,7 +116,10 @@ func (m Model) prsPanel(summary models.RepoSummary, width int) panelContent {
 		}
 		cellStyles := map[string]lipgloss.Style{colPRState: withSelection(stateStyle, selected)}
 
-		rows = append(rows, detailRow(rowCursorFor(selected), layout, renderCells(layout, values, cellStyles, &style), style))
+		rows = append(
+			rows,
+			detailRow(rowCursorFor(selected), layout, renderCells(layout, values, cellStyles, &style), style),
+		)
 	}
 
 	relevance := relevanceIdle
@@ -220,7 +223,10 @@ func (m Model) ciPanel(summary models.RepoSummary, width int) panelContent {
 			colCIState: state,
 			colCIAge:   display.RelativeTimeCompact(run.UpdatedAt),
 		}
-		rows = append(rows, detailRow(rowCursorFor(selected), layout, renderCells(layout, values, cellStyles, &style), style))
+		rows = append(
+			rows,
+			detailRow(rowCursorFor(selected), layout, renderCells(layout, values, cellStyles, &style), style),
+		)
 	}
 
 	relevance := relevanceIdle
@@ -602,7 +608,7 @@ func (m Model) renderDetailPane(width, height int) []string {
 func (m Model) renderSections(panels []panelContent, focused, width, height int) []string {
 	heights := distributePanelHeights(panels, focused, height)
 
-	var lines []string
+	lines := make([]string, 0, height)
 
 	for i := range panels {
 		p := &panels[i]

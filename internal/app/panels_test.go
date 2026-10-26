@@ -167,7 +167,12 @@ func TestDetailPaneDescribesTheSelectedItem(t *testing.T) {
 		Commits: []vcs.CommitInfo{{ShortHash: "d2c794a", Subject: "expand and center tables"}},
 	}
 
-	if got := plainText(strings.Join(m.renderDetailPane(60, 20), "\n")); !strings.Contains(got, "expand and center tables") {
+	if got := plainText(
+		strings.Join(m.renderDetailPane(60, 20), "\n"),
+	); !strings.Contains(
+		got,
+		"expand and center tables",
+	) {
 		t.Errorf("branch detail pane is missing its commits:\n%s", got)
 	}
 
@@ -452,7 +457,7 @@ func TestSectionsStackInOrderAndJJDropsStashes(t *testing.T) {
 
 	m := focusedModel(160, 45)
 	ids := func() []panelID {
-		var got []panelID
+		got := make([]panelID, 0, len(panelOrder))
 		for _, p := range m.panelSet(m.sectionWidth()) {
 			got = append(got, p.id)
 		}
@@ -493,7 +498,11 @@ func TestOpeningPanelFollowsTheFirstNeedsItem(t *testing.T) {
 			s.OpenPRs = []forge.PullRequest{{Number: 3, Author: "x", Reviewers: []string{"me"}}}
 		}, panelPRs},
 		{"unpushed work", func(s *models.RepoSummary, _ *Model) { s.Ahead = 2 }, panelBranches},
-		{"shared branch", func(_ *models.RepoSummary, m *Model) { m.shared = map[string]bool{"/dev/alpha": true} }, panelPeers},
+		{
+			"shared branch",
+			func(_ *models.RepoSummary, m *Model) { m.shared = map[string]bool{"/dev/alpha": true} },
+			panelPeers,
+		},
 		{"a note", func(s *models.RepoSummary, _ *Model) {
 			s.NotesFiles = []models.NoteFile{{Name: ".doing"}}
 		}, panelNotes},
@@ -504,7 +513,9 @@ func TestOpeningPanelFollowsTheFirstNeedsItem(t *testing.T) {
 			t.Parallel()
 
 			m := focusedModel(160, 45)
-			summary := models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: "/dev/alpha", VCSType: vcs.TypeGit, Branch: mainBranchName}}
+			summary := models.RepoSummary{
+				RepoSummary: vcs.RepoSummary{Path: "/dev/alpha", VCSType: vcs.TypeGit, Branch: mainBranchName},
+			}
 			tt.mutate(&summary, &m)
 			m.summaries["/dev/alpha"] = summary
 

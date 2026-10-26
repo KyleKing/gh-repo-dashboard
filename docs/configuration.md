@@ -75,10 +75,11 @@ where = "template ~ calcipy"
 | `concurrency` | Repos run at once. `1` is serial, and unset or `0` runs up to 8 in parallel |
 | `confirm` | Ask before running. `run --yes` skips the prompt |
 | `every` | How long a successful run keeps a repo from being due, as `30d`, `2w`, `12h`, or `90m`. Without it the task is never due |
+| `interactive` | Hand the terminal to the command for the one row under the cursor, as described under [Hand-offs](#hand-offs) |
 
 A malformed task, including a `where` that does not parse, stops the program at
 startup with the entry and key named. The built-in names `cleanup`,
-`cleanup-preview`, `fetch`, `prune`, and `refresh-prs` are reserved: a task with
+`cleanup-preview`, `fetch`, `prune`, `refresh-prs`, and `shell` are reserved: a task with
 one of them stops the program at startup too.
 
 Each run writes the repo's combined output to
@@ -86,6 +87,39 @@ Each run writes the repo's combined output to
 last-run stamp beside it. A repo is due when `where` holds and it has never
 succeeded or last succeeded longer ago than `every`. A failed run does not reset
 the clock.
+
+### Hand-offs
+
+A task with `interactive = true` is a hand-off. It runs for exactly one row (the repo
+under the cursor, or the PR, branch, or checkout selected in the focused view) with
+the whole terminal, and the dashboard re-reads that repo when the command exits. A
+fading status at the footer's right end reports the exit.
+
+```toml
+[[tasks]]
+name = "review"
+run = "second-look {pr}"
+interactive = true
+
+[[tasks]]
+name = "lazygit"
+run = "lazygit"
+interactive = true
+```
+
+`run` may use `{path}`, `{repo}` (`owner/name` when the repo has a remote), `{pr}`, and
+`{branch}`, each filled in shell-quoted. The command runs under `sh -c` in the row's
+directory with `REPO_NAME` and `REPO_PATH` set. A hand-off appears in the `a` verbs menu
+(repo list, focused view sections, and a find result set of exactly one) only where every
+placeholder it names has a value, so `review` shows on a PR and not on a repo with none.
+Its menu key is the first letter of its name that the menu has not already used, then a digit.
+
+A hand-off may not set `where`, `every`, or `concurrency`, and may not name another
+placeholder. Either stops the program at startup. Hand-offs do not appear in the Tasks tab
+and `gh repo-dashboard run` does not know them. `confirm = true` asks first.
+
+The built-in `shell` hand-off opens `$SHELL` in the repo, on `S` in the list and the focused
+view. `shell` is reserved like the other built-in names.
 
 ## Caching
 

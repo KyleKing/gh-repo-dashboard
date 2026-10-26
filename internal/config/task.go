@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
+
+	"github.com/kyleking/aragonite/tui/handoff"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
@@ -33,6 +36,20 @@ type Task struct {
 	// Every is how long a successful run keeps a repo from being due again,
 	// in the form "30d" or "12h". Empty means never due.
 	Every string `toml:"every"`
+	// Interactive hands the terminal to Run for the one row under the cursor
+	// instead of running it over repos, so Where, Every, and Concurrency do not
+	// apply.
+	Interactive bool `toml:"interactive"`
+}
+
+// Fleet returns the tasks that run over repos, leaving out the hand-offs.
+func Fleet(list []Task) []Task {
+	return slices.DeleteFunc(slices.Clone(list), func(t Task) bool { return t.Interactive })
+}
+
+// Handoffs returns the interactive tasks.
+func Handoffs(list []Task) []Task {
+	return slices.DeleteFunc(slices.Clone(list), func(t Task) bool { return !t.Interactive })
 }
 
 // Interval returns Every as a duration, or zero when unset.
@@ -76,6 +93,8 @@ var (
 	ErrTaskRunMissing      = errors.New("is required")
 	ErrTaskNegativeWorkers = errors.New("must be non-negative")
 	ErrTaskEveryInvalid    = errors.New("must be a positive duration such as 30d or 12h")
+	ErrTaskInteractive     = errors.New("does not apply to an interactive task")
+	ErrTaskPlaceholder     = errors.New("names a placeholder other than path, repo, pr, or branch")
 )
 
 func validateTasks(tasks []Task) error {
@@ -108,6 +127,10 @@ func validateTask(i int, task Task, seen map[string]bool) error {
 		return fail("concurrency", ErrTaskNegativeWorkers)
 	}
 
+	if task.Interactive {
+		return validateHandoff(task, fail)
+	}
+
 	if task.Where != "" {
 		grammar := filters.RepoGrammar(filters.Runs{})
 		if _, err := filters.ParseGrammar[models.RepoSummary](task.Where, grammar); err != nil {
@@ -117,6 +140,28 @@ func validateTask(i int, task Task, seen map[string]bool) error {
 
 	if interval, err := task.Interval(); err != nil || (task.Every != "" && interval <= 0) {
 		return fail("every", ErrTaskEveryInvalid)
+	}
+
+	return nil
+}
+
+// HandoffPlaceholders are the values an interactive task's run may use.
+var HandoffPlaceholders = []string{"branch", "path", "pr", "repo"}
+
+func validateHandoff(task Task, fail func(string, error) error) error {
+	switch {
+	case task.Where != "":
+		return fail("where", ErrTaskInteractive)
+	case task.Every != "":
+		return fail("every", ErrTaskInteractive)
+	case task.Concurrency != 0:
+		return fail("concurrency", ErrTaskInteractive)
+	}
+
+	for _, name := range handoff.Needs(task.Run) {
+		if !slices.Contains(HandoffPlaceholders, name) {
+			return fail("run", fmt.Errorf("%w: {%s}", ErrTaskPlaceholder, name))
+		}
 	}
 
 	return nil

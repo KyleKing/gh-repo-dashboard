@@ -77,7 +77,8 @@ to the previous, and `j`/`k` walk the column as one list, crossing from the last
 one section into the first of the next.
 
 `enter` hands the keyboard to the detail pane, where `j`/`k` scroll its text and
-`esc` hands it back to the sections. `O` opens the selected branch in its own full-screen view.
+`esc` hands it back to the sections. `S` opens a shell in the repo (any row, in the list or here)
+and returns to the dashboard on `exit`. `O` opens the selected branch in its own full-screen view.
 
 `space` opens the universal find, scoped to the repo you are in (`;` opens it
 fleet-wide from the list, and `*` widens a repo-scoped query). The find opens with

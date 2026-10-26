@@ -132,6 +132,26 @@ func TestLoadErrors(t *testing.T) {
 			config.ErrTaskNegativeWorkers,
 		},
 		{"bad every", "[[tasks]]\nname = 'a'\nrun = 'true'\nevery = 'soon'", config.ErrTaskEveryInvalid},
+		{
+			"interactive with where",
+			"[[tasks]]\nname = 'a'\nrun = 'lazygit'\ninteractive = true\nwhere = 'dirty'",
+			config.ErrTaskInteractive,
+		},
+		{
+			"interactive with every",
+			"[[tasks]]\nname = 'a'\nrun = 'lazygit'\ninteractive = true\nevery = '1d'",
+			config.ErrTaskInteractive,
+		},
+		{
+			"interactive with concurrency",
+			"[[tasks]]\nname = 'a'\nrun = 'lazygit'\ninteractive = true\nconcurrency = 2",
+			config.ErrTaskInteractive,
+		},
+		{
+			"interactive unknown placeholder",
+			"[[tasks]]\nname = 'a'\nrun = 'x {sha}'\ninteractive = true",
+			config.ErrTaskPlaceholder,
+		},
 		{"bad where", "[[tasks]]\nname = 'a'\nrun = 'true'\nwhere = 'git_size >'", nil},
 	}
 	for _, tt := range tests {

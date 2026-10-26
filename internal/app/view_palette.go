@@ -514,7 +514,7 @@ func (m Model) handlePaletteActionKey(msg tea.KeyMsg, targets []findResult) (tea
 		return m, nil
 	}
 
-	for _, action := range paletteActionsFor(homogeneousKind(targets)) {
+	for _, action := range m.paletteActionSet(targets) {
 		if action.key != msg.String() {
 			continue
 		}
@@ -552,7 +552,7 @@ func (m Model) renderPalette(results []findResult) string {
 	b.WriteString("\n\n")
 
 	if m.paletteActions {
-		b.WriteString(renderPaletteActions(m.paletteTargets(results)))
+		b.WriteString(m.renderPaletteActions(m.paletteTargets(results)))
 	} else {
 		b.WriteString(m.renderPalettePreview(results, width))
 	}
@@ -637,9 +637,9 @@ func (m Model) renderPalettePreview(results []findResult, width int) string {
 	return strings.Join(lines, "\n")
 }
 
-func renderPaletteActions(targets []findResult) string {
+func (m Model) renderPaletteActions(targets []findResult) string {
 	label := "act on " + strconv.Itoa(len(targets)) + " " + plural(len(targets), "result", "results")
-	actions := paletteActionsFor(homogeneousKind(targets))
+	actions := m.paletteActionSet(targets)
 
 	lines := make([]string, 0, len(actions)+1)
 	lines = append(lines, styles.Skin.Subtitle.Bold(true).Render(label))

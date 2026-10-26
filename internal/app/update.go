@@ -16,6 +16,7 @@ import (
 	"github.com/kyleking/aragonite/cache"
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/forge/github"
+	"github.com/kyleking/aragonite/tui/handoff"
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
@@ -111,6 +112,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		return m, nil
+
+	case handoff.DoneMsg:
+		return m.handleHandoffDone(msg)
 
 	case PRDetailLoadedMsg:
 		if msg.Path == m.selectedRepo && msg.Error == nil {
@@ -561,6 +565,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, m.keys.Peers):
 		return m.openCheckouts()
+
+	case msg.String() == shellKey:
+		return m.handleShellKey()
 
 	case key.Matches(msg, m.keys.Tab), msg.String() == tabKeyTasks:
 		return m.openTasksOnDue()
@@ -1146,6 +1153,9 @@ func (m Model) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Find):
 		return m.openPalette()
 
+	case msg.String() == shellKey:
+		return m.handleShellKey()
+
 	case key.Matches(msg, m.keys.Enter):
 		m.detailFocused = true
 		m.detailScroll = 0
@@ -1211,6 +1221,9 @@ func (m Model) handleDetailPaneKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.detailScroll = 0
 
 		return m, nil
+
+	case msg.String() == shellKey:
+		return m.handleShellKey()
 
 	case key.Matches(msg, m.keys.Up):
 		return m.scrollDetailPane(-1), nil

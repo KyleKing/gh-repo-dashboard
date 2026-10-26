@@ -330,22 +330,30 @@ func (m Model) actionMenu() actionMenu {
 			target = summary
 		}
 
-		return actionMenu{title: "Fleet", target: target, actions: listActions(m.markSummary() != "")}
+		listTarget, ok := m.listTarget()
+		actions := listActions(m.markSummary() != "")
+		if m.markSummary() == "" {
+			actions = m.withHandoffs(actions, listTarget, ok)
+		}
+
+		return actionMenu{title: "Fleet", target: target, actions: actions}
 	}
+
+	focus, focusOK := m.focusTarget()
 
 	panels := m.panelSet(m.sectionWidth())
 	if i := panelIndex(panels, m.focusedPanel); i >= 0 {
 		return actionMenu{
 			title:   panels[i].title,
 			target:  m.panelDetailTitle(panels[i]),
-			actions: panelActionsFor(panels[i].id),
+			actions: m.withHandoffs(panelActionsFor(panels[i].id), focus, focusOK),
 		}
 	}
 
 	return actionMenu{
 		title:   tabNameStatus,
 		target:  m.summaries[m.selectedRepo].Name(),
-		actions: panelActionsFor(panelStatus),
+		actions: m.withHandoffs(panelActionsFor(panelStatus), focus, focusOK),
 	}
 }
 
@@ -398,6 +406,8 @@ func startOperator(key string) func(Model) (tea.Model, tea.Cmd) {
 	}
 }
 
+const nameOpenRemote = "open on remote"
+
 // panelActionsFor returns the verbs the focused panel's selection supports.
 func panelActionsFor(id panelID) []panelAction {
 	switch id {
@@ -405,7 +415,7 @@ func panelActionsFor(id panelID) []panelAction {
 		return []panelAction{
 			{key: "c", name: "check out", run: Model.startCheckoutPR},
 			{key: "m", name: "squash-merge", run: Model.startSquashMergePR},
-			{key: "o", name: "open on remote", run: Model.openPRURL},
+			{key: "o", name: nameOpenRemote, run: Model.openPRURL},
 			{key: "y", name: "copy number", run: Model.copyPRNumber},
 		}
 	case panelCI:
@@ -418,7 +428,7 @@ func panelActionsFor(id panelID) []panelAction {
 			{key: "c", name: "cleanup merged", run: Model.startRepoCleanupMerged},
 			{key: "d", name: nameToggleDiff, run: Model.toggleUncommittedDiff},
 			{key: "f", name: nameFetch, run: Model.startRepoFetch},
-			{key: "o", name: "open on remote", run: Model.openRepoURL},
+			{key: "o", name: nameOpenRemote, run: Model.openRepoURL},
 			{key: "p", name: "prune remote", run: Model.startRepoPruneRemote},
 			{key: "y", name: nameCopyPath, run: Model.copyRepoPath},
 		}
@@ -426,7 +436,7 @@ func panelActionsFor(id panelID) []panelAction {
 		return []panelAction{
 			{key: "d", name: "delete", run: Model.startDeleteBranch},
 			{key: "n", name: "new PR", run: Model.startCreatePR},
-			{key: "o", name: "open on remote", run: Model.openBranchURL},
+			{key: "o", name: nameOpenRemote, run: Model.openBranchURL},
 			{key: "p", name: "push", run: Model.startPushBranch},
 			{key: "s", name: "switch to it", run: Model.startSwitchBranch},
 			{key: "y", name: "copy name", run: Model.copyBranchName},

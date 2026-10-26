@@ -91,7 +91,7 @@ func chooseTasks(opts RunOptions) ([]config.Task, error) {
 
 		return opts.Tasks, nil
 	}
-	for _, task := range opts.Tasks {
+	for _, task := range config.Fleet(opts.Tasks) {
 		if task.Name == opts.Task {
 			return []config.Task{task}, nil
 		}

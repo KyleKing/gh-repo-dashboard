@@ -28,6 +28,7 @@ const (
 	NameFetch          = "fetch"
 	NamePrune          = "prune"
 	NameRefreshPRs     = "refresh-prs"
+	NameShell          = "shell"
 )
 
 // getMergedPRHeads and getOperations are swappable seams over
@@ -41,6 +42,7 @@ var (
 // Builtins returns the function-backed tasks that ship with the dashboard.
 func Builtins() []config.Task {
 	return []config.Task{
+		{Name: NameShell, Desc: "a shell in the repo", Run: `exec "${SHELL:-sh}"`, Interactive: true},
 		{Name: NameCleanup, Desc: "delete merged and squash-merged branches", Confirm: true, Func: cleanupMerged},
 		{Name: NameCleanupPreview, Desc: "list the branches cleanup would delete", Func: previewCleanup},
 		{Name: NameFetch, Desc: "git fetch all remotes", Func: fetchAll},

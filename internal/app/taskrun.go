@@ -92,6 +92,15 @@ func (m Model) WithEngine(engine RunEngine) Model {
 }
 
 func (m Model) taskList() []config.Task {
+	return config.Fleet(m.allTasks())
+}
+
+// handoffList is the interactive tasks, which run for one row rather than over repos.
+func (m Model) handoffList() []config.Task {
+	return config.Handoffs(m.allTasks())
+}
+
+func (m Model) allTasks() []config.Task {
 	if m.taskSel != nil {
 		return m.taskSel.Tasks
 	}
