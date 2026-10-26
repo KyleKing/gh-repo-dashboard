@@ -218,6 +218,14 @@ func TestGoldenListSizes(t *testing.T) {
 			m.fleetHidden = 5
 			m.viewMode = ViewModeFilter
 		}},
+		{"owners", func(m *Model) {
+			for i, path := range m.repoPaths {
+				owner := []string{"KyleKing", "coverbasedev", "executablebooks"}[i%3]
+				s := m.summaries[path]
+				s.RemoteRepo = owner + "/" + filepath.Base(path)
+				m.summaries[path] = s
+			}
+		}},
 		{"detail", func(m *Model) {
 			path := "/Users/dev/delta"
 			m.cursor = slices.Index(m.filteredPaths, path)

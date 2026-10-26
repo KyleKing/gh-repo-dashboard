@@ -113,9 +113,10 @@ func (m Model) scopeHint() keyhint.Hint {
 		return keyhint.Hint{Key: scopeKey, What: "fleet (" + reason + ")", Off: true}
 	}
 
-	hint := keyhint.Hint{Key: scopeKey, What: "fleet", On: m.fleetScope}
+	hint := keyhint.Hint{Key: scopeKey, What: "Fleet", On: m.fleetScope}
 	if m.fleetScope {
-		hint.Count = strconv.Itoa(len(m.repoPaths)) + "/" + strconv.Itoa(len(m.repoPaths)+m.fleetHidden)
+		active, total := m.fleetCounts()
+		hint.Count = strconv.Itoa(active) + "/" + strconv.Itoa(total)
 	}
 
 	return hint
@@ -178,8 +179,16 @@ func (m Model) scopeChip() string {
 		return ""
 	}
 
-	return "fleet" + compactSignalSep + strconv.Itoa(len(m.repoPaths)) + " active of " +
-		strconv.Itoa(len(m.repoPaths)+m.fleetHidden)
+	active, total := m.fleetCounts()
+
+	return "fleet" + compactSignalSep + strconv.Itoa(active) + " active of " + strconv.Itoa(total)
+}
+
+// fleetCounts counts repos the way the header does, leaving linked worktrees out.
+func (m Model) fleetCounts() (int, int) {
+	active := len(m.listableRepos())
+
+	return active, active + m.fleetHidden
 }
 
 func (m Model) chipsLine() string {

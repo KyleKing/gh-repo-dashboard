@@ -367,13 +367,50 @@ type repoWindow struct {
 // is what tells two checkouts of one project apart from a fork. A repo with no
 // parsed remote falls back to its parent directory.
 func (m Model) repoLabel(path string) string {
+	return m.repoOwnerName(path) + "/" + filepath.Base(path)
+}
+
+func (m Model) repoOwnerName(path string) string {
 	owner := strings.ToLower(repoOwner(m.summaries[path].RemoteRepo))
 	if owner == "" {
 		owner = filepath.Base(filepath.Dir(path))
 	}
 
-	return owner + "/" + filepath.Base(path)
+	return owner
 }
+
+// multiOwner reports whether the listed repos span more than one owner, which
+// is when a name needs its owner beside it to be told apart.
+func (m Model) multiOwner() bool {
+	for _, path := range m.filteredPaths {
+		if m.repoOwnerName(path) != m.repoOwnerName(m.filteredPaths[0]) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// nameCell draws a repo's name padded to width, behind a muted "owner/" when the
+// list spans owners. The owner is cut before the name is.
+func (m Model) nameCell(s models.RepoSummary, n needs, base lipgloss.Style, selected bool, width int) string {
+	name := s.Name()
+	face := nameStyle(n, base, selected)
+
+	if !m.multiOwner() {
+		return face.Render(padCell(name, width))
+	}
+
+	prefix := ""
+	if room := width - lipgloss.Width(name); room >= minOwnerPrefix {
+		prefix = table.Truncate(m.repoOwnerName(s.Path)+"/", room)
+	}
+
+	return withSelection(styles.Skin.Muted, selected).Render(prefix) +
+		face.Render(padCell(name, width-lipgloss.Width(prefix)))
+}
+
+const minOwnerPrefix = 3
 
 // sectionRule draws a labeled rule across width.
 func sectionRule(label string, width int) string {
@@ -564,7 +601,7 @@ func (m Model) repoCell(
 ) string {
 	switch col {
 	case colName:
-		return nameStyle(n, base, selected).Render(padCell(s.Name(), width))
+		return m.nameCell(s, n, base, selected, width)
 	case colBranch:
 		return withSelection(m.branchStyle(s), selected).Render(padCell(m.branchCell(s, width), width))
 	case colNeeds:

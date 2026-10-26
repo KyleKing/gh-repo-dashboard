@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/kyleking/aragonite/vcs"
 )
 
 // Activity selects the repos where one of Authors committed since Since.
@@ -20,7 +22,7 @@ type Activity struct {
 const activityTimeout = 10 * time.Second
 
 // FilterActive returns the paths of repos a.Authors committed to since a.Since
-// and the number it dropped, reading at most workers repos at once. Paths keep
+// and the number of repos it dropped, not counting linked worktrees, reading at most workers repos at once. Paths keep
 // their input order. A repo with no .git entry (a jj-only repo) cannot be read
 // with git log and is kept.
 func FilterActive(ctx context.Context, paths []string, a Activity, workers int) ([]string, int) {
@@ -52,7 +54,15 @@ func FilterActive(ctx context.Context, paths []string, a Activity, workers int) 
 		}
 	}
 
-	return kept, len(paths) - len(kept)
+	hidden := 0
+
+	for i, path := range paths {
+		if !active[i] && vcs.CheckoutIdentity(path) == path {
+			hidden++
+		}
+	}
+
+	return kept, hidden
 }
 
 func (a Activity) committed(ctx context.Context, path string) bool {

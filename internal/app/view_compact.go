@@ -37,7 +37,7 @@ var compactColSpecs = []table.Column{
 func (m Model) renderCompactRow(s models.RepoSummary, n needs, selected bool, layout table.Layout) string {
 	base := rowStyleFor(selected)
 	cells := []string{
-		nameStyle(n, base, selected).Render(padCell(s.Name(), layout.Width(colCompactName))),
+		m.nameCell(s, n, base, selected, layout.Width(colCompactName)),
 		withSelection(m.branchStyle(s), selected).Render(padCell(s.Branch, layout.Width(colCompactBranch))),
 		m.prsCell(n, layout.Width(colCompactPR), base, selected),
 	}
