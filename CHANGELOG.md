@@ -1,3 +1,9 @@
+## v1.16.1 (2026-10-26)
+
+### Fix
+
+- **peers**: match a worktree to its own repo through symlinks
+
 ## v1.16.0 (2026-10-26)
 
 ### Feat
