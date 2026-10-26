@@ -67,29 +67,29 @@ func TestResolveScanPathsRejectsUnusablePaths(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    []string
-		cfg     config.Config
+		fleet   []string
 		wantErr bool
 	}{
 		{name: "existing positional directory", args: []string{dir}},
 		{name: "missing positional directory", args: []string{missing}, wantErr: true},
 		{name: "positional path is a file", args: []string{file}, wantErr: true},
-		{name: "existing config scan path", cfg: config.Config{ScanPaths: []string{dir}}},
-		{name: "missing config scan path", cfg: config.Config{ScanPaths: []string{missing}}, wantErr: true},
+		{name: "existing config scan path", fleet: []string{dir}},
+		{name: "missing config scan path", fleet: []string{missing}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			paths, err := resolveScanPaths(tt.args, tt.cfg)
+			paths, err := resolveScanPaths(tt.args, tt.fleet)
 			if tt.wantErr {
 				if err == nil {
-					t.Fatalf("resolveScanPaths(%v, %v) = %v, nil; want an error", tt.args, tt.cfg, paths)
+					t.Fatalf("resolveScanPaths(%v, %v) = %v, nil; want an error", tt.args, tt.fleet, paths)
 				}
 
 				return
 			}
 			if err != nil {
-				t.Fatalf("resolveScanPaths(%v, %v) errored: %v", tt.args, tt.cfg, err)
+				t.Fatalf("resolveScanPaths(%v, %v) errored: %v", tt.args, tt.fleet, err)
 			}
 			if len(paths) != 1 || paths[0] != dir {
 				t.Errorf("resolveScanPaths = %v; want [%s]", paths, dir)

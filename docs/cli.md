@@ -1,8 +1,8 @@
 # Command line
 
 ```bash
-# Scan the config file's scan_paths, or with no config the enclosing repo
-# (walking up from the current directory), or the current directory itself
+# Scan the enclosing repo (walking up from the current directory), or the
+# current directory itself
 gh repo-dashboard
 
 # Scan specific directories

@@ -35,6 +35,18 @@ stay visible through the list's PRs column and the focused view's PRs section.
   per repo since its last run, gated by `where`
 - aragonite and the task engine are built in parallel, then the look
 
+Second round, after using it:
+
+- The TUI scans where it is launched; `scan_paths` is the fleet for headless
+  modes and second-look
+- Past about 140 columns the list caps near 100 and a preview of the selected
+  repo fills the rest
+- Prefix keys (`f`, `a`, `s`) open a which-key panel floating at the bottom
+  right instead of a dock that pushes the list down, and active filters show
+  as chips above the table
+- Selection is a full-row tint across every aragonite TUI; a left bar glyph
+  marks nothing
+
 ## Feature set
 
 ### Triage list (replaces the name-sorted table)
@@ -125,8 +137,9 @@ but only within the TTL, so a morning start shows a spinner on every row until
 the fan-out lands. The fix is stale-while-revalidate: render the last persisted
 answer at once whatever its age, mark it stale quietly, and refresh behind it.
 That is a read in aragonite's `cache` (a `PersistedStale` beside `Persisted`).
-Ship a `scan_paths` config so `gh repo-dashboard` opens the fleet from anywhere
-(Kyle has no config file today).
+The TUI scans where it is launched, so `~/Developer/coverbasedev` shows the work
+repos and `~/Developer/kyleking` the personal ones. `scan_paths` names the fleet
+for `run`, `-cli`, and second-look's checkout lookup.
 
 ## Shared work
 

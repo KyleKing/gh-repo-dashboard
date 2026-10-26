@@ -111,9 +111,9 @@ func printUsage() {
 
 	fmt.Fprintf(os.Stderr, `Usage: %s [flags] [paths...]
 
-Positional paths are the directories to scan for repos. They take precedence
-over the config file's scan_paths, which takes precedence over the enclosing
-repo (walking up from the current directory) or the current directory itself.
+Positional paths are the directories to scan for repos. Without them the TUI
+scans the enclosing repo (walking up from the current directory) or the current
+directory itself, while -cli, -script, and run scan the config file's scan_paths.
 
 Optional config file (scan_paths, depth, cache_ttl_minutes, notes_filenames,
 cache_to_disk, diff.external, tasks):
@@ -130,9 +130,9 @@ Flags:
 // resolveRoster picks the repo roster: a mani.yaml when one is named, and the
 // usual scan-path resolution otherwise. Roster entries are repo directories,
 // which discovery returns as-is at any depth.
-func resolveRoster(maniPath string, args []string, cfg config.Config) ([]string, error) {
+func resolveRoster(maniPath string, args, fleet []string) ([]string, error) {
 	if maniPath == "" {
-		return resolveScanPaths(args, cfg)
+		return resolveScanPaths(args, fleet)
 	}
 
 	roster, err := discovery.ManiPaths(maniPath)
@@ -163,9 +163,10 @@ func checkScanPaths(source string, paths []string) error {
 	return nil
 }
 
-// resolveScanPaths picks the scan roots: positional args, then config, then the
-// enclosing repo, then the current directory.
-func resolveScanPaths(args []string, cfg config.Config) ([]string, error) {
+// resolveScanPaths picks the scan roots: positional args, then fleet, then the
+// enclosing repo, then the current directory. Only headless modes pass the
+// config's scan_paths as fleet, so the TUI always opens on where it was launched.
+func resolveScanPaths(args, fleet []string) ([]string, error) {
 	if len(args) > 0 {
 		if err := checkScanPaths("scan path", args); err != nil {
 			return nil, err
@@ -173,12 +174,12 @@ func resolveScanPaths(args []string, cfg config.Config) ([]string, error) {
 
 		return args, nil
 	}
-	if len(cfg.ScanPaths) > 0 {
-		if err := checkScanPaths("config scan_paths entry", cfg.ScanPaths); err != nil {
+	if len(fleet) > 0 {
+		if err := checkScanPaths("config scan_paths entry", fleet); err != nil {
 			return nil, err
 		}
 
-		return cfg.ScanPaths, nil
+		return fleet, nil
 	}
 
 	cwd, err := os.Getwd()
@@ -191,6 +192,15 @@ func resolveScanPaths(args []string, cfg config.Config) ([]string, error) {
 	}
 
 	return []string{cwd}, nil
+}
+
+// fleetFor is the config's scan_paths for a headless run and nothing for the TUI.
+func fleetFor(headless bool, cfg config.Config) []string {
+	if headless {
+		return cfg.ScanPaths
+	}
+
+	return nil
 }
 
 func absolutePaths(paths []string) ([]string, error) {
@@ -284,7 +294,7 @@ func main() {
 	}
 	applyConfig(cfg, depth)
 
-	scanPaths, err := resolveRoster(*maniPath, flag.Args(), cfg)
+	scanPaths, err := resolveRoster(*maniPath, flag.Args(), fleetFor(*cliMode || *scriptPath != "", cfg))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

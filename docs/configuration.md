@@ -1,12 +1,12 @@
 # Configuration
 
 An optional TOML file at `$XDG_CONFIG_HOME/gh-repo-dashboard/config.toml`
-(defaulting to `~/.config/gh-repo-dashboard/config.toml`) sets defaults, so you
-can launch from anywhere with no arguments. Every key is optional, and a missing
-file means the built-in defaults.
+(defaulting to `~/.config/gh-repo-dashboard/config.toml`) sets defaults. Every
+key is optional, and a missing file means the built-in defaults.
 
 ```toml
-# Directories scanned when no paths are passed on the command line
+# The fleet: what -cli, -script, and run scan when no paths are passed.
+# The TUI ignores it and scans where it is launched.
 scan_paths = ["~/Developer", "~/work"]
 
 # Default for -depth

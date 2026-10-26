@@ -49,8 +49,8 @@ gh repo-dashboard -depth 2 ~/Developer
 
 Move with `j` and `k`, press `v` to expand the repo under the cursor without
 leaving the list, `x` to mark it, `enter` to open it, `T` for the Tasks tab, and
-`?` for the keymap. Set `scan_paths` in the [config file](./docs/configuration.md) once and
-`gh repo-dashboard` launches from anywhere with no arguments.
+`?` for the keymap. It scans the directory you launch it from, and `scan_paths`
+in the [config file](./docs/configuration.md) names the fleet that `run` and `-cli` cover.
 
 Run it inside a repository and it opens that repo directly, listing each branch
 with its pull request, CI checks, and which sibling checkout or worktree

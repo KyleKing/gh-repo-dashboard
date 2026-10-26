@@ -48,7 +48,7 @@ func runCommand(args []string, cfg config.Config, stdout, stderr io.Writer) erro
 		task, positional = positional[0], positional[1:]
 	}
 
-	roots, err := resolveRoster(*mani, positional, cfg)
+	roots, err := resolveRoster(*mani, positional, cfg.ScanPaths)
 	if err != nil {
 		return err
 	}
