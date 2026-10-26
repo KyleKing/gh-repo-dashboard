@@ -1,3 +1,9 @@
+## v1.17.0 (2026-10-26)
+
+### Feat
+
+- **tui**: full-row selection, which-key panels for f/s/a, and a preview pane on wide terminals
+
 ## v1.16.2 (2026-10-26)
 
 ### Fix
