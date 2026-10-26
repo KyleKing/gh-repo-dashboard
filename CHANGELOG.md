@@ -1,3 +1,10 @@
+## v1.16.0 (2026-10-26)
+
+### Feat
+
+- **tasks**: hand the terminal to interactive tasks and a built-in shell
+- **ui**: draw the focused repo view as one surface
+
 ## v1.15.0 (2026-10-25)
 
 ### Feat
