@@ -7,7 +7,9 @@ The `DIRTY` filter plus an `api` search yields dirty repos whose name contains
 ## Filter modes
 
 `all`, `dirty`, `ahead`, `behind`, `has_pr`, `has_stash`, and `has_notes`. The
-filter modal (`f`) toggles them, and several combine with AND logic.
+filter panel (`f`) lists each mode with its key and the repo count turning it on would
+give. Pressing a mode key cycles it through on, `NOT`, and off, and several combine
+with AND logic. The panel stays open until `esc`, and `*` clears every filter.
 
 ## Predicate expressions
 

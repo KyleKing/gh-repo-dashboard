@@ -43,10 +43,13 @@ func (m Model) renderCompactRow(s models.RepoSummary, n needs, selected bool, la
 	}
 	identity := rowGutter(m.isMarked(s.Path), selected) + paintRow(layout, cells, base)
 
-	return identity + "\n" + m.compactNeedsLine(s, n)
+	return identity + "\n" + m.compactNeedsLine(s, n, selected)
 }
 
-func (m Model) compactNeedsLine(s models.RepoSummary, n needs) string {
+// compactNeedsLine is the record's second line. The selected row's tint runs
+// across both lines, so it is padded to the table's width.
+func (m Model) compactNeedsLine(s models.RepoSummary, n needs, selected bool) string {
+	base := rowStyleFor(selected)
 	width := listWidth(m.width) - len(compactIndent)
 	age := ""
 
@@ -54,18 +57,29 @@ func (m Model) compactNeedsLine(s models.RepoSummary, n needs) string {
 		age = display.RepoRelativeModified(s.RepoSummary)
 	}
 
-	if m.summaryPending(s.Path) {
-		return compactIndent + styles.Skin.Muted.Render(pendingGlyph)
+	muted := withSelection(styles.Skin.Muted, selected)
+	line := base.Render(compactIndent)
+
+	fill := plainStyle
+	if selected {
+		fill = base
 	}
 
-	if len(n.tokens()) == 0 && !n.ciPending {
-		return compactIndent + styles.Skin.Muted.Render(table.Truncate(age, width))
+	switch {
+	case m.summaryPending(s.Path):
+		line += muted.Render(pendingGlyph)
+	case len(n.tokens()) == 0 && !n.ciPending:
+		line += muted.Render(table.Truncate(age, width))
+	default:
+		room := width - lipgloss.Width(age) - len(needsGap)
+		line += m.renderNeeds(n, max(room, 0), fill, selected) + fill.Render(needsGap) + muted.Render(age)
 	}
 
-	room := width - lipgloss.Width(age) - len(needsGap)
-	cell := m.renderNeeds(n, max(room, 0), plainStyle, false)
+	if !selected {
+		return line
+	}
 
-	return compactIndent + strings.TrimRight(cell, " ") + needsGap + styles.Skin.Muted.Render(age)
+	return line + base.Render(strings.Repeat(" ", max(listWidth(m.width)+gutterWidth-lipgloss.Width(line), 0)))
 }
 
 func plural(count int, one, many string) string {

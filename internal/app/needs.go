@@ -195,54 +195,61 @@ func (t tone) frameTone() frame.Tone {
 	}
 }
 
+// needsToken is one attention signal: text is the compact form the list draws,
+// words the same signal spelled out for the preview.
 type needsToken struct {
-	text string
-	tone tone
+	text  string
+	words string
+	tone  tone
 }
 
 func (n needs) tokens() []needsToken {
 	var tokens []needsToken
-	add := func(text string, t tone) { tokens = append(tokens, needsToken{text, t}) }
+	add := func(text, words string, t tone) { tokens = append(tokens, needsToken{text, words, t}) }
 
 	if work := workToken(n.changed, n.untracked); work != "" {
-		add(work, toneWarning)
+		add(work, workWords(n.changed, n.untracked), toneWarning)
 	}
 
 	if n.ahead > 0 {
-		add("↑"+strconv.Itoa(n.ahead), toneWarning)
+		add("↑"+strconv.Itoa(n.ahead),
+			fmt.Sprintf("↑%d unpushed %s", n.ahead, plural(n.ahead, "commit", "commits")), toneWarning)
 	}
 
 	if n.behind > 0 {
-		add("↓"+strconv.Itoa(n.behind), toneMuted)
+		add("↓"+strconv.Itoa(n.behind), fmt.Sprintf("↓%d behind upstream", n.behind), toneMuted)
 	}
+
+	ciWords := fmt.Sprintf("✗ ci %d of %d workflows failing", n.ciFailing, n.ciTotal)
 
 	switch {
 	case n.ciFailing > 0 && n.ciStale:
-		add(fmt.Sprintf("✗ ci %d/%d", n.ciFailing, n.ciTotal), toneMuted)
+		add(fmt.Sprintf("✗ ci %d/%d", n.ciFailing, n.ciTotal), ciWords+" (stale)", toneMuted)
 	case n.ciFailing > 0:
-		add(fmt.Sprintf("✗ ci %d/%d", n.ciFailing, n.ciTotal), toneError)
+		add(fmt.Sprintf("✗ ci %d/%d", n.ciFailing, n.ciTotal), ciWords, toneError)
 	case n.ciRunning:
-		add("… ci", toneMuted)
+		add("… ci", "… ci running", toneMuted)
 	}
 
 	if n.shared {
-		add(conflictMark+" shared", toneWarning)
+		add(conflictMark+" shared", conflictMark+" branch checked out in another checkout", toneWarning)
 	}
 
 	if n.note {
-		add("✎ note", toneAccent)
+		add("✎ note", "✎ has notes", toneAccent)
 	}
 
 	if n.stashes > 0 {
-		add("≡"+strconv.Itoa(n.stashes), toneMuted)
+		stashWords := fmt.Sprintf("≡%d %s", n.stashes, plural(n.stashes, "stash", "stashes"))
+		add("≡"+strconv.Itoa(n.stashes), stashWords, toneMuted)
 	}
 
 	if n.drift != "" {
-		add("→ "+n.drift, toneMuted)
+		add("→ "+n.drift, "→ template behind, latest "+n.drift, toneMuted)
 	}
 
 	if len(n.due) > 0 {
-		add("⟳ "+strings.Join(n.due, ","), toneMuted)
+		add("⟳ "+strings.Join(n.due, ","), "⟳ task due: "+strings.Join(n.due, ", "), toneMuted)
 	}
 
 	return tokens
@@ -256,6 +263,19 @@ func workToken(changed, untracked int) string {
 
 	if untracked > 0 {
 		parts = append(parts, "?"+strconv.Itoa(untracked))
+	}
+
+	return strings.Join(parts, " ")
+}
+
+func workWords(changed, untracked int) string {
+	var parts []string
+	if changed > 0 {
+		parts = append(parts, "~"+strconv.Itoa(changed)+" modified")
+	}
+
+	if untracked > 0 {
+		parts = append(parts, "?"+strconv.Itoa(untracked)+" untracked")
 	}
 
 	return strings.Join(parts, " ")

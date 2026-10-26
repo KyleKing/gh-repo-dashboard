@@ -13,7 +13,7 @@ start.
 | `enter` | Open the repo under the cursor |
 | `esc` | Go back |
 | `/` | Fuzzy search by name |
-| `f` / `s` | Filter and sort docks |
+| `f` / `s` | Filter and sort panels, floating at the bottom right |
 | `:` | Command mode |
 | `r` | Refresh, clearing caches |
 | `x` / `V` | Mark the row under the cursor / open a line-wise range motions extend |
@@ -116,8 +116,19 @@ task reported, filling in as repos finish. `enter` on a row opens that repo's lo
 in a scrolling pane (`j`/`k`, `pgup`/`pgdn`, `gg`/`G`, and `esc` to return), and
 `ctrl-c` cancels the run. `esc` returns to the task list once the run is over.
 
-Filter (`f`) and sort (`s`) dock above the table, and help (`?`) floats over the
-current view. A batch run replaces the view with a run screen, one row per repo,
+Filter (`f`), sort (`s`), and the verb menu (`a`) float as a which-key panel at the
+bottom right of the list without moving a line of it. A filter key toggles its
+filter and keeps the panel open, `*` clears every filter, and `esc` closes it. The
+sort panel numbers the active sorts in priority order, and `[` and `]` move the sort
+you pressed last. Active filters, the `:filter` predicate, and a `/` search show as
+chips on the line above the table header, and the header reads "N of M repos".
+![The filter panel over the list, with the preview of the selected repo](images/wide-filter.png)
+
+From 140 columns the table stops at 100 cells and the rest of the terminal previews
+the repo under the cursor: its NEEDS items in words, its PRs and CI, and its last
+commits. Below 140 columns the preview is absent.
+
+Help (`?`) floats over the current view. A batch run replaces the view with a run screen, one row per repo,
 until you leave it with `esc` after it finishes. `ctrl-c` cancels a run in
 progress.
 

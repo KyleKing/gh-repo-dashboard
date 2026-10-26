@@ -12,7 +12,6 @@ import (
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/tui/frame"
 	"github.com/kyleking/aragonite/tui/region"
-	"github.com/kyleking/aragonite/tui/skin"
 	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/aragonite/vcs"
 
@@ -44,44 +43,34 @@ func (m Model) repoListScreen() screen {
 	}
 }
 
-// renderRepoList is the list's body: whichever editor is docked above the
-// table, then the table and its expanded region.
+// renderRepoList is the list's body: the docked search, then the table and its
+// expanded region.
 func (m Model) renderRepoList() string {
 	var b strings.Builder
 
-	switch {
-	case m.searching:
+	if m.searching {
 		b.WriteString(m.searchInput.View())
 		b.WriteString("\n")
 		b.WriteString(searchScopeLegend())
-		b.WriteString("\n\n")
-	case m.viewMode == ViewModeFilter:
-		b.WriteString(m.renderFilterDock())
-		b.WriteString("\n\n")
-	case m.viewMode == ViewModeSort:
-		b.WriteString(m.renderSortDock())
 		b.WriteString("\n\n")
 	}
 
 	b.WriteString(m.renderListBody())
 
+	if previewShown(m.width) {
+		return m.withPreview(b.String())
+	}
+
 	return b.String()
 }
 
-// listBodyHeight is how many lines the table and the expanded region share.
-// Search, Filter, and Sort each dock an editor above the table instead of
-// covering it, so the table shrinks by whichever one is open rather than
-// disappearing behind a full-screen takeover.
+// listBodyHeight is how many lines the table and the expanded region share:
+// the body less the docked search and the chips line.
 func (m Model) listBodyHeight() int {
-	height := m.bodyHeight()
+	height := m.bodyHeight() - m.chipsHeight()
 
-	switch {
-	case m.searching:
+	if m.searching {
 		height -= searchChromeHeight
-	case m.viewMode == ViewModeFilter:
-		height -= m.filterDockHeight()
-	case m.viewMode == ViewModeSort:
-		height -= sortDockHeight()
 	}
 
 	return max(height, 1)
@@ -92,7 +81,7 @@ func (m Model) repoListFacts() []frame.Fact {
 
 	repoCount := fmt.Sprintf("%d repos", len(m.filteredPaths))
 	if len(m.filteredPaths) != listable {
-		repoCount = fmt.Sprintf("%d/%d repos", len(m.filteredPaths), listable)
+		repoCount = fmt.Sprintf("%d of %d repos", len(m.filteredPaths), listable)
 	}
 
 	counts := m.attentionCounts()
@@ -124,29 +113,11 @@ func appendCount(facts []frame.Fact, count int, one, many string, tone frame.Ton
 	return append(facts, frame.Fact{Text: strconv.Itoa(count) + " " + label, Tone: tone})
 }
 
-// narrowingFacts names what is limiting the list: the enabled filters, the
-// predicate, the search, and the marks. Sort is drawn on its column title.
+// narrowingFacts names the marks, and the sort where the compact layout has no
+// column titles to carry it. The filters, predicate, and search are chips above
+// the table.
 func (m Model) narrowingFacts() []frame.Fact {
 	var facts []frame.Fact
-
-	for _, f := range m.activeFilters {
-		if f.Enabled && f.Mode != models.FilterModeAll {
-			label := f.Mode.String()
-			if f.Inverted {
-				label = "NOT " + label
-			}
-
-			facts = append(facts, frame.Fact{Text: label, Tone: frame.Accent})
-		}
-	}
-
-	if m.predicateText != "" {
-		facts = append(facts, frame.Fact{Text: m.predicateText, Tone: frame.Accent})
-	}
-
-	if m.searchText != "" {
-		facts = append(facts, frame.Fact{Text: "\"" + m.searchText + "\"", Tone: frame.Accent})
-	}
 
 	if summary := m.markSummary(); summary != "" {
 		facts = append(facts, frame.Fact{Text: summary, Tone: frame.Accent})
@@ -253,152 +224,19 @@ func (m Model) loadingBadge() string {
 	return ""
 }
 
-// renderModalRow renders one cursor/mark/key/label row, shared by the docked
-// filter and sort editors. Trailing is an extra styled column (a per-filter
-// match count), left empty where there is none.
-func renderModalRow(selected bool, mark, shortKey, label string, markStyle lipgloss.Style, trailing string) string {
-	cursor := "  "
-	rowStyle := styles.Skin.Body
-
-	if selected {
-		cursor = styles.Skin.Cursor.Render(skin.CursorBar) + " "
-		rowStyle = styles.Selected(rowStyle)
-	}
-
-	row := fmt.Sprintf("%s%s  %s  %s",
-		cursor,
-		markStyle.Render(padCell(mark, modalMarkColWidth)),
-		styles.Skin.Key.Render(padCell(shortKey, modalKeyColWidth)),
-		rowStyle.Render(padCell(label, filterLabelColWidth)))
-
-	if trailing != "" {
-		row += "  " + styles.Skin.Subtitle.Render(trailing)
-	}
-
-	return row
-}
-
-// dockHeaderAndSpacerLines is the header row plus the blank separator line
-// every docked editor (search, filter, sort) spends besides its own rows.
-const dockHeaderAndSpacerLines = 2
-
-// filterDockHeight is the line count renderFilterDock spends, so
-// listBodyHeight can shrink the table by exactly that much. An active
-// predicate adds one more line for its own row.
-func (m Model) filterDockHeight() int {
-	height := len(models.SelectableFilterModes()) + dockHeaderAndSpacerLines
-	if m.predicateText != "" {
-		height++
-	}
-
-	return height
-}
-
-// renderFilterDock renders the filter editor docked above the table: a
-// header row, one row per filter mode showing its cycle state and the
-// fleet-wide count if that mode were turned on, combined with everything
-// else already active. The combined result of every active filter is
-// already visible in the breadcrumb's "N/M repos" badge above, since docking
-// (instead of a full-screen takeover) keeps that badge on screen while
-// editing. An active :filter predicate gets its own row below the modes,
-// since it is an extra AND term the mode rows can't represent or clear.
-func (m Model) renderFilterDock() string {
-	modes := models.SelectableFilterModes()
-
-	headerStyle := styles.Skin.Subtitle.Bold(true)
-	header := fmt.Sprintf("  %s  %s  %s  %s",
-		padCell("", modalMarkColWidth), padCell("Key", modalKeyColWidth),
-		padCell("Filter", filterLabelColWidth), "Matches")
-
-	lines := make([]string, 1, 1+len(modes)+1)
-	lines[0] = headerStyle.Render(header)
-
-	for i, mode := range modes {
-		var filterState models.ActiveFilter
-		for _, f := range m.activeFilters {
-			if f.Mode == mode {
-				filterState = f
-				break
-			}
-		}
-
-		mark := "   "
-		markStyle := styles.Skin.Success
-
-		switch {
-		case filterState.Enabled && filterState.Inverted:
-			mark = "NOT"
-			markStyle = styles.Skin.Warning
-		case filterState.Enabled:
-			mark = " ✓ "
-		}
-
-		lines = append(lines, renderModalRow(i == m.filterCursor, mark, mode.ShortKey(), mode.String(),
-			markStyle, strconv.Itoa(m.countForFilter(mode))))
-	}
-
-	if m.predicateText != "" {
-		lines = append(lines, renderModalRow(false, "AND", "x", m.predicateText,
-			styles.Skin.Warning, "clear"))
-	}
-
-	return strings.Join(lines, "\n")
-}
-
-// sortDockHeight is the line count renderSortDock spends, so listBodyHeight
-// can shrink the table by exactly that much.
-func sortDockHeight() int {
-	return len(models.AllSortModes()) + dockHeaderAndSpacerLines
-}
-
-// renderSortDock renders the sort editor docked above the table: a header
-// row, then one row per sort mode, active ones first in priority order.
-func (m Model) renderSortDock() string {
-	displaySorts := buildSortModalRows(m.activeSorts)
-
-	headerStyle := styles.Skin.Subtitle.Bold(true)
-	header := fmt.Sprintf("  %s  %s  %s",
-		padCell("", modalMarkColWidth), padCell("Key", modalKeyColWidth), "Sort By")
-
-	lines := make([]string, 1, 1+len(displaySorts))
-	lines[0] = headerStyle.Render(header)
-
-	cursorIndex := -1
-
-	for i, s := range displaySorts {
-		if s.Mode == m.activeSorts[m.sortCursor].Mode {
-			cursorIndex = i
-			break
-		}
-	}
-
-	for i, sortState := range displaySorts {
-		mark := "   "
-		if sortState.IsEnabled() {
-			mark = fmt.Sprintf(" %d ", sortState.Priority+1)
-		}
-
-		label := sortState.DisplayName()
-		if !sortState.IsEnabled() {
-			label = sortState.Mode.String()
-		}
-
-		lines = append(lines, renderModalRow(i == cursorIndex, mark, sortState.ShortKey(), label,
-			styles.Skin.Success, ""))
-	}
-
-	return strings.Join(lines, "\n")
-}
-
 func (m Model) renderListBody() string {
 	below := m.expandedLines()
 	list := fitBlock(m.renderTable(), m.listBodyHeight()-len(below))
 
-	if len(below) == 0 {
-		return list
+	if len(below) > 0 {
+		list += "\n" + strings.Join(below, "\n")
 	}
 
-	return list + "\n" + strings.Join(below, "\n")
+	if chips := m.chipsLine(); chips != "" {
+		return chips + "\n" + list
+	}
+
+	return list
 }
 
 // fitBlock pads or truncates a block of lines to exactly height lines.
@@ -442,7 +280,7 @@ func (m Model) renderTable() string {
 	}
 
 	compact := m.isCompact()
-	width := listWidth(m.width)
+	width := repoTableWidth(m.width)
 
 	var (
 		rows      []string
@@ -451,7 +289,7 @@ func (m Model) renderTable() string {
 
 	layout := layoutRepoCols(width)
 	if compact {
-		layout = table.Fit(compactColSpecs, width-cursorWidth)
+		layout = table.Fit(compactColSpecs, width-gutterWidth)
 		rowHeight = compactRowHeight
 	} else {
 		rows = append(rows, styles.Skin.Subtitle.Bold(true).Render(renderRepoHeader(m.markSort(layout))))
@@ -509,7 +347,7 @@ func (m Model) expandedLines() []string {
 		return nil
 	}
 
-	return m.expandLines(listWidth(m.width), limit)
+	return m.expandLines(repoTableWidth(m.width), limit)
 }
 
 // tableHeight is how many of the body's lines the table keeps once the expanded
@@ -885,7 +723,7 @@ func formatCopierCell(s models.RepoSummary, width int) string {
 }
 
 func renderRepoHeader(layout table.Layout) string {
-	return strings.Repeat(" ", cursorWidth) + table.Header(layout)
+	return strings.Repeat(" ", gutterWidth) + table.Header(layout)
 }
 
 // ciCell renders the default branch's CI rollup as a single word: a check

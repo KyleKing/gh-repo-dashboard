@@ -57,23 +57,23 @@ const (
 	colModified = "MODIFIED"
 )
 
-// cursorWidth is the leading cursor plus selection-mark gutter on every row.
-const cursorWidth = 2
+// gutterWidth is the batch-mark gutter on every row.
+const gutterWidth = 1
 
-// repoColSpecs lists the repo table's columns. NAME and BRANCH stop growing at
-// their Max so surplus width goes to NEEDS.
+// repoColSpecs lists the repo table's columns. Each flexible column stops growing
+// at its Max, so surplus width stays empty rather than stretching NEEDS.
 //
 //nolint:mnd // the numbers are this table's data: column geometry, not constants used elsewhere
 var repoColSpecs = []table.Column{
 	{Key: colName, Title: colName, Min: 16, Max: 28, Weight: 3},
 	{Key: colBranch, Title: colBranch, Min: 14, Max: 24, Weight: 2},
-	{Key: colNeeds, Title: colNeeds, Min: 20, Weight: 4},
+	{Key: colNeeds, Title: colNeeds, Min: 20, Max: 32, Weight: 4},
 	{Key: colPR, Title: colPR, Min: 12, Priority: 2},
 	{Key: colModified, Title: colModified, Min: 12, Priority: 1},
 }
 
-// layoutRepoCols fits the repo table into width, leaving room for the cursor
+// layoutRepoCols fits the repo table into width, leaving room for the mark
 // gutter that leads every row.
 func layoutRepoCols(width int) table.Layout {
-	return table.Fit(repoColSpecs, width-cursorWidth)
+	return table.Fit(repoColSpecs, width-gutterWidth)
 }

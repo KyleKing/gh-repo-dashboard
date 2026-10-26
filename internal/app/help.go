@@ -11,7 +11,7 @@ import (
 	"github.com/kyleking/aragonite/tui/overlay"
 )
 
-// helpFromView is the view a legend documents. The docks stand for the list.
+// helpFromView is the view a legend documents. The filter and sort panels stand for the list.
 func helpFromView(mode ViewMode) ViewMode {
 	switch mode {
 	case ViewModeRepoDetail, ViewModeBranchDetail, ViewModePRMap,
@@ -224,8 +224,8 @@ func listHelpTree() []keyhint.Hint {
 		{Key: markToggleKey, What: "mark the row and step past it"},
 		{Key: visualKey, What: "a range every motion extends"},
 		{What: "narrowing", Head: true},
-		{Key: "f", What: "filter dock: enter or its key cycles, * resets"},
-		{Key: "s", What: "sort dock: enter or its key cycles, [/] reorders, * resets"},
+		{Key: "f", What: "filter panel: a mode key cycles it, * clears, esc closes"},
+		{Key: "s", What: "sort panel: a mode key cycles it, [/] reorders the last, * resets"},
 		{Key: "/", What: "search: r: b: p: t: n: c: scope it, * ? ^ $ glob or anchor"},
 		{What: ":filter takes a boolean expression, like dirty and (ahead or behind)"},
 		{What: "doing", Head: true},

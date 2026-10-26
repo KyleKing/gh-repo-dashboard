@@ -237,17 +237,17 @@ list's NEEDS cell shows `→ latest` when the installed tag is behind.
 Filtering is compositional: `FilterMode -> SearchText -> SortMode -> Display`. For
 example, the `DIRTY` filter plus an `api` search yields dirty repos containing "api".
 
-- Filter modes: `ALL`, `DIRTY`, `AHEAD`, `BEHIND`, `HAS_PR`, `HAS_STASH`, `HAS_NOTES`, `GIT` (multi-filter with AND logic). The `f` dock shows one row per mode with its cycle state (off, on, `NOT`) and a live "if on" count: the fleet-wide total that mode would produce combined with every other filter, the predicate, and the search already active, not that mode evaluated alone.
+- Filter modes: `ALL`, `DIRTY`, `AHEAD`, `BEHIND`, `HAS_PR`, `HAS_STASH`, `HAS_NOTES`, `GIT` (multi-filter with AND logic). The `f` which-key panel floats one row per mode over the list, marks the applied ones (`NOT` for an inverted one), and shows a live "if on" count: the fleet-wide total that mode would produce combined with every other filter, the predicate, and the search already active, not that mode evaluated alone.
 - Sort modes: `ATTENTION` (the default, which also draws the NEEDS YOU and QUIET groups), `NAME`, `MODIFIED`, `STATUS`, `BRANCH`, with multi-field priority and ASC/DESC direction
 - Search: matches repo name or checked-out branch by default, updating in real time; falls back to fuzzy matching (`sahilm/fuzzy`) on the name when nothing matches as a substring/glob. Scope prefixes: `r:` name, `b:` branch, `p:` PR number/title, `t:` copier template source, `n:` note body content (only searches notes already loaded; a repo whose notes haven't fetched yet just doesn't match), `c:` commit recency (`c:<7d` within, `c:>30d` older than, bare `c:7d` defaults to within). Every scope supports glob syntax via `filters.GlobMatch`: a bare query matches anywhere, `^`/`$` anchor an edge (both together for an exact match), `*`/`?` are wildcards within the query, and `\` escapes a literal `^`, `$`, `*`, or `?`.
-- `filters.Predicate[T]` is generic over its subject type, so the same `and`/`or`/`not`/parens parser (`filters.ParsePredicate`) serves any atom map. `filters.RepoAtoms()` is the one in use: `ahead`, `behind`, `clean` = `not dirty`, `dirty`, `has_pr` (any open pull request), `branch_pr` (one on the checked-out branch), `has_stash`, `has_notes`, `git`, plus dock-absent `jj`, `https`, `ssh`, `has_upstream`, `config_override`, `error`, `template_drift`.
-- `:filter <expr>` layers a `RepoAtoms` predicate on top of the dock's filters as an extra AND term; it shows as its own row in the `f` dock when set, cleared independently with `x` (the dock's `*` resets everything, filters and predicate alike).
+- `filters.Predicate[T]` is generic over its subject type, so the same `and`/`or`/`not`/parens parser (`filters.ParsePredicate`) serves any atom map. `filters.RepoAtoms()` is the one in use: `ahead`, `behind`, `clean` = `not dirty`, `dirty`, `has_pr` (any open pull request), `branch_pr` (one on the checked-out branch), `has_stash`, `has_notes`, `git`, plus panel-absent `jj`, `https`, `ssh`, `has_upstream`, `config_override`, `error`, `template_drift`.
+- `:filter <expr>` layers a `RepoAtoms` predicate on top of the panel's filters as an extra AND term; it shows as a chip above the table and as its own row in the `f` panel when set, cleared independently with `x` (the panel's `*` resets everything, filters and predicate alike).
 
 Adding a filter mode: add the const to `models/enums.go`, a filter function in
 `filters/filter.go`, a case in `FilterRepos()`, and tests in `filters/filter_test.go`. A
-boolean criterion doesn't need dock promotion to be usable — it can live as a
+boolean criterion doesn't need a panel row to be usable — it can live as a
 `:filter`-only predicate atom in `filters/predicate.go`'s `RepoAtoms()` map
-instead; promote one to the dock only when
+instead; promote one to the panel only when
 it is common enough to earn permanent screen space.
 
 ## UI Design
@@ -264,8 +264,9 @@ float in the same kind of box.
 Styles come from `skin.New(theme.Ink(), Sapphire)` in `internal/ui/styles`. Ink is
 used whatever the terminal's background, and the accent tells this tool from its
 siblings (second-look uses Lavender). Color goes to what asks for action: a clean
-tree renders blank, a default branch renders Muted, and the cursor is a `▌` bar in
-the gutter with the selection tint behind the whole row.
+tree renders blank, a default branch renders Muted, and the row under the cursor carries the
+selection tint across every cell (reverse video under `NO_COLOR`). The one-cell
+gutter that opens each row holds the batch mark.
 
 | Role | Skin face | Hex |
 |------|-----------|-----|
@@ -295,7 +296,7 @@ grid of panels (Status, Branches, Peers, Stashes, Notes, less the ones with noth
 to list) beside a detail pane rendering whatever the cursor sits on; when discovery finds exactly one repo
 it opens directly, and esc still falls back to the one-row list. `ViewModePalette`
 (`space` in the focused view, `;` in the list) is the universal find.
-`ViewModeFilter` (f) and `ViewModeSort` (s) dock an editor above the table, `ViewModeHelp` (?) floats a legend over the view,
+`ViewModeFilter` (f) and `ViewModeSort` (s), like the `a` verb menu, float a which-key panel (`keyhint.Panel` placed by `overlay.BottomRight`) over the bottom right of the body, `ViewModeHelp` (?) floats a legend over the view,
 `ViewModeConfirm` gates every write action, and `ViewModeTaskRun` shows one row per repo
 during a task run. The Tasks tab adds `ViewModeTasks` (the list), `ViewModeTaskPreview`
 (the repos a task would run on), and `ViewModeTaskLog` (one repo's log under the run).

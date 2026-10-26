@@ -107,7 +107,7 @@ func (m Model) markedPaths() []string {
 }
 
 // clearMarks drops the live range and every toggled mark, which is what esc
-// does once neither the docks nor the expanded region want it.
+// does once neither the panels nor the expanded region want it.
 func (m Model) clearMarks() (Model, bool) {
 	if !m.visualMode && len(m.selectedPaths) == 0 {
 		return m, false

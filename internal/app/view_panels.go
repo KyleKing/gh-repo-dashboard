@@ -375,7 +375,7 @@ func (m Model) notesPanel(width int) panelContent {
 		}
 
 		rows = append(rows, rowCursorFor(selected)+style.Render(
-			table.TruncateMiddle(padCell(label, width-cursorWidth), width-cursorWidth),
+			table.TruncateMiddle(padCell(label, width-gutterWidth), width-gutterWidth),
 		))
 	}
 

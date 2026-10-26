@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/kyleking/aragonite/tui/skin"
 	"github.com/kyleking/aragonite/tui/table"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
@@ -72,7 +71,7 @@ var (
 )
 
 func fitDetailCols(specs []table.Column, termWidth int) table.Layout {
-	return table.Fit(specs, contentWidth(termWidth)-cursorWidth)
+	return table.Fit(specs, contentWidth(termWidth)-gutterWidth)
 }
 
 // renderCells pads and styles every visible column of one row. Columns absent
@@ -95,19 +94,21 @@ func renderCells(
 }
 
 func detailHeader(layout table.Layout) string {
-	return styles.Skin.Subtitle.Bold(true).Render(strings.Repeat(" ", cursorWidth) + table.Header(layout))
+	return styles.Skin.Subtitle.Bold(true).Render(strings.Repeat(" ", gutterWidth) + table.Header(layout))
 }
 
-// detailRow puts already-styled cells behind the row's two-cell gutter.
-func detailRow(cursor string, layout table.Layout, cells []string, face lipgloss.Style) string {
-	return cursor + paintRow(layout, cells, face)
+// detailRow puts already-styled cells behind the row's gutter.
+func detailRow(gutter string, layout table.Layout, cells []string, face lipgloss.Style) string {
+	return gutter + paintRow(layout, cells, face)
 }
 
 // paintRow joins already-styled cells with the gaps between them painted in
 // face's background, so a selected row reads as one bar. A face with no
-// background has nothing to paint, which keeps a long unselected list cheap.
+// background and no reverse video has nothing to paint, which keeps a long
+// unselected list cheap.
 func paintRow(layout table.Layout, cells []string, face lipgloss.Style) string {
-	if _, bare := face.GetBackground().(lipgloss.NoColor); bare {
+	_, noBackground := face.GetBackground().(lipgloss.NoColor)
+	if noBackground && !face.GetReverse() {
 		if marker := layout.Marker(); marker != "" {
 			cells = append(slices.Clone(cells), strings.Repeat(" ", lipgloss.Width(marker)))
 		}
@@ -115,7 +116,7 @@ func paintRow(layout table.Layout, cells []string, face lipgloss.Style) string {
 		return table.Join(cells)
 	}
 
-	return table.Row(layout, cells, lipgloss.NewStyle().Background(face.GetBackground()))
+	return table.Row(layout, cells, lipgloss.NewStyle().Background(face.GetBackground()).Reverse(face.GetReverse()))
 }
 
 var plainStyle = lipgloss.NewStyle()
@@ -126,30 +127,22 @@ func rowStyleFor(selected bool) lipgloss.Style {
 	return withSelection(styles.Skin.Body, selected)
 }
 
-// rowGutter is the two cells every row opens with: the cursor bar and the mark
-// that says the row is part of a batch. Both stay two cells wide whether or not
-// they are drawn, so a name never moves when the cursor does.
+// rowGutter is the cell every row opens with, which says the row is part of a
+// batch. It stays drawn whether or not the row is marked, so a name never
+// moves when a mark does.
 func rowGutter(marked, selected bool) string {
 	if !marked && !selected {
-		return strings.Repeat(" ", cursorWidth)
+		return strings.Repeat(" ", gutterWidth)
 	}
 
-	face := rowStyleFor(selected)
-
-	bar := face.Render(" ")
-	if selected {
-		bar = withSelection(styles.Skin.Cursor, true).Render(skin.CursorBar)
-	}
-
-	mark := face.Render(" ")
 	if marked {
-		mark = withSelection(styles.Skin.Accent, selected).Render(markGlyph)
+		return withSelection(styles.Skin.Accent, selected).Render(markGlyph)
 	}
 
-	return bar + mark
+	return rowStyleFor(selected).Render(" ")
 }
 
-// markGlyph is what the gutter's second cell shows for a marked row.
+// markGlyph is what the gutter shows for a marked row.
 const markGlyph = "•"
 
 func rowCursorFor(selected bool) string {

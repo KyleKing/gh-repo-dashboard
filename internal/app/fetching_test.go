@@ -72,6 +72,8 @@ func settleFetches(t *testing.T, start *Model) Model {
 			msg = PRMapLoadedMsg{Path: key.path}
 		case fetchPeerBranches:
 			msg = PeerBranchesLoadedMsg{Path: key.path}
+		case fetchPreviewLog:
+			msg = PreviewCommitsLoadedMsg{Path: key.path}
 		}
 
 		updated, _ := m.Update(msg)

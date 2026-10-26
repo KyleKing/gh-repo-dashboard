@@ -122,7 +122,7 @@ func historyLine(rec tasks.Record) string {
 		face = styles.Skin.Error
 	}
 
-	return strings.Repeat(" ", cursorWidth) +
+	return strings.Repeat(" ", gutterWidth) +
 		styles.Skin.Subtitle.Render(display.RelativeTime(rec.At)+"  ") +
 		face.Render(recordSummary(rec)) +
 		styles.Skin.Subtitle.Render("  "+rec.Duration.Round(time.Second).String())

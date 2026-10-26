@@ -20,6 +20,8 @@ type screen struct {
 	facts []frame.Fact
 	body  string
 	hints []keyhint.Hint
+	// panel floats over the bottom-right of the body without moving a line of it.
+	panel []string
 }
 
 func (m Model) bodyHeight() int {
@@ -38,11 +40,16 @@ func (m Model) renderScreen() string {
 		body = m.withCompletions(body)
 	}
 
+	body = padLines(body, m.bodyHeight(), m.width)
+	if len(s.panel) > 0 {
+		body = overlay.BottomRight(body, s.panel, m.width)
+	}
+
 	rendered := frame.Render(styles.Skin, frame.Frame{
 		Title:  s.title,
 		Facts:  s.facts,
 		Tabs:   m.frameTabs(),
-		Body:   padLines(body, m.bodyHeight(), m.width),
+		Body:   body,
 		Hints:  s.hints,
 		Status: statusLine(m.statusMessage),
 	}, m.width, m.height)
@@ -55,11 +62,17 @@ func (m Model) renderScreen() string {
 }
 
 func (m Model) currentScreen() screen {
-	if m.panelActions && m.viewMode != ViewModePalette {
-		return m.actionScreen()
+	s := m.baseScreen()
+
+	if panel := m.whichKeyPanel(); panel != nil {
+		s.panel = panel
 	}
 
-	return m.baseScreen()
+	if m.panelActions && m.viewMode != ViewModePalette {
+		s.hints = []keyhint.Hint{{Key: keyEsc, What: descBack, Priority: 1}}
+	}
+
+	return s
 }
 
 func (m Model) baseScreen() screen {

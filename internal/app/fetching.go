@@ -15,6 +15,7 @@ const (
 	fetchCI
 	fetchExpand
 	fetchPeerBranches
+	fetchPreviewLog
 )
 
 type fetchKey struct {

@@ -68,3 +68,26 @@ func TestPanelsWithNoDetailFetchIssueNoCommand(t *testing.T) {
 		t.Error("a peer checkout renders from cached data, so moving onto one fetches nothing")
 	}
 }
+
+func TestPreviewReadsCommitsOncePerRepoAndOnlyWhenShown(t *testing.T) {
+	t.Parallel()
+
+	for width, wantRead := range map[int]bool{previewMinWidth - 1: false, previewMinWidth: true} {
+		m := compactModel(width, 30)
+
+		if got := m.requestPreview() != nil; got != wantRead {
+			t.Errorf("width %d: first request issued a read = %v, want %v", width, got, wantRead)
+		}
+
+		if m.requestPreview() != nil {
+			t.Errorf("width %d: a read still in flight was requested again", width)
+		}
+
+		next, _ := m.Update(PreviewCommitsLoadedMsg{Path: m.filteredPaths[m.cursor]})
+		loaded := mustModel(t, next)
+
+		if loaded.requestPreview() != nil {
+			t.Errorf("width %d: a repo whose log is cached was read again", width)
+		}
+	}
+}

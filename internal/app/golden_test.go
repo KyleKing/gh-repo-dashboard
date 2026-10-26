@@ -4,6 +4,7 @@ package app
 
 import (
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -28,7 +29,7 @@ func breakpointSizes() []struct {
 	}{
 		{"80x24", 80, 24},
 		{"120x35", 120, 35},
-		{"220x50", 220, 50},
+		{"200x50", 200, 50},
 	}
 }
 
@@ -233,11 +234,45 @@ func TestGoldenRepoListLoading(t *testing.T) {
 	golden.RequireEqual(t, []byte(m.renderScreen()))
 }
 
-func TestGoldenFilterModal(t *testing.T) {
-	m := goldenModel()
-	m.viewMode = ViewModeFilter
-	m.filterCursor = 1
-	golden.RequireEqual(t, []byte(m.renderScreen()))
+// TestGoldenListSizes pins the filter panel with its chip line, and the preview
+// pane, which only the wide size has room for.
+func TestGoldenListSizes(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(*Model)
+	}{
+		{"filter-panel", func(m *Model) {
+			m.CycleFilterState(models.FilterModeDirty)
+			m.updateFilteredPaths()
+			m.viewMode = ViewModeFilter
+		}},
+		{"preview", func(m *Model) {
+			path := "/Users/dev/delta"
+			m.cursor = slices.Index(m.filteredPaths, path)
+			s := m.summaries[path]
+			s.OpenPRs = []forge.PullRequest{
+				{Number: 12, Title: "Retry the flaky upload", Author: "kyle", ReviewDecision: "APPROVED"},
+				{Number: 14, Title: "Bump the template", Author: "bot", IsDraft: true},
+			}
+			m.summaries[path] = s
+			m.previewCommits[path] = []vcs.CommitInfo{
+				{ShortHash: "a1b2c3d", Subject: "Retry uploads on a 502", Date: time.Now().Add(-3 * time.Hour)},
+				{ShortHash: "9f8e7d6", Subject: "Log the upload size", Date: time.Now().Add(-26 * time.Hour)},
+				{ShortHash: "5c4b3a2", Subject: "Pin the test image", Date: time.Now().Add(-5 * 24 * time.Hour)},
+			}
+		}},
+	}
+
+	for _, c := range cases {
+		for _, size := range breakpointSizes() {
+			t.Run(c.name+"/"+size.name, func(t *testing.T) {
+				m := fleetGoldenModel()
+				m.width, m.height = size.width, size.height
+				c.setup(&m)
+				golden.RequireEqual(t, []byte(m.renderScreen()))
+			})
+		}
+	}
 }
 
 func TestGoldenRepoDetail(t *testing.T) {

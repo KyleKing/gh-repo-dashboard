@@ -53,50 +53,9 @@ func (m Model) renderConfirmModal() string {
 	return centerModal(m, content)
 }
 
-// actionScreen draws the verb menu in the body of the screen it was opened
-// from, which keeps that screen's header, so what the verbs act on stays named.
-func (m Model) actionScreen() screen {
-	s := m.baseScreen()
-	s.body = m.renderActionModal()
-	s.hints = []keyhint.Hint{{Key: keyEsc, What: descBack, Priority: 1}}
-
-	return s
-}
-
-// renderActionModal lists the current view's verbs over it. The menu names
-// what it acts on, and that name is a pull request title as often as a branch,
-// so it wraps inside a box rather than running a footer line off the screen.
-func (m Model) renderActionModal() string {
-	width := min(panelActionModalWidth, max(m.width-panelActionModalFrame, minPanelTableWidth))
-
-	menu := m.actionMenu()
-
-	lines := []string{styles.Skin.Title.Render(menu.title)}
-	lines = append(lines, wrapLines(menu.target, width)...)
-	lines = append(lines, "")
-
-	if len(menu.actions) == 0 {
-		lines = append(lines, styles.Skin.Subtitle.Render("Nothing to do here"))
-	}
-
-	for _, action := range menu.actions {
-		lines = append(lines,
-			styles.Skin.Key.Render(padCell(action.key, modalKeyColWidth))+"  "+
-				styles.Skin.Subtitle.Render(action.name))
-	}
-
-	content := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(styles.Skin.Accent.GetForeground()).
-		Padding(confirmModalVPad, confirmModalHPad).
-		Render(strings.Join(lines, "\n"))
-
-	return centerModal(m, content)
-}
-
 // countForFilter previews the fleet-wide count with mode forced to
 // enabled and non-inverted, combined with every other currently active
-// filter, predicate, and search, so a dock row shows what turning it on
+// filter, predicate, and search, so a panel row shows what turning it on
 // would yield rather than that mode's count in isolation.
 func (m Model) countForFilter(mode models.FilterMode) int {
 	hypothetical := make([]models.ActiveFilter, 0, len(m.activeFilters)+1)

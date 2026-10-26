@@ -23,9 +23,9 @@ const (
 func (m Model) listHints() []keyhint.Hint {
 	switch m.viewMode { //nolint:exhaustive // every other view shows the list's own keys
 	case ViewModeFilter:
-		return filterDockHints(m.predicateText != "")
+		return filterPanelFooter(m.predicateText != "")
 	case ViewModeSort:
-		return sortDockHints()
+		return sortPanelFooter()
 	}
 
 	hints := listKeyHints(m.expandOpen, m.markSummary())
@@ -79,36 +79,31 @@ func listKeyHints(expandOpen bool, marked string) []keyhint.Hint {
 	}
 }
 
-// filterDockHints lists the filter dock's own keys, so the grammar (cycle,
-// invert, reset, clear the predicate) is visible while the dock is actually
-// open rather than only behind the help overlay.
+// filterPanelFooter lists the keys that act while the filter panel is open,
+// beside the mode keys the panel itself shows.
 //
 //nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
-func filterDockHints(hasPredicate bool) []keyhint.Hint {
+func filterPanelFooter(hasPredicate bool) []keyhint.Hint {
 	hints := []keyhint.Hint{
-		{Key: keyNavPair, What: descNav, Priority: 5},
-		{Key: "enter/key", What: "cycle", Priority: 6},
-		{Key: "*", What: "reset", Priority: 4},
-		{Key: keyEsc, What: descBack, Priority: 7},
+		{Key: "*", What: "clear", Priority: 4},
+		{Key: keyEsc, What: descClose, Priority: 7},
 		{Key: "q", What: nameQuit, Priority: 8},
 	}
 	if hasPredicate {
-		hints = append(hints, keyhint.Hint{Key: "x", What: "clear predicate", Priority: 3})
+		hints = append(hints, keyhint.Hint{Key: "x", What: "drop predicate", Priority: 3})
 	}
 
 	return hints
 }
 
-// sortDockHints lists the sort dock's own keys.
+// sortPanelFooter lists the keys that act while the sort panel is open.
 //
 //nolint:mnd // the numbers are this footer's collapse order, not constants used elsewhere
-func sortDockHints() []keyhint.Hint {
+func sortPanelFooter() []keyhint.Hint {
 	return []keyhint.Hint{
-		{Key: keyNavPair, What: descNav, Priority: 5},
-		{Key: "enter/key", What: "cycle", Priority: 6},
 		{Key: keyBracketPair, What: "reorder", Priority: 4},
 		{Key: "*", What: "reset", Priority: 3},
-		{Key: keyEsc, What: descBack, Priority: 7},
+		{Key: keyEsc, What: descClose, Priority: 7},
 		{Key: "q", What: nameQuit, Priority: 8},
 	}
 }

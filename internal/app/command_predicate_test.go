@@ -208,7 +208,7 @@ func TestClearPredicateKeyLeavesDockFiltersIntact(t *testing.T) {
 		t.Errorf("expected predicate cleared, got %q", result.predicateText)
 	}
 	if !slices.Contains(result.ActiveFilterModes(), models.FilterModeDirty) {
-		t.Errorf("expected dock's Dirty filter to remain enabled, got %v", result.ActiveFilterModes())
+		t.Errorf("expected the panel's Dirty filter to remain enabled, got %v", result.ActiveFilterModes())
 	}
 }
 

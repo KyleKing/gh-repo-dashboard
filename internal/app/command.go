@@ -225,7 +225,7 @@ func DefaultRegistry() Registry {
 }
 
 // filterCommand builds the ":filter" command: a bare mode name, a predicate
-// expression, or no args to open the filter dock.
+// expression, or no args to open the filter panel.
 func filterCommand() Command {
 	return Command{
 		Name:        nameFilter,

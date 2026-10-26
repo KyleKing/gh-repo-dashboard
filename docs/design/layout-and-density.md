@@ -37,8 +37,8 @@ real fleet rather than by column position, and every set lives next to its
 columns (`repoColSpecs` in `layout.go`, the rest in `columns.go` and
 `panels.go`). On the repo list that means MODIFIED goes first and PRs second,
 while NEEDS is the actionable fleet signal and never hides, with name and branch.
-NAME and BRANCH stop growing at 28 and 24 cells, so the surplus on a wide
-terminal goes to NEEDS.
+NAME, BRANCH, and NEEDS stop growing at 28, 24, and 32 cells, so a wide terminal
+leaves the table narrow rather than stretching NEEDS across empty cells.
 
 ## Density
 
@@ -58,6 +58,18 @@ The table takes the wider of two rules: the single-column content width, and the
 proportional one the focused grid uses (90% of the terminal, capped at 200).
 Below about 156 cells the first wins, so a narrow terminal keeps every cell it
 has. Above it the second wins, and the list and the focused view frame alike.
+
+## Preview pane
+
+From 140 columns (`previewMinWidth`) the repo list caps its table at 100 cells
+(`tableMaxWidth`) and the rest of the terminal previews the repo under the cursor
+behind the focused view's split rule: its name and branch, the NEEDS items spelled
+out, then the focused view's own PRs and CI sections and the last five commits.
+The preview borrows the focused view's section renderers on a copy of the model
+pointed at the cursor's repo, so it shows what the list already holds. The one
+read it adds is the local commit log, cached per repo and requested once as the
+cursor lands on a repo. Below 140 columns the preview is absent and the table
+takes the width it did before.
 
 ## Expanded region
 

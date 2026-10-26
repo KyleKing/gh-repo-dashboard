@@ -36,7 +36,11 @@ var Markdown = markdown.Styles{
 }
 
 // Selected paints s over the row under the cursor, so a colored cell keeps its
-// color and gains the selection's background.
+// color and gains the selection's background, or its reverse video under NO_COLOR.
 func Selected(s lipgloss.Style) lipgloss.Style {
+	if Skin.Selection.GetReverse() {
+		return s.Reverse(true)
+	}
+
 	return s.Background(Skin.Selection.GetBackground())
 }

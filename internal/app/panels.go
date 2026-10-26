@@ -141,7 +141,7 @@ var (
 )
 
 func fitPanelCols(specs []table.Column, width int) table.Layout {
-	return table.FitCompact(specs, max(width-cursorWidth, minPanelTableWidth))
+	return table.FitCompact(specs, max(width-gutterWidth, minPanelTableWidth))
 }
 
 // minPanelTableWidth keeps a table from collapsing to nothing in a pane too

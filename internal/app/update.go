@@ -29,10 +29,38 @@ const (
 	statusClearDelay     = 3 * time.Second
 )
 
-// Update dispatches an incoming tea.Msg to the handler for its message type.
+// Update dispatches msg, then asks for whatever the preview of the repo under
+// the cursor still lacks, wherever the message moved the cursor from.
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var (
+		next tea.Model
+		cmd  tea.Cmd
+	)
+
+	if loaded, isPreview := msg.(PreviewCommitsLoadedMsg); isPreview {
+		m.previewCommits[loaded.Path] = loaded.Commits
+		m.finishFetch(loaded.Path, fetchPreviewLog)
+		next = m
+	} else {
+		next, cmd = m.dispatch(msg)
+	}
+
+	updated, ok := next.(Model)
+	if !ok {
+		return next, cmd
+	}
+
+	if preview := updated.requestPreview(); preview != nil {
+		cmd = tea.Batch(cmd, preview)
+	}
+
+	return updated, cmd
+}
+
+// dispatch hands an incoming tea.Msg to the handler for its message type.
 //
 //nolint:gocyclo,cyclop,funlen // flat message-type dispatch; complexity is the case count, not nesting
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -1744,6 +1772,7 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 		m.freshness = make(map[fetchKey]freshness)
 		m.due = make(map[string][]string)
 		m.changedPaths = make(map[string][]string)
+		m.previewCommits = make(map[string][]vcs.CommitInfo)
 		m.branchCount = make(map[string]int)
 		// Every fetch is reissued from discovery, so the old bookkeeping would
 		// otherwise suppress the new CI requests and leave phantom pending cells.
@@ -1794,127 +1823,68 @@ func (m Model) handleRefresh() (Model, tea.Cmd) {
 }
 
 func (m Model) handleFilterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	modes := models.SelectableFilterModes()
-
 	switch {
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit
 
 	case key.Matches(msg, m.keys.Back):
 		m.viewMode = ViewModeRepoList
-		return m, nil
-
-	case key.Matches(msg, m.keys.Up):
-		if m.filterCursor > 0 {
-			m.filterCursor--
-		}
-
-		return m, nil
-
-	case key.Matches(msg, m.keys.Down):
-		if m.filterCursor < len(modes)-1 {
-			m.filterCursor++
-		}
-
-		return m, nil
-
-	case key.Matches(msg, m.keys.Enter):
-		selectedMode := modes[m.filterCursor]
-		m.CycleFilterState(selectedMode)
-		m.updateFilteredPaths()
-		m.cursor = 0
 
 		return m, nil
 
 	case msg.String() == "*":
 		m.ResetFilters()
-		m.updateFilteredPaths()
-		m.cursor = 0
-
-		return m, nil
 
 	case msg.String() == "x" && m.predicateText != "":
 		m.SetPredicate("", nil)
-		m.updateFilteredPaths()
-		m.cursor = 0
-
-		return m, nil
 
 	default:
-		for _, mode := range modes {
-			if msg.String() == mode.ShortKey() {
-				m.CycleFilterState(mode)
-				m.updateFilteredPaths()
-				m.cursor = 0
-
-				return m, nil
-			}
+		i := slices.IndexFunc(models.SelectableFilterModes(), func(mode models.FilterMode) bool {
+			return msg.String() == mode.ShortKey()
+		})
+		if i < 0 {
+			return m, nil
 		}
+
+		m.CycleFilterState(models.SelectableFilterModes()[i])
 	}
+
+	m.updateFilteredPaths()
+	m.cursor = 0
 
 	return m, nil
 }
 
 func (m Model) handleSortKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	modes := models.AllSortModes()
-
 	switch {
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit
 
 	case key.Matches(msg, m.keys.Back):
 		m.viewMode = ViewModeRepoList
-		return m, nil
-
-	case key.Matches(msg, m.keys.Up):
-		if m.sortCursor > 0 {
-			m.sortCursor--
-		}
-
-		return m, nil
-
-	case key.Matches(msg, m.keys.Down):
-		if m.sortCursor < len(modes)-1 {
-			m.sortCursor++
-		}
-
-		return m, nil
-
-	case key.Matches(msg, m.keys.Enter):
-		selectedMode := modes[m.sortCursor]
-		m.CycleSortState(selectedMode)
-		m.updateFilteredPaths()
 
 		return m, nil
 
 	case msg.String() == "[":
 		m.MoveSortUp()
-		m.updateFilteredPaths()
-
-		return m, nil
 
 	case msg.String() == "]":
 		m.MoveSortDown()
-		m.updateFilteredPaths()
-
-		return m, nil
 
 	case msg.String() == "*":
 		m.ResetSorts()
-		m.updateFilteredPaths()
-
-		return m, nil
 
 	default:
-		for _, mode := range modes {
-			if msg.String() == mode.ShortKey() {
-				m.CycleSortState(mode)
-				m.updateFilteredPaths()
-
-				return m, nil
-			}
+		i := slices.IndexFunc(m.activeSorts, func(s models.ActiveSort) bool { return msg.String() == s.ShortKey() })
+		if i < 0 {
+			return m, nil
 		}
+
+		m.sortCursor = i
+		m.CycleSortState(m.activeSorts[i].Mode)
 	}
+
+	m.updateFilteredPaths()
 
 	return m, nil
 }

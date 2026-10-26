@@ -357,59 +357,38 @@ func TestDetailEnterOpensBranchDetail(t *testing.T) {
 	}
 }
 
-func TestFilterModalEnterCyclesState(t *testing.T) {
+func TestFilterPanelKeyCyclesState(t *testing.T) {
 	t.Parallel()
 	m := newListModel("/alpha")
 	m.viewMode = ViewModeFilter
-	m.filterCursor = 0
-	mode := models.SelectableFilterModes()[0]
+	m.cursor = 1
 
 	find := func(m Model) models.ActiveFilter {
 		for _, f := range m.activeFilters {
-			if f.Mode == mode {
+			if f.Mode == models.FilterModeDirty {
 				return f
 			}
 		}
-		t.Fatalf("filter mode %v not found", mode)
+		t.Fatalf("filter mode %v not found", models.FilterModeDirty)
 
 		return models.ActiveFilter{}
 	}
 
-	updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = mustModel(t, updatedModel)
-	if f := find(m); !f.Enabled || f.Inverted {
-		t.Error("first enter should enable the filter")
-	}
+	for _, want := range []struct{ enabled, inverted bool }{{true, false}, {true, true}, {false, false}} {
+		updatedModel, _ := m.Update(keyPress('d'))
+		m = mustModel(t, updatedModel)
 
-	updatedModel, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = mustModel(t, updatedModel)
-	if f := find(m); !f.Enabled || !f.Inverted {
-		t.Error("second enter should invert the filter")
-	}
-
-	updatedModel, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = mustModel(t, updatedModel)
-	if f := find(m); f.Enabled || f.Inverted {
-		t.Error("third enter should disable the filter")
-	}
-}
-
-func TestFilterModalShortKey(t *testing.T) {
-	t.Parallel()
-	m := newListModel("/alpha")
-	m.viewMode = ViewModeFilter
-	m.cursor = 0
-
-	updatedModel, _ := m.Update(keyPress('d'))
-	m = mustModel(t, updatedModel)
-
-	for _, f := range m.activeFilters {
-		if f.Mode == models.FilterModeDirty && !f.Enabled {
-			t.Error("'d' should enable the dirty filter")
+		if f := find(m); f.Enabled != want.enabled || f.Inverted != want.inverted {
+			t.Errorf("after 'd': enabled=%v inverted=%v, want %v", f.Enabled, f.Inverted, want)
 		}
-	}
-	if m.cursor != 0 {
-		t.Errorf("filter change should reset cursor, got %d", m.cursor)
+
+		if m.viewMode != ViewModeFilter {
+			t.Errorf("a mode key should keep the panel open, got %v", m.viewMode)
+		}
+
+		if m.cursor != 0 {
+			t.Errorf("filter change should reset cursor, got %d", m.cursor)
+		}
 	}
 }
 
@@ -425,47 +404,6 @@ func TestFilterModalReset(t *testing.T) {
 
 	if len(m.ActiveFilterModes()) != 0 {
 		t.Error("'*' should reset all filters")
-	}
-}
-
-func TestFilterModalCursorClamping(t *testing.T) {
-	t.Parallel()
-	m := New(nil, 1)
-	m.viewMode = ViewModeFilter
-	modes := models.SelectableFilterModes()
-
-	updatedModel, _ := m.Update(keyPress('k'))
-	m = mustModel(t, updatedModel)
-	if m.filterCursor != 0 {
-		t.Errorf("up at top should clamp filterCursor to 0, got %d", m.filterCursor)
-	}
-
-	m.filterCursor = len(modes) - 1
-	updatedModel, _ = m.Update(keyPress('j'))
-	m = mustModel(t, updatedModel)
-	if m.filterCursor != len(modes)-1 {
-		t.Errorf("down at bottom should clamp filterCursor, got %d", m.filterCursor)
-	}
-
-	m.filterCursor = 0
-	updatedModel, _ = m.Update(keyPress('j'))
-	m = mustModel(t, updatedModel)
-	if m.filterCursor != 1 {
-		t.Errorf("down should advance filterCursor, got %d", m.filterCursor)
-	}
-}
-
-func TestSortModalEnterCyclesDirection(t *testing.T) {
-	t.Parallel()
-	m := newListModel("/alpha")
-	m.viewMode = ViewModeSort
-	m.sortCursor = 0
-
-	updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m = mustModel(t, updatedModel)
-
-	if m.activeSorts[0].Direction != models.SortDirectionDesc {
-		t.Errorf("Name starts Asc, enter should cycle to Desc, got %v", m.activeSorts[0].Direction)
 	}
 }
 
@@ -539,12 +477,12 @@ func TestSortModalShortKey(t *testing.T) {
 	m := newListModel("/alpha")
 	m.viewMode = ViewModeSort
 
-	updatedModel, _ := m.Update(keyPress('m'))
-	m = mustModel(t, updatedModel)
+	for _, want := range []models.SortDirection{models.SortDirectionAsc, models.SortDirectionDesc} {
+		updatedModel, _ := m.Update(keyPress('m'))
+		m = mustModel(t, updatedModel)
 
-	for _, s := range m.activeSorts {
-		if s.Mode == models.SortModeModified && s.Direction != models.SortDirectionAsc {
-			t.Errorf("'m' should cycle Modified to Asc, got %v", s.Direction)
+		if got := m.activeSorts[m.sortCursor]; got.Mode != models.SortModeModified || got.Direction != want {
+			t.Errorf("'m' should cycle Modified to %v and point [ ] at it, got %v %v", want, got.Mode, got.Direction)
 		}
 	}
 }

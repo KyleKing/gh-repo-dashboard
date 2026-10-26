@@ -323,7 +323,7 @@ func TestHeaderCountsShareTheFilterScope(t *testing.T) {
 	filtered, _ := m.ExecuteCommand("filter dirty")
 	header := headerLine(filtered)
 
-	for _, want := range []string{"1/2 repos", "1 dirty"} {
+	for _, want := range []string{"1 of 2 repos", "1 dirty"} {
 		if !strings.Contains(header, want) {
 			t.Errorf("header %q is missing %q; every count must follow the filter", header, want)
 		}

@@ -24,9 +24,6 @@ const (
 	notesMarkerWidth       = 2
 	visibleWindowCenter    = 2
 	helpKeyColWidth        = 20
-	modalMarkColWidth      = 4
-	modalKeyColWidth       = 3
-	filterLabelColWidth    = 15
 	descriptionTruncLen    = 60
 	detailLabelWidth       = 18
 	detailLabelWidthPR     = 16
@@ -42,10 +39,6 @@ const (
 	notesSeparatorWidth    = 40
 	confirmModalVPad       = 1
 	confirmModalHPad       = 3
-	panelActionModalWidth  = 56
-	// A modal spends panelActionModalFrame on its border and padding before any
-	// text fits, which is what keeps it inside a narrow terminal.
-	panelActionModalFrame = 2*confirmModalHPad + 2
 )
 
 // View renders the TUI for the current model state.

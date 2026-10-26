@@ -601,7 +601,7 @@ func (m Model) renderPaletteResults(results []findResult, width int) string {
 		text := rowStyleFor(selected).Render(mark + " " +
 			table.Pad(r.kindName(), paletteKindColWidth, table.AlignLeft) + " " +
 			table.Pad(r.label, max(width/paletteLabelShare, paletteKindColWidth), table.AlignLeft) + " ")
-		room := max(width-cursorWidth-lipgloss.Width(text), 0)
+		room := max(width-gutterWidth-lipgloss.Width(text), 0)
 		detail := withSelection(styles.Skin.Subtitle, selected).Render(table.Truncate(r.detail, room))
 
 		lines = append(lines, rowCursorFor(selected)+text+detail)

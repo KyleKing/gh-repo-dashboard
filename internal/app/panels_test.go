@@ -12,7 +12,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/forge"
-	"github.com/kyleking/aragonite/tui/skin"
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
@@ -420,7 +419,7 @@ func bgGaps(line string) []int {
 	return gaps
 }
 
-// The selected row is one bar from its gutter to its last column, in the repo
+// The selected row is one tinted band from its gutter to its last column, in the repo
 // list and in a panel table, with no unpainted cell between columns.
 func TestSelectedRowPaintsEveryCell(t *testing.T) {
 	t.Parallel()
@@ -428,7 +427,7 @@ func TestSelectedRowPaintsEveryCell(t *testing.T) {
 	repoList := ""
 
 	for _, line := range strings.Split(compactModel(140, 30).renderTable(), "\n") {
-		if strings.Contains(line, skin.CursorBar) {
+		if strings.Contains(line, "alpha") {
 			repoList = line
 
 			break
@@ -442,7 +441,7 @@ func TestSelectedRowPaintsEveryCell(t *testing.T) {
 	}, fitPanelCols(branchPanelSpecs, 100))
 
 	for name, line := range map[string]string{"repo list": repoList, "branch panel": branch} {
-		if !strings.Contains(line, skin.CursorBar) {
+		if !strings.Contains(line, "\x1b[48") {
 			t.Fatalf("%s: no selected row to measure", name)
 		}
 

@@ -117,6 +117,8 @@ type Model struct {
 	taskSel      *tasks.Selector
 	due          map[string][]string
 	changedPaths map[string][]string
+	// previewCommits caches the commit log the list's preview shows, by repo path.
+	previewCommits map[string][]vcs.CommitInfo
 	// needsCache is valid for one render: it is set on a copy of the model and never kept.
 	needsCache map[string]needs
 
@@ -192,8 +194,8 @@ type Model struct {
 	paletteResults    bool
 	paletteReturnMode ViewMode
 
-	filterCursor int
-	sortCursor   int
+	// sortCursor is the activeSorts index of the sort last pressed, which [ and ] reorder.
+	sortCursor int
 
 	run         taskRun
 	runLog      runLog
@@ -246,29 +248,30 @@ func New(scanPaths []string, maxDepth int) Model {
 	sp.Style = styles.Skin.Accent
 
 	return Model{
-		spinner:       sp,
-		scanPaths:     scanPaths,
-		maxDepth:      maxDepth,
-		summaries:     make(map[string]models.RepoSummary),
-		notesPreview:  make(map[string][]models.NoteFileContent),
-		due:           make(map[string][]string),
-		taskHistory:   make(map[string][]tasks.Record),
-		changedPaths:  make(map[string][]string),
-		freshness:     make(map[fetchKey]freshness),
-		shared:        make(map[string]bool),
-		branchCount:   make(map[string]int),
-		prMap:         make(map[string]PRMapLoadedMsg),
-		peerBranches:  make(map[string][]vcs.BranchInfo),
-		activeFilters: activeFilters,
-		activeSorts:   sorts,
-		searchInput:   ti,
-		commandInput:  ci,
-		paletteInput:  pi,
-		registry:      DefaultRegistry(),
-		viewMode:      ViewModeRepoList,
-		loading:       true,
-		keys:          DefaultKeyMap(),
-		help:          help.New(),
+		spinner:        sp,
+		scanPaths:      scanPaths,
+		maxDepth:       maxDepth,
+		summaries:      make(map[string]models.RepoSummary),
+		notesPreview:   make(map[string][]models.NoteFileContent),
+		due:            make(map[string][]string),
+		taskHistory:    make(map[string][]tasks.Record),
+		changedPaths:   make(map[string][]string),
+		previewCommits: make(map[string][]vcs.CommitInfo),
+		freshness:      make(map[fetchKey]freshness),
+		shared:         make(map[string]bool),
+		branchCount:    make(map[string]int),
+		prMap:          make(map[string]PRMapLoadedMsg),
+		peerBranches:   make(map[string][]vcs.BranchInfo),
+		activeFilters:  activeFilters,
+		activeSorts:    sorts,
+		searchInput:    ti,
+		commandInput:   ci,
+		paletteInput:   pi,
+		registry:       DefaultRegistry(),
+		viewMode:       ViewModeRepoList,
+		loading:        true,
+		keys:           DefaultKeyMap(),
+		help:           help.New(),
 		// A diff without file text is rarely useful, and diffstat is one key
 		// away, so every diff pane opens fully expanded.
 		stashFullDiff:       true,

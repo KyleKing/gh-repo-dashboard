@@ -286,7 +286,7 @@ func (m Model) writeBranchCommitsSection(b *strings.Builder, s branchDetailStyle
 		}
 
 		cells := renderCells(layout, values, subtleStyles, &plainStyle)
-		b.WriteString(detailRow("  ", layout, cells, plainStyle))
+		b.WriteString(detailRow(strings.Repeat(" ", gutterWidth), layout, cells, plainStyle))
 		b.WriteString("\n")
 	}
 }

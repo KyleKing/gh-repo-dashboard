@@ -89,11 +89,13 @@ func TestRepoRow_MatchesHeaderWidth(t *testing.T) {
 func TestLayoutRepoCols_FitsWithinContentWidth(t *testing.T) {
 	t.Parallel()
 
+	const fillsUpTo = 120
+
 	for _, termWidth := range []int{80, 100, 120, 200, 300} {
 		width := contentWidth(termWidth)
-		layout := layoutRepoCols(width)
+		total := gutterWidth + layoutRepoCols(width).Total()
 
-		if total := cursorWidth + layout.Total(); total != width {
+		if total > width || (termWidth <= fillsUpTo && total != width) {
 			t.Errorf("terminal %d: layout is %d cells, content width is %d", termWidth, total, width)
 		}
 	}
@@ -107,7 +109,7 @@ func TestLayoutRepoCols_HidesModifiedThenPRsAndNeverNeeds(t *testing.T) {
 		t.Errorf("hid %d columns at 200 columns, want 0", wide.Hidden)
 	}
 
-	narrow := layoutRepoCols(cursorWidth + 76)
+	narrow := layoutRepoCols(gutterWidth + 76)
 	if narrow.Width(colModified) != 0 || narrow.Width(colPR) == 0 {
 		t.Error("MODIFIED should be the first column to hide, before PRs")
 	}
@@ -115,7 +117,7 @@ func TestLayoutRepoCols_HidesModifiedThenPRsAndNeverNeeds(t *testing.T) {
 		t.Errorf("marker = %q, want %q", narrow.Marker(), "…+1")
 	}
 
-	cramped := layoutRepoCols(cursorWidth + 20)
+	cramped := layoutRepoCols(gutterWidth + 20)
 	if cramped.Width(colName) == 0 || cramped.Width(colBranch) == 0 || cramped.Width(colNeeds) == 0 {
 		t.Error("name, branch, and needs must never be hidden")
 	}
