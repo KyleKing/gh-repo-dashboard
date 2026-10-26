@@ -1,3 +1,9 @@
+## v1.19.0 (2026-10-26)
+
+### Feat
+
+- **tui**: prefix list names with a muted owner when the list spans owners
+
 ## v1.18.0 (2026-10-26)
 
 ### Feat
