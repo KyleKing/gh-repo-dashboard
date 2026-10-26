@@ -165,6 +165,17 @@ func loadDetailCmd(path string) tea.Cmd {
 	}
 }
 
+func loadPRDetailCmd(repoPath, remoteID string, number int) tea.Cmd {
+	return func() tea.Msg {
+		detail, err := github.GetPRDetail(context.Background(), repoPath, remoteID, number)
+		if err != nil {
+			return PRDetailLoadedMsg{Path: repoPath, Number: number, Error: err}
+		}
+
+		return PRDetailLoadedMsg{Path: repoPath, Number: number, Detail: *detail}
+	}
+}
+
 func loadBranchDetailCmd(repoPath, branchName string) tea.Cmd {
 	return func() tea.Msg {
 		ctx := context.Background()

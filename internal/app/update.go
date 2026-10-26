@@ -14,6 +14,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/kyleking/aragonite/cache"
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/forge/github"
 	"github.com/kyleking/aragonite/vcs"
 
@@ -107,6 +108,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Path == m.selectedRepo {
 			m.prs = msg.PRs
 			m = m.snapFocusToShownPanel()
+		}
+
+		return m, nil
+
+	case PRDetailLoadedMsg:
+		if msg.Path == m.selectedRepo && msg.Error == nil {
+			m.prDetail = msg.Detail
 		}
 
 		return m, nil
@@ -951,25 +959,7 @@ func (m Model) handleEnterKey() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	m.selectedRepo = m.filteredPaths[m.cursor]
-	m.viewMode = ViewModeRepoDetail
-	m.focusedPanel = panelBranches
-	m.detailCursor = 0
-	m.branches = nil
-	m.stashes = nil
-	m.worktrees = nil
-	m.prs = nil
-	m.notesFiles = nil
-	m.stashDiffstat = nil
-	m.stashDiff = nil
-	m.stashFullDiff = true
-	m.uncommittedDiffstat = nil
-	m.uncommittedDiff = nil
-	m.uncommittedFullDiff = true
-	m.branchDetail = models.BranchDetail{}
-	m.detailLoading = true
-
-	return m, tea.Batch(loadDetailCmd(m.selectedRepo), m.spinner.Tick)
+	return m.openRepo(m.filteredPaths[m.cursor])
 }
 
 // handleBackKey pops the current view back to its parent, if it has one.
@@ -1360,6 +1350,10 @@ func (m Model) snapFocusToShownPanel() Model {
 		return m
 	}
 
+	if m.focusedPanel == panelStatus {
+		return m
+	}
+
 	for _, p := range panels {
 		if p.id == m.focusedPanel {
 			m.detailCursor = min(m.detailCursor, max(m.panelRowCount(p.id)-1, 0))
@@ -1399,7 +1393,12 @@ func (m Model) cyclePanel(panels []panelContent, delta int) (tea.Model, tea.Cmd)
 		return m, nil
 	}
 
-	next := (panelIndex(panels, m.focusedPanel) + delta + len(panels)) % len(panels)
+	at := panelIndex(panels, m.focusedPanel)
+	if at < 0 && delta < 0 {
+		at = len(panels)
+	}
+
+	next := (at + delta + len(panels)) % len(panels)
 
 	return m.focusPanel(panels[next].id)
 }
@@ -1424,7 +1423,12 @@ func (m Model) moveDetailCursor(panels []panelContent, delta int) (tea.Model, te
 // on the row nearest the boundary just crossed. It stops at the two ends of the
 // column rather than wrapping, since tab is the key that cycles.
 func (m Model) crossPanel(panels []panelContent, delta int) (tea.Model, tea.Cmd) {
-	next := panelIndex(panels, m.focusedPanel) + delta
+	at := panelIndex(panels, m.focusedPanel)
+	if at < 0 && delta < 0 {
+		return m, nil
+	}
+
+	next := at + delta
 	if next < 0 || next >= len(panels) {
 		return m, nil
 	}
@@ -1441,13 +1445,16 @@ func (m Model) crossPanel(panels []panelContent, delta int) (tea.Model, tea.Cmd)
 // selected item, and nothing when the pane can render from cached data.
 func (m Model) panelDetailCmd() tea.Cmd {
 	switch {
-	case m.focusedPanel == panelBranches && m.detailCursor < len(m.branches):
-		branch := m.branches[m.detailCursor]
-		if m.branchDetail.Branch.Name == branch.Name {
+	case m.focusedPanel == panelPRs:
+		pr, ok := m.selectedPanelPR()
+		if !ok || m.prDetail.Number == pr.Number {
 			return nil
 		}
 
-		return loadBranchDetailCmd(m.selectedRepo, branch.Name)
+		return loadPRDetailCmd(m.selectedRepo, m.summaries[m.selectedRepo].RemoteID, pr.Number)
+
+	case m.focusedPanel == panelBranches && m.detailCursor < len(m.branches):
+		return m.branchDetailCmd(m.branches[m.detailCursor])
 
 	case m.focusedPanel == panelStashes && m.detailCursor < len(m.stashes):
 		return m.stashDetailCmd(m.stashes[m.detailCursor].Index)
@@ -1464,6 +1471,49 @@ func (m Model) panelDetailCmd() tea.Cmd {
 	}
 
 	return nil
+}
+
+// branchDetailCmd loads a branch's commits, and the working tree's diff when the
+// branch is the checked-out one with uncommitted work, since that diff is shown
+// beside its commits.
+func (m Model) branchDetailCmd(branch vcs.BranchInfo) tea.Cmd {
+	var cmds []tea.Cmd
+
+	if m.branchDetail.Branch.Name != branch.Name {
+		cmds = append(cmds, loadBranchDetailCmd(m.selectedRepo, branch.Name))
+	}
+
+	if branch.IsCurrent && m.summaries[m.selectedRepo].UncommittedCount() > 0 {
+		cmds = append(cmds, m.uncommittedDetailCmd(m.selectedRepo))
+	}
+
+	return tea.Batch(cmds...)
+}
+
+// openingPanel is the section the focused view opens with the cursor in: the
+// one holding the repo's most urgent NEEDS item, or Branches for a quiet repo.
+func (m Model) openingPanel(path string) panelID {
+	summary, ok := m.summaries[path]
+	if !ok {
+		return panelBranches
+	}
+
+	n := m.needsOf(summary)
+
+	switch {
+	case n.ciFailing > 0:
+		return panelCI
+	case n.turn > 0:
+		return panelPRs
+	case n.changed+n.untracked+n.ahead > 0:
+		return panelBranches
+	case n.shared:
+		return panelPeers
+	case n.note:
+		return panelNotes
+	}
+
+	return panelBranches
 }
 
 func withStashText(texts map[int]string, index int, text string) map[int]string {
@@ -1586,8 +1636,11 @@ func (m Model) jumpToCheckout() (tea.Model, tea.Cmd) {
 func (m Model) openRepo(path string) (tea.Model, tea.Cmd) {
 	m.selectedRepo = path
 	m.viewMode = ViewModeRepoDetail
-	m.focusedPanel = panelBranches
+	m.focusedPanel = m.openingPanel(path)
 	m.detailCursor = 0
+	m.detailFocused = false
+	m.detailScroll = 0
+	m.prDetail = forge.PRDetail{}
 	m.branches = nil
 	m.stashes = nil
 	m.worktrees = nil
@@ -1643,6 +1696,10 @@ func (m Model) detailListLen() int {
 // it as a single stop.
 func (m Model) panelRowCount(id panelID) int {
 	switch id {
+	case panelPRs:
+		return len(m.sectionPRs())
+	case panelCI:
+		return len(m.ciWorkflows())
 	case panelBranches:
 		return len(m.branches)
 	case panelStashes:

@@ -212,7 +212,7 @@ func TestPanelCycling(t *testing.T) {
 	m := focusedModel(160, 45)
 	m.focusedPanel = panelStatus
 
-	expected := []panelID{panelBranches, panelPeers, panelStashes, panelNotes, panelStatus}
+	expected := []panelID{panelPRs, panelCI, panelBranches, panelPeers, panelStashes, panelNotes}
 	for i, want := range expected {
 		updatedModel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 		m = mustModel(t, updatedModel)
@@ -293,8 +293,8 @@ func TestDetailCursorCrossesPanelsWithNothingToMoveThrough(t *testing.T) {
 		want  panelID
 	}{
 		{name: "down off a single-row panel", key: 'j', start: panelBranches, want: panelPeers},
-		{name: "up off a single-row panel", key: 'k', start: panelBranches, want: panelStatus},
-		{name: "down off the rowless status panel", key: 'j', start: panelStatus, want: panelBranches},
+		{name: "up off a single-row panel", key: 'k', start: panelBranches, want: panelCI},
+		{name: "down off the repo itself", key: 'j', start: panelStatus, want: panelPRs},
 		{name: "up at the top of the column stays put", key: 'k', start: panelStatus, want: panelStatus},
 		{name: "down at the bottom of the column stays put", key: 'j', start: panelNotes, want: panelNotes},
 	}

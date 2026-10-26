@@ -137,6 +137,8 @@ func TestGoldenPanelGridBreakpoints(t *testing.T) {
 		tab  panelID
 	}{
 		{"branches", panelBranches},
+		{"prs", panelPRs},
+		{"ci", panelCI},
 	}
 
 	for _, size := range breakpointSizes() {
@@ -147,6 +149,15 @@ func TestGoldenPanelGridBreakpoints(t *testing.T) {
 				m.viewMode = ViewModeRepoDetail
 				m.selectedRepo = "/Users/dev/bravo"
 				m.focusedPanel = tab.tab
+				summary := m.summaries[m.selectedRepo]
+				summary.CI = &forge.DefaultBranchCI{Branch: mainBranchName, Workflows: []forge.CIWorkflowRun{
+					{Workflow: "docs", Status: forge.StatusCompleted, Conclusion: "success", UpdatedAt: time.Now().Add(-time.Hour)},
+					{
+						Workflow: "test", Status: forge.StatusCompleted, Conclusion: models.CIFailureConclusion,
+						UpdatedAt: time.Now().Add(-48 * time.Hour), FailingJobs: []string{"py3.12", "lint"},
+					},
+				}}
+				m.summaries[m.selectedRepo] = summary
 				m.branches = []vcs.BranchInfo{
 					{Name: mainBranchName, Upstream: "origin/main", LastCommit: time.Now().Add(-2 * time.Hour)},
 					{

@@ -397,28 +397,31 @@ func (m Model) runPaletteDefault(results []findResult) (tea.Model, tea.Cmd) {
 
 	opened, cmd := m.openRepo(result.repo)
 	next := mustAppModel(opened)
-	next.focusedPanel = panelForKind(result.kind)
+	if panel, ok := panelForKind(result.kind); ok {
+		next.focusedPanel = panel
+	}
 
 	return next, cmd
 }
 
 // panelForKind names the panel an object lives in, so acting on a find result
-// lands the cursor where the object is.
-func panelForKind(kind findKind) panelID {
+// lands the cursor where the object is. A repo result has none, and opens where
+// its own NEEDS say.
+func panelForKind(kind findKind) (panelID, bool) {
 	switch kind {
-	// A pull request has no panel of its own, and its head branch is where the
-	// work it names actually lives.
-	case findBranch, findPR:
-		return panelBranches
+	case findBranch:
+		return panelBranches, true
+	case findPR:
+		return panelPRs, true
 	case findStash:
-		return panelStashes
+		return panelStashes, true
 	case findNote:
-		return panelNotes
+		return panelNotes, true
 	case findRepo, findAny:
-		return panelStatus
+		return panelStatus, false
 	}
 
-	return panelStatus
+	return panelStatus, false
 }
 
 // mustAppModel unwraps the concrete Model a local transition just returned.

@@ -19,13 +19,13 @@ func TestListWidthFollowsTheWiderRule(t *testing.T) {
 	t.Parallel()
 
 	for _, width := range []int{80, 100, 140, 160, 180, 220, 260} {
-		m := compactModel(width, 40)
+		_ = compactModel(width, 40)
 
 		if got, floor := listWidth(width), contentWidth(width); got < floor {
 			t.Errorf("at %d cells the list spans %d, narrower than the %d it had", width, got, floor)
 		}
 
-		if grid := m.gridWidth(); grid > contentWidth(width) && listWidth(width) != grid {
+		if grid := wideContentWidth(width); grid > contentWidth(width) && listWidth(width) != grid {
 			t.Errorf("at %d cells the list spans %d and the grid %d", width, listWidth(width), grid)
 		}
 

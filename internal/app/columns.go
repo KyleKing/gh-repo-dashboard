@@ -32,6 +32,13 @@ const (
 	colCheckoutState  = "STATUS"
 	colCheckoutCommit = "LAST COMMIT"
 
+	colPRTitle = "PR"
+	colPRState = "STATE"
+
+	colCIName  = "WORKFLOW"
+	colCIState = "STATE"
+	colCIAge   = "UPDATED"
+
 	colCommitHash    = "COMMIT"
 	colCommitSubject = "SUBJECT"
 	colCommitAuthor  = "AUTHOR"

@@ -215,7 +215,7 @@ func TestNotesPanel_ShowsTheNoteWithoutFocusingIt(t *testing.T) {
 		{Name: ".doing", Content: "# heading\n\nfinish the grid\nthen the notes"},
 	}
 
-	panels := m.panelSet(panelSideWidth(m.gridWidth(), false) - panelBorderWidth)
+	panels := m.panelSet(m.sectionWidth())
 	notes := panels[panelIndex(panels, panelNotes)]
 
 	if notes.relevance != relevanceUrgent {
@@ -223,14 +223,14 @@ func TestNotesPanel_ShowsTheNoteWithoutFocusingIt(t *testing.T) {
 	}
 
 	body := plainText(strings.Join(notes.rows, "\n"))
-	for _, want := range []string{"finish the grid", "then the notes"} {
+	for _, want := range []string{"finish the grid"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("notes panel is missing %q while another panel holds focus:\n%s", want, body)
 		}
 	}
 
 	if notes.count != len(m.notesFiles) {
-		t.Errorf("count is %d, want %d; the body rows must not be counted as files",
+		t.Errorf("count is %d, want %d; one row per file",
 			notes.count, len(m.notesFiles))
 	}
 }

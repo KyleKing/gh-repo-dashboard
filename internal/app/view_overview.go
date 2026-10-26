@@ -26,6 +26,7 @@ const (
 	tabNameStatus   = "Status"
 	tabNamePeers    = "Peers"
 	tabNameStashes  = "Stashes"
+	tabNameCI       = "CI"
 	tabNamePRs      = "PRs"
 	tabNameNotes    = "Notes"
 )

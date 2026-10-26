@@ -2,6 +2,7 @@
 package app
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -61,11 +62,11 @@ func TestEveryPanelShowsContentWithoutAKeypress(t *testing.T) {
 
 	grid := plainText(focusedModel(200, 50).renderPanelGrid())
 	want := []string{
-		"↑1 vs origin/main",
-		"[b]ranches (1)", mainBranchName,
-		"P[e]ers (1)", "alpha-thing",
-		"S[t]ashes (1)", "On main: spike",
-		"[n]otes (1)", ".doing",
+		"PULL REQUESTS · 1", "#9 Add a thing",
+		"BRANCHES · 1", mainBranchName,
+		"PEERS · 1", "alpha-thing",
+		"STASHES · 1", "On main: spike",
+		"NOTES · 1", ".doing",
 	}
 
 	for _, w := range want {
@@ -122,11 +123,10 @@ func TestRelevanceDecidesTheRoomBeyondAFairShare(t *testing.T) {
 		t.Errorf("heights %v: the panel with more to say must get the leftover", heights)
 	}
 
-	minimum := panelChromeHeight + 1
-	tight := distributePanelHeights([]panelContent{busy, quiet}, 0, minimum*2)
+	tight := distributePanelHeights([]panelContent{busy, quiet}, 0, 4)
 	for i, h := range tight {
-		if h < minimum {
-			t.Errorf("panel %d compressed to %d lines; none may drop below its border plus a line", i, h)
+		if h < panelRuleHeight+1 {
+			t.Errorf("section %d compressed to %d lines; none may drop below its rule plus a row", i, h)
 		}
 	}
 }
@@ -152,7 +152,7 @@ func TestFocusedPanelIsServedBeforeRelevance(t *testing.T) {
 	busy := panelContent{id: panelPeers, relevance: relevanceUrgent, rows: make([]string, 1)}
 
 	heights := distributePanelHeights([]panelContent{quiet, busy}, 0, 20)
-	if heights[0] < panelChromeHeight+panelTitleHeight+len(quiet.rows) {
+	if heights[0] < panelRuleHeight+len(quiet.rows) {
 		t.Errorf("heights %v: the focused panel must fit its own content once the shares are out",
 			heights)
 	}
@@ -167,12 +167,12 @@ func TestDetailPaneDescribesTheSelectedItem(t *testing.T) {
 		Commits: []vcs.CommitInfo{{ShortHash: "d2c794a", Subject: "expand and center tables"}},
 	}
 
-	if got := plainText(m.renderPanelDetail(60, 20)); !strings.Contains(got, "expand and center tables") {
+	if got := plainText(strings.Join(m.renderDetailPane(60, 20), "\n")); !strings.Contains(got, "expand and center tables") {
 		t.Errorf("branch detail pane is missing its commits:\n%s", got)
 	}
 
 	m.focusedPanel = panelNotes
-	if got := plainText(m.renderPanelDetail(60, 20)); !strings.Contains(got, "finish the grid") {
+	if got := plainText(strings.Join(m.renderDetailPane(60, 20), "\n")); !strings.Contains(got, "finish the grid") {
 		t.Errorf("note detail pane is missing the file body:\n%s", got)
 	}
 }
@@ -309,16 +309,11 @@ func TestGrid_FillsTheTerminalExactly(t *testing.T) {
 				t.Errorf("grid rendered %d lines into a %d-line terminal", got, size[1])
 			}
 
-			width := m.gridWidth()
-			if gridStacked(m.isCompact(), width) {
-				return
-			}
+			panels := m.panelSet(m.sectionWidth())
+			sections := m.renderSections(panels, 1, m.sectionWidth(), m.bodyHeight())
 
-			side := panelSideWidth(width, false)
-			column := m.renderPanelColumn(m.panelSet(side-panelBorderWidth), 1, side, m.bodyHeight())
-
-			if got, limit := strings.Count(column, "\n")+1, m.bodyHeight(); got > limit {
-				t.Errorf("panel column is %d lines in a %d-line body", got, limit)
+			if got, limit := len(sections), m.bodyHeight(); got > limit {
+				t.Errorf("section column is %d lines in a %d-line body", got, limit)
 			}
 		})
 	}
@@ -342,7 +337,7 @@ func TestPanelRowsFitTheirBoxAndKeepTheBranchHead(t *testing.T) {
 			m.branches = append(m.branches, vcs.BranchInfo{Name: longBranch})
 			m.prs = []forge.PullRequest{{Number: 11, Title: strings.Repeat("bump the dependencies ", 6)}}
 
-			width := panelSideWidth(m.gridWidth(), false) - panelBorderWidth
+			width := m.sectionWidth()
 
 			var branchRows string
 			for _, p := range m.panelSet(width) {
@@ -363,19 +358,6 @@ func TestPanelRowsFitTheirBoxAndKeepTheBranchHead(t *testing.T) {
 	}
 }
 
-func TestGridWidth_UsesMoreOfAWideTerminal(t *testing.T) {
-	t.Parallel()
-
-	if got := focusedModel(200, 50).gridWidth(); got <= maxContentWidth {
-		t.Errorf("grid width at 200 cells is %d; it must outgrow the single-column cap of %d",
-			got, maxContentWidth)
-	}
-
-	if got := focusedModel(400, 50).gridWidth(); got != gridMaxWidth {
-		t.Errorf("grid width at 400 cells is %d, want the cap of %d", got, gridMaxWidth)
-	}
-}
-
 func TestStatusPreviewShowsNewestEditAndDefaultBranchMismatch(t *testing.T) {
 	t.Parallel()
 
@@ -387,7 +369,7 @@ func TestStatusPreviewShowsNewestEditAndDefaultBranchMismatch(t *testing.T) {
 		RepoSummary: vcs.RepoSummary{Path: "/dev/alpha", VCSType: vcs.TypeGit, Branch: "feature/x"},
 	}
 
-	preview := plainText(strings.Join(m.repoDetailLines(contentWidth(m.width)), "\n"))
+	preview := plainText(strings.Join(m.repoDetailLines(m.gridWidth()), "\n"))
 	if !strings.Contains(preview, "newest edit") || !strings.Contains(preview, "notes.md") {
 		t.Errorf("Status's full preview does not name the newest edited file: %q", preview)
 	}
@@ -462,5 +444,103 @@ func TestSelectedRowPaintsEveryCell(t *testing.T) {
 		if gaps := bgGaps(line); len(gaps) > 0 {
 			t.Errorf("%s: cells %v of the selected row are unpainted: %q", name, gaps, plainText(line))
 		}
+	}
+}
+
+func TestSectionsStackInOrderAndJJDropsStashes(t *testing.T) {
+	t.Parallel()
+
+	m := focusedModel(160, 45)
+	ids := func() []panelID {
+		var got []panelID
+		for _, p := range m.panelSet(m.sectionWidth()) {
+			got = append(got, p.id)
+		}
+
+		return got
+	}
+
+	want := []panelID{panelPRs, panelCI, panelBranches, panelPeers, panelStashes, panelNotes}
+	if got := ids(); !slices.Equal(got, want) {
+		t.Errorf("section order = %v, want %v", got, want)
+	}
+
+	summary := m.summaries["/dev/alpha"]
+	summary.VCSType = vcs.TypeJJ
+	m.summaries["/dev/alpha"] = summary
+
+	if got := ids(); slices.Contains(got, panelStashes) {
+		t.Errorf("a jj repo has no stashes section, got %v", got)
+	}
+}
+
+func TestOpeningPanelFollowsTheFirstNeedsItem(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		mutate func(*models.RepoSummary, *Model)
+		want   panelID
+	}{
+		{"quiet repo opens on branches", func(*models.RepoSummary, *Model) {}, panelBranches},
+		{"failing CI", func(s *models.RepoSummary, _ *Model) {
+			s.CI = &forge.DefaultBranchCI{Workflows: []forge.CIWorkflowRun{
+				{Workflow: "test", Status: forge.StatusCompleted, Conclusion: models.CIFailureConclusion},
+			}}
+		}, panelCI},
+		{"a PR waiting on the viewer", func(s *models.RepoSummary, m *Model) {
+			m.viewer = "me"
+			s.OpenPRs = []forge.PullRequest{{Number: 3, Author: "x", Reviewers: []string{"me"}}}
+		}, panelPRs},
+		{"unpushed work", func(s *models.RepoSummary, _ *Model) { s.Ahead = 2 }, panelBranches},
+		{"shared branch", func(_ *models.RepoSummary, m *Model) { m.shared = map[string]bool{"/dev/alpha": true} }, panelPeers},
+		{"a note", func(s *models.RepoSummary, _ *Model) {
+			s.NotesFiles = []models.NoteFile{{Name: ".doing"}}
+		}, panelNotes},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := focusedModel(160, 45)
+			summary := models.RepoSummary{RepoSummary: vcs.RepoSummary{Path: "/dev/alpha", VCSType: vcs.TypeGit, Branch: mainBranchName}}
+			tt.mutate(&summary, &m)
+			m.summaries["/dev/alpha"] = summary
+
+			opened, _ := m.openRepo("/dev/alpha")
+			if got := mustModel(t, opened).focusedPanel; got != tt.want {
+				t.Errorf("opened on %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHeaderCarriesTheListsNeedsTokens(t *testing.T) {
+	t.Parallel()
+
+	m := focusedModel(160, 45)
+	header := strings.Split(plainText(m.renderScreen()), "\n")[0]
+
+	for _, want := range []string{"git · main", "↑1", "✎ note", "≡2"} {
+		if !strings.Contains(header, want) {
+			t.Errorf("header is missing %q: %q", want, header)
+		}
+	}
+}
+
+func TestStackedLayoutGuaranteesTheDetailRows(t *testing.T) {
+	t.Parallel()
+
+	m := focusedModel(80, 24)
+	m.notesFiles = append(m.notesFiles, m.notesFiles...)
+	m.stashes = append(m.stashes, m.stashes...)
+
+	if got := m.detailPaneSize().height; got < minStackedDetailHeight-1 {
+		t.Errorf("stacked detail pane has %d rows, want at least %d", got, minStackedDetailHeight-1)
+	}
+
+	if got := strings.Count(m.renderScreen(), "\n") + 1; got != 24 {
+		t.Errorf("rendered %d lines into 24", got)
 	}
 }

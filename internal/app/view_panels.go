@@ -1,14 +1,17 @@
 package app
 
 import (
-	"image/color"
+	"cmp"
+	"slices"
 	"strconv"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/display"
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/tui/frame"
 	"github.com/kyleking/aragonite/tui/keyhint"
+	"github.com/kyleking/aragonite/tui/markdown"
 	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/aragonite/vcs"
 
@@ -16,27 +19,28 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
-// Grid geometry. The side column holds the panels; the rest is the detail
+// Grid geometry. The section column holds the panels; the rest is the detail
 // pane, which always renders the selected item rather than waiting for a key.
+// The split is fixed, so moving focus never moves a column.
 const (
-	panelBorderWidth         = 2
-	sideColumnFraction       = 100
-	sideColumnPercent        = 25
-	sideColumnFocusedPercent = 15
-	minSideColumnWidth       = 24
-	minDetailPaneWidth       = 30
+	sideColumnFraction = 100
+	sideColumnPercent  = 40
+	minSideColumnWidth = 36
+	minDetailPaneWidth = 30
+	splitRuleWidth     = 1
+	splitRuleGlyph     = "│"
 )
 
-// panelSet builds the panels for the selected repo at the given content width.
-// A jj repo has no Stashes panel at all, rather than one explaining its own
-// absence, and the same reasoning drops any panel that finished loading with
-// nothing to list. Everything stays on screen while the load is in flight, so
-// the grid settles once instead of reflowing under the cursor as data lands.
+// panelSet builds the sections for the selected repo at the given width. A jj
+// repo has no Stashes section at all, rather than one explaining its own
+// absence. Every other section keeps its rule when it is empty, so the layout
+// does not reflow as data lands.
 func (m Model) panelSet(width int) []panelContent {
 	summary := m.summaries[m.selectedRepo]
 
 	built := []panelContent{
-		statusPanel(summary, width),
+		m.prsPanel(summary, width),
+		m.ciPanel(summary, width),
 		m.branchesPanel(width),
 		m.peersPanel(summary, width),
 	}
@@ -47,32 +51,12 @@ func (m Model) panelSet(width int) []panelContent {
 
 	built = append(built, m.notesPanel(width))
 
-	panels := make([]panelContent, 0, len(built))
-	for _, p := range built {
-		if len(p.rows) == 0 && !m.detailLoading && !panelAlwaysShown(p.id) {
-			continue
-		}
-
-		p.key = panelKeys[p.id]
-		if len(p.rows) == 0 {
-			p.rows = []string{styles.Skin.Subtitle.Render(padCell(m.panelEmptyLabel(), width))}
-		}
-
-		panels = append(panels, p)
+	for i := range built {
+		built[i].key = panelKeys[built[i].id]
+		built[i].heading = cmp.Or(built[i].heading, strings.ToUpper(built[i].title))
 	}
 
-	return panels
-}
-
-// panelEmptyLabel is what a panel with no rows says: still-loading while the
-// detail load is in flight, and the plain empty marker for the panels that are
-// kept on screen regardless.
-func (m Model) panelEmptyLabel() string {
-	if m.detailLoading {
-		return "loading…"
-	}
-
-	return overviewEmpty
+	return built
 }
 
 // panelForKey returns the panel a jump key selects.
@@ -86,8 +70,8 @@ func panelForKey(panels []panelContent, key string) (panelContent, bool) {
 	return panelContent{}, false
 }
 
-// panelIndex returns the position of id in panels, or zero when the panel is
-// absent (a jj repo has no Stashes panel to focus).
+// panelIndex returns the position of id in panels, or -1 when it has no
+// section: Status is the repo itself, and a jj repo has no Stashes.
 func panelIndex(panels []panelContent, id panelID) int {
 	for i, p := range panels {
 		if p.id == id {
@@ -95,94 +79,168 @@ func panelIndex(panels []panelContent, id panelID) int {
 		}
 	}
 
-	return 0
+	return -1
 }
 
-// statusPanel is the grid's collapsed view of the repo: sync and working-tree
-// state, the two facts worth a glance without opening it. Everything else
-// (identity, template, CI, config drift, absent panels) lives in the full
-// preview repoDetailLines renders once Status is focused.
-func statusPanel(summary models.RepoSummary, width int) panelContent {
-	files := overviewFiles(summary)
-	if extras := statusExtras(summary); extras != "" {
-		files += compactSignalSep + extras
+// sectionPRs is the repo's open pull requests: the list the focused view loaded,
+// or the one the repo list already carries while that load is in flight.
+func (m Model) sectionPRs() []forge.PullRequest {
+	if m.detailLoading {
+		return m.summaries[m.selectedRepo].OpenPRs
 	}
 
-	lines := []string{
-		overviewSync(summary),
-		files,
-	}
+	return m.prs
+}
 
-	rows := make([]string, 0, len(lines))
-	for _, line := range lines {
-		rows = append(rows, styles.Skin.Body.Render(padCell(line, width)))
+func (m Model) prsPanel(summary models.RepoSummary, width int) panelContent {
+	layout := fitPanelCols(prPanelSpecs, width)
+	turn := prTurn(summary.OpenPRs, m.viewer)
+	prs := m.sectionPRs()
+
+	rows := make([]string, 0, len(prs))
+	needsYou := false
+
+	for i := range prs {
+		pr := &prs[i]
+		selected := m.panelSelected(panelPRs, i)
+		style := rowStyleFor(selected)
+
+		state, stateStyle := prRowState(pr, pr.Number == turn)
+		if pr.Number == turn {
+			needsYou = true
+		}
+
+		values := map[string]string{
+			colPRTitle: "#" + strconv.Itoa(pr.Number) + " " + pr.Title,
+			colPRState: state,
+		}
+		cellStyles := map[string]lipgloss.Style{colPRState: withSelection(stateStyle, selected)}
+
+		rows = append(rows, detailRow(rowCursorFor(selected), layout, renderCells(layout, values, cellStyles, &style), style))
 	}
 
 	relevance := relevanceIdle
-	if summary.UncommittedCount() > 0 || summary.Ahead > 0 {
+	if len(prs) > 0 {
+		relevance = relevancePresent
+	}
+
+	if needsYou {
 		relevance = relevanceUrgent
 	}
 
-	return panelContent{id: panelStatus, title: tabNameStatus, relevance: relevance, rows: rows}
+	return panelContent{
+		id: panelPRs, title: tabNamePRs, heading: "PULL REQUESTS", count: len(prs),
+		relevance: relevance, rows: rows, selectable: true,
+	}
 }
 
-// statusExtras summarizes the counts that do not deserve their own line.
-func statusExtras(summary models.RepoSummary) string {
-	parts := []string{}
-	if summary.StashCount > 0 {
-		parts = append(parts, strconv.Itoa(summary.StashCount)+" "+plural(summary.StashCount, "stash", "stashes"))
-	}
-	if notes := len(summary.NotesFiles); notes > 0 {
-		parts = append(parts, strconv.Itoa(notes)+" "+plural(notes, "note", "notes"))
+// prRowState is the PR row's right cell: a draft, the review decision, a failing
+// check count, or the viewer's turn, in the face that says how urgent it is.
+func prRowState(pr *forge.PullRequest, yourTurn bool) (string, lipgloss.Style) {
+	failing := display.ChecksSummary(pr.Checks) == forge.StatusFailing
+
+	switch {
+	case yourTurn:
+		return "←you", styles.Skin.Accent
+	case failing:
+		return "✗ " + strconv.Itoa(pr.Checks.Failing), styles.Skin.Error
+	case pr.IsDraft:
+		return "draft", styles.Skin.Muted
 	}
 
-	return strings.Join(parts, compactSignalSep)
+	return display.PRReviewGlyph(pr), styles.Skin.Muted
 }
 
-// statusAbsences names the panels the grid dropped for having nothing to list,
-// so an absence is still reported once rather than left to be inferred from a
-// box that is not there.
-func (m Model) statusAbsences(summary models.RepoSummary) string {
-	if m.detailLoading {
-		return ""
+// ciWorkflows are the default branch's latest run of each workflow, failing
+// first, then unfinished, then the rest by name.
+func (m Model) ciWorkflows() []forge.CIWorkflowRun {
+	ci := m.summaries[m.selectedRepo].CI
+	if ci == nil {
+		return nil
 	}
 
-	absent := make([]string, 0, len(panelKeys))
-	if len(m.prs) == 0 {
-		absent = append(absent, "PRs")
-	}
-	if len(m.RepoCheckouts()) == 0 {
-		absent = append(absent, "peers")
-	}
-	if summary.VCSType != vcs.TypeJJ && len(m.stashes) == 0 {
-		absent = append(absent, "stashes")
-	}
-	if len(m.notesFiles) == 0 {
-		absent = append(absent, "notes")
-	}
+	runs := slices.Clone(ci.Workflows)
+	slices.SortStableFunc(runs, func(a, b forge.CIWorkflowRun) int {
+		return cmp.Or(
+			cmp.Compare(ciRank(a), ciRank(b)),
+			strings.Compare(a.Workflow, b.Workflow),
+		)
+	})
 
-	if len(absent) == 0 {
-		return ""
-	}
-
-	return "no " + joinOr(absent)
+	return runs
 }
 
-// joinOr renders a list as prose with an Oxford comma: "a", "a or b", "a, b, or c".
-func joinOr(parts []string) string {
-	switch len(parts) {
-	case 0:
-		return ""
-	case 1:
-		return parts[0]
+func ciRank(run forge.CIWorkflowRun) int {
+	switch {
+	case run.Conclusion == models.CIFailureConclusion:
+		return 0
+	case run.Status != forge.StatusCompleted:
+		return 1
 	}
 
-	head, last := parts[:len(parts)-1], parts[len(parts)-1]
-	if len(head) == 1 {
-		return head[0] + " or " + last
+	return 2 //nolint:mnd // third of three ranks
+}
+
+func ciRunGlyph(run *forge.CIWorkflowRun) string {
+	switch {
+	case run.Conclusion == models.CIFailureConclusion:
+		return "✗"
+	case run.Status != forge.StatusCompleted:
+		return "…"
 	}
 
-	return strings.Join(head, ", ") + ", or " + last
+	return "✓"
+}
+
+func (m Model) ciPanel(summary models.RepoSummary, width int) panelContent {
+	layout := fitPanelCols(ciPanelSpecs, width)
+	runs := m.ciWorkflows()
+
+	rows := make([]string, 0, len(runs))
+	failing := 0
+
+	for i := range runs {
+		run := &runs[i]
+		selected := m.panelSelected(panelCI, i)
+		style := rowStyleFor(selected)
+		cellStyles := map[string]lipgloss.Style{}
+
+		if run.Conclusion == models.CIFailureConclusion {
+			failing++
+			cellStyles[colCIName] = withSelection(styles.Skin.Error, selected)
+		}
+
+		state := run.Conclusion
+		if run.Status != forge.StatusCompleted {
+			state = run.Status
+		}
+
+		values := map[string]string{
+			colCIName:  ciRunGlyph(run) + " " + run.Workflow,
+			colCIState: state,
+			colCIAge:   display.RelativeTimeCompact(run.UpdatedAt),
+		}
+		rows = append(rows, detailRow(rowCursorFor(selected), layout, renderCells(layout, values, cellStyles, &style), style))
+	}
+
+	relevance := relevanceIdle
+	if len(runs) > 0 {
+		relevance = relevancePresent
+	}
+
+	if failing > 0 {
+		relevance = relevanceUrgent
+	}
+
+	heading := "CI"
+	if summary.CI != nil && summary.CI.Branch != "" {
+		heading += compactSignalSep + summary.CI.Branch
+	}
+
+	return panelContent{
+		id: panelCI, title: tabNameCI, heading: heading, count: len(runs),
+		relevance: relevance, rows: rows, selectable: true,
+	}
 }
 
 func (m Model) branchesPanel(width int) panelContent {
@@ -300,17 +358,13 @@ func (m Model) stashesPanel(width int) panelContent {
 }
 
 func (m Model) notesPanel(width int) panelContent {
-	shown, hasBody := m.shownNote()
-
 	rows := make([]string, 0, len(m.notesFiles))
 	for i, note := range m.notesFiles {
 		selected := m.panelSelected(panelNotes, i)
 		style := rowStyleFor(selected)
 
-		// The first line is worth a row only where the body below does not
-		// already carry it.
 		label := note.Name
-		if first := firstContentLine(note.Content); first != "" && note.Name != shown.Name {
+		if first := firstContentLine(note.Content); first != "" {
 			label += "  " + first
 		}
 
@@ -320,51 +374,16 @@ func (m Model) notesPanel(width int) panelContent {
 	}
 
 	relevance := relevanceIdle
-	if hasBody {
+	if len(rows) > 0 {
 		// A note is something the last session left for this one, so it
 		// outranks a list the repo itself can always answer.
 		relevance = relevanceUrgent
-		rows = append(rows, noteBodyRows(shown.Content, width)...)
 	}
 
 	return panelContent{
 		id: panelNotes, title: tabNameNotes, count: len(m.notesFiles),
 		relevance: relevance, rows: rows, selectable: true,
 	}
-}
-
-// shownNote is the note whose text the panel spells out: the one under the
-// cursor while Notes holds it, and the first otherwise, so a repo's note is
-// readable from whichever panel the view opened on.
-func (m Model) shownNote() (models.NoteFileContent, bool) {
-	if len(m.notesFiles) == 0 {
-		return models.NoteFileContent{}, false
-	}
-
-	if note, ok := m.selectedPanelNote(); ok {
-		return note, true
-	}
-
-	return m.notesFiles[0], true
-}
-
-// notesPreviewMaxLines caps how many lines of a note the side panel shows, so
-// an especially long note can't crowd out the panels beside it the way an
-// unbounded panelWant would.
-const notesPreviewMaxLines = 8
-
-// noteBodyRows are a note's text, rendered below the file list so the panel's
-// earned height carries the note itself rather than blank rows. They sit past
-// the selectable rows, so the cursor never lands on one. Rendering (including
-// the bang-line highlight and the elided preview) reuses the Repos list's own
-// note-preview logic, so a note reads the same way in both places.
-func noteBodyRows(content string, width int) []string {
-	lines := elideMiddle(notesBodyLines(content, width), notesPreviewMaxLines)
-
-	rows := make([]string, 0, len(lines)+1)
-	rows = append(rows, "")
-
-	return append(rows, lines...)
 }
 
 // firstContentLine returns a note's first line that carries content, skipping
@@ -395,97 +414,116 @@ func (m Model) repoDetailScreen() screen {
 		return screen{title: appTitle, body: "Repository not found"}
 	}
 
-	width := m.gridWidth()
-	sideWidth := m.sideWidth(width)
-	panels := m.panelSet(sideWidth - panelBorderWidth)
-	focused := panelIndex(panels, m.focusedPanel)
+	panels := m.panelSet(m.sectionWidth())
 
 	return screen{
 		title: "Repos › " + summary.Name(),
-		facts: []frame.Fact{{Text: summary.Path}},
-		body:  m.renderPanelGridOf(panels, focused, width, sideWidth),
-		hints: m.panelHints(panels, focused),
+		facts: m.repoFacts(summary),
+		body:  m.renderPanelGridOf(panels, panelIndex(panels, m.focusedPanel)),
+		hints: m.panelHints(panels),
 	}
 }
 
-// sideWidth is the width the panel column renders into at the given grid
-// width: all of it when the grid stacks.
-func (m Model) sideWidth(width int) int {
-	if gridStacked(m.isCompact(), width) {
-		return width
+// repoFacts is the header line: the repo's identity, then the same tokens the
+// list's NEEDS column carries, and the open PR count.
+func (m Model) repoFacts(summary models.RepoSummary) []frame.Fact {
+	n := m.needsOf(summary)
+
+	facts := []frame.Fact{{Text: summary.VCSType.String() + compactSignalSep + summary.Branch}}
+
+	for _, token := range n.tokens() {
+		facts = append(facts, frame.Fact{Text: token.text, Tone: token.tone.frameTone()})
 	}
 
-	return panelSideWidth(width, m.detailFocused)
+	if len(facts) == 1 && len(n.due) == 0 {
+		facts = append(facts, frame.Fact{Text: "quiet"})
+	}
+
+	if n.open > 0 {
+		facts = append(facts, frame.Fact{Text: strconv.Itoa(n.open) + " " + plural(n.open, "PR", "PRs")})
+	}
+
+	return facts
 }
 
-// renderPanelGrid draws the focused repo view: a column of always-visible
-// panels beside a detail pane for the selected item. Below the compact
-// breakpoint the two stack, with the detail pane under the focused panel.
+// gridWidth is the width the focused repo view renders into: the whole
+// terminal, since it is one surface rather than a card on a margin.
+func (m Model) gridWidth() int {
+	return m.width
+}
+
+// sectionWidth is the width the section column renders its rows into.
+func (m Model) sectionWidth() int {
+	if gridStacked(m.isCompact(), m.gridWidth()) {
+		return m.gridWidth()
+	}
+
+	return sideColumnWidth(m.gridWidth())
+}
+
+// sideColumnWidth is the section column's share of a split grid.
+func sideColumnWidth(width int) int {
+	return max(width*sideColumnPercent/sideColumnFraction, minSideColumnWidth)
+}
+
+// gridStacked reports whether the grid drops its side-by-side split, either
+// because the breakpoint says so or because the detail pane would be too
+// narrow to read beside the section column.
+func gridStacked(compact bool, width int) bool {
+	return compact || width-sideColumnWidth(width)-splitRuleWidth < minDetailPaneWidth
+}
+
 func (m Model) renderPanelGrid() string {
 	if _, ok := m.summaries[m.selectedRepo]; !ok {
 		return "Repository not found"
 	}
 
-	width := m.gridWidth()
-	sideWidth := m.sideWidth(width)
-	panels := m.panelSet(sideWidth - panelBorderWidth)
+	panels := m.panelSet(m.sectionWidth())
 
-	return m.renderPanelGridOf(panels, panelIndex(panels, m.focusedPanel), width, sideWidth)
+	return m.renderPanelGridOf(panels, panelIndex(panels, m.focusedPanel))
 }
 
-func (m Model) renderPanelGridOf(panels []panelContent, focused, width, sideWidth int) string {
-	if gridStacked(m.isCompact(), width) {
-		return m.renderStackedGrid(panels, focused, sideWidth, m.bodyHeight())
+func (m Model) renderPanelGridOf(panels []panelContent, focused int) string {
+	if gridStacked(m.isCompact(), m.gridWidth()) {
+		return strings.Join(m.renderStackedGrid(panels, focused), "\n")
 	}
 
-	return m.renderSplitGrid(panels, focused, sideWidth, width-sideWidth, m.bodyHeight())
+	return strings.Join(m.renderSplitGrid(panels, focused), "\n")
 }
 
-// gridWidth is the width the focused repo view renders into.
-func (m Model) gridWidth() int {
-	return wideContentWidth(m.width)
-}
+// minStackedDetailHeight is the fewest rows the stacked layout guarantees the
+// detail pane, rule included, before sections are trimmed to make room.
+const minStackedDetailHeight = 6
 
-// gridStacked reports whether the grid drops its side-by-side split, either
-// because the breakpoint says so or because the detail pane would be too
-// narrow to read beside the panel column. It measures against the widest the
-// column ever gets, so moving focus never flips the grid between layouts.
-func gridStacked(compact bool, width int) bool {
-	return compact || width-panelSideWidth(width, false) < minDetailPaneWidth
-}
-
-// panelSideWidth is the width the panel column takes from a split grid. The
-// column gives up more of it while the detail pane holds focus, because
-// nothing is being selected in it then.
-func panelSideWidth(width int, detailFocused bool) int {
-	percent := sideColumnPercent
-	if detailFocused {
-		percent = sideColumnFocusedPercent
+// stackedSectionHeight is how many rows the sections get when the detail pane
+// stacks under them: what their content needs, less whatever the pane's
+// guaranteed rows require.
+func (m Model) stackedSectionHeight(panels []panelContent) int {
+	want := 0
+	for i := range panels {
+		want += panelFloor(&panels[i]) + panelWant(&panels[i])
 	}
 
-	return max(width*percent/sideColumnFraction, minSideColumnWidth)
+	return min(want, max(m.bodyHeight()-minStackedDetailHeight, 1))
 }
 
 // detailPaneSize returns the detail pane's interior at the current terminal
-// size, which is the geometry a scroll offset has to be clamped against.
+// size, which is the geometry a scroll offset has to be clamped against. The
+// pane's own title row is not part of it.
 func (m Model) detailPaneSize() paneSize {
-	grid := m.gridWidth()
+	width := m.gridWidth()
 	body := m.bodyHeight()
 
-	if !gridStacked(m.isCompact(), grid) {
+	if !gridStacked(m.isCompact(), width) {
 		return paneSize{
-			width:  grid - panelSideWidth(grid, m.detailFocused) - panelBorderWidth,
-			height: panelRowsHeight(body),
+			width:  width - sideColumnWidth(width) - splitRuleWidth,
+			height: max(body-1, 1),
 		}
 	}
 
-	panels := m.panelSet(grid - panelBorderWidth)
-	compressed := panelMinHeight
+	sections := m.stackedSectionHeight(m.panelSet(width))
 
-	return paneSize{
-		width:  grid - panelBorderWidth,
-		height: max(panelRowsHeight(body-compressed*len(panels)), minStackedDetailHeight),
-	}
+	return paneSize{width: width, height: max(body-sections-1, 1)}
 }
 
 type paneSize struct {
@@ -493,94 +531,100 @@ type paneSize struct {
 	height int
 }
 
-// renderSplitGrid stacks the panels on the left and mounts the detail pane
-// beside them at the full body height.
-func (m Model) renderSplitGrid(panels []panelContent, focused, sideWidth, detailWidth, height int) string {
-	column := m.renderPanelColumn(panels, focused, sideWidth, height)
-	detail := m.renderPanelDetail(detailWidth-panelBorderWidth, panelRowsHeight(height))
+// renderSplitGrid puts the section column and the detail pane side by side,
+// behind one vertical rule.
+func (m Model) renderSplitGrid(panels []panelContent, focused int) []string {
+	height := m.bodyHeight()
+	side := sideColumnWidth(m.gridWidth())
+	pane := m.detailPaneSize()
 
-	return lipgloss.JoinHorizontal(lipgloss.Top,
-		column,
-		panelBox(m.focusedPanelTitle(panels, focused), detail, detailWidth, height,
-			focusBorder(m.detailFocused, true)),
-	)
+	left := padLines(m.renderSections(panels, focused, side, height), height, side)
+	right := m.renderDetailPane(pane.width, pane.height)
+
+	rule := styles.Skin.Hairline
+	if m.detailFocused {
+		rule = styles.Skin.Accent
+	}
+
+	lines := make([]string, height)
+	for i := range lines {
+		lines[i] = left[i] + rule.Render(splitRuleGlyph) + right[i]
+	}
+
+	return lines
 }
 
-// minStackedDetailHeight keeps the stacked detail pane readable even when the
-// panels above it have eaten the terminal.
-const minStackedDetailHeight = 3
+// renderStackedGrid drops the side-by-side split: the sections stack above a
+// ruled detail pane that is guaranteed its rows.
+func (m Model) renderStackedGrid(panels []panelContent, focused int) []string {
+	width := m.gridWidth()
+	sections := m.stackedSectionHeight(panels)
 
-// renderStackedGrid drops the side-by-side split: unfocused panels compress to
-// their title plus a content line, and the detail pane follows the focused one.
-// The stack scrolls when it outgrows the terminal, so the focused panel and its
-// detail stay on screen.
-func (m Model) renderStackedGrid(panels []panelContent, focused, width, height int) string {
-	compressed := panelMinHeight
-	detailHeight := max(panelRowsHeight(height-compressed*len(panels)), minStackedDetailHeight)
+	lines := padLines(m.renderSections(panels, focused, width, sections), sections, width)
+	pane := m.detailPaneSize()
 
-	var lines []string
-	focusStart, focusEnd := 0, 0
-
-	for i, p := range panels {
-		if i == focused {
-			focusStart = len(lines)
-		}
-
-		rows := panelRows(p, panelRowsHeight(compressed), m.detailCursor, i == focused)
-		box := panelBox(panelTitle(&p, i == focused), rows, width, compressed,
-			focusBorder(!m.detailFocused, i == focused))
-		lines = append(lines, strings.Split(box, "\n")...)
-
-		if i == focused {
-			detail := panelBox(m.focusedPanelTitle(panels, focused),
-				m.renderPanelDetail(width-panelBorderWidth, detailHeight), width,
-				detailHeight+panelChromeHeight+panelTitleHeight,
-				focusBorder(m.detailFocused, true))
-			lines = append(lines, strings.Split(detail, "\n")...)
-			focusEnd = len(lines)
-		}
-	}
-
-	return strings.Join(windowLines(lines, focusStart, focusEnd, height), "\n")
+	return append(append(lines, m.detailRule(width)), m.renderDetailPane(pane.width, pane.height)...)
 }
 
-// windowLines trims lines to height, scrolling so the [start, end) block stays
-// visible rather than letting the stack run off the bottom.
-func windowLines(lines []string, start, end, height int) []string {
-	if height <= 0 {
-		return nil
-	}
-	if len(lines) <= height {
-		return lines
+// detailRule is the stacked layout's rule above the detail pane, titled with the
+// item the pane describes.
+func (m Model) detailRule(width int) string {
+	face, line := styles.Skin.Heading, styles.Skin.Hairline
+	if m.detailFocused {
+		face, line = styles.Skin.Accent.Bold(true), styles.Skin.Accent
 	}
 
-	top := min(start, len(lines)-height)
-	if end > top+height {
-		top = max(end-height, 0)
-	}
+	title := truncate(m.detailTitle()+m.detailScrollMarker(), max(width-sectionRuleLead-sectionRuleSpaces, 1))
 
-	return lines[top : top+height]
+	return line.Render(strings.Repeat("─", sectionRuleLead)+" ") + face.Render(title) +
+		line.Render(" "+strings.Repeat("─", max(width-lipgloss.Width(title)-sectionRuleLead-sectionRuleSpaces, 0)))
 }
 
-// renderPanelColumn draws every panel at the height its relevance earned.
-func (m Model) renderPanelColumn(panels []panelContent, focused, width, height int) string {
+// renderDetailPane draws the selected item windowed to the scroll offset, each
+// row padded to width. The split layout opens it with a title row, which the
+// stacked layout's rule already carries.
+func (m Model) renderDetailPane(width, height int) []string {
+	lines := m.panelDetailLines(width)
+	start := min(m.detailScroll, max(len(lines)-height, 0))
+	lines = lines[start:min(start+height, len(lines))]
+
+	if gridStacked(m.isCompact(), m.gridWidth()) {
+		return padLines(lines, height, width)
+	}
+
+	head := styles.Skin.Heading.Render(truncate(m.detailTitle()+m.detailScrollMarker(), width))
+
+	return padLines(append([]string{head}, lines...), height+1, width)
+}
+
+// renderSections draws every section at the height its relevance earned: a
+// labeled rule, then the rows the cursor window leaves in view.
+func (m Model) renderSections(panels []panelContent, focused, width, height int) []string {
 	heights := distributePanelHeights(panels, focused, height)
 
-	boxes := make([]string, 0, len(panels))
-	for i, p := range panels {
-		boxes = append(boxes, panelBox(panelTitle(&p, i == focused),
-			panelRows(p, panelRowsHeight(heights[i]), m.detailCursor, i == focused),
-			width, heights[i], focusBorder(!m.detailFocused, i == focused)))
+	var lines []string
+
+	for i := range panels {
+		p := &panels[i]
+		isFocus := i == focused && !m.detailFocused
+
+		count := strconv.Itoa(p.count)
+		if m.detailLoading && p.id != panelPRs {
+			count = "…"
+		}
+
+		lines = append(lines, panelRule(p, count, isFocus, width))
+		lines = append(lines, panelRows(*p, heights[i]-panelRuleHeight, m.detailCursor, i == focused)...)
 	}
 
-	return strings.Join(boxes, "\n")
+	return lines
 }
 
-// panelRows windows a panel's rows to the lines it was given, keeping the
+// panelRows windows a section's rows to the lines it was given, keeping the
 // cursor in view.
-func panelRows(p panelContent, lines, cursor int, focused bool) string {
+func panelRows(p panelContent, lines, cursor int, focused bool) []string {
 	if lines <= 0 {
-		return ""
+		return nil
 	}
 
 	window := visibleRange(cursor, len(p.rows), lines)
@@ -588,51 +632,17 @@ func panelRows(p panelContent, lines, cursor int, focused bool) string {
 		window = repoWindow{start: 0, end: min(lines, len(p.rows))}
 	}
 
-	shown := p.rows[window.start:window.end]
-	if len(shown) < lines {
-		shown = append(append([]string{}, shown...), make([]string, lines-len(shown))...)
-	}
-
-	return strings.Join(shown, "\n")
+	return p.rows[window.start:window.end]
 }
 
-// focusBorder colors a box's border. The accent marks where the keyboard is;
-// the muted face marks the box that still holds the selection while focus sits
-// in the other region, so the two are never confused for one another.
-func focusBorder(active, current bool) color.Color {
-	switch {
-	case active && current:
-		return styles.Skin.Accent.GetForeground()
-	case current:
-		return styles.Skin.Muted.GetForeground()
-	default:
-		return styles.Skin.Edge.GetForeground()
-	}
-}
-
-// panelBox wraps content in a titled border.
-func panelBox(title, content string, width, height int, border color.Color) string {
-	// lipgloss sizes the bordered block as a whole, so width and height here
-	// are the box's outer dimensions, not its interior.
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(border).
-		Width(width).
-		Height(max(height, panelMinHeight)).
-		Render(title + "\n" + content)
-}
-
-// focusedPanelTitle labels the detail pane with the item it is describing.
-func (m Model) focusedPanelTitle(panels []panelContent, focused int) string {
-	title := "Detail"
-	if focused >= 0 && focused < len(panels) {
-		title = m.panelDetailTitle(panels[focused])
+// detailTitle labels the detail pane with the item it is describing.
+func (m Model) detailTitle() string {
+	panels := m.panelSet(m.sectionWidth())
+	if i := panelIndex(panels, m.focusedPanel); i >= 0 {
+		return m.panelDetailTitle(panels[i])
 	}
 
-	marker := m.detailScrollMarker()
-	title = truncate(title, max(m.detailPaneSize().width-lipgloss.Width(marker), 1))
-
-	return styles.Skin.Subtitle.Render(title) + marker
+	return m.summaries[m.selectedRepo].Name()
 }
 
 // detailScrollMarker reports how much of the pane's text is on screen, so text
@@ -647,11 +657,19 @@ func (m Model) detailScrollMarker() string {
 
 	shown := min(m.detailScroll+pane.height, total)
 
-	return styles.Skin.Subtitle.Render("  " + strconv.Itoa(shown) + "/" + strconv.Itoa(total))
+	return "  " + strconv.Itoa(shown) + "/" + strconv.Itoa(total)
 }
 
 func (m Model) panelDetailTitle(p panelContent) string {
 	switch p.id {
+	case panelPRs:
+		if pr, ok := m.selectedPanelPR(); ok {
+			return "#" + strconv.Itoa(pr.Number) + " " + pr.Title
+		}
+	case panelCI:
+		if run, ok := m.selectedPanelRun(); ok {
+			return run.Workflow
+		}
 	case panelBranches:
 		if branch, ok := m.selectedPanelBranch(); ok {
 			return branch.Name
@@ -682,6 +700,10 @@ func (m Model) panelDetailLines(width int) []string {
 	var lines []string
 
 	switch m.focusedPanel {
+	case panelPRs:
+		lines = m.prDetailLines(width)
+	case panelCI:
+		lines = m.ciDetailLines(width)
 	case panelBranches:
 		lines = m.branchDetailLines(width)
 	case panelPeers:
@@ -699,17 +721,6 @@ func (m Model) panelDetailLines(width int) []string {
 	}
 
 	return lines
-}
-
-// renderPanelDetail windows the selected item's detail to the pane, honoring
-// the scroll offset that focusing the pane makes reachable.
-func (m Model) renderPanelDetail(width, height int) string {
-	lines := m.panelDetailLines(width)
-
-	start := min(m.detailScroll, max(len(lines)-height, 0))
-	lines = lines[start:min(start+height, len(lines))]
-
-	return strings.Join(lines, "\n")
 }
 
 // repoDetailFieldCount is how many fixed fields repoDetailLines writes before
@@ -771,10 +782,6 @@ func (m Model) repoDetailLines(width int) []string {
 		lines = append(lines, detailField("checkouts", label))
 	}
 
-	if absent := m.statusAbsences(summary); absent != "" {
-		lines = append(lines, detailField("absent", absent))
-	}
-
 	for _, override := range summary.ConfigOverrides {
 		lines = append(lines, detailField(override.Key, override.LocalValue+" ≠ "+override.GlobalValue))
 	}
@@ -792,25 +799,142 @@ func (m Model) branchDetailLines(width int) []string {
 		return nil
 	}
 
-	lines := []string{
-		detailField("upstream", orDash(branch.Upstream)),
-		detailField("tracking", branchAheadBehindStatus(branch)),
-		detailField("last commit", display.BranchRelativeLastCommit(branch)),
-	}
+	var lines []string
 
-	if pr := prsByHeadRef(m.prs)[branch.Name]; pr != nil {
-		lines = append(lines, detailField("pull request", formatBranchPRCell(pr)+" "+pr.Title))
+	if branch.IsCurrent && m.summaries[m.selectedRepo].UncommittedCount() > 0 {
+		lines = append(lines, m.workingDiffLines(m.selectedRepo, width)[1:]...)
+		lines = append(lines, "")
 	}
 
 	if m.branchDetail.Branch.Name != branch.Name {
-		return append(lines, "", styles.Skin.Subtitle.Render("loading commits…"))
+		return append(lines, styles.Skin.Subtitle.Render("loading commits…"))
 	}
 
-	lines = append(lines, "", styles.Skin.Subtitle.Bold(true).Render("recent commits"))
+	lines = append(lines, styles.Skin.Subtitle.Bold(true).Render("recent commits"))
 	for _, commit := range m.branchDetail.Commits {
 		lines = append(lines, styles.Skin.Body.Render(
 			truncate("  "+commit.ShortHash+" "+commit.Subject, width),
 		))
+	}
+
+	return lines
+}
+
+// prDetailLines is the selected pull request: where it merges, its checks, and
+// its description. The list row already carries the number, title, and state.
+func (m Model) prDetailLines(width int) []string {
+	pr, ok := m.selectedPanelPR()
+	if !ok {
+		return nil
+	}
+
+	detail := m.prDetail
+	loaded := detail.Number == pr.Number
+
+	meta := []string{pr.HeadRef + " → " + pr.BaseRef}
+	if pr.IsDraft {
+		meta = append([]string{"draft"}, meta...)
+	}
+
+	if author := cmp.Or(detail.Author, pr.Author); author != "" {
+		meta = append(meta, "@"+author)
+	}
+
+	if when := cmp.Or(detail.UpdatedAt, pr.UpdatedAt); !when.IsZero() {
+		meta = append(meta, "updated "+display.RelativeTime(when))
+	}
+
+	lines := []string{styles.Skin.Subtitle.Render(truncate(strings.Join(meta, compactSignalSep), width))}
+
+	if !loaded {
+		lines = append(lines, "", detailField("checks", formatChecksCell(&pr)), "",
+			styles.Skin.Subtitle.Render("loading details…"))
+
+		return lines
+	}
+
+	lines = append(lines, "")
+	lines = append(lines, prCheckLines(detail.CheckDetails, width)...)
+
+	if strings.TrimSpace(detail.Body) != "" {
+		lines = append(lines, "")
+		lines = append(lines, markdown.Render(detail.Body, width, prBodyMaxLines, styles.Markdown)...)
+	}
+
+	return lines
+}
+
+// prCheckLines lists the failing checks by name and folds the rest into a count,
+// so a long passing run does not push the description off the pane.
+func prCheckLines(checks []forge.CheckDetail, width int) []string {
+	if len(checks) == 0 {
+		return []string{detailField("checks", emDash)}
+	}
+
+	var (
+		lines   []string
+		settled int
+	)
+
+	for _, check := range checks {
+		status := display.CheckStatusDisplay(check)
+		if !isFailingCheck(status) {
+			settled++
+
+			continue
+		}
+
+		name := check.Name
+		if check.Workflow != "" && check.Workflow != check.Name {
+			name = check.Workflow + " / " + check.Name
+		}
+
+		lines = append(lines, styles.Skin.Error.Render(truncate("✗ "+name+" "+status, width)))
+	}
+
+	summary := strconv.Itoa(settled) + " other " + plural(settled, "check", "checks")
+	if len(lines) == 0 {
+		summary = strconv.Itoa(settled) + " " + plural(settled, "check", "checks") + ", none failing"
+	}
+
+	return append([]string{styles.Skin.Subtitle.Bold(true).Render("checks")},
+		append(lines, styles.Skin.Subtitle.Render(summary))...)
+}
+
+//nolint:misspell // GitHub's own conclusion value is spelled "cancelled"
+func isFailingCheck(status string) bool {
+	switch status {
+	case models.CIFailureConclusion, "error", "cancelled", "timed_out":
+		return true
+	}
+
+	return false
+}
+
+// ciDetailLines is the selected workflow's run: the jobs that failed and where
+// to read the log.
+func (m Model) ciDetailLines(width int) []string {
+	run, ok := m.selectedPanelRun()
+	if !ok {
+		return nil
+	}
+
+	lines := []string{
+		detailField("state", cmp.Or(run.Conclusion, run.Status)),
+		detailField("started", relativeOrDash(run.StartedAt)),
+		detailField("updated", relativeOrDash(run.UpdatedAt)),
+	}
+
+	if len(run.FailingJobs) > 0 {
+		lines = append(lines, "", styles.Skin.Subtitle.Bold(true).Render("failing jobs"))
+
+		for _, job := range run.FailingJobs {
+			lines = append(lines, styles.Skin.Error.Render(truncate("  ✗ "+job, width)))
+		}
+	}
+
+	if run.URL != "" {
+		lines = append(lines, "", styles.Skin.Subtitle.Render(truncate(run.URL, width)))
 	}
 
 	return lines
@@ -933,6 +1057,24 @@ func (m Model) noteDetailLines(width int) []string {
 
 // Selected-item accessors. Each answers only for its own panel, so a cursor
 // left over from another panel can never index the wrong list.
+func (m Model) selectedPanelPR() (forge.PullRequest, bool) {
+	prs := m.sectionPRs()
+	if m.focusedPanel != panelPRs || m.detailCursor >= len(prs) {
+		return forge.PullRequest{}, false
+	}
+
+	return prs[m.detailCursor], true
+}
+
+func (m Model) selectedPanelRun() (forge.CIWorkflowRun, bool) {
+	runs := m.ciWorkflows()
+	if m.focusedPanel != panelCI || m.detailCursor >= len(runs) {
+		return forge.CIWorkflowRun{}, false
+	}
+
+	return runs[m.detailCursor], true
+}
+
 func (m Model) selectedPanelBranch() (vcs.BranchInfo, bool) {
 	if m.focusedPanel != panelBranches || m.detailCursor >= len(m.branches) {
 		return vcs.BranchInfo{}, false
@@ -977,7 +1119,7 @@ const (
 // always matches what is selected and where the keyboard currently is. The
 // panel jump keys are absent because each panel's border already carries its
 // own. Actions are dimmed rather than dropped where the panel has none.
-func (m Model) panelHints(panels []panelContent, focused int) []keyhint.Hint {
+func (m Model) panelHints(_ []panelContent) []keyhint.Hint {
 	navDesc, backDesc := descNav, descBack
 	if m.detailFocused {
 		navDesc, backDesc = descScroll, "panels"
@@ -995,7 +1137,7 @@ func (m Model) panelHints(panels []panelContent, focused int) []keyhint.Hint {
 		})
 	}
 
-	hasActions := focused >= 0 && focused < len(panels) && len(panelActionsFor(panels[focused].id)) > 0
+	hasActions := len(panelActionsFor(m.focusedPanel)) > 0
 
 	return append(hints, keyhint.Hint{
 		Key: actionLeader, What: nameActions, Priority: panelHintPriority - navHintStep, Off: !hasActions,

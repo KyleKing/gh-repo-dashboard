@@ -1,27 +1,29 @@
 package app
 
 import (
-	"fmt"
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/tui/table"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
-// panelID identifies one data set in the focused repo view. Every panel with
-// something to show is on screen at once, so nothing about a repo is hidden
-// behind a mode.
+// panelID identifies one section of the focused repo view. Every section is on
+// screen at once, so nothing about a repo is hidden behind a mode.
 type panelID int
 
-// Panels in grid order. Status leads because it answers "what is the state of
-// the repo I am standing in" before any list does.
+// panelStatus is the repo itself rather than a section: it has no rule or rows
+// and is reached by its jump key, where the detail pane describes the repo and
+// the verb menu offers the repo-wide actions.
 const (
 	panelStatus panelID = iota
 	panelBranches
 	panelPeers
 	panelStashes
 	panelNotes
+	panelPRs
+	panelCI
 )
 
 // panelKeys are the jump keys. Each is fixed to its panel rather than to a
@@ -29,21 +31,26 @@ const (
 // from under the fingers.
 var panelKeys = map[panelID]string{
 	panelBranches: "b",
+	panelCI:       "c",
 	panelNotes:    "n",
 	panelPeers:    "e",
+	panelPRs:      "p",
 	panelStashes:  "t",
 	panelStatus:   "s",
 }
 
-// panelOrder is the grid order, which the legend and the jump-key list follow.
-var panelOrder = []panelID{panelStatus, panelBranches, panelPeers, panelStashes, panelNotes}
+// panelOrder is the order sections stack in, which the legend and the jump-key
+// list follow. PRs and CI lead because they are what waits on someone.
+var panelOrder = []panelID{panelPRs, panelCI, panelBranches, panelPeers, panelStashes, panelNotes, panelStatus}
 
 // panelTitles names each panel for the legend, which cannot ask a panel built
 // against a repo.
 var panelTitles = map[panelID]string{
 	panelStatus:   tabNameStatus,
 	panelBranches: tabNameBranches,
+	panelCI:       tabNameCI,
 	panelPeers:    tabNamePeers,
+	panelPRs:      tabNamePRs,
 	panelStashes:  tabNameStashes,
 	panelNotes:    tabNameNotes,
 }
@@ -58,14 +65,6 @@ func panelJumpKeys() string {
 	return strings.Join(keys, "/")
 }
 
-// panelAlwaysShown names the panels the grid keeps even with nothing to list.
-// Status reports state rather than listing anything, and a repo always has a
-// branch, so an empty Branches panel means the load failed rather than that
-// there is nothing to see.
-func panelAlwaysShown(id panelID) bool {
-	return id == panelStatus || id == panelBranches
-}
-
 // panelContent is one panel resolved against the current repo: its title, the
 // lines it would show given unlimited room, and how much of the available
 // height it has earned.
@@ -73,7 +72,10 @@ type panelContent struct {
 	id    panelID
 	key   string
 	title string
-	count int
+	// heading is the label on the section's rule, where title names it in the
+	// legend and the verb menu.
+	heading string
+	count   int
 	// relevance drives height: actionable state scores high, a clean or empty
 	// set scores the minimum, so a busy repo arrives with its problems open.
 	relevance int
@@ -91,20 +93,15 @@ const (
 	relevanceUrgent  = 9
 )
 
-// A panel spends panelChromeHeight on its border and panelTitleHeight on its
-// title before a single row fits, so panelRowsHeight is what a box of a given
-// outer height has left for content.
-const (
-	panelChromeHeight = 2
-	panelTitleHeight  = 1
-)
+// panelRuleHeight is the row a section's labeled rule takes before any of its
+// rows fit.
+const panelRuleHeight = 1
 
-func panelRowsHeight(height int) int {
-	return height - panelChromeHeight - panelTitleHeight
+// panelFloor is the fewest lines a section is drawn in: its rule, plus its
+// first row when it has one. An empty section collapses to the rule alone.
+func panelFloor(p *panelContent) int {
+	return panelRuleHeight + min(len(p.rows), 1)
 }
-
-// panelMinHeight is the shortest a panel can be drawn: its chrome plus one row.
-const panelMinHeight = panelChromeHeight + panelTitleHeight + 1
 
 // Panel tables are narrower than the full-width tab tables were, so each one
 // carries only the columns that survive a half-width pane.
@@ -126,6 +123,17 @@ var (
 		{Key: colCheckoutBranch, Title: colCheckoutBranch, Min: 12, Weight: 1, Priority: 2},
 	}
 
+	prPanelSpecs = []table.Column{
+		{Key: colPRTitle, Title: colPRTitle, Min: 16, Weight: 3},
+		{Key: colPRState, Title: colPRState, Min: 6},
+	}
+
+	ciPanelSpecs = []table.Column{
+		{Key: colCIName, Title: colCIName, Min: 14, Weight: 3},
+		{Key: colCIState, Title: colCIState, Min: 10, Priority: 1},
+		{Key: colCIAge, Title: colCIAge, Min: 6, Priority: 2},
+	}
+
 	stashPanelSpecs = []table.Column{
 		{Key: colStashMessage, Title: colStashMessage, Min: 16, Weight: 3},
 		{Key: colStashDate, Title: colStashDate, Min: 10, Priority: 1},
@@ -140,23 +148,25 @@ func fitPanelCols(specs []table.Column, width int) table.Layout {
 // narrow for even its mandatory columns; the row overflows instead.
 const minPanelTableWidth = 20
 
-// distributePanelHeights shares available lines between the panels. Every panel
-// keeps its border plus one content line so none is ever fully hidden, every
-// panel that wants them gets up to an equal share before relevance is consulted
-// so a low-scoring list is never starved beside a high-scoring one, the focused
-// panel is served next so its selection stays visible, and what remains is
-// split in proportion to relevance.
+// distributePanelHeights shares available lines between the sections. Every
+// section keeps its rule plus its first row so none is ever fully hidden, every
+// section that wants more gets up to an equal share before relevance is
+// consulted so a low-scoring list is never starved beside a high-scoring one,
+// the focused section is served next so its selection stays visible, and what
+// remains is split in proportion to relevance.
 func distributePanelHeights(panels []panelContent, focused, available int) []int {
 	heights := make([]int, len(panels))
 	if len(panels) == 0 {
 		return heights
 	}
 
-	for i := range heights {
-		heights[i] = panelMinHeight
+	floors := 0
+	for i := range panels {
+		heights[i] = panelFloor(&panels[i])
+		floors += heights[i]
 	}
 
-	surplus := available - panelMinHeight*len(panels)
+	surplus := available - floors
 	if surplus <= 0 {
 		return heights
 	}
@@ -165,31 +175,25 @@ func distributePanelHeights(panels []panelContent, focused, available int) []int
 	surplus = grantWant(heights, panels, focused, surplus)
 	shareByRelevance(heights, panels, surplus)
 
-	// Lines nothing asked for stay unspent, so the column ends where its
-	// content does. Stretching it to the bottom of the grid only pads boxes
-	// with blank rows: every panel that had somewhere to put a line has already
-	// been given it by this point.
 	return heights
 }
 
-// panelWant is how many lines beyond its first a panel would use given room.
+// panelWant is how many lines beyond its floor a section would use given room.
 func panelWant(p *panelContent) int {
-	return max(len(p.rows)-1, 0)
+	return len(p.rows) - min(len(p.rows), 1)
 }
 
-// panelRoom is how many more lines a panel would still take at its height.
+// panelRoom is how many more lines a section would still take at its height.
 func panelRoom(p *panelContent, height int) int {
-	return panelWant(p) - (height - panelMinHeight)
+	return panelWant(p) - (height - panelFloor(p))
 }
 
-// grantFairShares gives every panel that wants them the lines an even split
+// grantFairShares gives every section that wants them the lines an even split
 // would allow, before relevance is consulted at all. This is what keeps
-// relevance from being a winner-take-all score: Peers showing one of six
-// checkouts beside a half-empty Branches box was the shape it prevents.
+// relevance from being a winner-take-all score.
 func grantFairShares(heights []int, panels []panelContent, available, surplus int) int {
-	fair := max(available/len(panels)-panelMinHeight, 0)
-
 	for i := range panels {
+		fair := max(available/len(panels)-panelFloor(&panels[i]), 0)
 		take := min(panelWant(&panels[i]), fair, surplus)
 		heights[i] += take
 		surplus -= take
@@ -198,8 +202,8 @@ func grantFairShares(heights []int, panels []panelContent, available, surplus in
 	return surplus
 }
 
-// grantWant tops one panel up to everything it would show, used for the focused
-// panel so its selection stays visible.
+// grantWant tops one section up to everything it would show, used for the
+// focused section so its selection stays visible.
 func grantWant(heights []int, panels []panelContent, i, surplus int) int {
 	if i < 0 || i >= len(panels) {
 		return surplus
@@ -244,50 +248,22 @@ func shareByRelevance(heights []int, panels []panelContent, surplus int) {
 	}
 }
 
-// panelTitle labels a panel's border with its jump key and item count. The key
-// is bracketed inside the name rather than named in a footer legend, so the
-// key sits on the box it opens.
-func panelTitle(p *panelContent, focused bool) string {
-	label := markHotkey(p.title, p.key)
+// panelRule is the labeled rule that opens a section. The accent runs the whole
+// rule while the section column holds the keyboard in it, and the jump key sits
+// at the right end where the eye already is.
+func panelRule(p *panelContent, count string, focused bool, width int) string {
+	label := p.heading
 	if p.selectable {
-		label += fmt.Sprintf(" (%d)", p.count)
+		label += compactSignalSep + count
 	}
 
+	face, line := styles.Skin.Heading, styles.Skin.Hairline
 	if focused {
-		return styles.Skin.Key.Render(label)
+		face, line = styles.Skin.Accent.Bold(true), styles.Skin.Accent
 	}
 
-	return styles.Skin.Subtitle.Render(label)
-}
+	tail := max(width-lipgloss.Width(label)-sectionRuleLead-sectionRuleSpaces-lipgloss.Width(p.key)-1, 0)
 
-// markHotkey brackets the letter key names inside title. The bracketed letter
-// is the key as typed, so "Branches" reads "[b]ranches" rather than promising
-// a shift the binding does not want. Where recasing would strand an uppercase
-// letter mid-word ("PRs"), or the title does not contain the key at all, the
-// key is prefixed instead.
-func markHotkey(title, key string) string {
-	if key == "" {
-		return title
-	}
-
-	i := strings.Index(strings.ToLower(title), strings.ToLower(key))
-	if i < 0 {
-		return "[" + key + "] " + title
-	}
-
-	matched, rest := title[i:i+len(key)], title[i+len(key):]
-	if matched != key && stranded(matched, rest) {
-		return "[" + key + "] " + title
-	}
-
-	return title[:i] + "[" + key + "]" + rest
-}
-
-// stranded reports whether recasing the matched letters would leave the rest of
-// the word shouting, which is how an acronym title reads once its initial is
-// lowercased ("[p]Rs").
-func stranded(matched, rest string) bool {
-	word, _, _ := strings.Cut(rest, " ")
-
-	return matched != strings.ToLower(matched) && word != strings.ToLower(word)
+	return line.Render(strings.Repeat("─", sectionRuleLead)+" ") + face.Render(label) +
+		line.Render(" "+strings.Repeat("─", tail)+" ") + styles.Skin.Muted.Render(p.key)
 }

@@ -131,6 +131,15 @@ type PRListLoadedMsg struct {
 	Error error
 }
 
+// PRDetailLoadedMsg reports one pull request's checks and description for the
+// focused view's detail pane.
+type PRDetailLoadedMsg struct {
+	Path   string
+	Detail forge.PRDetail
+	Number int
+	Error  error
+}
+
 // StashDiffLoadedMsg reports one stash's full patch for the focused view's
 // detail pane (empty on a failed read, so the pane settles instead of
 // waiting forever).

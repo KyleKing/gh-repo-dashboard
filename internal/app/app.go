@@ -166,6 +166,7 @@ type Model struct {
 	branchDetail   models.BranchDetail
 
 	prs         []forge.PullRequest
+	prDetail    forge.PRDetail
 	branchCount map[string]int
 	// stashDiffstat caches each stash's diffstat by index, filled lazily as
 	// the panel cursor lands on one. stashDiff caches the full patch the same

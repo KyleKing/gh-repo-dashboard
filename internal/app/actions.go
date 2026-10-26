@@ -173,6 +173,10 @@ func (m Model) actionBranch() (vcs.BranchInfo, bool) {
 // actionPR returns the pull request the current view's actions apply to: the
 // branch's own PR, or the repo's PR.
 func (m Model) actionPR() (forge.PullRequest, bool) {
+	if pr, ok := m.selectedPanelPR(); ok {
+		return pr, true
+	}
+
 	branch, ok := m.actionBranch()
 	if !ok {
 		return forge.PullRequest{}, false
@@ -329,16 +333,19 @@ func (m Model) actionMenu() actionMenu {
 		return actionMenu{title: "Fleet", target: target, actions: listActions(m.markSummary() != "")}
 	}
 
-	panels := m.panelSet(m.gridWidth())
-	i := panelIndex(panels, m.focusedPanel)
-	if i < 0 || i >= len(panels) {
-		return actionMenu{title: "Detail"}
+	panels := m.panelSet(m.sectionWidth())
+	if i := panelIndex(panels, m.focusedPanel); i >= 0 {
+		return actionMenu{
+			title:   panels[i].title,
+			target:  m.panelDetailTitle(panels[i]),
+			actions: panelActionsFor(panels[i].id),
+		}
 	}
 
 	return actionMenu{
-		title:   panels[i].title,
-		target:  m.panelDetailTitle(panels[i]),
-		actions: panelActionsFor(panels[i].id),
+		title:   tabNameStatus,
+		target:  m.summaries[m.selectedRepo].Name(),
+		actions: panelActionsFor(panelStatus),
 	}
 }
 
@@ -394,6 +401,18 @@ func startOperator(key string) func(Model) (tea.Model, tea.Cmd) {
 // panelActionsFor returns the verbs the focused panel's selection supports.
 func panelActionsFor(id panelID) []panelAction {
 	switch id {
+	case panelPRs:
+		return []panelAction{
+			{key: "c", name: "check out", run: Model.startCheckoutPR},
+			{key: "m", name: "squash-merge", run: Model.startSquashMergePR},
+			{key: "o", name: "open on remote", run: Model.openPRURL},
+			{key: "y", name: "copy number", run: Model.copyPRNumber},
+		}
+	case panelCI:
+		return []panelAction{
+			{key: "o", name: "open the run", run: Model.openRunURL},
+			{key: "y", name: "copy run URL", run: Model.copyRunURL},
+		}
 	case panelStatus:
 		return []panelAction{
 			{key: "c", name: "cleanup merged", run: Model.startRepoCleanupMerged},
@@ -598,6 +617,42 @@ func (m Model) openBranchURL() (tea.Model, tea.Cmd) {
 	}
 
 	return m, openURLCmd(url + "/tree/" + branch.Name)
+}
+
+func (m Model) openPRURL() (tea.Model, tea.Cmd) {
+	pr, ok := m.selectedPanelPR()
+	if !ok || pr.URL == "" {
+		return m, statusCmd("No pull request URL to open")
+	}
+
+	return m, openURLCmd(pr.URL)
+}
+
+func (m Model) copyPRNumber() (tea.Model, tea.Cmd) {
+	pr, ok := m.selectedPanelPR()
+	if !ok {
+		return m, nil
+	}
+
+	return m, copyToClipboardCmd(strconv.Itoa(pr.Number))
+}
+
+func (m Model) openRunURL() (tea.Model, tea.Cmd) {
+	run, ok := m.selectedPanelRun()
+	if !ok || run.URL == "" {
+		return m, statusCmd("No run URL to open")
+	}
+
+	return m, openURLCmd(run.URL)
+}
+
+func (m Model) copyRunURL() (tea.Model, tea.Cmd) {
+	run, ok := m.selectedPanelRun()
+	if !ok || run.URL == "" {
+		return m, nil
+	}
+
+	return m, copyToClipboardCmd(run.URL)
 }
 
 func (m Model) copyBranchName() (tea.Model, tea.Cmd) {

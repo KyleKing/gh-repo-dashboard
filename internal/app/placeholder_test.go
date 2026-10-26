@@ -24,40 +24,31 @@ func placeholderModel(loading bool) Model {
 	return m
 }
 
-// An empty panel is worth a box only while its data is still in flight. Once
-// the load settles, an empty list is dropped and the Status panel names what is
-// missing, so the grid never spends four lines saying "none".
-func TestEmptyPanelsSayLoadingThenDisappear(t *testing.T) {
+// An empty section collapses to its rule, and says so with an ellipsis for a
+// count while its data is still in flight.
+func TestEmptySectionsCollapseToTheirRule(t *testing.T) {
 	t.Parallel()
 
-	ids := []panelID{panelBranches, panelStashes, panelPeers, panelNotes}
-	for _, id := range ids {
-		loading := plainText(renderPanel(placeholderModel(true), id))
-		if !strings.Contains(loading, "loading") {
-			t.Errorf("panel %v while loading reads %q, want it to say so", id, loading)
-		}
+	loading := placeholderModel(true)
+	rendered := plainText(strings.Join(loading.renderSections(
+		loading.panelSet(loading.width), -1, loading.width, loading.bodyHeight(),
+	), "\n"))
+
+	if !strings.Contains(rendered, "BRANCHES · …") {
+		t.Errorf("a loading section should show an ellipsis count:\n%s", rendered)
 	}
 
 	settled := placeholderModel(false)
-	shown := map[panelID]bool{}
-	for _, p := range settled.panelSet(contentWidth(settled.width)) {
-		shown[p.id] = true
+	panels := settled.panelSet(settled.width)
+
+	if len(panels) != len(panelOrder)-1 {
+		t.Fatalf("got %d sections, want every section but the repo's own", len(panels))
 	}
 
-	for _, id := range []panelID{panelStashes, panelPeers, panelNotes} {
-		if shown[id] {
-			t.Errorf("panel %v is still drawn once settled with nothing to list", id)
+	for i, h := range distributePanelHeights(panels, -1, settled.bodyHeight()) {
+		if len(panels[i].rows) == 0 && h != panelRuleHeight {
+			t.Errorf("empty section %v is %d lines, want just its rule", panels[i].id, h)
 		}
-	}
-	for _, id := range []panelID{panelStatus, panelBranches} {
-		if !shown[id] {
-			t.Errorf("panel %v must stay on screen even when empty", id)
-		}
-	}
-
-	preview := plainText(strings.Join(settled.repoDetailLines(contentWidth(settled.width)), "\n"))
-	if !strings.Contains(preview, "no PRs, peers, stashes, or notes") {
-		t.Errorf("Status's full preview must name the dropped panels, got %q", preview)
 	}
 }
 

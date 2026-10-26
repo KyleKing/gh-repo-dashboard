@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/display"
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/tui/frame"
 	"github.com/kyleking/aragonite/tui/table"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
@@ -178,6 +179,19 @@ func (t tone) style() lipgloss.Style {
 		return styles.Skin.Error
 	default:
 		return styles.Skin.Muted
+	}
+}
+
+func (t tone) frameTone() frame.Tone {
+	switch t {
+	case toneAccent:
+		return frame.Accent
+	case toneWarning:
+		return frame.Warning
+	case toneError:
+		return frame.Error
+	default:
+		return frame.Muted
 	}
 }
 

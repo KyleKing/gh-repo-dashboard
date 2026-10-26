@@ -57,21 +57,27 @@ marks in the accent), and shows the tab strip at its right. The footer is pinned
 inside their words, and a status message fades at its right end after three
 seconds. A sort shows as `▴` or `▾` on its column title.
 
-The repository list is the starting view. `enter` opens the focused repo view: a
-column of panels for Status, Branches, Peers, Stashes, and Notes beside a
-detail pane that renders whatever the cursor sits on. Only the panels with
-something to show are drawn, so a jj repo has no Stashes panel; the Status panel
-names what is missing instead ("no PRs, peers, or notes"). Each panel's border brackets its own jump
-key, so `[b]ranches` is one `b` away. `tab` and `l` move to the next panel, `h`
-to the previous, and `j`/`k` walk the whole column as one list, crossing from the
-last row of one panel into the first of the next. Every panel gets an equal share
-of the height before the busier ones get more, so a long list is never squeezed
-out and a busy repo still arrives with its problems open.
+The repository list is the starting view. `enter` opens the focused repo view as one
+surface. The header line carries the repo's identity and the same NEEDS tokens the list
+does. The left column stacks sections split by labeled rules, with no boxes: Pull
+requests, CI (one row per workflow, failing first), Branches, Peers, Stashes, and Notes.
+Each section is as tall as its rows, and an empty one collapses to its rule. The view
+opens with the cursor in the section that holds the repo's first NEEDS item (failing CI,
+then a PR waiting on you, then local work, a shared branch, a note) and in Branches when
+the repo is quiet. A jj repo has no Stashes section.
+
+Behind one vertical rule the detail pane shows what the rows do not: a branch's recent
+commits, a PR's failing checks and description, a workflow's failing jobs, a note's text.
+The split never moves, and focus shows only as the accent on a section rule and the
+cursor. Below 100 columns the detail pane stacks under the sections with at least six
+rows guaranteed. Each rule carries its jump key at the right end (`p`, `c`, `b`, `e`,
+`t`, `n`), and `s` selects the repo itself, where the detail pane lists its identity
+facts and `a` offers the repo-wide actions. `tab` and `l` move to the next section, `h`
+to the previous, and `j`/`k` walk the column as one list, crossing from the last row of
+one section into the first of the next.
 
 `enter` hands the keyboard to the detail pane, where `j`/`k` scroll its text and
-`esc` hands it back to the panel column. The accent border marks whichever region
-is live, and the panel column narrows while the detail pane holds focus, since
-nothing is being selected in it then. `O` opens the selected branch in its own full-screen view.
+`esc` hands it back to the sections. `O` opens the selected branch in its own full-screen view.
 
 `space` opens the universal find, scoped to the repo you are in (`;` opens it
 fleet-wide from the list, and `*` widens a repo-scoped query). The find opens with

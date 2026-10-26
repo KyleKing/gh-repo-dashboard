@@ -124,11 +124,7 @@ func TestCompactGridStacksEveryPanel(t *testing.T) {
 	m.stashes = []vcs.StashDetail{{Index: 0, Message: "On main: spike"}}
 
 	grid := plainText(m.renderPanelGrid())
-	// The Status title is built rather than spelled out: the bracketed form is
-	// pinned by TestEveryPanelShowsContentWithoutAKeypress, and what matters
-	// here is only that every panel made it into the stack.
-	status := markHotkey("Status", panelKeys[panelStatus])
-	for _, want := range []string{status, "[b]ranches (1)", "S[t]ashes (1)"} {
+	for _, want := range []string{"PULL REQUESTS", "BRANCHES · 1", "STASHES · 1", "NOTES"} {
 		if !strings.Contains(grid, want) {
 			t.Errorf("compact grid is missing %q:\n%s", want, grid)
 		}
