@@ -16,7 +16,8 @@ go test -v ./internal/filters/... # one package, verbose
 ```
 
 Golden-file tests run under a build tag. `mise run test:golden-update`
-regenerates the snapshots.
+regenerates the snapshots, and `mise run test:golden-check` fails on a
+snapshot no test regenerates.
 
 ## Recording the demo
 

@@ -1,10 +1,6 @@
 # Project-specific tasks for gh-repo-dashboard
 # Generic tasks are in template.toml (managed by copier template)
 
-# The golden tests sit behind this build tag; test:golden-orphans reads GOFLAGS to regenerate them.
-[env]
-GOFLAGS = "-tags=golden"
-
 [tasks."test:live"]
 description = "Live integration test of the destructive :cleanup path (creates and deletes a scratch GitHub repo)"
 run = "./scripts/live-test.sh"
@@ -12,6 +8,10 @@ run = "./scripts/live-test.sh"
 [tasks."test:golden"]
 description = "Run golden snapshot tests"
 run = "go test -tags=golden -run TestGolden ./internal/app/"
+
+[tasks."test:golden-check"]
+description = "Fail on any .golden file no test regenerates (the golden tests sit behind a build tag)"
+run = "GOFLAGS=-tags=golden mise run test:golden-orphans"
 
 [tasks."test:golden-update"]
 description = "Regenerate golden snapshots"
