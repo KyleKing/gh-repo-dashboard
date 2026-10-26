@@ -1,3 +1,9 @@
+## v1.18.0 (2026-10-26)
+
+### Feat
+
+- **tui**: one detail region, a fleet scope in the filter panel, and owner labels
+
 ## v1.17.0 (2026-10-26)
 
 ### Feat
