@@ -387,13 +387,13 @@ func TestPanelKeysAreFixedToTheirPanel(t *testing.T) {
 	seen := map[string]bool{}
 
 	for _, p := range m.panelSet(60) {
-		if want := panelKeys[p.id]; p.key != want {
-			t.Errorf("panel %q has key %q, want %q", p.title, p.key, want)
+		if want := panelKeys[p.id]; p.Key != want {
+			t.Errorf("panel %q has key %q, want %q", p.title, p.Key, want)
 		}
-		if seen[p.key] {
-			t.Errorf("key %q is claimed by more than one panel", p.key)
+		if seen[p.Key] {
+			t.Errorf("key %q is claimed by more than one panel", p.Key)
 		}
-		seen[p.key] = true
+		seen[p.Key] = true
 	}
 }
 

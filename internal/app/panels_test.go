@@ -83,13 +83,13 @@ func TestLetterKeysJumpToPanels(t *testing.T) {
 	panels := m.panelSet(60)
 
 	for _, p := range panels {
-		next, _ := m.handleDetailKey(keyPress(rune(p.key[0])))
+		next, _ := m.handleDetailKey(keyPress(rune(p.Key[0])))
 		jumped := mustModel(t, next)
 		if jumped.focusedPanel != p.id {
-			t.Errorf("key %q focused panel %v, want %v", p.key, jumped.focusedPanel, p.id)
+			t.Errorf("key %q focused panel %v, want %v", p.Key, jumped.focusedPanel, p.id)
 		}
 		if jumped.detailCursor != 0 {
-			t.Errorf("key %q left the cursor at %d, want a reset", p.key, jumped.detailCursor)
+			t.Errorf("key %q left the cursor at %d, want a reset", p.Key, jumped.detailCursor)
 		}
 	}
 }
@@ -115,8 +115,8 @@ func TestJJRepoHasNoStashesPanel(t *testing.T) {
 func TestRelevanceDecidesTheRoomBeyondAFairShare(t *testing.T) {
 	t.Parallel()
 
-	busy := panelContent{id: panelPeers, relevance: preview.Urgent, rows: make([]string, 12)}
-	quiet := panelContent{id: panelStashes, relevance: preview.Idle, rows: make([]string, 2)}
+	busy := panelContent{id: panelPeers, Section: preview.Section{Relevance: preview.Urgent, Rows: make([]string, 12)}}
+	quiet := panelContent{id: panelStashes, Section: preview.Section{Relevance: preview.Idle, Rows: make([]string, 2)}}
 
 	heights := preview.Heights(sectionsOf([]panelContent{busy, quiet}), -1, 24)
 	if heights[0] <= heights[1] {
@@ -136,8 +136,8 @@ func TestRelevanceDecidesTheRoomBeyondAFairShare(t *testing.T) {
 func TestContendingPanelsSplitTheColumnEvenly(t *testing.T) {
 	t.Parallel()
 
-	quiet := panelContent{id: panelStashes, relevance: preview.Idle, rows: make([]string, 10)}
-	busy := panelContent{id: panelPeers, relevance: preview.Urgent, rows: make([]string, 10)}
+	quiet := panelContent{id: panelStashes, Section: preview.Section{Relevance: preview.Idle, Rows: make([]string, 10)}}
+	busy := panelContent{id: panelPeers, Section: preview.Section{Relevance: preview.Urgent, Rows: make([]string, 10)}}
 
 	heights := preview.Heights(sectionsOf([]panelContent{quiet, busy}), 1, 18)
 	if heights[0] != heights[1] {
@@ -148,11 +148,11 @@ func TestContendingPanelsSplitTheColumnEvenly(t *testing.T) {
 func TestFocusedPanelIsServedBeforeRelevance(t *testing.T) {
 	t.Parallel()
 
-	quiet := panelContent{id: panelStashes, relevance: preview.Idle, rows: make([]string, 10)}
-	busy := panelContent{id: panelPeers, relevance: preview.Urgent, rows: make([]string, 1)}
+	quiet := panelContent{id: panelStashes, Section: preview.Section{Relevance: preview.Idle, Rows: make([]string, 10)}}
+	busy := panelContent{id: panelPeers, Section: preview.Section{Relevance: preview.Urgent, Rows: make([]string, 1)}}
 
 	heights := preview.Heights(sectionsOf([]panelContent{quiet, busy}), 0, 20)
-	if heights[0] < 1+len(quiet.rows) {
+	if heights[0] < 1+len(quiet.Rows) {
 		t.Errorf("heights %v: the focused panel must fit its own content once the shares are out",
 			heights)
 	}
@@ -346,13 +346,13 @@ func TestPanelRowsFitTheirBoxAndKeepTheBranchHead(t *testing.T) {
 
 			var branchRows string
 			for _, p := range m.panelSet(width) {
-				for _, row := range p.rows {
+				for _, row := range p.Rows {
 					if got := lipgloss.Width(row); got > width {
 						t.Errorf("a %s row is %d cells wide in a %d-cell panel: %q", p.title, got, width, row)
 					}
 				}
 				if p.id == panelBranches {
-					branchRows = plainText(strings.Join(p.rows, "\n"))
+					branchRows = plainText(strings.Join(p.Rows, "\n"))
 				}
 			}
 

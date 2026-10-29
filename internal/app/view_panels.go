@@ -65,8 +65,8 @@ func (m Model) panelSet(width int) []panelContent {
 	built = append(built, m.notesPanel(width))
 
 	for i := range built {
-		built[i].key = panelKeys[built[i].id]
-		built[i].heading = cmp.Or(built[i].heading, strings.ToUpper(built[i].title))
+		built[i].Key = panelKeys[built[i].id]
+		built[i].Heading = cmp.Or(built[i].Heading, strings.ToUpper(built[i].title))
 	}
 
 	return built
@@ -75,7 +75,7 @@ func (m Model) panelSet(width int) []panelContent {
 // panelForKey returns the panel a jump key selects.
 func panelForKey(panels []panelContent, key string) (panelContent, bool) {
 	for _, p := range panels {
-		if p.key == key {
+		if p.Key == key {
 			return p, true
 		}
 	}
@@ -145,8 +145,11 @@ func (m Model) prsPanel(summary models.RepoSummary, width int) panelContent {
 	}
 
 	return panelContent{
-		id: panelPRs, title: tabNamePRs, heading: "PULL REQUESTS", count: strconv.Itoa(len(prs)),
-		relevance: relevance, rows: rows, selectable: true,
+		id: panelPRs, title: tabNamePRs,
+		Section: preview.Section{
+			Heading: "PULL REQUESTS", Count: strconv.Itoa(len(prs)),
+			Relevance: relevance, Rows: rows, Selectable: true,
+		},
 	}
 }
 
@@ -257,8 +260,11 @@ func (m Model) ciPanel(summary models.RepoSummary, width int) panelContent {
 	}
 
 	return panelContent{
-		id: panelCI, title: tabNameCI, heading: heading, count: strconv.Itoa(len(runs)),
-		relevance: relevance, rows: rows, selectable: true,
+		id: panelCI, title: tabNameCI,
+		Section: preview.Section{
+			Heading: heading, Count: strconv.Itoa(len(runs)),
+			Relevance: relevance, Rows: rows, Selectable: true,
+		},
 	}
 }
 
@@ -295,8 +301,11 @@ func (m Model) branchesPanel(width int) panelContent {
 	}
 
 	return panelContent{
-		id: panelBranches, title: tabNameBranches, count: strconv.Itoa(len(m.branches)),
-		relevance: relevance, rows: rows, selectable: true,
+		id: panelBranches, title: tabNameBranches,
+		Section: preview.Section{
+			Count:     strconv.Itoa(len(m.branches)),
+			Relevance: relevance, Rows: rows, Selectable: true,
+		},
 	}
 }
 
@@ -344,8 +353,11 @@ func (m Model) peersPanel(summary models.RepoSummary, width int) panelContent {
 	}
 
 	return panelContent{
-		id: panelPeers, title: tabNamePeers, count: strconv.Itoa(len(checkouts)),
-		relevance: relevance, rows: rows, selectable: true,
+		id: panelPeers, title: tabNamePeers,
+		Section: preview.Section{
+			Count:     strconv.Itoa(len(checkouts)),
+			Relevance: relevance, Rows: rows, Selectable: true,
+		},
 	}
 }
 
@@ -371,8 +383,11 @@ func (m Model) stashesPanel(width int) panelContent {
 	}
 
 	return panelContent{
-		id: panelStashes, title: tabNameStashes, count: strconv.Itoa(len(m.stashes)),
-		relevance: relevance, rows: rows, selectable: true,
+		id: panelStashes, title: tabNameStashes,
+		Section: preview.Section{
+			Count:     strconv.Itoa(len(m.stashes)),
+			Relevance: relevance, Rows: rows, Selectable: true,
+		},
 	}
 }
 
@@ -400,8 +415,11 @@ func (m Model) notesPanel(width int) panelContent {
 	}
 
 	return panelContent{
-		id: panelNotes, title: tabNameNotes, count: strconv.Itoa(len(m.notesFiles)),
-		relevance: relevance, rows: rows, selectable: true,
+		id: panelNotes, title: tabNameNotes,
+		Section: preview.Section{
+			Count:     strconv.Itoa(len(m.notesFiles)),
+			Relevance: relevance, Rows: rows, Selectable: true,
+		},
 	}
 }
 
@@ -535,7 +553,7 @@ func (m Model) renderSections(panels []panelContent, focused, width, height int)
 func (m Model) previewSections(panels []panelContent) []preview.Section {
 	for i := range panels {
 		if m.detailLoading && panels[i].id != panelPRs {
-			panels[i].count = "…"
+			panels[i].Count = "…"
 		}
 	}
 
@@ -546,7 +564,7 @@ func (m Model) previewSections(panels []panelContent) []preview.Section {
 // marker, then its lines windowed to the pane's interior.
 func (m Model) renderDetailPane(width, height int) []string {
 	d := preview.Detail{Title: m.detailTitle(), Lines: m.panelDetailLines(width), Scroll: m.detailScroll}
-	return preview.Pad(append([]string{d.Head(previewStyles, width, height)}, d.Window(height)...), height+1, width)
+	return d.Render(previewStyles, width, height)
 }
 
 // detailTitle labels the detail pane with the item it is describing.

@@ -65,35 +65,13 @@ func panelJumpKeys() string {
 	return strings.Join(keys, "/")
 }
 
-// panelContent is one panel resolved against the current repo: its title, the
-// lines it would show given unlimited room, and how much of the available
-// height it has earned.
+// panelContent is one panel resolved against the current repo: the section the
+// shared layout draws, its jump key id, and the title the legend and verb
+// menu name it by where Heading labels the rule.
 type panelContent struct {
+	preview.Section
 	id    panelID
-	key   string
 	title string
-	// heading is the label on the section's rule, where title names it in the
-	// legend and the verb menu.
-	heading string
-	count   string
-	// relevance drives height: actionable state scores high, a clean or empty
-	// set scores the minimum, so a busy repo arrives with its problems open.
-	relevance int
-	rows      []string
-	// selectable is false for Status, which reports state rather than listing
-	// items the cursor can land on.
-	selectable bool
-	// elide cuts the middle of rows too long for the height rather than their
-	// end, for text whose newest lines are the last.
-	elide bool
-}
-
-// previewSection is the panel as the shared two-pane layout draws it.
-func (p panelContent) previewSection() preview.Section {
-	return preview.Section{
-		Heading: p.heading, Key: p.key, Count: p.count, Rows: p.rows,
-		Relevance: p.relevance, Selectable: p.selectable, Elide: p.elide,
-	}
 }
 
 // previewStyles is the app's skin as the pane faces.
@@ -103,7 +81,7 @@ var previewStyles = preview.SkinStyles(styles.Skin)
 func sectionsOf(panels []panelContent) []preview.Section {
 	sections := make([]preview.Section, len(panels))
 	for i, p := range panels {
-		sections[i] = p.previewSection()
+		sections[i] = p.Section
 	}
 
 	return sections

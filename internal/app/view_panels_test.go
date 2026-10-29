@@ -9,7 +9,7 @@ func renderPanel(m Model, id panelID) string {
 	m.focusedPanel = id
 	for _, p := range m.panelSet(contentWidth(m.width)) {
 		if p.id == id {
-			return strings.Join(p.rows, "\n")
+			return strings.Join(p.Rows, "\n")
 		}
 	}
 

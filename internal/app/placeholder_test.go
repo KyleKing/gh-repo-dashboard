@@ -47,7 +47,7 @@ func TestEmptySectionsCollapseToTheirRule(t *testing.T) {
 	}
 
 	for i, h := range preview.Heights(sectionsOf(panels), -1, settled.bodyHeight()) {
-		if len(panels[i].rows) == 0 && h != 1 {
+		if len(panels[i].Rows) == 0 && h != 1 {
 			t.Errorf("empty section %v is %d lines, want just its rule", panels[i].id, h)
 		}
 	}

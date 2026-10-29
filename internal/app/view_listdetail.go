@@ -182,7 +182,7 @@ func (m Model) renderDetail(width, height int) []string {
 
 	sections := make([]preview.Section, len(panels))
 	for i, p := range panels {
-		sections[i] = p.previewSection()
+		sections[i] = p.Section
 	}
 
 	return append(lines, preview.Column(previewStyles, sections, -1, 0,
@@ -304,7 +304,7 @@ func detailBranches(branches []vcs.BranchInfo) string {
 
 // detailEmptyNote tells an empty section from one still loading.
 func (m Model) detailEmptyNote(path string, p panelContent, kind fetchKind) panelContent {
-	if len(p.rows) > 0 {
+	if len(p.Rows) > 0 {
 		return p
 	}
 
@@ -313,7 +313,7 @@ func (m Model) detailEmptyNote(path string, p panelContent, kind fetchKind) pane
 		note = readingLabel
 	}
 
-	p.rows = []string{styles.Skin.Muted.Render(note)}
+	p.Rows = []string{styles.Skin.Muted.Render(note)}
 
 	return p
 }
@@ -338,15 +338,15 @@ func (m Model) detailCommitsPanel(path string, width int) panelContent {
 		rows = append(rows, detailRow(rowCursorFor(false), layout, cells, plainStyle))
 	}
 
-	p := panelContent{
-		heading:    "COMMITS",
-		count:      strconv.Itoa(len(commits)),
-		relevance:  preview.Idle,
-		rows:       rows,
-		selectable: true,
-	}
+	p := panelContent{Section: preview.Section{
+		Heading:    "COMMITS",
+		Count:      strconv.Itoa(len(commits)),
+		Relevance:  preview.Idle,
+		Rows:       rows,
+		Selectable: true,
+	}}
 	if !loaded {
-		p.rows = []string{styles.Skin.Muted.Render(readingLabel)}
+		p.Rows = []string{styles.Skin.Muted.Render(readingLabel)}
 	}
 
 	return p
@@ -360,26 +360,26 @@ func (m Model) detailNotesPanel(path string, summary models.RepoSummary, width i
 		return panelContent{}, false
 	}
 
-	p := panelContent{
-		heading: "NOTES", count: strconv.Itoa(len(summary.NotesFiles)),
-		relevance: preview.Present, selectable: true, elide: true,
-	}
+	p := panelContent{Section: preview.Section{
+		Heading: "NOTES", Count: strconv.Itoa(len(summary.NotesFiles)),
+		Relevance: preview.Present, Selectable: true, Elide: true,
+	}}
 
 	contents, loaded := m.notesPreview[path]
 	if !loaded {
-		p.rows = []string{styles.Skin.Muted.Render(readingLabel)}
+		p.Rows = []string{styles.Skin.Muted.Render(readingLabel)}
 
 		return p, true
 	}
 
-	p.count = strconv.Itoa(len(contents))
+	p.Count = strconv.Itoa(len(contents))
 
 	for i := range contents {
 		if len(contents) > 1 {
-			p.rows = append(p.rows, sectionRule(contents[i].Name, width))
+			p.Rows = append(p.Rows, sectionRule(contents[i].Name, width))
 		}
 
-		p.rows = append(p.rows, notesBodyLines(contents[i].Content, width)...)
+		p.Rows = append(p.Rows, notesBodyLines(contents[i].Content, width)...)
 	}
 
 	return p, true
