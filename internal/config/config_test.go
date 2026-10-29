@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,7 +30,7 @@ func TestLoadFullConfig(t *testing.T) {
 scan_paths = ["~/Developer", "/tmp/repos"]
 depth = 3
 notes_filenames = ["NOTES.md"]
-cache_ttl_minutes = 10
+cache_ttl = "10m"
 fleet_active = "90d"
 fleet_authors = ["me@example.com"]
 
@@ -62,8 +63,8 @@ every = "30d"
 	if len(cfg.NotesFilenames) != 1 || cfg.NotesFilenames[0] != "NOTES.md" {
 		t.Errorf("notes_filenames = %v", cfg.NotesFilenames)
 	}
-	if cfg.CacheTTL() != 10*time.Minute {
-		t.Errorf("cache ttl = %v; want 10m", cfg.CacheTTL())
+	if cfg.TTL() != 10*time.Minute {
+		t.Errorf("cache ttl = %v; want 10m", cfg.TTL())
 	}
 	if !cfg.PersistCache() {
 		t.Error("a file that says nothing about cache_to_disk turned persistence off")
@@ -94,8 +95,11 @@ func TestLoadMissingFileIsZeroConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cfg.ScanPaths) != 0 || cfg.Depth != 0 || cfg.CacheTTL() != 0 {
+	if len(cfg.ScanPaths) != 0 || cfg.Depth != 0 || cfg.CacheTTL != "" {
 		t.Errorf("expected zero config, got %+v", cfg)
+	}
+	if cfg.TTL() != config.DefaultCacheTTL {
+		t.Errorf("cache ttl = %v; want the %v default", cfg.TTL(), config.DefaultCacheTTL)
 	}
 	if !cfg.PersistCache() {
 		t.Error("persistence is an opt-out, so a missing file leaves it on")
@@ -127,7 +131,8 @@ func TestLoadErrors(t *testing.T) {
 	}{
 		{"malformed toml", "scan_paths = [unclosed", nil},
 		{"negative depth", "depth = -1", nil},
-		{"negative ttl", "cache_ttl_minutes = -5", nil},
+		{"negative ttl", "cache_ttl = '-5s'", nil},
+		{"unparsable ttl", "cache_ttl = 'soon'", nil},
 		{"unparsable fleet window", "fleet_active = 'recently'", nil},
 		{"zero fleet window", "fleet_active = '0d'", nil},
 		{"task without name", "[[tasks]]\nrun = 'true'", config.ErrTaskNameMissing},
@@ -177,6 +182,27 @@ func TestLoadErrors(t *testing.T) {
 				t.Errorf("error = %v; want %v", err, tt.want)
 			}
 		})
+	}
+}
+
+// The whole-minutes key no longer applies, but it must warn rather than fail
+// silently: a config carrying it was written for a TTL that is now different.
+func TestCacheTTLMinutesWarns(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", writeConfig(t, "cache_ttl_minutes = 10\ncache_ttl = \"90s\"\n"))
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	warnings := cfg.Warnings()
+	if len(warnings) != 1 || !strings.Contains(warnings[0], "cache_ttl_minutes") ||
+		!strings.Contains(warnings[0], "10m0s") {
+		t.Errorf("warnings = %v", warnings)
+	}
+
+	if cfg.TTL() != 90*time.Second {
+		t.Errorf("cache ttl = %v; want the cache_ttl value, not the ignored one", cfg.TTL())
 	}
 }
 

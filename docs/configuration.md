@@ -15,8 +15,8 @@ depth = 2
 # Per-repo notes filenames checked at each repo root, every match is shown
 notes_filenames = [".doing", "doing.md", "doing.txt", "TODO.md"]
 
-# Lifetime of cached GitHub data (PRs, workflow runs), in minutes
-cache_ttl_minutes = 5
+# Lifetime of cached GitHub data (PRs, workflow runs), as a Go duration
+cache_ttl = "30s"
 
 # Keep pull request data between runs, one file per remote (default true)
 cache_to_disk = true
@@ -144,12 +144,14 @@ view. `shell` is reserved like the other built-in names.
 
 ## Caching
 
-The dashboard caches GitHub pull request and workflow data for
-`cache_ttl_minutes`, defaulting to 5. Press `r` in the TUI to clear the caches
-and reload, or pass `--fresh` alongside `--cli`.
+The dashboard caches GitHub pull request and workflow data for `cache_ttl`,
+defaulting to 30 seconds, and repaints the last row each repo showed while
+fresh reads land behind it. Press `r` in the TUI to clear the caches and
+reload, or pass `--fresh` alongside `--cli`.
 
-With `cache_to_disk` left on, the pull request list and the merged-PR head map
-also outlive the process, in one file per remote under
+With `cache_to_disk` left on, the pull request list, the merged-PR head map,
+and each row's last-painted state also outlive the process, in one file per
+remote under
 `os.UserCacheDir()/gh-repo-dashboard` (`~/Library/Caches` on macOS,
 `$XDG_CACHE_HOME` or `~/.cache` on Linux), so a cold start on a large fleet
 renders without one `gh pr list` per repo. A file is read when the row that

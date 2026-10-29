@@ -92,7 +92,7 @@ func (m Model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case PRLoadedMsg:
 		m.settleSummary(msg.Path, fetchPR, func(s *models.RepoSummary) { s.PRInfo = msg.PRInfo })
 
-		return m, nil
+		return m, m.snapshotCmd(msg.Path)
 
 	case WorkflowLoadedMsg:
 		return m.handleWorkflowLoaded(msg)
@@ -110,13 +110,13 @@ func (m Model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.due[msg.Path] = msg.Tasks
 		m.resortKeepingCursor()
 
-		return m, nil
+		return m, m.snapshotCmd(msg.Path)
 
 	case ChangedPathsLoadedMsg:
 		m.changedPaths[msg.Path] = msg.Paths
 		m.finishFetch(msg.Path, fetchChangedPaths)
 
-		return m, nil
+		return m, m.snapshotCmd(msg.Path)
 
 	case CopierInfoLoadedMsg:
 		return m.handleCopierInfoLoaded(msg)
@@ -190,7 +190,7 @@ func (m Model) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.branchCount[msg.Path] = msg.Count
 		m.finishFetch(msg.Path, fetchBranchCount)
 
-		return m, nil
+		return m, m.snapshotCmd(msg.Path)
 
 	case CopySuccessMsg:
 		return m.withFadingStatus("Copied to clipboard: " + msg.Text)
@@ -335,6 +335,7 @@ func (m Model) handleReposDiscovered(msg ReposDiscoveredMsg) (tea.Model, tea.Cmd
 
 	cmds := make([]tea.Cmd, 0, len(msg.Paths)+1)
 	for _, path := range msg.Paths {
+		m.seedSnapshot(path)
 		cmds = append(cmds, loadRepoSummaryCmd(path, m.scopeGen))
 	}
 
@@ -365,6 +366,7 @@ func (m Model) handleRepoSummaryLoaded(msg RepoSummaryLoadedMsg) (tea.Model, tea
 	var cmds []tea.Cmd
 	if msg.Error == nil {
 		cmds = append(cmds, m.followUpCmds(msg.Summary)...)
+		cmds = append(cmds, m.snapshotCmd(msg.Path))
 	}
 
 	if m.loadedCount >= m.loadingCount {
@@ -431,15 +433,17 @@ func (m Model) handleWorkflowLoaded(msg WorkflowLoadedMsg) (tea.Model, tea.Cmd) 
 		return m, nil
 	}
 
+	var cmds []tea.Cmd
 	if msg.Error == nil {
 		m.applyToSummary(msg.Path, func(s *models.RepoSummary) { s.CI = msg.CI })
 		m.freshness[cell] = freshnessFresh
 		m.rememberCIBranch(msg.Path, msg.Branch)
+		cmds = append(cmds, m.snapshotCmd(msg.Path))
 	}
 
 	m.finishFetch(msg.Path, fetchCI)
 	m.resortKeepingCursor()
-	cmds := m.visibleCICmds()
+	cmds = append(cmds, m.visibleCICmds()...)
 
 	return m, tea.Batch(cmds...)
 }
@@ -485,6 +489,10 @@ func (m Model) handleOpenPRsLoaded(msg OpenPRsLoadedMsg) (tea.Model, tea.Cmd) {
 	m.finishFetch(msg.Path, fetchOpenPRs)
 	m.resortKeepingCursor()
 
+	if msg.Error == nil {
+		return m, m.snapshotCmd(msg.Path)
+	}
+
 	return m, nil
 }
 
@@ -493,15 +501,15 @@ func (m Model) handleCopierInfoLoaded(msg CopierInfoLoadedMsg) (tea.Model, tea.C
 	m.resortKeepingCursor()
 
 	if m.taskSel == nil {
-		return m, nil
+		return m, m.snapshotCmd(msg.Path)
 	}
 
 	summary, ok := m.summaries[msg.Path]
 	if !ok {
-		return m, nil
+		return m, m.snapshotCmd(msg.Path)
 	}
 
-	return m, loadDueTasksCmd(*m.taskSel, summary)
+	return m, tea.Batch(m.snapshotCmd(msg.Path), loadDueTasksCmd(*m.taskSel, summary))
 }
 
 // resortKeepingCursor keeps the cursor on its repo as rows reorder. A cursor on the first row stays there.

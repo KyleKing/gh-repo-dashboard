@@ -9,11 +9,13 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/kyleking/aragonite/cache"
 	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/filters"
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
+	"github.com/kyleking/gh-repo-dashboard/internal/snapshot"
 	"github.com/kyleking/gh-repo-dashboard/internal/tasks"
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
@@ -114,7 +116,11 @@ type Model struct {
 	// ciBranch names the default branch each repo's CI runs belong to.
 	ciBranch map[string]string
 
-	freshness    map[fetchKey]freshness
+	freshness map[fetchKey]freshness
+	// snapshots holds each row's last-painted state for the next run, nil
+	// until WithSnapshots installs the disk store.
+	snapshots *snapshot.Store
+
 	viewer       string
 	shared       map[string]bool
 	taskSel      *tasks.Selector
@@ -312,6 +318,19 @@ func (m Model) WithFleet(f Fleet) Model {
 // WithTasks gives the list the configured tasks, so a repo with one due shows it in NEEDS.
 func (m Model) WithTasks(sel tasks.Selector) Model {
 	m.taskSel = &sel
+
+	return m
+}
+
+// WithSnapshots gives the model the disk store row snapshots persist to, so
+// the next run paints them before any read lands. A nil store keeps snapshots
+// off entirely.
+func (m Model) WithSnapshots(disk *cache.DiskCache) Model {
+	if disk == nil {
+		return m
+	}
+
+	m.snapshots = snapshot.Open(disk)
 
 	return m
 }

@@ -1,7 +1,9 @@
 # Cache identity and invalidation
 
 How caching is keyed and invalidated, and why a timer alone is the wrong answer.
-Implementation is `internal/cache` and `internal/vcs/stamp.go`.
+Implementation is `aragonite/cache`, `aragonite/vcs` (the stamp and remote
+identity), `aragonite/forge/github` (the cached reads), and this repo's
+`internal/snapshot` (the last-painted row).
 
 Caching used to key on the repo path and expire on a timer, which was wrong in
 both directions at once. Six checkouts of one remote each paid for their own `gh
@@ -105,3 +107,15 @@ The decisions worth keeping in view:
 - `r` drops the disk cache along with the memory one. Refresh is pressed because
   something looks wrong, and a refresh that leaves a stale PR state on disk
   cannot fix it
+
+## The row snapshot
+
+A relaunch paints the last row each checkout drew before any read lands.
+`internal/snapshot` keeps one record per checkout inside its upstream's cache
+file, keyed by path so parallel checkouts keep their own rows. Launch resolves
+each repo's remote from its own config — `vcs.RemoteIdentityAt`, a file read,
+no subprocess — then loads the record guarded by the checkout's stamp, so a
+commit made while the app was closed misses and the row loads normally rather
+than painting wrong. Every field the row holds is re-read by the loads
+discovery already started, so a seeded row cannot outlive them. `r` drops the
+records with the rest of the cache.

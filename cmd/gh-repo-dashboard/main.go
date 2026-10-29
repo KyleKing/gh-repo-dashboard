@@ -78,8 +78,10 @@ func runScript(path string, scanPaths []string, depth int) error {
 }
 
 // applyConfig applies config-file values below flag precedence: an explicitly
-// set flag wins, otherwise a non-zero config value replaces the default.
-func applyConfig(cfg config.Config, depth *int) {
+// set flag wins, otherwise a non-zero config value replaces the default. It
+// returns the disk store snapshots persist through, nil when persistence is
+// off or unavailable.
+func applyConfig(cfg config.Config, depth *int) *cache.DiskCache {
 	depthFlagSet := false
 	flag.Visit(func(f *flag.Flag) {
 		if f.Name == "depth" {
@@ -94,14 +96,32 @@ func applyConfig(cfg config.Config, depth *int) {
 	models.SetNotesFilenames(cfg.NotesFilenames)
 	vcs.SetExternalDiffCommand(cfg.Diff.External)
 
-	if ttl := cfg.CacheTTL(); ttl > 0 {
-		cache.SetAllTTLs(ttl)
+	cache.SetAllTTLs(cfg.TTL())
+
+	return openCache(cfg)
+}
+
+// openCache installs and returns the disk store, nil when the config opts out
+// or the directory cannot be resolved.
+func openCache(cfg config.Config) *cache.DiskCache {
+	if !cfg.PersistCache() {
+		return nil
 	}
 
-	if cfg.PersistCache() {
-		if store, err := cache.UserDiskCache(); err == nil {
-			cache.SetDiskCache(store)
-		}
+	store, err := cache.UserDiskCache("gh-repo-dashboard")
+	if err != nil {
+		return nil
+	}
+
+	cache.SetDiskCache(store)
+
+	return store
+}
+
+// warnConfig prints the keys config read but no longer applies.
+func warnConfig(cfg config.Config) {
+	for _, warning := range cfg.Warnings() {
+		fmt.Fprintf(os.Stderr, "Warning: %s\n", warning)
 	}
 }
 
@@ -119,7 +139,7 @@ directory itself, while -cli, -script, and run scan the config file's scan_paths
 In the TUI, the filter panel (f) switches to scan_paths, limited to repos you
 committed to recently.
 
-Optional config file (scan_paths, depth, cache_ttl_minutes, notes_filenames,
+Optional config file (scan_paths, depth, cache_ttl, notes_filenames,
 cache_to_disk, fleet_active, fleet_authors, diff.external, tasks):
   %s
 
@@ -230,6 +250,7 @@ func loadConfig() (config.Config, error) {
 	if cfg.Tasks, err = tasks.Registry(cfg.Tasks); err != nil {
 		return cfg, fmt.Errorf("config: %w", err)
 	}
+	warnConfig(cfg)
 
 	return cfg, nil
 }
@@ -318,7 +339,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	applyConfig(cfg, depth)
+	store := applyConfig(cfg, depth)
 
 	scanPaths, err := resolveRoster(*maniPath, flag.Args(), fleetFor(*cliMode || *scriptPath != "", cfg))
 	if err != nil {
@@ -354,7 +375,7 @@ func main() {
 		return
 	}
 
-	model := withTasks(app.New(absPathList, *depth).WithFleet(fleetOf(cfg)), cfg)
+	model := withTasks(app.New(absPathList, *depth).WithFleet(fleetOf(cfg)).WithSnapshots(store), cfg)
 	p := tea.NewProgram(model)
 
 	if _, err := p.Run(); err != nil {

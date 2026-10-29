@@ -15,8 +15,8 @@ type RepoSummary struct {
 	CI           *forge.DefaultBranchCI
 	TemplateInfo *CopierTemplateInfo
 	NotesFiles   []NoteFile
-	Loading      bool
-	Error        error
+	Loading      bool  `json:"-"`
+	Error        error `json:"-"`
 }
 
 // HasNotes reports whether any notes file was detected at the repo's root.

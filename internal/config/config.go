@@ -20,10 +20,15 @@ import (
 // Config holds the user-configurable settings read from config.toml. Zero
 // values mean "not set"; callers fall back to their built-in defaults.
 type Config struct {
-	ScanPaths       []string `toml:"scan_paths"`
-	Depth           int      `toml:"depth"`
-	NotesFilenames  []string `toml:"notes_filenames"`
-	CacheTTLMinutes int      `toml:"cache_ttl_minutes"`
+	ScanPaths      []string `toml:"scan_paths"`
+	Depth          int      `toml:"depth"`
+	NotesFilenames []string `toml:"notes_filenames"`
+	// CacheTTL is how long remote-derived values count as fresh, in the
+	// syntax of a Go duration ("30s", "5m"). Unset means DefaultCacheTTL.
+	CacheTTL string `toml:"cache_ttl"`
+	// CacheTTLMinutes is the whole-minutes key cache_ttl replaced. It is
+	// still read only so Warnings can tell the file to rename it.
+	CacheTTLMinutes int `toml:"cache_ttl_minutes"`
 	// CacheToDisk is a pointer because an absent key means "on": persistence is
 	// an opt-out, and false is a value the user has to write.
 	CacheToDisk *bool      `toml:"cache_to_disk"`
@@ -63,9 +68,37 @@ func (c Config) FleetWindow() time.Duration {
 	return window
 }
 
-// CacheTTL returns the configured cache TTL, or zero when unset.
-func (c Config) CacheTTL() time.Duration {
-	return time.Duration(c.CacheTTLMinutes) * time.Minute
+// DefaultCacheTTL is how long remote-derived values count as fresh when the
+// config does not say.
+const DefaultCacheTTL = 30 * time.Second
+
+// TTL returns the configured cache TTL, DefaultCacheTTL when unset.
+func (c Config) TTL() time.Duration {
+	if c.CacheTTL == "" {
+		return DefaultCacheTTL
+	}
+
+	parsed, err := time.ParseDuration(c.CacheTTL)
+	if err != nil || parsed <= 0 {
+		return DefaultCacheTTL
+	}
+
+	return parsed
+}
+
+// Warnings names configured keys that no longer apply, so startup can tell
+// the file needs updating rather than silently ignoring them.
+func (c Config) Warnings() []string {
+	if c.CacheTTLMinutes == 0 {
+		return nil
+	}
+
+	suggestion := DefaultCacheTTL.String()
+	if c.CacheTTLMinutes > 0 {
+		suggestion = (time.Duration(c.CacheTTLMinutes) * time.Minute).String()
+	}
+
+	return []string{"cache_ttl_minutes is ignored; use cache_ttl = \"" + suggestion + "\" instead"}
 }
 
 // Path returns the config file location: $XDG_CONFIG_HOME or ~/.config,
@@ -112,8 +145,10 @@ func loadFile(path string) (Config, error) {
 	if cfg.Depth < 0 {
 		return Config{}, fmt.Errorf("parsing config %s: %w", path, errNegativeDepth)
 	}
-	if cfg.CacheTTLMinutes < 0 {
-		return Config{}, fmt.Errorf("parsing config %s: %w", path, errNegativeTTL)
+	if cfg.CacheTTL != "" {
+		if parsed, err := time.ParseDuration(cfg.CacheTTL); err != nil || parsed <= 0 {
+			return Config{}, fmt.Errorf("parsing config %s: cache_ttl: %w", path, errInvalidTTL)
+		}
 	}
 
 	if cfg.FleetActive != "" && cfg.FleetWindow() <= 0 {
@@ -153,6 +188,6 @@ func expandHomePaths(paths []string) ([]string, error) {
 
 var (
 	errNegativeDepth = errors.New("depth must be non-negative")
-	errNegativeTTL   = errors.New("cache_ttl_minutes must be non-negative")
+	errInvalidTTL    = errors.New("must be a positive duration such as 30s or 5m")
 	errFleetActive   = errors.New("must be a positive duration such as 180d or 12h")
 )
