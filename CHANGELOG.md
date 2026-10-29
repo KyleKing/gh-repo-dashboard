@@ -1,3 +1,18 @@
+## v1.21.0 (2026-10-29)
+
+### Feat
+
+- **ui**: margin every screen and air the header and detail rule
+- **app**: repaint the last-painted rows on relaunch
+
+### Fix
+
+- **app**: keep a seeded row's remote cells until their fetches land
+
+### Refactor
+
+- **app**: build panels as preview sections directly
+
 ## v1.20.1 (2026-10-29)
 
 ### Refactor
