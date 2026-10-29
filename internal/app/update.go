@@ -361,6 +361,15 @@ func (m Model) handleRepoSummaryLoaded(msg RepoSummaryLoadedMsg) (tea.Model, tea
 
 	m.loadedCount++
 
+	// A seeded row keeps its remote-derived cells until each fetch lands its
+	// own value: the summary read only covers the local half, so a plain
+	// overwrite would blank the cells it just painted for a round trip.
+	if seeded, ok := m.summaries[msg.Path]; ok {
+		msg.Summary.PRInfo = seeded.PRInfo
+		msg.Summary.OpenPRs = seeded.OpenPRs
+		msg.Summary.CI = seeded.CI
+		msg.Summary.TemplateInfo = seeded.TemplateInfo
+	}
 	m.summaries[msg.Path] = msg.Summary
 
 	var cmds []tea.Cmd

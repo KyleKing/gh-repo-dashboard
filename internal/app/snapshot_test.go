@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/kyleking/aragonite/cache"
+	"github.com/kyleking/aragonite/forge"
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
@@ -47,6 +48,9 @@ func savedModel(t *testing.T, path string) Model {
 	row := snapshot.Row{
 		Summary: models.RepoSummary{
 			RepoSummary: vcs.RepoSummary{Branch: "main", Path: path, RemoteID: "github.com/test/app"},
+			PRInfo:      &forge.PullRequest{Number: 7},
+			OpenPRs:     []forge.PullRequest{{Number: 7}},
+			CI:          &forge.DefaultBranchCI{},
 		},
 		BranchCount: 4,
 	}
@@ -75,6 +79,29 @@ func TestSeedSnapshotPaintsTheLastRow(t *testing.T) {
 	}
 	if m.freshness[fetchKey{path, fetchOpenPRs}] != freshnessStale {
 		t.Error("a seeded row did not mark its fetches stale")
+	}
+}
+
+// The local summary read lands after the seeded row: it keeps the seeded
+// remote-derived cells until their own fetches answer, rather than blanking
+// them for a round trip.
+func TestSummaryLoadKeepsTheSeededRemoteCells(t *testing.T) {
+	t.Parallel()
+
+	path := writeRepo(t, "1111111111111111111111111111111111111111")
+	m := savedModel(t, path)
+	m.seedSnapshot(path)
+
+	fresh := models.RepoSummary{RepoSummary: vcs.RepoSummary{Branch: "main", Path: path, Unstaged: 3}}
+	updated, _ := m.handleRepoSummaryLoaded(RepoSummaryLoadedMsg{Gen: m.scopeGen, Path: path, Summary: fresh})
+	m = mustModel(t, updated)
+
+	got := m.summaries[path]
+	if got.Unstaged != 3 {
+		t.Error("the fresh local summary did not land")
+	}
+	if got.PRInfo == nil || got.PRInfo.Number != 7 || len(got.OpenPRs) != 1 || got.CI == nil {
+		t.Error("the local read blanked cells only the remote fetches fill")
 	}
 }
 
