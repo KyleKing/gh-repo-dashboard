@@ -12,6 +12,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/tui/preview"
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
@@ -114,17 +115,17 @@ func TestJJRepoHasNoStashesPanel(t *testing.T) {
 func TestRelevanceDecidesTheRoomBeyondAFairShare(t *testing.T) {
 	t.Parallel()
 
-	busy := panelContent{id: panelPeers, relevance: relevanceUrgent, rows: make([]string, 12)}
-	quiet := panelContent{id: panelStashes, relevance: relevanceIdle, rows: make([]string, 2)}
+	busy := panelContent{id: panelPeers, relevance: preview.Urgent, rows: make([]string, 12)}
+	quiet := panelContent{id: panelStashes, relevance: preview.Idle, rows: make([]string, 2)}
 
-	heights := distributePanelHeights([]panelContent{busy, quiet}, -1, 24)
+	heights := preview.Heights(sectionsOf([]panelContent{busy, quiet}), -1, 24)
 	if heights[0] <= heights[1] {
 		t.Errorf("heights %v: the panel with more to say must get the leftover", heights)
 	}
 
-	tight := distributePanelHeights([]panelContent{busy, quiet}, 0, 4)
+	tight := preview.Heights(sectionsOf([]panelContent{busy, quiet}), 0, 4)
 	for i, h := range tight {
-		if h < panelRuleHeight+1 {
+		if h < 1+1 {
 			t.Errorf("section %d compressed to %d lines; none may drop below its rule plus a row", i, h)
 		}
 	}
@@ -135,10 +136,10 @@ func TestRelevanceDecidesTheRoomBeyondAFairShare(t *testing.T) {
 func TestContendingPanelsSplitTheColumnEvenly(t *testing.T) {
 	t.Parallel()
 
-	quiet := panelContent{id: panelStashes, relevance: relevanceIdle, rows: make([]string, 10)}
-	busy := panelContent{id: panelPeers, relevance: relevanceUrgent, rows: make([]string, 10)}
+	quiet := panelContent{id: panelStashes, relevance: preview.Idle, rows: make([]string, 10)}
+	busy := panelContent{id: panelPeers, relevance: preview.Urgent, rows: make([]string, 10)}
 
-	heights := distributePanelHeights([]panelContent{quiet, busy}, 1, 18)
+	heights := preview.Heights(sectionsOf([]panelContent{quiet, busy}), 1, 18)
 	if heights[0] != heights[1] {
 		t.Errorf("heights %v: equal demands on a short column must be met equally", heights)
 	}
@@ -147,11 +148,11 @@ func TestContendingPanelsSplitTheColumnEvenly(t *testing.T) {
 func TestFocusedPanelIsServedBeforeRelevance(t *testing.T) {
 	t.Parallel()
 
-	quiet := panelContent{id: panelStashes, relevance: relevanceIdle, rows: make([]string, 10)}
-	busy := panelContent{id: panelPeers, relevance: relevanceUrgent, rows: make([]string, 1)}
+	quiet := panelContent{id: panelStashes, relevance: preview.Idle, rows: make([]string, 10)}
+	busy := panelContent{id: panelPeers, relevance: preview.Urgent, rows: make([]string, 1)}
 
-	heights := distributePanelHeights([]panelContent{quiet, busy}, 0, 20)
-	if heights[0] < panelRuleHeight+len(quiet.rows) {
+	heights := preview.Heights(sectionsOf([]panelContent{quiet, busy}), 0, 20)
+	if heights[0] < 1+len(quiet.rows) {
 		t.Errorf("heights %v: the focused panel must fit its own content once the shares are out",
 			heights)
 	}
@@ -546,8 +547,8 @@ func TestStackedLayoutGuaranteesTheDetailRows(t *testing.T) {
 	m.notesFiles = append(m.notesFiles, m.notesFiles...)
 	m.stashes = append(m.stashes, m.stashes...)
 
-	if got := m.detailPaneSize().height; got < minStackedDetailHeight-1 {
-		t.Errorf("stacked detail pane has %d rows, want at least %d", got, minStackedDetailHeight-1)
+	if got := m.detailPaneSize().height; got < gridSpec.StackMin-1 {
+		t.Errorf("stacked detail pane has %d rows, want at least %d", got, gridSpec.StackMin-1)
 	}
 
 	if got := strings.Count(m.renderScreen(), "\n") + 1; got != 24 {

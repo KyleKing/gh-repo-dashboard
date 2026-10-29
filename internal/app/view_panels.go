@@ -12,6 +12,7 @@ import (
 	"github.com/kyleking/aragonite/tui/frame"
 	"github.com/kyleking/aragonite/tui/keyhint"
 	"github.com/kyleking/aragonite/tui/markdown"
+	"github.com/kyleking/aragonite/tui/preview"
 	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/aragonite/vcs"
 
@@ -19,17 +20,21 @@ import (
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
 )
 
-// Grid geometry. The section column holds the panels; the rest is the detail
-// pane, which always renders the selected item rather than waiting for a key.
-// The split is fixed, so moving focus never moves a column.
-const (
-	sideColumnFraction = 100
-	sideColumnPercent  = 40
-	minSideColumnWidth = 36
-	minDetailPaneWidth = 30
-	splitRuleWidth     = 1
-	splitRuleGlyph     = "│"
-)
+// gridSpec is the focused view's geometry: the section column's share, the
+// narrowest detail pane that still splits beside it, and the padding that
+// keeps the two halves visually apart. The split is fixed, so moving focus
+// never moves a column.
+var gridSpec = preview.Grid{
+	SidePercent: 40,
+	SideMin:     36,
+	DetailMin:   30,
+	StackMin:    6,
+	RulePad:     1,
+	SectionGap:  1,
+}
+
+// splitRuleGlyph is the cell between the halves, for tests that look for it.
+const splitRuleGlyph = "│"
 
 // panelSet builds the sections for the selected repo at the given width. A jj
 // repo has no Stashes section at all, rather than one explaining its own
@@ -122,17 +127,17 @@ func (m Model) prsPanel(summary models.RepoSummary, width int) panelContent {
 		)
 	}
 
-	relevance := relevanceIdle
+	relevance := preview.Idle
 	if len(prs) > 0 {
-		relevance = relevancePresent
+		relevance = preview.Present
 	}
 
 	if needsYou {
-		relevance = relevanceUrgent
+		relevance = preview.Urgent
 	}
 
 	return panelContent{
-		id: panelPRs, title: tabNamePRs, heading: "PULL REQUESTS", count: len(prs),
+		id: panelPRs, title: tabNamePRs, heading: "PULL REQUESTS", count: strconv.Itoa(len(prs)),
 		relevance: relevance, rows: rows, selectable: true,
 	}
 }
@@ -229,13 +234,13 @@ func (m Model) ciPanel(summary models.RepoSummary, width int) panelContent {
 		)
 	}
 
-	relevance := relevanceIdle
+	relevance := preview.Idle
 	if len(runs) > 0 {
-		relevance = relevancePresent
+		relevance = preview.Present
 	}
 
 	if failing > 0 {
-		relevance = relevanceUrgent
+		relevance = preview.Urgent
 	}
 
 	heading := "CI"
@@ -244,7 +249,7 @@ func (m Model) ciPanel(summary models.RepoSummary, width int) panelContent {
 	}
 
 	return panelContent{
-		id: panelCI, title: tabNameCI, heading: heading, count: len(runs),
+		id: panelCI, title: tabNameCI, heading: heading, count: strconv.Itoa(len(runs)),
 		relevance: relevance, rows: rows, selectable: true,
 	}
 }
@@ -273,16 +278,16 @@ func (m Model) branchesPanel(width int) panelContent {
 		rows = append(rows, renderBranchRow(row, layout))
 	}
 
-	relevance := relevanceIdle
+	relevance := preview.Idle
 	if len(m.branches) > 0 {
-		relevance = relevancePresent
+		relevance = preview.Present
 	}
 	if unpushed > 0 {
-		relevance = relevanceUrgent
+		relevance = preview.Urgent
 	}
 
 	return panelContent{
-		id: panelBranches, title: tabNameBranches, count: len(m.branches),
+		id: panelBranches, title: tabNameBranches, count: strconv.Itoa(len(m.branches)),
 		relevance: relevance, rows: rows, selectable: true,
 	}
 }
@@ -322,16 +327,16 @@ func (m Model) peersPanel(summary models.RepoSummary, width int) panelContent {
 		rows = append(rows, detailRow(rowCursorFor(selected), layout, cells, style))
 	}
 
-	relevance := relevanceIdle
+	relevance := preview.Idle
 	if len(checkouts) > 0 {
-		relevance = relevancePresent
+		relevance = preview.Present
 	}
 	if conflicted > 0 {
-		relevance = relevanceUrgent
+		relevance = preview.Urgent
 	}
 
 	return panelContent{
-		id: panelPeers, title: tabNamePeers, count: len(checkouts),
+		id: panelPeers, title: tabNamePeers, count: strconv.Itoa(len(checkouts)),
 		relevance: relevance, rows: rows, selectable: true,
 	}
 }
@@ -352,13 +357,13 @@ func (m Model) stashesPanel(width int) panelContent {
 		rows = append(rows, detailRow(rowCursorFor(selected), layout, renderCells(layout, values, nil, &style), style))
 	}
 
-	relevance := relevanceIdle
+	relevance := preview.Idle
 	if len(m.stashes) > 0 {
-		relevance = relevancePresent
+		relevance = preview.Present
 	}
 
 	return panelContent{
-		id: panelStashes, title: tabNameStashes, count: len(m.stashes),
+		id: panelStashes, title: tabNameStashes, count: strconv.Itoa(len(m.stashes)),
 		relevance: relevance, rows: rows, selectable: true,
 	}
 }
@@ -379,15 +384,15 @@ func (m Model) notesPanel(width int) panelContent {
 		))
 	}
 
-	relevance := relevanceIdle
+	relevance := preview.Idle
 	if len(rows) > 0 {
 		// A note is something the last session left for this one, so it
 		// outranks a list the repo itself can always answer.
-		relevance = relevanceUrgent
+		relevance = preview.Urgent
 	}
 
 	return panelContent{
-		id: panelNotes, title: tabNameNotes, count: len(m.notesFiles),
+		id: panelNotes, title: tabNameNotes, count: strconv.Itoa(len(m.notesFiles)),
 		relevance: relevance, rows: rows, selectable: true,
 	}
 }
@@ -460,23 +465,18 @@ func (m Model) gridWidth() int {
 
 // sectionWidth is the width the section column renders its rows into.
 func (m Model) sectionWidth() int {
-	if gridStacked(m.isCompact(), m.gridWidth()) {
+	if gridSpec.Stacked(m.isCompact(), m.gridWidth()) {
 		return m.gridWidth()
 	}
 
-	return sideColumnWidth(m.gridWidth())
-}
-
-// sideColumnWidth is the section column's share of a split grid.
-func sideColumnWidth(width int) int {
-	return max(width*sideColumnPercent/sideColumnFraction, minSideColumnWidth)
+	return gridSpec.SideWidth(m.gridWidth())
 }
 
 // gridStacked reports whether the grid drops its side-by-side split, either
 // because the breakpoint says so or because the detail pane would be too
 // narrow to read beside the section column.
 func gridStacked(compact bool, width int) bool {
-	return compact || width-sideColumnWidth(width)-splitRuleWidth < minDetailPaneWidth
+	return gridSpec.Stacked(compact, width)
 }
 
 func (m Model) renderPanelGrid() string {
@@ -490,155 +490,62 @@ func (m Model) renderPanelGrid() string {
 }
 
 func (m Model) renderPanelGridOf(panels []panelContent, focused int) string {
-	if gridStacked(m.isCompact(), m.gridWidth()) {
-		return strings.Join(m.renderStackedGrid(panels, focused), "\n")
-	}
+	sections := m.previewSections(panels)
+	dw, _ := gridSpec.DetailSize(m.isCompact(), m.gridWidth(), m.bodyHeight(),
+		preview.Content{Sections: sections})
 
-	return strings.Join(m.renderSplitGrid(panels, focused), "\n")
+	return strings.Join(gridSpec.Render(previewStyles, m.isCompact(), m.gridWidth(), m.bodyHeight(),
+		preview.Content{
+			Sections: sections,
+			Focused:  focused,
+			Cursor:   m.detailCursor,
+			Detail: preview.Detail{
+				Title:   m.detailTitle(),
+				Lines:   m.panelDetailLines(dw),
+				Scroll:  m.detailScroll,
+				Focused: m.detailFocused,
+			},
+		}), "\n")
 }
 
-// minStackedDetailHeight is the fewest rows the stacked layout guarantees the
-// detail pane, rule included, before sections are trimmed to make room.
-const minStackedDetailHeight = 6
-
-// stackedSectionHeight is how many rows the sections get when the detail pane
-// stacks under them: what their content needs, less whatever the pane's
-// guaranteed rows require.
-func (m Model) stackedSectionHeight(panels []panelContent) int {
-	want := 0
-	for i := range panels {
-		want += panelFloor(&panels[i]) + panelWant(&panels[i])
-	}
-
-	return min(want, max(m.bodyHeight()-minStackedDetailHeight, 1))
-}
-
-// detailPaneSize returns the detail pane's interior at the current terminal
-// size, which is the geometry a scroll offset has to be clamped against. The
-// pane's own title row is not part of it.
-func (m Model) detailPaneSize() paneSize {
-	width := m.gridWidth()
-	body := m.bodyHeight()
-
-	if !gridStacked(m.isCompact(), width) {
-		return paneSize{
-			width:  width - sideColumnWidth(width) - splitRuleWidth,
-			height: max(body-1, 1),
-		}
-	}
-
-	sections := m.stackedSectionHeight(m.panelSet(width))
-
-	return paneSize{width: width, height: max(body-sections-1, 1)}
-}
-
+// paneSize is the detail pane's interior at the current terminal size, which
+// is the geometry a scroll offset clamps against.
 type paneSize struct {
-	width  int
-	height int
+	width, height int
 }
 
-// renderSplitGrid puts the section column and the detail pane side by side,
-// behind one vertical rule.
-func (m Model) renderSplitGrid(panels []panelContent, focused int) []string {
-	height := m.bodyHeight()
-	side := sideColumnWidth(m.gridWidth())
-	pane := m.detailPaneSize()
+func (m Model) detailPaneSize() paneSize {
+	w, h := gridSpec.DetailSize(m.isCompact(), m.gridWidth(), m.bodyHeight(),
+		preview.Content{Sections: m.previewSections(m.panelSet(m.sectionWidth()))})
 
-	left := padLines(m.renderSections(panels, focused, side, height), height, side)
-	right := m.renderDetailPane(pane.width, pane.height)
-
-	rule := styles.Skin.Hairline
-	if m.detailFocused {
-		rule = styles.Skin.Accent
-	}
-
-	lines := make([]string, height)
-	for i := range lines {
-		lines[i] = left[i] + rule.Render(splitRuleGlyph) + right[i]
-	}
-
-	return lines
-}
-
-// renderStackedGrid drops the side-by-side split: the sections stack above a
-// ruled detail pane that is guaranteed its rows.
-func (m Model) renderStackedGrid(panels []panelContent, focused int) []string {
-	width := m.gridWidth()
-	sections := m.stackedSectionHeight(panels)
-
-	lines := padLines(m.renderSections(panels, focused, width, sections), sections, width)
-	pane := m.detailPaneSize()
-
-	return append(append(lines, m.detailRule(width)), m.renderDetailPane(pane.width, pane.height)...)
-}
-
-// detailRule is the stacked layout's rule above the detail pane, titled with the
-// item the pane describes.
-func (m Model) detailRule(width int) string {
-	face, line := styles.Skin.Heading, styles.Skin.Hairline
-	if m.detailFocused {
-		face, line = styles.Skin.Accent.Bold(true), styles.Skin.Accent
-	}
-
-	title := truncate(m.detailTitle()+m.detailScrollMarker(), max(width-sectionRuleLead-sectionRuleSpaces, 1))
-
-	return line.Render(strings.Repeat("─", sectionRuleLead)+" ") + face.Render(title) +
-		line.Render(" "+strings.Repeat("─", max(width-lipgloss.Width(title)-sectionRuleLead-sectionRuleSpaces, 0)))
-}
-
-// renderDetailPane draws the selected item windowed to the scroll offset, each
-// row padded to width. The split layout opens it with a title row, which the
-// stacked layout's rule already carries.
-func (m Model) renderDetailPane(width, height int) []string {
-	lines := m.panelDetailLines(width)
-	start := min(m.detailScroll, max(len(lines)-height, 0))
-	lines = lines[start:min(start+height, len(lines))]
-
-	if gridStacked(m.isCompact(), m.gridWidth()) {
-		return padLines(lines, height, width)
-	}
-
-	head := styles.Skin.Heading.Render(truncate(m.detailTitle()+m.detailScrollMarker(), width))
-
-	return padLines(append([]string{head}, lines...), height+1, width)
+	return paneSize{width: w, height: h}
 }
 
 // renderSections draws every section at the height its relevance earned: a
 // labeled rule, then the rows the cursor window leaves in view.
 func (m Model) renderSections(panels []panelContent, focused, width, height int) []string {
-	heights := distributePanelHeights(panels, focused, height)
+	sections := m.previewSections(panels)
 
-	lines := make([]string, 0, height)
-
-	for i := range panels {
-		p := &panels[i]
-		isFocus := i == focused && !m.detailFocused
-
-		count := strconv.Itoa(p.count)
-		if m.detailLoading && p.id != panelPRs {
-			count = "…"
-		}
-
-		lines = append(lines, panelRule(p, count, isFocus, width))
-		lines = append(lines, panelRows(*p, heights[i]-panelRuleHeight, m.detailCursor, i == focused)...)
-	}
-
-	return lines
+	return preview.Column(previewStyles, sections, focused, m.detailCursor, height, width, gridSpec.SectionGap)
 }
 
-// panelRows windows a section's rows to the lines it was given, keeping the
-// cursor in view.
-func panelRows(p panelContent, lines, cursor int, focused bool) []string {
-	if lines <= 0 {
-		return nil
+// previewSections resolves the panels as the shared layout's sections, with
+// the loading marker standing in for counts still arriving.
+func (m Model) previewSections(panels []panelContent) []preview.Section {
+	for i := range panels {
+		if m.detailLoading && panels[i].id != panelPRs {
+			panels[i].count = "…"
+		}
 	}
 
-	window := visibleRange(cursor, len(p.rows), lines)
-	if !focused {
-		window = repoWindow{start: 0, end: min(lines, len(p.rows))}
-	}
+	return sectionsOf(panels)
+}
 
-	return p.rows[window.start:window.end]
+// renderDetailPane is the detail half on its own: the item's title and scroll
+// marker, then its lines windowed to the pane's interior.
+func (m Model) renderDetailPane(width, height int) []string {
+	d := preview.Detail{Title: m.detailTitle(), Lines: m.panelDetailLines(width), Scroll: m.detailScroll}
+	return preview.Pad(append([]string{d.Head(previewStyles, width, height)}, d.Window(height)...), height+1, width)
 }
 
 // detailTitle labels the detail pane with the item it is describing.
@@ -649,21 +556,6 @@ func (m Model) detailTitle() string {
 	}
 
 	return m.summaries[m.selectedRepo].Name()
-}
-
-// detailScrollMarker reports how much of the pane's text is on screen, so text
-// running past the bottom is never mistaken for the whole of it.
-func (m Model) detailScrollMarker() string {
-	pane := m.detailPaneSize()
-
-	total := len(m.panelDetailLines(pane.width))
-	if total <= pane.height {
-		return ""
-	}
-
-	shown := min(m.detailScroll+pane.height, total)
-
-	return "  " + strconv.Itoa(shown) + "/" + strconv.Itoa(total)
 }
 
 func (m Model) panelDetailTitle(p panelContent) string {
@@ -1058,7 +950,7 @@ func (m Model) noteDetailLines(width int) []string {
 		return []string{styles.Skin.Subtitle.Render("(empty file)")}
 	}
 
-	return wrapLines(content, width)
+	return preview.Wrap(styles.Skin.Body, content, width)
 }
 
 // Selected-item accessors. Each answers only for its own panel, so a cursor
@@ -1151,7 +1043,7 @@ func (m Model) panelHints(_ []panelContent) []keyhint.Hint {
 }
 
 func detailField(label, value string) string {
-	return styles.Skin.Subtitle.Render(label+" ") + styles.Skin.Body.Render(value)
+	return preview.Field(previewStyles, label, value)
 }
 
 func orDash(value string) string {
@@ -1160,16 +1052,4 @@ func orDash(value string) string {
 	}
 
 	return value
-}
-
-// wrapLines hard-wraps text to width and returns it as styled lines.
-func wrapLines(text string, width int) []string {
-	wrapped := lipgloss.Wrap(strings.TrimSpace(text), max(width, 1), "")
-
-	lines := strings.Split(wrapped, "\n")
-	for i, line := range lines {
-		lines[i] = styles.Skin.Body.Render(line)
-	}
-
-	return lines
 }

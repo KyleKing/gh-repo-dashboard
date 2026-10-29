@@ -2,11 +2,13 @@
 package app
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/kyleking/aragonite/forge"
+	"github.com/kyleking/aragonite/tui/preview"
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
@@ -171,7 +173,7 @@ func TestNotesPreview_ElidesTheMiddleOfALongNote(t *testing.T) {
 		lines = append(lines, string(rune('a'+i)))
 	}
 
-	got := plainText(strings.Join(elideMiddle(lines, 5), "\n"))
+	got := plainText(strings.Join(sectionOf(lines).Window(5, 0, false), "\n"))
 
 	if !strings.Contains(got, "a") || !strings.Contains(got, "t") {
 		t.Errorf("elision dropped an end; both must survive:\n%s", got)
@@ -196,8 +198,8 @@ func TestNotesPanel_ShowsTheNoteWithoutFocusingIt(t *testing.T) {
 	panels := m.panelSet(m.sectionWidth())
 	notes := panels[panelIndex(panels, panelNotes)]
 
-	if notes.relevance != relevanceUrgent {
-		t.Errorf("notes scored %d with a note present, want %d", notes.relevance, relevanceUrgent)
+	if notes.relevance != preview.Urgent {
+		t.Errorf("notes scored %d with a note present, want %d", notes.relevance, preview.Urgent)
 	}
 
 	body := plainText(strings.Join(notes.rows, "\n"))
@@ -207,8 +209,8 @@ func TestNotesPanel_ShowsTheNoteWithoutFocusingIt(t *testing.T) {
 		}
 	}
 
-	if notes.count != len(m.notesFiles) {
-		t.Errorf("count is %d, want %d; one row per file",
+	if notes.count != strconv.Itoa(len(m.notesFiles)) {
+		t.Errorf("count is %s, want %d; one row per file",
 			notes.count, len(m.notesFiles))
 	}
 }
@@ -308,4 +310,8 @@ func stepModel(t *testing.T, m *Model, msg tea.Msg) Model {
 	next, _ := m.Update(msg)
 
 	return mustModel(t, next)
+}
+
+func sectionOf(lines []string) *preview.Section {
+	return &preview.Section{Elide: true, Rows: lines}
 }

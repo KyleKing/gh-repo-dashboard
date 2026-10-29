@@ -32,6 +32,10 @@ github.com/kyleking/aragonite v1.0.0 h1:WXFvLLL6/Opj0nArwObZ65YnYTjhL/VNZ1bW4yfy
 github.com/kyleking/aragonite v1.0.0/go.mod h1:9XtVN15SVrOW7s2Yy9cHKZCTiBo+g1D3XJ25vFEmwP4=
 github.com/kyleking/aragonite v1.1.0 h1:UvyICBhPs3mOqtkXW/+BF0z0GOCgYkM0JS9aPtxIIEM=
 github.com/kyleking/aragonite v1.1.0/go.mod h1:9XtVN15SVrOW7s2Yy9cHKZCTiBo+g1D3XJ25vFEmwP4=
+github.com/kyleking/aragonite v1.5.1 h1:zGKa/Gr9jbwX2mcVgM7quevkpjzRNLnJeK1w72quJ2w=
+github.com/kyleking/aragonite v1.5.1/go.mod h1:9XtVN15SVrOW7s2Yy9cHKZCTiBo+g1D3XJ25vFEmwP4=
+github.com/kyleking/aragonite v1.5.2 h1:Tpgi9omVh15VlRMbenVWWE2yjGi+NliojkXOUNXXk6E=
+github.com/kyleking/aragonite v1.5.2/go.mod h1:9XtVN15SVrOW7s2Yy9cHKZCTiBo+g1D3XJ25vFEmwP4=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/lucasb-eyer/go-colorful v1.4.1 h1:1EO+WB73+EH8EVbzlrG3KLAfEypQWVHIBqlTf+2hNss=

@@ -3,7 +3,7 @@ package app
 import (
 	"strings"
 
-	"charm.land/lipgloss/v2"
+	"github.com/kyleking/aragonite/tui/preview"
 	"github.com/kyleking/aragonite/tui/table"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/ui/styles"
@@ -75,7 +75,7 @@ type panelContent struct {
 	// heading is the label on the section's rule, where title names it in the
 	// legend and the verb menu.
 	heading string
-	count   int
+	count   string
 	// relevance drives height: actionable state scores high, a clean or empty
 	// set scores the minimum, so a busy repo arrives with its problems open.
 	relevance int
@@ -88,22 +88,25 @@ type panelContent struct {
 	elide bool
 }
 
-// Relevance bounds. The scale is arbitrary; only the ratios matter, since
-// height is shared in proportion to it.
-const (
-	relevanceIdle    = 1
-	relevancePresent = 3
-	relevanceUrgent  = 9
-)
+// previewSection is the panel as the shared two-pane layout draws it.
+func (p panelContent) previewSection() preview.Section {
+	return preview.Section{
+		Heading: p.heading, Key: p.key, Count: p.count, Rows: p.rows,
+		Relevance: p.relevance, Selectable: p.selectable, Elide: p.elide,
+	}
+}
 
-// panelRuleHeight is the row a section's labeled rule takes before any of its
-// rows fit.
-const panelRuleHeight = 1
+// previewStyles is the app's skin as the pane faces.
+var previewStyles = preview.SkinStyles(styles.Skin)
 
-// panelFloor is the fewest lines a section is drawn in: its rule, plus its
-// first row when it has one. An empty section collapses to the rule alone.
-func panelFloor(p *panelContent) int {
-	return panelRuleHeight + min(len(p.rows), 1)
+// sectionsOf resolves panels as the shared layout's sections.
+func sectionsOf(panels []panelContent) []preview.Section {
+	sections := make([]preview.Section, len(panels))
+	for i, p := range panels {
+		sections[i] = p.previewSection()
+	}
+
+	return sections
 }
 
 // Panel tables are narrower than the full-width tab tables were, so each one
@@ -150,123 +153,3 @@ func fitPanelCols(specs []table.Column, width int) table.Layout {
 // minPanelTableWidth keeps a table from collapsing to nothing in a pane too
 // narrow for even its mandatory columns; the row overflows instead.
 const minPanelTableWidth = 20
-
-// distributePanelHeights shares available lines between the sections. Every
-// section keeps its rule plus its first row so none is ever fully hidden, every
-// section that wants more gets up to an equal share before relevance is
-// consulted so a low-scoring list is never starved beside a high-scoring one,
-// the focused section is served next so its selection stays visible, and what
-// remains is split in proportion to relevance.
-func distributePanelHeights(panels []panelContent, focused, available int) []int {
-	heights := make([]int, len(panels))
-	if len(panels) == 0 {
-		return heights
-	}
-
-	floors := 0
-	for i := range panels {
-		heights[i] = panelFloor(&panels[i])
-		floors += heights[i]
-	}
-
-	surplus := available - floors
-	if surplus <= 0 {
-		return heights
-	}
-
-	surplus = grantFairShares(heights, panels, available, surplus)
-	surplus = grantWant(heights, panels, focused, surplus)
-	shareByRelevance(heights, panels, surplus)
-
-	return heights
-}
-
-// panelWant is how many lines beyond its floor a section would use given room.
-func panelWant(p *panelContent) int {
-	return len(p.rows) - min(len(p.rows), 1)
-}
-
-// panelRoom is how many more lines a section would still take at its height.
-func panelRoom(p *panelContent, height int) int {
-	return panelWant(p) - (height - panelFloor(p))
-}
-
-// grantFairShares gives every section that wants them the lines an even split
-// would allow, before relevance is consulted at all. This is what keeps
-// relevance from being a winner-take-all score.
-func grantFairShares(heights []int, panels []panelContent, available, surplus int) int {
-	for i := range panels {
-		fair := max(available/len(panels)-panelFloor(&panels[i]), 0)
-		take := min(panelWant(&panels[i]), fair, surplus)
-		heights[i] += take
-		surplus -= take
-	}
-
-	return surplus
-}
-
-// grantWant tops one section up to everything it would show, used for the
-// focused section so its selection stays visible.
-func grantWant(heights []int, panels []panelContent, i, surplus int) int {
-	if i < 0 || i >= len(panels) {
-		return surplus
-	}
-
-	take := min(max(panelRoom(&panels[i], heights[i]), 0), surplus)
-	heights[i] += take
-
-	return surplus - take
-}
-
-// shareByRelevance splits what is left between the panels still short of their
-// content, in proportion to how much each has to say.
-func shareByRelevance(heights []int, panels []panelContent, surplus int) {
-	for surplus > 0 {
-		weight := 0
-		for i := range panels {
-			if panelRoom(&panels[i], heights[i]) > 0 {
-				weight += panels[i].relevance
-			}
-		}
-		if weight == 0 {
-			return
-		}
-
-		spent := 0
-		for i := range panels {
-			room := panelRoom(&panels[i], heights[i])
-			if room <= 0 {
-				continue
-			}
-
-			share := min(max(surplus*panels[i].relevance/weight, 1), room, surplus-spent)
-			heights[i] += share
-			spent += share
-		}
-
-		if spent == 0 {
-			return
-		}
-		surplus -= spent
-	}
-}
-
-// panelRule is the labeled rule that opens a section. The accent runs the whole
-// rule while the section column holds the keyboard in it, and the jump key sits
-// at the right end where the eye already is.
-func panelRule(p *panelContent, count string, focused bool, width int) string {
-	label := p.heading
-	if p.selectable {
-		label += compactSignalSep + count
-	}
-
-	face, line := styles.Skin.Heading, styles.Skin.Hairline
-	if focused {
-		face, line = styles.Skin.Accent.Bold(true), styles.Skin.Accent
-	}
-
-	tail := max(width-lipgloss.Width(label)-sectionRuleLead-sectionRuleSpaces-lipgloss.Width(p.key)-1, 0)
-
-	return line.Render(strings.Repeat("─", sectionRuleLead)+" ") + face.Render(label) +
-		line.Render(" "+strings.Repeat("─", tail)+" ") + styles.Skin.Muted.Render(p.key)
-}

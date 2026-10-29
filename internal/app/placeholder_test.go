@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/kyleking/aragonite/tui/preview"
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/models"
@@ -45,8 +46,8 @@ func TestEmptySectionsCollapseToTheirRule(t *testing.T) {
 		t.Fatalf("got %d sections, want every section but the repo's own", len(panels))
 	}
 
-	for i, h := range distributePanelHeights(panels, -1, settled.bodyHeight()) {
-		if len(panels[i].rows) == 0 && h != panelRuleHeight {
+	for i, h := range preview.Heights(sectionsOf(panels), -1, settled.bodyHeight()) {
+		if len(panels[i].rows) == 0 && h != 1 {
 			t.Errorf("empty section %v is %d lines, want just its rule", panels[i].id, h)
 		}
 	}

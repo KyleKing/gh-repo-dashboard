@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/kyleking/aragonite/display"
+	"github.com/kyleking/aragonite/tui/preview"
 	"github.com/kyleking/aragonite/tui/split"
 	"github.com/kyleking/aragonite/tui/table"
 	"github.com/kyleking/aragonite/vcs"
@@ -34,6 +35,7 @@ var detailSpec = split.Spec{
 	MinWidth:     standardMinWidth,
 	MinHeight:    detailMinHeight,
 	BelowPercent: detailBelowPercent,
+	Pad:          1,
 }
 
 //nolint:mnd // the numbers are this table's geometry, not constants reused elsewhere
@@ -157,7 +159,7 @@ func (m Model) renderDetail(width, height int) []string {
 	lines := []string{
 		styles.Skin.Heading.Render(label) +
 			styles.Skin.Subtitle.Render(truncate(compactSignalSep+identity, max(width-lipgloss.Width(label), 0))),
-		sectionRule("NEEDS", width),
+		preview.LabelRule(previewStyles, "NEEDS", width),
 	}
 
 	lines = append(lines, m.detailNeeds(summary, width)...)
@@ -178,21 +180,13 @@ func (m Model) renderDetail(width, height int) []string {
 		panels = append(panels, notes)
 	}
 
-	heights := distributePanelHeights(panels, -1, height-len(lines))
-
-	for i := range panels {
-		room := heights[i] - panelRuleHeight
-		rows := panelRows(panels[i], room, 0, false)
-
-		if panels[i].elide {
-			rows = elideMiddle(panels[i].rows, room)
-		}
-
-		lines = append(lines, panelRule(&panels[i], strconv.Itoa(panels[i].count), false, width))
-		lines = append(lines, rows...)
+	sections := make([]preview.Section, len(panels))
+	for i, p := range panels {
+		sections[i] = p.previewSection()
 	}
 
-	return lines
+	return append(lines, preview.Column(previewStyles, sections, -1, 0,
+		height-len(lines), width, 1)...)
 }
 
 func (m Model) detailNeeds(summary models.RepoSummary, width int) []string {
@@ -344,7 +338,7 @@ func (m Model) detailCommitsPanel(path string, width int) panelContent {
 		rows = append(rows, detailRow(rowCursorFor(false), layout, cells, plainStyle))
 	}
 
-	p := panelContent{heading: "COMMITS", count: len(commits), relevance: relevanceIdle, rows: rows, selectable: true}
+	p := panelContent{heading: "COMMITS", count: strconv.Itoa(len(commits)), relevance: preview.Idle, rows: rows, selectable: true}
 	if !loaded {
 		p.rows = []string{styles.Skin.Muted.Render(readingLabel)}
 	}
@@ -361,7 +355,7 @@ func (m Model) detailNotesPanel(path string, summary models.RepoSummary, width i
 	}
 
 	p := panelContent{
-		heading: "NOTES", count: len(summary.NotesFiles), relevance: relevancePresent, selectable: true, elide: true,
+		heading: "NOTES", count: strconv.Itoa(len(summary.NotesFiles)), relevance: preview.Present, selectable: true, elide: true,
 	}
 
 	contents, loaded := m.notesPreview[path]
@@ -371,7 +365,7 @@ func (m Model) detailNotesPanel(path string, summary models.RepoSummary, width i
 		return p, true
 	}
 
-	p.count = len(contents)
+	p.count = strconv.Itoa(len(contents))
 
 	for i := range contents {
 		if len(contents) > 1 {
