@@ -25,16 +25,24 @@ import (
 // keeps the two halves visually apart. The split is fixed, so moving focus
 // never moves a column.
 var gridSpec = preview.Grid{
-	SidePercent: 40,
-	SideMin:     36,
-	DetailMin:   30,
-	StackMin:    6,
+	SidePercent: sidePercent,
+	SideMin:     sideMin,
+	DetailMin:   detailMin,
+	StackMin:    stackMin,
 	RulePad:     1,
 	SectionGap:  1,
 }
 
-// splitRuleGlyph is the cell between the halves, for tests that look for it.
-const splitRuleGlyph = "│"
+const (
+	// The section column's share of a split grid.
+	sidePercent = 40
+	// The narrowest a section column is drawn at.
+	sideMin = 36
+	// The pane width below which the grid stacks instead.
+	detailMin = 30
+	// The height the pane needs before a stacked grid shows it.
+	stackMin = 6
+)
 
 // panelSet builds the sections for the selected repo at the given width. A jj
 // repo has no Stashes section at all, rather than one explaining its own
@@ -470,13 +478,6 @@ func (m Model) sectionWidth() int {
 	}
 
 	return gridSpec.SideWidth(m.gridWidth())
-}
-
-// gridStacked reports whether the grid drops its side-by-side split, either
-// because the breakpoint says so or because the detail pane would be too
-// narrow to read beside the section column.
-func gridStacked(compact bool, width int) bool {
-	return gridSpec.Stacked(compact, width)
 }
 
 func (m Model) renderPanelGrid() string {

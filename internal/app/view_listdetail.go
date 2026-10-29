@@ -338,7 +338,13 @@ func (m Model) detailCommitsPanel(path string, width int) panelContent {
 		rows = append(rows, detailRow(rowCursorFor(false), layout, cells, plainStyle))
 	}
 
-	p := panelContent{heading: "COMMITS", count: strconv.Itoa(len(commits)), relevance: preview.Idle, rows: rows, selectable: true}
+	p := panelContent{
+		heading:    "COMMITS",
+		count:      strconv.Itoa(len(commits)),
+		relevance:  preview.Idle,
+		rows:       rows,
+		selectable: true,
+	}
 	if !loaded {
 		p.rows = []string{styles.Skin.Muted.Render(readingLabel)}
 	}
@@ -355,7 +361,8 @@ func (m Model) detailNotesPanel(path string, summary models.RepoSummary, width i
 	}
 
 	p := panelContent{
-		heading: "NOTES", count: strconv.Itoa(len(summary.NotesFiles)), relevance: preview.Present, selectable: true, elide: true,
+		heading: "NOTES", count: strconv.Itoa(len(summary.NotesFiles)),
+		relevance: preview.Present, selectable: true, elide: true,
 	}
 
 	contents, loaded := m.notesPreview[path]

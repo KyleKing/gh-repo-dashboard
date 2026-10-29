@@ -447,26 +447,6 @@ func notesBodyLines(content string, width int) []string {
 	return lines
 }
 
-// elideMiddle drops the middle of lines until it fits height, marking the cut,
-// so the newest entries at the end of a note survive alongside the oldest.
-func elideMiddle(lines []string, height int) []string {
-	if len(lines) <= height || height < 1 {
-		return lines
-	}
-
-	kept := height - 1
-	head := kept / elisionEnds
-	tail := kept - head
-
-	out := make([]string, 0, height)
-	out = append(out, lines[:head]...)
-	out = append(out, styles.Skin.Subtitle.Render(
-		"  ⋯ "+strconv.Itoa(len(lines)-head-tail)+" more lines ⋯",
-	))
-
-	return append(out, lines[len(lines)-tail:]...)
-}
-
 // formatPRCell formats a repo's PR-column text: "#N" with a review-status
 // indicator and a CI/workflow failure indicator, or emDash if there's no PR.
 func formatPRCell(s models.RepoSummary) string {

@@ -374,12 +374,12 @@ func TestStatusPreviewShowsNewestEditAndDefaultBranchMismatch(t *testing.T) {
 		RepoSummary: vcs.RepoSummary{Path: "/dev/alpha", VCSType: vcs.TypeGit, Branch: "feature/x"},
 	}
 
-	preview := plainText(strings.Join(m.repoDetailLines(m.gridWidth()), "\n"))
-	if !strings.Contains(preview, "newest edit") || !strings.Contains(preview, "notes.md") {
-		t.Errorf("Status's full preview does not name the newest edited file: %q", preview)
+	pv := plainText(strings.Join(m.repoDetailLines(m.gridWidth()), "\n"))
+	if !strings.Contains(pv, "newest edit") || !strings.Contains(pv, "notes.md") {
+		t.Errorf("Status's full preview does not name the newest edited file: %q", pv)
 	}
-	if !strings.Contains(preview, "default branch") || !strings.Contains(preview, "main") {
-		t.Errorf("Status's full preview does not flag the default-branch mismatch: %q", preview)
+	if !strings.Contains(pv, "default branch") || !strings.Contains(pv, "main") {
+		t.Errorf("Status's full preview does not flag the default-branch mismatch: %q", pv)
 	}
 }
 
