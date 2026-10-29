@@ -61,7 +61,7 @@ func (m Model) renderPRMapTable(entries []prMapEntry) string {
 			"Every visible repo is level with its remote.")
 	}
 
-	layout := fitDetailCols(prMapColSpecs, listWidth(m.width))
+	layout := fitDetailCols(prMapColSpecs, listWidth(m.viewWidth()))
 	rows := []string{detailHeader(layout)}
 
 	window := visibleRange(m.prMapCursor, len(entries), m.bodyHeight()-prMapHeaderRows)

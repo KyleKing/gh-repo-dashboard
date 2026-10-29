@@ -88,7 +88,7 @@ func (m Model) tasksScreen() screen {
 
 func (m Model) renderTasks() string {
 	list := m.taskList()
-	layout := fitDetailCols(taskColSpecs, listWidth(m.width))
+	layout := fitDetailCols(taskColSpecs, listWidth(m.viewWidth()))
 
 	var history []tasks.Record
 	if m.tasksCursor < len(list) {
@@ -107,7 +107,7 @@ func (m Model) renderTasks() string {
 	}
 
 	if histRows > 0 {
-		rows = append(rows, "", sectionRule("RUNS"+compactSignalSep+list[m.tasksCursor].Name, listWidth(m.width)))
+		rows = append(rows, "", sectionRule("RUNS"+compactSignalSep+list[m.tasksCursor].Name, listWidth(m.viewWidth())))
 		for _, rec := range history[:histRows] {
 			rows = append(rows, historyLine(rec))
 		}
@@ -203,7 +203,7 @@ func (m Model) renderPreview() string {
 
 	lines := []string{
 		styles.Skin.Body.Render(task.Desc),
-		detailField("runs", truncate(command, max(contentWidth(m.width)-previewHeaderRows-1, 1))),
+		detailField("runs", truncate(command, max(contentWidth(m.viewWidth())-previewHeaderRows-1, 1))),
 		"",
 	}
 
@@ -213,7 +213,7 @@ func (m Model) renderPreview() string {
 		return strings.Join(lines, "\n")
 	}
 
-	layout := fitDetailCols(previewColSpecs, listWidth(m.width))
+	layout := fitDetailCols(previewColSpecs, listWidth(m.viewWidth()))
 	lines = append(lines, detailHeader(layout))
 
 	window := visibleRange(m.preview.cursor, len(m.preview.rows), max(m.bodyHeight()-previewHeaderRows-1, 1))
@@ -287,7 +287,7 @@ func (m Model) renderLog() string {
 		return styles.Skin.Subtitle.Render("The run wrote nothing.")
 	}
 
-	width := max(contentWidth(m.width), 1)
+	width := max(contentWidth(m.viewWidth()), 1)
 	lines := make([]string, 0, m.bodyHeight())
 	for _, line := range log.lines[min(log.at, len(log.lines)):] {
 		for _, wrapped := range strings.Split(ansi.Hardwrap(line, width, true), "\n") {

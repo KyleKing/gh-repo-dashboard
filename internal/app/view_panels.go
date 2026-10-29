@@ -486,7 +486,7 @@ func (m Model) repoFacts(summary models.RepoSummary) []frame.Fact {
 // gridWidth is the width the focused repo view renders into: the whole
 // terminal, since it is one surface rather than a card on a margin.
 func (m Model) gridWidth() int {
-	return m.width
+	return m.viewWidth()
 }
 
 // sectionWidth is the width the section column renders its rows into.

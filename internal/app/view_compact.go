@@ -50,7 +50,7 @@ func (m Model) renderCompactRow(s models.RepoSummary, n needs, selected bool, la
 // across both lines, so it is padded to the table's width.
 func (m Model) compactNeedsLine(s models.RepoSummary, n needs, selected bool) string {
 	base := rowStyleFor(selected)
-	width := listWidth(m.width) - len(compactIndent)
+	width := listWidth(m.viewWidth()) - len(compactIndent)
 	age := ""
 
 	if !s.LastModified.IsZero() {
@@ -79,7 +79,7 @@ func (m Model) compactNeedsLine(s models.RepoSummary, n needs, selected bool) st
 		return line
 	}
 
-	return line + base.Render(strings.Repeat(" ", max(listWidth(m.width)+gutterWidth-lipgloss.Width(line), 0)))
+	return line + base.Render(strings.Repeat(" ", max(listWidth(m.viewWidth())+gutterWidth-lipgloss.Width(line), 0)))
 }
 
 func plural(count int, one, many string) string {

@@ -49,7 +49,7 @@ func (m Model) runScreen() screen {
 }
 
 func (m Model) renderRun() string {
-	layout := fitDetailCols(runColSpecs, listWidth(m.width))
+	layout := fitDetailCols(runColSpecs, listWidth(m.viewWidth()))
 	lines := []string{detailHeader(layout)}
 
 	window := visibleRange(m.run.cursor, len(m.run.rows), max(m.bodyHeight()-1, 1))

@@ -34,7 +34,7 @@ func whichKeyStyles() keyhint.PanelStyles {
 }
 
 func (m Model) whichKey(hints []keyhint.Hint) []string {
-	return keyhint.Panel(whichKeyStyles(), hints, min(m.width, whichKeyMaxWidth))
+	return keyhint.Panel(whichKeyStyles(), hints, min(m.viewWidth(), whichKeyMaxWidth))
 }
 
 func (m Model) whichKeyPanel() []string {
@@ -206,7 +206,7 @@ func (m Model) chipsLine() string {
 		rendered = append(rendered, styles.Skin.Badge.Render(chip+" ×"))
 	}
 
-	return ansi.Truncate(strings.Join(rendered, " "), repoTableWidth(m.width), table.Ellipsis)
+	return ansi.Truncate(strings.Join(rendered, " "), repoTableWidth(m.viewWidth()), table.Ellipsis)
 }
 
 func (m Model) chipsHeight() int {

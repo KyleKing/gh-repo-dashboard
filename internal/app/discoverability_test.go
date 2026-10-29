@@ -306,7 +306,7 @@ func TestEveryScreenPinsItsFooter(t *testing.T) {
 				}
 
 				for i, line := range lines {
-					if got := lipgloss.Width(line); got != size[0] {
+					if got := lipgloss.Width(line); got != size[0]-screenEdge {
 						t.Errorf("%dx%d: line %d is %d cells wide", size[0], size[1], i, got)
 					}
 				}
@@ -351,11 +351,11 @@ func TestListDrawsQuietStateAndTheSortArrow(t *testing.T) {
 	rendered := plainText(compactModel(140, 30).renderScreen())
 	rows := strings.Split(rendered, "\n")
 
-	if !strings.Contains(rows[1], "NAME ▴") {
+	if !strings.Contains(rows[2], "NAME ▴") {
 		t.Errorf("the sort arrow is missing from its column title:\n%s", rendered)
 	}
 
-	if rowText := strings.Join(rows[2:5], "\n"); strings.Contains(rowText, "✓") {
+	if rowText := strings.Join(rows[3:6], "\n"); strings.Contains(rowText, "✓") {
 		t.Errorf("a clean tree should render blank, not a check:\n%s", rendered)
 	}
 }

@@ -70,7 +70,7 @@ func (m Model) helpPage() []keyhint.Hint {
 }
 
 func (m Model) helpRows() []string {
-	return keyhint.Column(legendStyles(), m.helpPage(), min(helpBoxWidth, m.width-boxMargin))
+	return keyhint.Column(legendStyles(), m.helpPage(), min(helpBoxWidth, m.viewWidth()-boxMargin))
 }
 
 func (m Model) helpTitle() string {
@@ -91,7 +91,7 @@ func (m Model) helpScreen() screen {
 	inner := max(1, min(len(rows), m.bodyHeight()-boxBorder))
 	box := overlay.Box(boxStyles(), m.helpTitle(), rows, inner, m.clampedHelpAt(len(rows), inner))
 
-	x := max(m.width-lipgloss.Width(box[0])-1, 0)
+	x := max(m.viewWidth()-lipgloss.Width(box[0])-1, 0)
 	base.body = strings.Join(overlay.Blit(body, box, x, len(body)-len(box)), "\n")
 	base.hints = m.helpHints()
 	base.facts = append([]frame.Fact{{Text: "help", Tone: frame.Accent}}, base.facts...)

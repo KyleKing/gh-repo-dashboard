@@ -542,7 +542,7 @@ func (m Model) paletteScreen() screen {
 // renderPalette draws the find line, its matches, and a preview of the
 // highlighted one.
 func (m Model) renderPalette(results []findResult) string {
-	width := contentWidth(m.width)
+	width := contentWidth(m.viewWidth())
 
 	var b strings.Builder
 	b.WriteString(m.paletteInput.View())

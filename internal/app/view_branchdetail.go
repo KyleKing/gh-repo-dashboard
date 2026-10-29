@@ -268,7 +268,7 @@ func (m Model) writeBranchCommitsSection(b *strings.Builder, s branchDetailStyle
 		return
 	}
 
-	layout := fitDetailCols(commitColSpecs, m.width)
+	layout := fitDetailCols(commitColSpecs, m.viewWidth())
 	subtleStyles := map[string]lipgloss.Style{
 		colCommitHash:   styles.Skin.Subtitle,
 		colCommitAuthor: styles.Skin.Subtitle,

@@ -52,7 +52,7 @@ func (m Model) renderRepoList() string {
 	}
 
 	main := func(_, _ int) []string { return m.renderListMain() }
-	lines := detailSpec.Render(placement, splitStyles(), m.width, m.bodyHeight(), main, m.renderDetail)
+	lines := detailSpec.Render(placement, splitStyles(), m.viewWidth(), m.bodyHeight(), main, m.renderDetail)
 
 	return strings.Join(lines, "\n")
 }
@@ -272,7 +272,7 @@ func (m Model) renderTable() string {
 	}
 
 	compact := m.isCompact()
-	width := repoTableWidth(m.width)
+	width := repoTableWidth(m.viewWidth())
 
 	var (
 		rows      []string

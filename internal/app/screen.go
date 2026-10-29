@@ -13,7 +13,13 @@ import (
 
 const appTitle = "repo-dashboard"
 
-const frameChrome = 2
+// frameChrome is the header's row and the footer's; bodyLead is the blank row
+// under the header, and screenEdge the margin each side of every screen.
+const (
+	frameChrome = 2
+	bodyLead    = 1
+	screenEdge  = 2
+)
 
 type screen struct {
 	title string
@@ -25,7 +31,19 @@ type screen struct {
 }
 
 func (m Model) bodyHeight() int {
-	return max(m.height-frameChrome, 1)
+	return max(m.height-frameChrome-bodyLead, 1)
+}
+
+// viewWidth is the width inside the screen's edge margin: what the frame and
+// every screen under it render into.
+func (m Model) viewWidth() int {
+	return max(m.width-2*screenEdge, 1)
+}
+
+// bodyBudget is the body's share of the frame: the content rows plus the lead
+// row the header's rule keeps above them.
+func (m Model) bodyBudget() int {
+	return m.bodyHeight() + bodyLead
 }
 
 func (m Model) renderScreen() string {
@@ -40,9 +58,9 @@ func (m Model) renderScreen() string {
 		body = m.withCompletions(body)
 	}
 
-	body = padLines(body, m.bodyHeight(), m.width)
+	body = padLines(append(make([]string, bodyLead), body...), m.bodyBudget(), m.viewWidth())
 	if len(s.panel) > 0 {
-		body = overlay.BottomRight(body, s.panel, m.width)
+		body = overlay.BottomRight(body, s.panel, m.viewWidth())
 	}
 
 	rendered := frame.Render(styles.Skin, frame.Frame{
@@ -52,13 +70,29 @@ func (m Model) renderScreen() string {
 		Body:   body,
 		Hints:  s.hints,
 		Status: statusLine(m.statusMessage),
-	}, m.width, m.height)
+	}, m.viewWidth(), m.height)
+
+	rendered = indent(rendered, screenEdge)
 
 	if m.commandMode {
-		return replaceLastLine(rendered, m.commandLine(), m.width)
+		return replaceLastLine(rendered, strings.Repeat(" ", screenEdge)+m.commandLine(), m.width)
 	}
 
 	return rendered
+}
+
+// indent shifts every line of rendered right by cells, opening the screen's
+// left margin. The right margin comes free: the frame drew into the narrower
+// content width, so nothing reaches the edge.
+func indent(rendered string, cells int) string {
+	lead := strings.Repeat(" ", cells)
+	lines := strings.Split(rendered, "\n")
+
+	for i := range lines {
+		lines[i] = lead + lines[i]
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 func (m Model) currentScreen() screen {
@@ -150,7 +184,7 @@ func (m Model) withCompletions(body []string) []string {
 		hints = append(hints, keyhint.Hint{Key: c.Name, What: c.Description})
 	}
 
-	rows := keyhint.Column(legendStyles(), hints, min(completionBoxWidth, m.width-boxMargin))
+	rows := keyhint.Column(legendStyles(), hints, min(completionBoxWidth, m.viewWidth()-boxMargin))
 	inner := max(1, min(len(rows), min(maxCompletionRows, m.bodyHeight()-boxBorder)))
 	box := overlay.Box(boxStyles(), "complete", rows, inner, 0)
 

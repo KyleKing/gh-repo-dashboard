@@ -64,7 +64,7 @@ func withSelection(s lipgloss.Style, selected bool) lipgloss.Style {
 // The modals here carry their own border, so the overlay adds no frame of its
 // own.
 func centerModal(m Model, content string) string {
-	return overlay.Center(content, m.width, m.bodyHeight(), overlay.Styles{})
+	return overlay.Center(content, m.viewWidth(), m.bodyHeight(), overlay.Styles{})
 }
 
 // truncate shortens s to at most maxLen terminal cells, marking the cut with

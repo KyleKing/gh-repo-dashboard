@@ -27,6 +27,7 @@ const (
 	detailBelowPercent = 60
 	detailCommitLimit  = 5
 	changedPathsShown  = 3
+	detailRulePad      = 2
 )
 
 var detailSpec = split.Spec{
@@ -35,7 +36,7 @@ var detailSpec = split.Spec{
 	MinWidth:     standardMinWidth,
 	MinHeight:    detailMinHeight,
 	BelowPercent: detailBelowPercent,
-	Pad:          1,
+	Pad:          detailRulePad,
 }
 
 //nolint:mnd // the numbers are this table's geometry, not constants reused elsewhere
