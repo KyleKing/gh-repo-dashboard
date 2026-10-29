@@ -1,3 +1,9 @@
+## v1.20.0 (2026-10-29)
+
+### Feat
+
+- **ui**: share the sections-and-detail pane with aragonite's preview
+
 ## v1.19.0 (2026-10-26)
 
 ### Feat
