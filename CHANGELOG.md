@@ -1,3 +1,9 @@
+## v1.20.1 (2026-10-29)
+
+### Refactor
+
+- **ui**: drop the helpers the preview pane replaced
+
 ## v1.20.0 (2026-10-29)
 
 ### Feat
