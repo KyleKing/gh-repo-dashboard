@@ -34,8 +34,7 @@ sorts after `template.toml` (`user.toml` works; `project.toml` does not, since
 | `mise run lint` | Run linter |
 | `mise run test` | Run tests with coverage |
 | `mise run test:coverage-min` | Fail below the 70% coverage threshold |
-| `mise run test:golden-orphans` | Fail on any `.golden` file no test regenerates |
-| `mise run test:live` | [Live integration test](#live-integration-test) of `:cleanup` against a scratch GitHub repo |
+| `mise run test:golden-orphans` | Fail on any `.golden` file no test regenerates (`GOLDEN_TAGS=golden mise run test:golden-orphans` when the golden tests sit behind a build tag) |
 | `mise run test:view-coverage` | Open the coverage report in a browser |
 | `mise tasks` | List all available tasks |
 

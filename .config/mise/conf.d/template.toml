@@ -104,7 +104,7 @@ fi
 '''
 
 # `-update` rewrites goldens and never deletes one, so a golden whose test was renamed
-# or removed lingers. GOFLAGS=-tags=... passes through for goldens behind a build tag.
+# or removed lingers. GOLDEN_TAGS=<tag> includes goldens behind a build tag.
 [tasks."test:golden-orphans"]
 description = "Fail on any .golden file that no test regenerates"
 shell = "bash -c"
@@ -122,7 +122,7 @@ fi
 pkgs=$(sed -E 's#/testdata/.*#/#' "$work/have" | sort -u)
 cd "$work/tree"
 # shellcheck disable=SC2086 # pkgs is a list of package directories
-go test -count=1 $pkgs -update
+go test -count=1 ${GOLDEN_TAGS:+-tags="$GOLDEN_TAGS"} $pkgs -update
 find . -name '*.golden' | sort > "$work/made"
 orphans=$(comm -23 "$work/have" "$work/made")
 if [ -n "$orphans" ]; then
