@@ -145,9 +145,10 @@ cache_to_disk, fleet_active, fleet_authors, diff.external, tasks):
 
 Run "%s --script -" with a "help" line to list the :commands.
 Run "%s run <task>" to run a [[tasks]] entry headlessly; "%s run -h" lists its flags.
+Run "%s keys" to read the key usage log back against the keymap.
 
 Flags:
-`, os.Args[0], configPath, os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], configPath, os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 	flag.PrintDefaults()
 }
 
@@ -300,12 +301,46 @@ func withTasks(model app.Model, cfg config.Config) app.Model {
 	return model.WithTasks(tasks.Selector{Store: store, Tasks: cfg.Tasks})
 }
 
+// runSubcommand runs the subcommand named by the first argument, reporting whether there was one.
+func runSubcommand() bool {
+	if len(os.Args) == 1 {
+		return false
+	}
+
+	switch os.Args[1] {
+	case "run":
+		runMain(os.Args[2:])
+	case "keys":
+		if err := keysCommand(os.Stdout); err != nil {
+			exitWith(err)
+		}
+	default:
+		return false
+	}
+
+	return true
+}
+
+// runTUI runs the interactive program and exits non-zero when it fails.
+func runTUI(model app.Model, cfg config.Config) {
+	rec, seen := openUsage()
+	p := tea.NewProgram(withTasks(model.WithUsage(rec, seen), cfg))
+
+	_, err := p.Run()
+	if closeErr := rec.Close(); closeErr != nil {
+		fmt.Fprintf(os.Stderr, "Warning: closing the usage log: %v\n", closeErr)
+	}
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)
+		os.Exit(1)
+	}
+}
+
 func main() {
 	flag.Usage = printUsage
 
-	if len(os.Args) > 1 && os.Args[1] == "run" {
-		runMain(os.Args[2:])
-
+	if runSubcommand() {
 		return
 	}
 
@@ -375,11 +410,5 @@ func main() {
 		return
 	}
 
-	model := withTasks(app.New(absPathList, *depth).WithFleet(fleetOf(cfg)).WithSnapshots(store), cfg)
-	p := tea.NewProgram(model)
-
-	if _, err := p.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error running program: %v\n", err)
-		os.Exit(1)
-	}
+	runTUI(app.New(absPathList, *depth).WithFleet(fleetOf(cfg)).WithSnapshots(store), cfg)
 }

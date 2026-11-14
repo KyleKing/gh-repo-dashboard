@@ -255,6 +255,8 @@ func (m Model) withFadingStatus(text string) (tea.Model, tea.Cmd) {
 // routeKeyMsg dispatches a key press to the handler for the current mode
 // (search, command-bar, or one of the view modes).
 func (m Model) routeKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	m.recordKey(msg)
+
 	if newM, cmd, handled := m.routeModalKey(msg); handled {
 		return newM, cmd
 	}

@@ -61,6 +61,13 @@ for whatever is marked: switch branch, push with `--follow-tags`, open a pull
 request, squash-merge one, apply a stash, or open a notes file in `$EDITOR`.
 Anything that reaches the remote or destroys work asks for confirmation first.
 
+The TUI logs which command keys you press, per screen, to `~/Sync/.gh-repo-dashboard/usage/`
+(or `$GH_REPO_DASHBOARD_USAGE_DIR`), and nothing is logged without one of the two.
+Typed search, command, and find text never reaches the log. `gh-repo-dashboard keys`
+reads it back as the keys you never press, the ones gone stale, keys pressed where
+nothing is bound, and keys that mean different things on different screens. Legends
+draw a key brighter the longer it has gone unpressed.
+
 ## What it does not do
 
 - Commit, stage, rebase, or resolve conflicts on its own. The built-in writes are

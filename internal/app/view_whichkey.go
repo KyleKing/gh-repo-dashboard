@@ -40,11 +40,11 @@ func (m Model) whichKey(hints []keyhint.Hint) []string {
 func (m Model) whichKeyPanel() []string {
 	switch {
 	case m.panelActions && m.viewMode != ViewModePalette:
-		return m.whichKey(m.actionHints())
+		return m.whichKey(m.brighten(m.keyContext(), m.actionHints(), actionLeader))
 	case m.viewMode == ViewModeFilter:
-		return m.whichKey(m.filterPanelHints())
+		return m.whichKey(m.brighten(ctxFilter, m.filterPanelHints()))
 	case m.viewMode == ViewModeSort:
-		return m.whichKey(m.sortPanelHints())
+		return m.whichKey(m.brighten(ctxSort, m.sortPanelHints()))
 	}
 
 	return nil

@@ -216,8 +216,9 @@ type Model struct {
 	statusMessage string
 	pendingAction *pendingAction
 
-	keys KeyMap
-	help help.Model
+	keys  KeyMap
+	help  help.Model
+	usage *usage
 }
 
 // New builds the initial Model for the given repo scan roots.

@@ -97,6 +97,7 @@ func indent(rendered string, cells int) string {
 
 func (m Model) currentScreen() screen {
 	s := m.baseScreen()
+	s.hints = m.brighten(m.keyContext(), s.hints)
 
 	if panel := m.whichKeyPanel(); panel != nil {
 		s.panel = panel

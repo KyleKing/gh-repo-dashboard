@@ -63,10 +63,10 @@ func (m Model) helpTree() []keyhint.Hint {
 func (m Model) helpPage() []keyhint.Hint {
 	page, ok := keyhint.At(m.helpTree(), m.helpPath)
 	if !ok {
-		return m.helpTree()
+		return m.brighten(viewContext(m.helpFrom), m.helpTree())
 	}
 
-	return page
+	return m.brighten(viewContext(m.helpFrom), page, m.helpPath...)
 }
 
 func (m Model) helpRows() []string {
