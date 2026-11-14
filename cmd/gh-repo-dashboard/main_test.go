@@ -4,7 +4,10 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/kyleking/aragonite/keyusage"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/config"
 )
@@ -131,5 +134,35 @@ func TestApplyConfigExplicitFlagWins(t *testing.T) {
 	applyConfig(config.Config{Depth: 9}, &depth)
 	if depth != 2 {
 		t.Errorf("applyConfig depth = %d; want explicitly set flag value 2", depth)
+	}
+}
+
+func TestInvokeLogsFlagNamesNotValues(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	rec := keyusage.Open("test", keyusage.WithDir(dir), keyusage.WithHost("test"))
+
+	rec.Invoke(commandTree(), []string{"run", "--where", "secret-predicate", "--dry-run", "sync"})
+
+	if err := rec.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	logged, err := filepath.Glob(filepath.Join(dir, "*"))
+	if err != nil || len(logged) == 0 {
+		t.Fatalf("no usage log in %s: %v", dir, err)
+	}
+	data, err := os.ReadFile(logged[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := string(data)
+	if !strings.Contains(got, "run --where --dry-run") {
+		t.Errorf("log %q lacks the subcommand path and flag names", got)
+	}
+	if strings.Contains(got, "secret-predicate") || strings.Contains(got, "sync") {
+		t.Errorf("log %q leaks a value or positional", got)
 	}
 }

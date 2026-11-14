@@ -67,6 +67,8 @@ Typed search, command, and find text never reaches the log. `gh-repo-dashboard k
 reads it back as the keys you never press, the ones gone stale, keys pressed where
 nothing is bound, and keys that mean different things on different screens. Legends
 draw a key brighter the longer it has gone unpressed.
+Every run also logs the subcommand and flag names it was given (never their values or
+positional arguments), so `keys` reports unused flags the same way.
 
 ## What it does not do
 

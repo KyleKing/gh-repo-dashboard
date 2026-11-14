@@ -15,6 +15,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/kyleking/aragonite/cache"
+	"github.com/kyleking/aragonite/keyusage"
 	"github.com/kyleking/aragonite/vcs"
 
 	"github.com/kyleking/gh-repo-dashboard/internal/app"
@@ -322,8 +323,8 @@ func runSubcommand() bool {
 }
 
 // runTUI runs the interactive program and exits non-zero when it fails.
-func runTUI(model app.Model, cfg config.Config) {
-	rec, seen := openUsage()
+func runTUI(model app.Model, cfg config.Config, rec *keyusage.Recorder) {
+	seen := seenUsage(rec)
 	p := tea.NewProgram(withTasks(model.WithUsage(rec, seen), cfg))
 
 	_, err := p.Run()
@@ -337,13 +338,19 @@ func runTUI(model app.Model, cfg config.Config) {
 	}
 }
 
-func main() {
-	flag.Usage = printUsage
+// mainFlags are the flags of the bare command, defined on flag.CommandLine.
+type mainFlags struct {
+	showVersion *bool
+	depth       *int
+	cliMode     *bool
+	fresh       *bool
+	fetch       *bool
+	filterExpr  *string
+	maniPath    *string
+	scriptPath  *string
+}
 
-	if runSubcommand() {
-		return
-	}
-
+func defineMainFlags() mainFlags {
 	showVersion := flag.Bool("version", false, "Show version information")
 	depth := flag.Int("depth", 1, "Maximum directory depth to scan")
 	cliMode := flag.Bool("cli", false, "Print repo summaries as JSON instead of the TUI (cached GitHub data only)")
@@ -357,9 +364,32 @@ func main() {
 		"Read the repo roster from a mani.yaml instead of scanning directories")
 	scriptPath := flag.String("script", "",
 		"Run :command lines from the given file (or - for stdin) instead of the TUI")
+
+	return mainFlags{
+		showVersion: showVersion, depth: depth, cliMode: cliMode, fresh: fresh, fetch: fetch,
+		filterExpr: filterExpr, maniPath: maniPath, scriptPath: scriptPath,
+	}
+}
+
+func main() {
+	flag.Usage = printUsage
+
+	f := defineMainFlags()
+	rec := keyusage.Open(app.UsageApp)
+	defer closeUsage(rec)
+	rec.Invoke(commandTree(), os.Args[1:])
+
+	if runSubcommand() {
+		return
+	}
+
+	runBare(f, rec)
+}
+
+func runBare(f mainFlags, rec *keyusage.Recorder) {
 	flag.Parse()
 
-	if *showVersion {
+	if *f.showVersion {
 		fmt.Printf("gh-repo-dashboard %s (commit: %s, built: %s)\n", version, commit, date)
 		os.Exit(0)
 	}
@@ -374,9 +404,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	store := applyConfig(cfg, depth)
+	store := applyConfig(cfg, f.depth)
 
-	scanPaths, err := resolveRoster(*maniPath, flag.Args(), fleetFor(*cliMode || *scriptPath != "", cfg))
+	scanPaths, err := resolveRoster(*f.maniPath, flag.Args(), fleetFor(*f.cliMode || *f.scriptPath != "", cfg))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -388,8 +418,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *cliMode {
-		opts := cli.Options{MaxDepth: *depth, Fresh: *fresh, Fetch: *fetch, Predicate: *filterExpr, Tasks: cfg.Tasks}
+	if *f.cliMode {
+		opts := cli.Options{
+			MaxDepth: *f.depth, Fresh: *f.fresh, Fetch: *f.fetch, Predicate: *f.filterExpr, Tasks: cfg.Tasks,
+		}
 		if store, err := tasks.DefaultStore(); err == nil {
 			opts.Store = store
 		}
@@ -401,8 +433,8 @@ func main() {
 		return
 	}
 
-	if *scriptPath != "" {
-		if err := runScript(*scriptPath, absPathList, *depth); err != nil {
+	if *f.scriptPath != "" {
+		if err := runScript(*f.scriptPath, absPathList, *f.depth); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -410,5 +442,5 @@ func main() {
 		return
 	}
 
-	runTUI(app.New(absPathList, *depth).WithFleet(fleetOf(cfg)).WithSnapshots(store), cfg)
+	runTUI(app.New(absPathList, *f.depth).WithFleet(fleetOf(cfg)).WithSnapshots(store), cfg, rec)
 }
